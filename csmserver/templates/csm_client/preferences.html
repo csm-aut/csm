@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import edit_field %}
+
+{% block extra_head %}
+  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+  <script src="/static/showhidepassword-1.0.0/js/password.js"></script>
+   
+  <script charset="utf-8">
+    $(function() {
+      
+      var spinner = $('#spinner');    
+      spinner.hide();
+      
+      // initialize the show/hide password widget
+      $('#cco_password').password();
+      
+      <!-- hide the table header to preserve space -->
+      $(".hide-header").hide();
+      
+      $('.btn-toggle').click(function() {
+        $(this).find('.btn').toggleClass('active');  
+    
+        if ($(this).find('.btn-primary').size()>0) {
+    	  $(this).find('.btn').toggleClass('btn-primary');
+        }
+    
+        $(this).find('.btn').toggleClass('btn-default');       
+      });
+
+      var platforms_and_releases_table = $("#platforms-and-releases-datatable").dataTable({
+        "scrollY": "250px",
+        "bSort" : false,
+        "iDisplayLength": 500,
+        "sDom": 'ft',
+      });
+      
+      $('#validate').on("click", function() {
+        spinner.show();
+        
+        $.ajax({
+           url: "/api/validate_cisco_user",
+           type: "POST",
+           dataType: 'json',
+           data: { username: $('#cco_username').val(), password: $('#cco_password').val()},
+           success: function (response) {             
+             if (response.status == 'OK') {
+               display_success();
+             } else {
+               display_error();
+             }
+           },
+           error: function(XMLHttpRequest, textStatus, errorThrown) { 
+             display_error();
+           }  
+         });  
+         
+      });
+      
+      function display_success() {
+        spinner.hide();
+        $('#validate').removeClass("btn-danger");
+        $('#validate').addClass("btn-primary");
+           
+        bootbox.alert("<img src=\"/static/green_check.png\">&nbsp; Login to cisco.com successfully!");
+      }
+         
+      function display_error() {
+        spinner.hide();
+        $('#validate').removeClass("btn-primary");
+        $('#validate').addClass("btn-danger");
+           
+        bootbox.alert("<img src=\"/static/error.png\">Unable to validate cisco user.");
+      }
+     
+    });
+  </script>
+
+{% endblock extra_head %}
+
+{% block main %}
+
+<div class="container"> <!-- Main -->
+ <form method="post" class="form-horizontal">
+  <div class="row">  <!-- upper section -->
+  
+    <div class="container col-sm-6">
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-asterisk"></i> User Preferences</strong></span>
+      <hr>
+      
+      <div class="panel panel-default">
+        <div class="panel-heading"><h4>Filter Platforms</h4></div>
+        <div class="panel-body">
+         To exclude certain platforms from displaying under the Platforms menu, check the checkbox next to the platform and release.<hr> 
+         
+         <table class="display table" id="platforms-and-releases-datatable" >
+           <thead class="hide-header">  
+             <tr> 
+               <th>&nbsp;</th> 
+               <th>&nbsp;</th>  
+               <th>&nbsp;</th>   
+             </tr>  
+           </thead>  
+           <tbody>
+             {% for platform_and_release in platforms_and_releases %}
+             <tr>
+               <td><input type="checkbox" {% if platform_and_release.excluded %}checked{% endif %} value="{{ platform_and_release.platform }}_{{ platform_and_release.release }}" name="check"></td>
+               <td>{{ platform_and_release.platform | beautify_platform }}</td>
+               <td>{{ platform_and_release.release }}</td>
+             </tr>
+             {% endfor %}
+             
+           </tbody>
+         </table>
+        </div>
+      </div>
+      
+    </div>
+    
+    <div class="container col-sm-6">
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-home"></i> <a href="{{ url_for('home') }}">Home</a></strong></span>
+      
+      <div class="form-actions">
+        <div class="btn-group pull-right">
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </div>         
+      <hr>
+      
+      <div class="panel panel-default">
+        <div class="panel-heading"><h4>Cisco.com Authentication</h4></div>
+        <div class="panel-body">
+         Authentication information is used when downloading SMUs or Service Packs from cisco.com. 
+         <hr>      
+           {{ edit_field(form.cco_username, label_field_width="col-sm-4", field_width="col-sm-6", class="form-control") }}
+           {{ edit_field(form.cco_password, label_field_width="col-sm-4", field_width="col-sm-6", class="form-control",
+             placeholder="Use Password on File") }}
+             
+           <div class="form-group ">
+             <label class="col-sm-4 control-label"></label>
+
+             <div class=col-sm-6>
+               <button id="validate" type="button" class="btn btn-danger">Validate</button>
+               <img id="spinner" src="/static/spinner.gif">
+             </div>  
+          </div>
+        </div>
+      </div>
+          
+    </div>
+    
+  </div> <!-- /upper section -->
+
+  </form>
+</div> <!--/Main -->
+
+
+{% endblock main %}

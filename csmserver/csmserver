@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# for Python interpreter
+PYTHON="python"
+
+# for gunicorn
+WORKERS=4
+PORT=5000
+
+SSLKEY="ssl.key"
+SSLCERT="ssl.cert"
+
+function start_csmserver
+{
+    echo "starting CSM Server....."
+    # This will force database creation for a new installation via a single entry point.
+    # Otherwise, gunicorn multiple workers will create contention when they all start.
+    $PYTHON create_schema.py
+    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --log-file=- csmserver:app > /dev/null &
+    $PYTHON csmdispatcher.py > /dev/null & 
+}
+
+function start_secure_csmserver
+{
+    # Check certificate
+    if [ ! -f $SSLKEY ]; then
+        echo Unable to start secure CSM Server 
+        echo The Private Key file, $SSLKEY, is missing.
+        return
+    fi
+
+    if [ ! -f $SSLCERT ]; then
+        echo Unable to start secure CSM Server 
+        echo The Certificate file, $SSLCERT, is missing.
+        return
+    fi
+
+    echo "starting Secure CSM Server"
+    $PYTHON create_schema.py
+    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --log-file=- --keyfile=$SSLKEY --certfile=$SSLCERT  csmserver:app > /dev/null &
+    $PYTHON csmdispatcher.py > /dev/null &
+}
+
+function stop_csmserver 
+{
+    pid_list=`ps -ef | grep 'csmserver:ap[p]\|csmdispatche[r]' | awk '{print $2}'`
+    for pid in $pid_list; do
+        kill -9 $pid  2>&1 > /dev/null
+    done
+    echo "CSM Server stopped."
+}
+
+if [ "$1" == "start" ] && [ "$2" == "secure" ]; then
+    start_secure_csmserver
+elif [ "$1" == "start" ]; then
+    start_csmserver
+elif [ "$1" == "stop" ]; then
+    stop_csmserver
+else
+    echo "usage: csmserver [start|start secure|stop]"
+fi

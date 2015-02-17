@@ -1,0 +1,212 @@
+{% extends 'base_schedule_install.html' %}
+
+{% from 'host/common.html' import edit_field %}
+{% from 'host/common.html' import log_icon %}
+{% from 'host/common.html' import trace_icon %}
+
+{% block head_schedule_install %}
+     
+  $('#form').submit(function() {
+    on_final_submit(this, "{{ host.hostname }}");
+    
+    // prevent the form from closing 
+    return false;
+  });
+    
+  $('.UTCDate').val(function(index, currentValue) {
+    // Invalid date would be less than 15 characters
+    if ($(this).text().length > 15) {
+      $(this).text(convertToLocaleString($(this).text() ));
+    }
+  });
+      
+  $("#dependency option").each(function()
+  {
+    var option = $(this).text();
+    var n = option.indexOf(' - ');
+    if (n > -1) {
+      // Information is rendered as, for example, Install Add - 07/08/2014 04:16 PM
+      $(this).html(option.substring(0, n) + ' - ' + convertToLocaleString(option.substring(n + 3)) );
+    }
+  });
+  
+  // In edit mode.
+  if ($('#hidden_edit').val() == 'True') {
+    $("#install_action").prop("disabled", true);
+  } else {
+    $("#install_action").prop("disabled", false);
+  }
+  
+  var install_add_table = $("#install-add-datatable").dataTable({
+    "order": [[ 2, "desc" ]],
+    "scrollY": 250,
+    "pageLength": 100,
+    "columnDefs": [ 
+     {
+        "targets": 0, 
+        "data" : 'packages',
+        "render": function ( data, type, row ) {
+          return '<input type="checkbox" value="' + data + '" class="check">';
+        }
+      },
+      {
+        "targets": 1, 
+        "data" : 'packages',
+        "render": function ( data, type, row ) {
+            return display_packages(data);
+        }
+      },
+      {
+        "targets": 2,
+        "data" : 'status_time',
+        "render": function ( data, type, row ) {
+          return convertToLocaleString(data);
+        }
+      },
+      {
+        "targets": 3,
+        "data" : 'created_by'
+      },
+    ],
+  });
+      
+  $('#browse-history-button').on('click', function (e) {
+    refresh_install__table();
+    $('#select-install-history-dialog').modal({show:true})
+  });
+      
+  function refresh_install__table() {
+    install_add_table.api().ajax.url("/api/get_past_install_add_packages/hosts/{{ host.id }}").load();
+  }
+      
+  function display_packages(packages) {
+    if (packages) {
+      return packages.replace(/,/g,"<br/>");
+    } else {
+      return '&nbsp;';
+    }       
+  }
+      
+  $('#on-select-install-history-submit').click(function(e) {
+    software_packages = '';
+    $('.check').each(function(index) {
+      if (this.checked) {
+        software_packages += $(this).val().replace(/,/g,"\n") + '\n';
+        $(this).attr('checked', false);
+      }
+    }); 
+      
+    $('#software-packages').val(String(software_packages));  
+  });
+      
+      
+{% endblock head_schedule_install %}
+
+{% block main_schedule_install %}
+    
+<div class="row"> 
+  <div class="well col-sm-offset-2 col-sm-8">
+    <form id="form" method="post"  class="form-horizontal">
+      <legend><h4>Schedule Install > Region: {{ host.region.name }} > Host: {{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }}) </h4></legend>
+
+       {% if install_job.status == 'failed' %}
+         <div class="alert alert-danger">
+           <strong>NOTE:&nbsp;</strong>
+           This scheduled install failed on <span class="UTCDate">{{ install_job.status_time | datetime_string }}</span>
+           
+           {% if install_job.session_log %}
+             <a href="{{ url_for('host_session_log', hostname=host.hostname, table='install_job', id=install_job.id) }}?file_path={{ install_job.session_log }}">{{ log_icon('Session Log') }}</a>
+           {% endif %}
+
+           {% if install_job.trace %} 
+             <a href="{{ url_for('host_trace', hostname=host.hostname, table='install_job', id=install_job.id) }}">{{ trace_icon() }}</a>
+           {% endif %}
+
+         </div> 
+       {% endif %}
+           
+       {{ edit_field(form.install_action, style="width: 100%", multiple="multiple", field_width="col-sm-5", class="form-control") }}
+         
+       <div id="packages-panel">
+         {{ edit_field(form.server, field_width="col-sm-5", class="form-control") }}
+         
+         <div class="form-group ">
+            <label class="col-sm-4 control-label" id="label_server_directory" for="server_directory">Server Directory</label>
+            <div class="col-sm-6">
+              <select class="form-control" id="server_directory" name="server_directory"><option value=""></option></select>
+            </div>    
+            <a href="javascript://">
+              <img id='move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
+            </a>
+            <a href="javascript://">
+              <img id='reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
+            </a>             
+         </div>     
+
+         <div class="form-group ">
+           <label class="col-sm-4 control-label" for="software_packages">{{ form.software_packages.label() }}</label>         
+           <div class="col-sm-6">
+             <textarea spellcheck="false" class="form-control" rows="5" id="software-packages" name="software_packages">{{ form.software_packages.data | none2blank }}</textarea>
+           </div>
+         </div>
+     
+         <div class="form-group ">
+           <label class="col-sm-4 control-label"></label>
+           <div class=col-sm-8>         
+             Browse&nbsp;&nbsp; 
+             <a id='browse-button' href="javascript://">
+               <img src="/static/browse_server.png">&nbsp;Repository
+             </a>
+             &nbsp;&nbsp;
+             <a id='browse-cisco-button' href="javascript://">
+               <img src="/static/internet.png">&nbsp;Cisco.com
+             </a>   
+             &nbsp;&nbsp;
+             <a id='browse-history-button' href="javascript://">
+               <img src="/static/history.png">&nbsp;Install History
+             </a>                     
+           </div>        
+         </div>
+ 
+       </div>
+  
+       <div class="form-group ">
+        <label class="col-sm-4 control-label" for="{{ form.scheduled_time.name }}">{{ form.scheduled_time.label() }}</label>
+
+        <div class="col-sm-5">
+          <div  class="input-group date form_datetime">
+            <input id="scheduled-time" name="{{ form.scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
+            <input id="scheduled-time-UTC" name="{{ form.scheduled_time_UTC.name }}" value="{{ form.scheduled_time_UTC.data }}" class="form-control" type="hidden">
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span></span>
+          </div>     
+        </div>
+      </div>
+
+      <div id="dependency-panel">
+        {{ edit_field(form.dependency, field_width="col-sm-5", class="form-control") }}
+      </div>
+      
+      <input id="hidden_pending_downloads" name="{{ form.hidden_pending_downloads.name }}" value="{{ form.hidden_pending_downloads.data }}" class="form-control" type="hidden">
+      <input id="hidden_server_directory" name="{{ form.hidden_server_directory.name }}" value="{{ form.hidden_server_directory.data }}" class="form-control" type="hidden">
+      <input id="hidden_edit" name="{{ form.hidden_edit.name }}" value="{{ form.hidden_edit.data }}" class="form-control" type="hidden">
+      
+      <div class="form-actions">
+        <div class="btn col-sm-offset-5">
+          <button id="on-submit" type="submit" class="btn btn-primary">
+          
+          {% if install_job.status == 'failed' %}
+            Re-Submit
+          {% else %}
+            Schedule
+          {% endif %}
+          
+          </button>
+          <button type="button" onClick="location.href='{{ url_for(return_url, hostname=host.hostname) }}'" class="btn btn-default">Cancel</button>
+          <img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock main_schedule_install %}

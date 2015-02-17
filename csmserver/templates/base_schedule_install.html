@@ -1,0 +1,783 @@
+{% extends 'base.html' %}
+{% from 'host/common.html' import edit_field %}
+
+{% block extra_head %}
+  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+  <script src="/static/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>  
+  <link rel="stylesheet" href="/static/datetimepicker/css/bootstrap-datetimepicker.min.css">  
+  <link href="/static/duallistbox-2.1.1/css/bootstrap-duallistbox.css" rel="stylesheet" type="text/css" media="all">
+  <script src="/static/duallistbox-2.1.1/js/jquery.bootstrap-duallistbox.js"></script>
+  <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+  <style>
+    .modal-dialog {
+      /* new custom width */
+      width: 800px;
+    }
+  </style>
+  
+  <script type="text/javascript">
+    $(function() {
+      $("#install_action").select2();
+       
+      var browse_spinner = $('#browse-spinner');   
+      var browse_cisco_spinner = $('#browse-cisco-spinner');
+      var submit_spinner = $('#submit-spinner'); 
+                  
+      browse_spinner.hide();
+      browse_cisco_spinner.hide();
+      submit_spinner.hide();
+     
+      $('#install_action').on('change', function (e) {
+        toggle_ui( $('#install_action').val() );   
+      });
+  
+      $('#install_action').val(function(index, currentValue) {
+        toggle_ui($(this).val());
+        return currentValue
+      });
+  
+      function toggle_ui(install_action) {
+        if (install_action == 'Pre-Upgrade') {
+          $('#packages-panel').hide();
+        } else {
+          $('#packages-panel').show();
+        }
+    
+        if (install_action == 'ALL' || (install_action != null && install_action.length > 1) ) {
+          $('#dependency').val(-1);
+          $('#dependency-panel').hide();
+        } else {
+          $('#dependency-panel').show();
+        }
+      }
+      
+      $(".form_datetime").datetimepicker({
+        format: "mm/dd/yyyy HH:ii P",
+        showMeridian: true,
+        autoclose: true,
+        todayBtn: true,
+        pickerPosition: "top-left",
+        todayHighlight: true
+      });
+      
+      var duallist =  $('#dual-listbox').bootstrapDualListbox({
+        nonselectedlistlabel: 'Non-selected',
+        selectedlistlabel: 'Selected',
+        preserveselectiononmove: 'moved',
+        moveonselect: false,
+      });
+      
+      var server_id = $('#server').val() > 0 ? $('#server').val() : -1;
+      if (server_id != -1) {
+        retrieve_file_list(server_id, $('#server_directory'), $('#hidden_server_directory').val());
+      }
+      
+      $('#browse-button').on('click', function (e) {
+         server_id = $('#server option:selected').val();
+         
+         $('#dialog_server').val(server_id);
+         clone_selector_values($('#dialog_server_directory'), $("#server_directory > option").clone());
+         
+         // Opens the dialog box
+         $('#select-software-dialog').modal({show:true})   
+         
+         if (server_id != -1) {
+           retrieve_file_list(server_id, $('#dialog_server_directory'), $('#server_directory option:selected').val());
+         }
+      });
+
+      function retrieve_file_list(server_id, server_directory_selector, server_directory) {
+        $('#dual-listbox').html('');
+        
+        server_directory_selector.html('');
+        server_directory_selector.append('<option value="' + server_directory  +'">' + server_directory + '</option>');
+        
+        browse_spinner.show();
+        duallist.trigger('bootstrapduallistbox.refresh', true);
+ 
+        $.ajax({
+          url: "/api/get_server_file_dict/" + server_id,
+          dataType: 'json',
+          data: { server_directory: server_directory} ,
+          success: function (response) {          
+            if (response.status == 'Failed') {        
+              bootbox.alert("Either the server repository is not reachable or server directory does not exist.");
+            } else {
+              $.each(response, function(index, element) {
+                populate_file_list(element, server_directory_selector, server_directory);
+              }); 
+            }
+             
+            duallist.trigger('bootstrapduallistbox.refresh', true)           
+            browse_spinner.hide();
+          },
+          error: function(XMLHttpRequest, textStatus, errorThrown) { 
+            bootbox.alert("Unable to list files. Error=" + errorThrown);
+            browse_spinner.hide();
+          }  
+        });      
+      }
+      
+      function populate_file_list(element, server_directory_selector, server_directory) {
+        
+        software_packages = get_software_packages();
+ 
+        for (i = 0; i < element.length; i++) {
+          var filename = element[i].filename;
+          var is_directory = element[i].is_directory;
+          
+          if (is_directory == true) {
+            server_directory_selector.append('<option value="' + filename + '">' + filename + '</option>');
+          } else {      
+            // If we are on the same directory as previous selected, re-display the selected packages  
+            if ($('#server_directory').val() == server_directory_selector.val()) {
+              if ($.inArray(filename, software_packages) == -1) {
+                duallist.append('<option value="' + filename + '">' + filename + '</option>');
+              } else {
+                duallist.append('<option value="' + filename + '" selected>' + filename + '</option>');
+              }
+            } else {
+              duallist.append('<option value="' + filename + '">' + filename + '</option>');
+            }
+          }
+        }
+      }
+      
+      // These are the selected packages in the textarea
+      function get_software_packages() {
+        software_packages = new Array();
+        
+        // Copy the selected packages from the textarea to the duallistbox
+        var lines = $('#software-packages').val().split('\n');
+        $.each(lines, function() {
+          var line = this.trim();
+          if (line.length > 0) {
+            software_packages.push(line, null);
+          }
+        });
+        return software_packages;
+      }
+      
+      $('#server').on('change', function (e) {
+        server_id = $('#server').val();
+        if (server_id == -1) {
+          $('#server_directory').html('');
+        } else {
+          retrieve_file_list(server_id, $('#server_directory'), '')
+        }
+      });
+      
+      $('#dialog_server').on('change', function (e) {
+        server_id = $('#dialog_server').val();
+        if (server_id == -1) {
+          $('#dialog_server_directory').html('');
+        } else {
+          retrieve_file_list(server_id, $('#dialog_server_directory'), '')
+        }
+      });
+      
+      $('#server_directory').on('change', function (e) {
+        retrieve_file_list(server_id, $('#server_directory'), $('#server_directory').val())
+      });
+      
+      $('#dialog_server_directory').on('change', function (e) {
+        retrieve_file_list(server_id, $('#dialog_server_directory'), $('#dialog_server_directory').val())
+      });
+      
+      $('#reset-server-directory').on('click', function (e) {
+        reset_server_directory($('#server_directory'), $('#server_directory').val()); 
+      });
+      
+      $('#dialog-reset-server-directory').on('click', function (e) {
+        reset_server_directory($('#dialog_server_directory'), $('#dialog_server_directory').val());
+      });
+      
+      function reset_server_directory(server_directory_selector, server_directory) {
+        if (server_directory == '') {
+          return;
+        }
+        bootbox.confirm('Reset the server directory to use the server repository base directory?', function(result) {
+          if (result) {
+            retrieve_file_list(server_id, server_directory_selector, '')
+          }
+        });   
+      }
+      
+      // Move up one folder (i.e. parent folder)
+      $('#move-up').on('click', function (e) {
+        retrieve_file_list(server_id, $('#server_directory'), get_parent_folder($('#server_directory').val()) );
+      }); 
+      
+      $('#dialog-move-up').on('click', function (e) {
+        retrieve_file_list(server_id, $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()) );
+      }); 
+      
+      function clone_selector_values(target_selector, options) {
+        target_selector.empty();
+        target_selector.append(options);
+      }
+      
+      $('#on-select-packages-submit').click(function(e) {
+      
+        if ($('#dialog_server').val() == -1) {
+          bootbox.alert("Server Repository has not been specified.");
+          return false;
+        } 
+        
+        var software_packages = duallist.val();
+        if (software_packages == null) {
+          $('#software-packages').val('');
+        } else {
+          $('#software-packages').val(String(software_packages).replace(/,/g, '\n') );
+        }          
+        
+        // Record the newly selected server repository
+        $('#server').val($('#dialog_server').val());
+        clone_selector_values($('#server_directory'), $("#dialog_server_directory > option").clone());
+        $('#server_directory').val($('#dialog_server_directory').val());  
+      });
+
+      server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
+      
+      // Called when the Schedule (i.e. submit) button is clicked but before the
+      // form actually being submitted.  Returning false will stop the submission.
+      $('#on-submit').click(function(e) { 
+
+         var install_action = $('#install_action').val();
+         if (install_action == null) {
+           bootbox.alert("Install Action has not been specified.");
+           return false;
+         }
+         
+         var server_name = $('#server option:selected').text();
+         var software_packages = $('#software-packages').val().trim();
+         
+         if (install_action == 'Install Add' && server_name.length == 0 && software_packages.length != 0) {
+           bootbox.alert("Server Repository has not been specified.");
+           return false;
+         }
+         
+         if (install_action == 'Install Add' && server_name.length != 0 && software_packages.length == 0) {
+           bootbox.alert("Software Packages has not been specified.");
+           return false;
+         }
+         
+         /*
+         if (install_action != 'Pre-Upgrade' &&
+             (server_name.length == 0 || software_packages.length == 0) ) {
+           bootbox.alert("Either Server Repository or Software Packages has not been specified.");
+           return false;
+         }
+         */
+         
+         if (trim_lines(software_packages).split('\n').length > 16) {
+           bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 16 software packages at a time.  To circumvent this issue, use a tar archive file instead.");
+           return false;
+         }
+        
+         $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()) );
+                 
+        // Record the newly selected directory
+        $('#hidden_server_directory').val($('#server_directory').val());  
+  
+         return true;
+      });
+      
+      // Convert the UTC time to Locale time
+      $('#scheduled-time-UTC').val(function( index, value ) {
+        if (value == 'None' || value.length == 0) {
+          $('#scheduled-time').val(server_time_as_locale_time);
+        } else {
+          $('#scheduled-time').val(convertToLocaleString(value) );
+        }
+      });
+      
+      // Called by the $('#form').submit() function.
+      function on_final_submit(current_form, hostname) {
+        
+        if ($('#install_action').val() == 'Pre-Upgrade' || packages_contains_tar_file($('#software-packages').val())) {
+          current_form.submit();
+        }
+ 
+        var validate_object = {
+          form: current_form,
+          hostname: hostname,
+          server_id: $('#server').val(),
+          server_directory: $('#hidden_server_directory').val(),
+          software_packages: $('#software-packages').val(),
+          spinner: submit_spinner,
+          check_missing_file_on_server: true,
+          callback: on_finish_validate
+        };
+           
+        on_validate_prerequisites_and_files_on_server(validate_object);
+      }
+      
+      function on_finish_validate(validate_object) {
+        $('#software-packages').val(validate_object.software_packages);
+        $('#hidden_pending_downloads').val(validate_object.pending_downloads);
+        validate_object.form.submit();
+      }
+      
+      /*-- Code to support Cisco Browsing --*/
+      var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
+      $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
+      
+      var platform = '';
+      var release = '';
+      
+      $('#smu-list-tab').tab();
+      $('#smu-list-tab a:first').tab('show');
+      
+      // The SP table has problem with the table layout
+      $('#smu-list-tab a[href="#sp-tab"]').click(function() { 
+        setTimeout(function(){ 
+          refresh_sp_list_table();
+        }, 300);   
+      });
+        
+      // Sets the correct filter icon color
+      toggle_filter_icon_color(filter_option);
+      
+      $('#filter-selector').on('change', function (e) {
+        filter_option = $(this).val();     
+        $.cookie('platforms-and-releases-filter-option', filter_option);    
+        toggle_filter_icon_color(filter_option);
+        refresh_tables();  
+      });
+    
+      function refresh_tables() {
+        if (platform.length > 0 && release.length > 0) {
+          $('#platform-and-release').html(beautify_platform(platform) + "-" + release + " > SMUs &nbsp;");
+          browse_cisco_spinner.show();
+          refresh_smu_list_table();
+          refresh_sp_list_table();
+        }
+      }
+      
+      function toggle_filter_icon_color(filter_option) {
+        if (filter_option == 'Optimal') {
+          $('#filter-icon').addClass("DarkGreen");
+          $('#filter-icon').removeClass("Red");
+        } else {
+          $('#filter-icon').removeClass("DarkGreen");
+          $('#filter-icon').addClass("Red"); 
+        }
+      }
+      
+      var smu_table = $("#smu-datatable").dataTable({
+        "order": [[ 1, "desc" ]],
+        "scrollX": true,
+        "scrollY": 250,
+        "pageLength": 100,
+        "columnDefs": [ 
+         {
+            "targets": 0, 
+            "data" : 'package_name',
+            "render": function ( data, type, row ) {
+              return '<input type="checkbox" value="' + data + '" class="check">';
+            }
+          },
+          {
+            "targets": 1, 
+            "data" : 'posted_date'
+          },
+          {
+            "targets": 2,
+            "data" : 'ddts'
+          },
+          {
+            "targets": 3,
+            "data" : 'type'
+          },
+          {
+            "targets": 4, 
+            "width": "50%",
+            "data" : 'description'
+          },
+          {
+            "targets": 5,
+            "width": "10%",
+            "data" : 'impact'
+          },
+          {
+            "targets": 6,
+            "width": "10%",
+            "data" : 'functional_areas'
+          },
+          {
+            "targets": 7,
+            "data" : 'id'
+          },
+          {
+            "targets": 8,
+            "width": "20%",
+            "data" : 'name'
+          },
+          {
+            "targets": 9,
+            "data" : 'status'
+          },
+          {
+            "targets": 10,
+            "width": "20%",
+            "data" : 'package_bundles'
+          },
+          {
+            "targets": 11,
+            "data" : 'compressed_image_size'
+          },
+          {
+            "targets": 12,
+            "data" : 'uncompressed_image_size'
+          },
+        ],
+       
+      }).on('draw.dt', function ( e, settings, json ) {
+        var rows = smu_table.api().ajax.json().data.length; 
+        $('#badge-smu-list').html(rows); 
+        browse_cisco_spinner.hide();
+      });
+      
+      var sp_table = $("#sp-datatable").dataTable({
+        "order": [[ 1, "desc" ]],
+        "scrollX": true,
+        "scrollY": 250,
+        "pageLength": 100,
+        "columnDefs": [ 
+          {
+            "targets": 0, 
+            "data" : 'package_name',
+            "render": function ( data, type, row ) {
+              return '<input type="checkbox" value="' + data + '" class="check">';
+            }
+          },
+          {
+            "targets": 1, 
+            "data" : 'posted_date'
+          },
+          {
+            "targets": 2,
+            "data" : 'ddts'
+          },
+          {
+            "targets": 3,
+            "data" : 'type'
+          },
+          {
+            "targets": 4, 
+            "width": "40%",
+            "data" : 'description'
+          },
+          {
+            "targets": 5,
+            "width": "10%",
+            "data" : 'impact'
+          },
+          {
+            "targets": 6,
+            "data" : 'functional_areas'
+          },
+          {
+            "targets": 7,
+            "data" : 'id'
+          },
+          {
+            "targets": 8,
+            "width": "20%",
+            "data" : 'name'
+          },
+          {
+            "targets": 9,
+            "data" : 'status'
+          },
+          {
+            "targets": 10,
+            "width": "10%",
+            "data" : 'package_bundles'
+          },
+          {
+            "targets": 11,
+            "data" : 'compressed_image_size'
+          },
+          {
+            "targets": 12,
+            "data" : 'uncompressed_image_size'
+          },
+        ],
+      }).on('draw.dt', function ( e, settings, json ) {
+        var rows = sp_table.api().ajax.json().data.length; 
+        $('#badge-sp-list').html(rows); 
+      });
+      
+      function refresh_smu_list_table() {
+        if (platform.length > 0 && release.length > 0) {
+          smu_table.api().ajax.url("/api/get_smu_list/platform/" + platform + "/release/" + release + 
+            "?filter=" + filter_option).load();
+        }
+      }
+       
+      function refresh_sp_list_table() {
+        if (platform.length > 0 && release.length > 0) {
+          sp_table.api().ajax.url("/api/get_sp_list/platform/" + platform + "/release/" + release + 
+            "?filter=" + filter_option).load();
+        }
+      }     
+      
+      $('#browse-cisco-button').on('click', function (e) {
+        create_menu(); 
+        $('#dialog_server_directory').val($('#server_directory').val()); 
+        $('#select-cisco-software-dialog').modal({show:true})
+      });
+      
+      function create_menu() {          
+        $.ajax({
+          url: "{{ url_for('api_get_catalog') }}",
+          dataType: 'json',
+          success: function (data) {
+            var html = '';
+              
+            $.each(data, function(index, element) {
+              for (i = 0; i < element.length; i++) {
+                
+                var beautified_platform = element[i].beautified_platform
+                var platform = element[i].platform;
+                var releases = element[i].releases;
+                  
+                html += '<li class="dropdown-submenu">' +
+                        '<a href="javascript://">' + beautified_platform + '</a>' +   
+                        '<ul class="dropdown-menu">';
+                  
+                for (var j = 0; j < releases.length; j++) {
+                    html += '<li><a class="selected-platform-and-release" href="javascript://" \
+                      platform="' + platform + '" \
+                      release="' + releases[j] + '">' + releases[j] + '</a></li>'  
+                }
+                  
+                html += '</ul>' + '</li>'
+              }
+            });            
+            $('#dropdown-cisco-menu').html(html);
+          },
+          error: function(XMLHttpRequest, textStatus, errorThrown) { 
+            bootbox.alert("Unable to retrieve catalog data");
+          }  
+        });             
+      }
+     
+      $("#dropdown-cisco-menu").on("click", ".selected-platform-and-release", function() {
+        platform = $(this).attr('platform');
+        release = $(this).attr('release');
+        refresh_tables();
+      });
+      
+      var software_packages = '';  
+         
+      $('#on-select-cisco-packages-submit').click(function(e) {
+        software_packages = '';
+        $('.check').each(function(index) {
+          if (this.checked) {
+            software_packages += $(this).val() + '\n';
+            $(this).attr('checked', false);
+          }
+        }); 
+        
+        $('#software-packages').val(String(software_packages));  
+      });
+      
+      
+      {% block head_schedule_install %} {% endblock head_schedule_install %}
+
+    });
+  </script>
+
+{% endblock extra_head %}
+
+{% block main %}
+
+<div id="select-software-dialog" class="modal" role="dialog">
+  <div class="modal-dialog">
+    <form method="post" class="form-horizontal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">x</button>
+          <h4>Select Software Packages</h4>
+           
+          {{ edit_field(form.dialog_server, field_width="col-sm-7", class="form-control") }}     
+          
+          <div class="form-group ">
+            <label class="col-sm-4 control-label" id="label_dialog_server_directory" for="dialog_server_directory">Server Directory</label>
+            <div class=col-sm-7>
+              <select class="form-control" id="dialog_server_directory" name="dialog_server_directory"><option value=""></option></select>
+            </div>    
+            <a href="javascript://">
+              <img id='dialog-move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
+              <img id='dialog-reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
+            </a>           
+          </div>         
+          
+        </div>
+        <div class="modal-body">               
+         <select id="dual-listbox" name="dual-listbox" multiple></select>
+        </div>
+        <span id="browse-spinner"><center><img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center></span>
+        <div class="modal-footer">
+  	      <div class="form-actions">
+            <div class="btn col-sm-offset-4">   
+              <button id="on-select-packages-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+              <button class="btn" data-dismiss="modal">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="select-cisco-software-dialog" class="modal" role="dialog">
+  <div class="modal-dialog">
+    <form method="post" class="form-horizontal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">x</button>
+          
+          <div class="form-group ">   
+            <div class="dropdown col-sm-4">
+              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Platforms
+              <span class="caret"></span></button>
+              <ul id="dropdown-cisco-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
+            </div>
+
+            <div class="col-sm-offset-3 col-sm-3">
+              <div class="input-group">
+                <span id="filter-icon" title="SMU/Service Pack Filter" class="input-group-addon glyphicon glyphicon-filter"></span>
+                <select class="form-control" id="filter-selector" name="filter-selector"><option value="Optimal">Optimal</option><option value="All">All</option></select>
+              </div>
+            </div>   
+            
+            <div class="col-sm-1"> 
+              <span id="browse-cisco-spinner"><center><img src="{{ url_for('static', filename='spinner.gif') }}"></center></span>
+            </div>     
+          </div>                 
+        </div>
+        
+        <div class="modal-body">               
+         
+          <!-- upper section -->
+          <div class="row"> 
+            <div class="col-sm-12"> 
+              <ul class="nav nav-tabs" id="smu-list-tab">
+                <li>
+                  <a data-toggle="tab" href="#smu-tab">
+                    <span id="platform-and-release">SMUs &nbsp;</span>
+                    <span id="badge-smu-list" class="badge alert-success">0</span>
+                  </a>
+                </li>
+                <li>
+                  <a data-toggle="tab"  href="#sp-tab">
+                    Service Packs &nbsp;
+                    <span id="badge-sp-list" class="badge alert-success">0</span>
+                  </a>
+                </li> 
+              </ul>
+      
+              <div class="tab-content" style="margin-top:20px;">
+        
+                <div id="smu-tab" class="tab-pane fade in active">
+                  <table class="display table" id="smu-datatable">    
+                    <thead> 
+                    <tr>  
+                      <th>ST</th> 
+                      <th>Posted Date</th>  
+                      <th>DDTS</th>  
+                      <th>Type</th> 
+                      <th>Description</th> 
+                      <th>Impact</th>
+                      <th>Functional Areas</th>
+                      <th>SMU ID</th> 
+                      <th>SMU Name</th> 
+                      <th>Status</th> 
+                      <th>Package Bundles</th> 
+                      <th>Compressed Size (Bytes)</th> 
+                      <th>UnCompressed Size (Bytes)</th>  
+                    </tr>
+                    </thead>  
+                  </table>
+                </div> 
+        
+                <div id="sp-tab" class="tab-pane fade in">
+                  <table class="display table" id="sp-datatable">    
+                    <thead> 
+                    <tr>  
+                      <th>ST</th> 
+                      <th>Posted Date</th>  
+                      <th>DDTS</th>  
+                      <th>Type</th> 
+                      <th>Description</th> 
+                      <th>Impact</th>
+                      <th>Functional Areas</th>
+                      <th>SMU ID</th> 
+                      <th>SMU Name</th> 
+                      <th>Status</th> 
+                      <th>Package Bundles</th> 
+                      <th>Compressed Size (Bytes)</th> 
+                      <th>UnCompressed Size (Bytes)</th> 
+                    </tr>  
+                    </thead>  
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div> <!-- /upper section -->
+         
+        </div>
+
+        <div class="modal-footer">
+  	      <div class="form-actions">
+            <div class="btn col-sm-offset-4">   
+              <button id="on-select-cisco-packages-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+              <button class="btn" data-dismiss="modal">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="select-install-history-dialog" class="modal" role="dialog">
+  <div class="modal-dialog">
+    <form method="post" class="form-horizontal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">x</button>
+          <h4>Select Software Packages from Past 'Install Add'</h4>
+        </div>
+        <div class="modal-body">               
+          <table class="display table" id="install-add-datatable">    
+            <thead> 
+              <tr>  
+                <th>S</th> 
+                <th>Packages</th>  
+                <th>Installed Time</th>  
+                <th>Installed By</th> 
+              </tr>  
+            </thead>  
+          </table>
+        </div>
+        <div class="modal-footer">
+  	      <div class="form-actions">
+            <div class="btn col-sm-offset-4">   
+              <button id="on-select-install-history-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+              <button class="btn" data-dismiss="modal">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block main_schedule_install %} {% endblock main_schedule_install %}
+
+{% endblock main %}

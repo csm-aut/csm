@@ -1,0 +1,577 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import log_icon %}
+
+{% block extra_head %}
+  <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+
+  <script>
+    $(function() {
+ 
+      var record_limit = $.cookie('install-dashboard-record-limit') == null ? '10' : $.cookie('install-dashboard-record-limit');
+      $("#record-limit-selector option[value='" + record_limit + "']").attr('selected', 'selected');
+      update_record_limit_label(record_limit);
+      
+      var last_completed_download_job_count = 0;
+      var new_completed_download_job_count = 0;
+      get_download_dashboard_cookie();
+    
+      $('#record-limit-selector').on('change', function (e) {       
+        update_record_limit_label($(this).val()); 
+        $.cookie('install-dashboard-record-limit', record_limit);  
+        refresh_download_completed_table();
+      });
+      
+      $('#csm-server-repository-button').on("click", function() {
+        window.location.href = "#csm-server-repository";
+      });
+      
+      function update_record_limit_label(selected_value) {
+        if (selected_value == 'ALL') {
+          $("#record-limit-selector-label").text('Retrieve ALL the Records:');
+        } else {
+          $("#record-limit-selector-label").text('Retrieve Last ' + selected_value + ' Records:');
+        }
+        record_limit = selected_value;
+      }
+      
+      
+      $(".install-delete-all").on("click", function() {
+        var delete_url = $(this).attr('install-delete-url');
+        var status = $(this).attr('status');
+        
+        var message = "";
+        var notice_message = "<br>(Notice: Once the download is removed, any scheduled installs dependent on this download will proceed as scheduled.  The Installs may fail without the needed image.)";
+        if (status == 'failed') {
+          message="Delete All Failed Downloads?" + notice_message;
+        } else {
+          message="Delete All Scheduled Downloads?" + notice_message;
+        }
+
+        bootbox.confirm(message, function(result) {
+          if (result) {
+            $.ajax({
+              url: delete_url,
+              type: 'DELETE',
+              success: function(response) {
+                if (response.status == 'OK') {
+                  window.location = "{{ url_for('download_dashboard') }}";
+                } else {
+                  bootbox.alert('Unable to delete.');
+                }
+              }
+           });
+          }
+        }); 
+      });
+       
+      // Use delegate pattern for event
+      $("#server-repository-datatable").on("click", ".image-delete-link", function() {
+        var delete_url = $(this).attr('data-delete-url');
+        var delete_image_name = $(this).attr('data-delete-image-name');
+        
+        var message = "You are about to delete " + delete_image_name + 
+          ". This file and all files extracted from it will be removed from the CSM Server Repository. " +
+          "If this file is wanted in the future, it will need to be downloaded again from Cisco.com.   Continue?";
+        
+        bootbox.confirm(message, function(result) {
+          if (result) {
+            $.ajax({
+              url: delete_url,
+              type: 'DELETE',
+              success: function(response) {
+                if (response.status == 'OK') {
+                  window.location = "{{ url_for('download_dashboard') }}";
+                } else {
+                  bootbox.alert('Deletion failed.  You may not be authorized to delete.');
+                }
+              }
+           });
+          }
+        }); 
+      });
+      
+      // Use delegate pattern for event
+      $("#download-failed-datatable").on("click", ".download-resubmit-link", function() {
+        resubmit_record($(this));
+      });
+      
+      $("#download-failed-datatable").on("click", ".download-scheduled-delete-link", function() {
+        delete_record($(this));
+      });
+      
+      $("#download-scheduled-datatable").on("click", ".download-scheduled-delete-link", function() {
+        delete_record($(this));
+      });
+      
+      function resubmit_record(this_record) {
+        var resubmit_url = this_record.attr('data-resubmit-url');
+        var resubmit_image_name = this_record.attr('data-resubmit-image-name');
+
+        bootbox.confirm("Re-submit download for " + resubmit_image_name + "?", function(result) {
+          if (result) {
+            $.ajax({
+              url: resubmit_url,
+              type: 'POST',
+              success: function(result) {
+                if (result.status == 'OK') {
+                  window.location = "{{ url_for('download_dashboard') }}";
+                } else {
+                  bootbox.alert('Unable to resubmit.');
+                }
+              }
+            });
+          }
+        }); 
+      }
+      
+      function delete_record(this_record) {
+        var delete_url = this_record.attr('data-delete-url');
+        var delete_image_name = this_record.attr('data-delete-image-name');
+        var status = this_record.attr('status');
+
+        var message = status == 'failed' ? "Delete this failed download" : "Delete this scheduled download";
+        bootbox.confirm(message + " for " + delete_image_name, function(result) {
+          if (result) {
+            $.ajax({
+              url: delete_url,
+              type: 'DELETE',
+              success: function(result) {
+                if (result.status == 'OK') {
+                  window.location = "{{ url_for('download_dashboard') }}";
+                } else {
+                  bootbox.alert('Unable to delete.');
+                }
+              }
+            });
+          }
+        }); 
+      } 
+
+      var selected_tab = $.cookie('download-dashboard-tab') == null ? '#download-scheduled' : $.cookie('download-dashboard-tab');
+      $('a[href=' + selected_tab + ']').tab('show');
+
+      $('#download-dashboard-tab').on('shown.bs.tab', function () {
+        $.cookie('download-dashboard-tab', $('.nav-tabs .active > a').attr('href'));
+      });
+      
+      var download_scheduled_table = $("#download-scheduled-datatable").dataTable({
+        "order": [[ 1, "asc" ]],
+        "columnDefs": [ 
+          {
+            "targets": 0, 
+            "data" : 'image_name'
+          },
+          {
+            "targets": 1,
+            "data" : 'scheduled_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 2,
+            "data" : 'server_repository'
+          },
+          {
+            "targets": 3,
+            "data" : 'created_by'
+          },
+          {
+            "targets": 4, 
+            "data" : 'download_job_id',
+            "render": function ( data, type, row ) {
+              return '<a class="download-scheduled-delete-link" href="javascript://"  \
+                data-delete-image-name="' + row['image_name'] + '?" \
+                data-delete-url="/delete_download_job/' + data + '">Delete</a>';
+            }
+          }        
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_download_scheduled') }}",
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        $('#badge-scheduled').html(download_scheduled_table.api().page.info().recordsTotal);
+      });
+
+      var download_in_progress_table = $("#download-in-progress-datatable").dataTable({
+        "order": [[ 3, "asc" ]],
+        "columnDefs": [ 
+          {
+            "targets": 0, 
+            "data" : 'image_name'
+          },
+          {
+            "targets": 1,
+            "data" : 'server_repository'
+          },
+          {"targets": 2, "data" : 'status'},
+          {
+            "targets": 3,
+            "data" : 'status_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 4,
+            "data" : 'created_by'
+          }  
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_download_in_progress') }}",
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        $('#badge-in-progress').html(download_in_progress_table.api().page.info().recordsTotal);
+      });
+
+      var download_failed_table = $("#download-failed-datatable").dataTable({
+        "order": [[ 4, "desc" ]],
+        "columnDefs": [ 
+          {
+            "targets": 0, 
+            "data" : 'image_name'
+          },
+          {
+            "targets": 1,
+            "data" : 'scheduled_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 2,
+            "data" : 'server_repository'
+          },
+          {"targets": 3, "data" : 'status'},
+          {
+            "targets": 4,
+            "data" : 'status_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 5,
+            "data" : 'Log',
+            "render": function ( data, type, row ) {
+              return get_log_icon(row['image_name'], 'download_job', row['download_job_id'], row['trace']);
+            }
+          },
+          {
+            "targets": 6,
+            "data" : 'created_by'
+          },
+          {
+            "targets": 7, 
+            "data" : 'download_job_id',
+            "render": function ( data, type, row ) {
+              return '<div class="btn-group">' +
+              '<button data-toggle="dropdown" class="btn btn-select btn-default dropdown-toggle">Select <span class="caret"></span></button>' +
+                '<ul class="dropdown-menu">' +
+                  '<li><a class="download-resubmit-link" href="javascript://"  \
+                   data-resubmit-image-name="' + row['image_name'] + '" \
+                   data-resubmit-url="/resubmit_download_job/' + data + '/">Re-submit</a></li>' + 
+                  '<li class="divider"></li>' +
+                  '<li><a class="download-scheduled-delete-link" href="javascript://"  \
+                   data-delete-image-name="' + row['image_name'] + '?" \
+                   status="failed" + \
+                   data-delete-url="/delete_download_job/' + data + '">Delete</a></li>' + 
+                '</ul>' +
+               '</div>';
+            }
+          }        
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_download_failed') }}",
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        $('#badge-failed').html(download_failed_table.api().page.info().recordsTotal);
+      });
+      
+      function get_log_icon(image_name, table, id, trace) {
+        if (trace) {
+          data = "<center>";
+           
+          if (trace) {
+            data += "<a href='/hosts/" + image_name + "/" + table + "/trace/" + trace + "/'>";
+            data += "<img src='/static/error.png' title='debug trace'></a>";
+          }
+          
+          data += "</center>";
+          return data;
+
+        } else {
+          return '&nbsp;';
+        }
+      }
+    
+      var download_completed_table = $("#download-completed-datatable").dataTable({
+        "order": [[ 4, "desc" ]],
+        "columnDefs": [ 
+          {
+            "targets": 0, 
+            "data" : 'image_name'
+          },
+          {
+            "targets": 1,
+            "data" : 'scheduled_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 2,
+            "data" : 'server_repository'
+          },
+          {"targets": 3, "data" : 'status'},
+          {
+            "targets": 4,
+            "data" : 'status_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 5,
+            "data" : 'created_by'
+          } 
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_download_completed') }}" + "?record_limit=" + record_limit,          
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        var json_data = download_completed_table.api().ajax.json().data;    
+        $('#badge-completed').html(json_data.length);       
+        $('#badge-completed-total').html(new_completed_download_job_count);
+        last_completed_download_job_count = new_completed_download_job_count
+      });
+      
+      var server_repository_table = $("#server-repository-datatable").dataTable({
+        "order": [[ 0, "asc" ]],
+         "columnDefs": [ 
+          {
+            "targets": 0, 
+            "data" : 'image_name'
+          },
+          {
+            "targets": 1, 
+            "data" : 'image_size'
+          },
+          {
+            "targets": 2,
+            "data" : 'image_name',
+            "render": function ( data, type, row ) {
+              return '<a class="image-delete-link" href="javascript://"  \
+                data-delete-image-name="' + data  + '" \
+                data-delete-url="/api/image/' + data + '/delete/">Delete</a>';
+            }
+          },
+        ],
+        "ajax": {
+          "url": "{{ url_for('get_files_from_csm_repository') }}",
+        }
+      });
+      
+      function get_download_dashboard_cookie() {
+        $.ajax({
+          url: "{{ url_for('api_get_download_dashboard_cookie') }}",
+          dataType: 'json',
+          success: function(data) {
+            $.each(data, function(index, element) {
+              new_completed_download_job_count = element[0].last_completed_download_job_count;
+
+              if (last_completed_download_job_count != new_completed_download_job_count) {
+                refresh_download_completed_table();
+                refresh_server_repository_table();
+              }
+             
+            });
+          }
+        });
+      }
+      
+      function refresh_server_repository_table() {
+        server_repository_table.api().ajax.url("{{ url_for('get_files_from_csm_repository') }}").load();
+      }
+      
+      function refresh_download_completed_table() {
+        download_completed_table.api().ajax.url("{{ url_for('api_get_download_completed') }}" + 
+          "?record_limit=" + record_limit).load();
+      }
+           
+      setInterval( function () {
+        download_scheduled_table.api().ajax.reload(); 
+        download_in_progress_table.api().ajax.reload(); 
+        download_failed_table.api().ajax.reload();       
+        get_download_dashboard_cookie();
+      }, 10000 );      
+     
+    });
+  </script>
+  
+  <style>
+   .btn-select
+   {
+     line-height: 10px;
+   }
+  </style>
+
+{% endblock extra_head %}
+
+{% block main %}
+
+
+<!-- Main -->
+<div class="container">
+
+  <div class="row">
+    <div class="col-sm-12">      
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Download Dashboard </strong></span>
+      
+      <div class="btn-group pull-right"> 
+        <button id="csm-server-repository-button" type="button" class="btn btn-default">CSM Server Repository</button>
+      
+        <div class="btn-group"> 
+          <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">        
+            Action
+            <span class="glyphicon glyphicon-link"> 
+            <span class="caret"></span>
+          </button>
+          <ul class="dropdown-menu">
+            <li><a href="javascript://" class="install-delete-all" status="" install-delete-url="{{ url_for('delete_all_scheduled_downloads') }}">Delete All Scheduled Downloads</a></li>
+            <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('delete_all_failed_downloads') }}">Delete All Failed Downloads</a></li>
+          </ul>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+  <!-- upper section -->
+  <div class="row">
+ 
+    <div class="col-sm-12">
+
+      <hr>
+
+      <ul class="nav nav-tabs" id="download-dashboard-tab">
+        <li><a data-toggle="tab" href="#download-scheduled">Scheduled &nbsp;<span id="badge-scheduled" class="badge alert-default">0</span></a></li>
+        <li><a data-toggle="tab" href="#download-in-progress">In Progress &nbsp;<span id="badge-in-progress" class="badge alert-info">0</span></a></li>
+        <li><a data-toggle="tab" href="#install-failed">Failed &nbsp;<span id="badge-failed" class="badge alert-danger">0</span></a></li>
+        <li><a data-toggle="tab" href="#install-completed">Completed &nbsp;(showing <span id="badge-completed" class="badge alert-success">0</span>&nbsp;of <span id="badge-completed-total" class="badge alert-success"></span>)</a></li>
+      </ul>
+      <div class="tab-content" style="margin-top:20px;">
+        <div id="download-scheduled" class="tab-pane fade in active">
+          <table class="display table" id="download-scheduled-datatable">    
+            <thead> 
+              <tr>  
+                <th>Image Name</th>  
+                <th>Scheduled Time</th> 
+                <th>Server Repository</th>  
+                <th>Created By</th> 
+                <th>Action</th>
+              </tr>  
+            </thead>  
+          </table>
+        </div>
+
+        <div id="download-in-progress" class="tab-pane fade in">
+          <table class="display table" id="download-in-progress-datatable">    
+            <thead> 
+              <tr>  
+                <th style="width:50px">Image Name</th>  
+                <th style="width:50px">Server Repository</th>  
+                <th style="width:300px">Status</th> 
+                <th style="width:50px">Status Time</th> 
+                <th style="width:50px">Created By</th> 
+              </tr>  
+            </thead>  
+          </table>
+        </div>
+
+        <div id="install-failed" class="tab-pane fade in">
+
+          <table class="display table" id="download-failed-datatable">    
+            <thead> 
+              <th>Image Name</th>  
+              <th>Scheduled Time</th> 
+              <th>Server Repository</th>  
+              <th>Status</th> 
+              <th>Status Time</th>
+              <th>Log</th>
+              <th>Created By</th> 
+              <th>Action</th>
+            </thead>  
+           </table>
+        </div>
+        
+        <div id="install-completed" class="tab-pane fade in">
+        
+          <div class="container">
+            <div class="form-group">  
+              <label class="DodgerBlue col-sm-3 control-label" id="record-limit-selector-label">Number of Records to Retrieve:</label>
+
+              <div class="col-sm-4">
+              <select class="form-control" id="record-limit-selector" name="record-limit-selector" style="width:200px">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="ALL">ALL</option>
+              </select>
+              </div>
+            </div>
+          </div>
+
+          <table class="display table" id="download-completed-datatable">    
+            <thead> 
+              <tr>  
+                <th>Image Name</th>  
+                <th>Scheduled Time</th> 
+                <th>Server Repository</th>  
+                <th>Status</th> 
+                <th>Status Time</th>
+                <th>Created By</th> 
+              </tr>  
+            </thead>  
+           </table>
+        </div>
+      </div>     
+    </div>
+
+  </div> <!-- /upper section -->
+  
+  <div id="csm-server-repository" class="row">
+    <p>
+  </div>
+  
+  <hr>
+  <div class="row">
+    <div class="col-sm-12">      
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> CSM Server Repository  </strong></span>
+      (requested download is stored in this area, then copied to the designated server repository)
+      <a href="#" class="pull-right">
+        Return to Top
+      </a>
+      <hr>
+      
+      <table class="display table" id="server-repository-datatable">    
+        <thead> 
+          <tr>  
+            <th>Image Name</th>  
+            <th>Size (Bytes)</th>  
+            <th>Action</th>
+          </tr>  
+        </thead>  
+      </table>
+    </div>     
+  </div>
+  
+  
+
+</div> <!-- Main -->
+
+
+{% endblock main %}

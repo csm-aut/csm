@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import trace_icon %}
+
+{% block title %}<center><h4><b>Hosts that Failed Last Software Inventory</b></center></h4>{% endblock title %}
+
+{% block extra_head %}
+
+ <script>   
+    $(function() {
+      $("#datatable").dataTable();
+      
+      $('.UTCDate').val(function(index, currentValue) {
+        // Invalid date would be less than 15 characters
+        if ($(this).text().length > 15) {
+          $(this).html(convertToLocaleString($(this).text() ));
+        }
+      });
+    });
+ </script>
+
+{% endblock extra_head %}
+
+{% block main %}
+<div class="container" style="margin-top: 10px">
+   <table cellspacing="0" class="display table" id="datatable">    
+    <thead>  
+      <tr>  
+        <th>Hostname</th>  
+        <th>Status</th>  
+        <th>Status Time</th> 
+        <th>Last Successful Retrieval</th>  
+        <th>Log</th>  
+      </tr>  
+    </thead>  
+    <tbody> 
+
+      {% for inventory_job in inventory_jobs %}
+         <tr>  
+            <td><a href="{{ url_for('host_dashboard', hostname = inventory_job.host.hostname) }}">{{ inventory_job.host.hostname }}</a></td>  
+            <td>{{ inventory_job.status }}</td>  
+            <td class="UTCDate">{{ inventory_job.status_time | datetime_string }}</td>  
+            <td>{{ inventory_job.last_successful_time | elapsed_time }}</td>
+            <td class="text-center">
+
+              {% if inventory_job.trace %}
+                {% if inventory_job.trace %} 
+                  <a href="{{ url_for('inventory_job_trace', id = inventory_job.id) }}">{{ trace_icon() }}</a>
+                {% endif %}             
+              {% else %}
+                &nbsp;
+              {% endif %}
+
+            </td> 
+         </tr>   
+      {% endfor %}
+
+    </tbody> 
+  </table>
+
+</div>
+{% endblock main %}

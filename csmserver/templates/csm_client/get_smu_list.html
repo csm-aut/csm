@@ -1,0 +1,550 @@
+{% extends 'base.html' %}
+{% from 'host/common.html' import edit_field %}
+
+{% block extra_head %}
+  <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+  
+  <script>  
+    $(function() {
+            
+      var spinner = $('#spinner');    
+      var browse_spinner = $('#browse-spinner');  
+      browse_spinner.hide();
+      
+      var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
+      $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
+      
+      // Sets the correct filter icon color
+      toggle_filter_icon_color(filter_option);
+      
+      $('#filter-selector').on('change', function (e) { 
+        filter_option = $(this).val();     
+        $.cookie('platforms-and-releases-filter-option', filter_option);  
+        spinner.show();
+        refresh_smu_list_table();
+        refresh_sp_list_table();
+        
+        toggle_filter_icon_color(filter_option);
+      });
+      
+      $('#smu-list-tab').tab();
+      $('#smu-list-tab a:first').tab('show');
+
+      // The SP table has problem with the table layout
+      $('#smu-list-tab a[href="#sp-tab"]').click(function() { 
+        setTimeout(function(){ 
+          refresh_sp_list_table();
+        }, 300);   
+      });
+       
+      var smu_table = $("#smu-datatable").dataTable({
+        "order": [[ 2, "desc" ]],
+        "pageLength": 100,
+        "scrollX": true,
+        "scrollY": 350,
+        "columnDefs": [ 
+        {
+           "targets": 0, 
+           "data" : 'package_name',
+           "render": function ( data, type, row ) {
+             return '<input type="checkbox" value="' + data + '" class="check">';
+           }
+         },
+         {
+            "targets": 1, 
+            "data" : 'ST',
+            "render": function ( data, type, row ) {
+              if (data == 'True') {
+                return '<img src="/static/circle_check.png" title="Found in CSM Server Repository">';
+              } else {
+                return '<img src="/static/exclamation.png" title="Missing in CSM Server Repository">';
+              }
+            }
+          },
+          {
+            "targets": 2, 
+            "data" : 'posted_date'
+          },
+          {
+            "targets": 3,
+            "data" : 'ddts'
+          },
+          {
+            "targets": 4,
+            "data" : 'type'
+          },
+          {
+            "targets": 5, 
+            "width": "50%",
+            "data" : 'description'
+          },
+          {
+            "targets": 6,
+            "width": "10%",
+            "data" : 'impact'
+          },
+          {
+            "targets": 7,
+            "width": "10%",
+            "data" : 'functional_areas'
+          },
+          {
+            "targets": 8,
+            "data" : 'id'
+          },
+          {
+            "targets": 9,
+            "width": "20%",
+            "data" : 'name'
+          },
+          {
+            "targets": 10,
+            "data" : 'status'
+          },
+          {
+            "targets": 11,
+            "width": "20%",
+            "data" : 'package_bundles'
+          },
+          {
+            "targets": 12,
+            "data" : 'compressed_image_size'
+          },
+          {
+            "targets": 13,
+            "data" : 'uncompressed_image_size'
+          }, 
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_smu_list', platform=platform, release=release) }}" + "?filter=" + filter_option
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        var rows = smu_table.api().ajax.json().data.length; 
+        $('#badge-smu-list').html(rows); 
+        spinner.hide();
+      });
+    
+      var sp_table = $("#sp-datatable").dataTable({
+        "order": [[ 2, "desc" ]],
+
+        "pageLength": 100,
+        "scrollX": true,
+        "scrollY": 350,
+        "columnDefs": [ 
+         {
+            "targets": 0, 
+            "data" : 'package_name',
+            "render": function ( data, type, row ) {
+              return '<input type="checkbox" value="' + data + '" class="check">';
+            }
+          },
+          {
+            "targets": 1, 
+            "data" : 'ST',
+            "render": function ( data, type, row ) {
+              if (data == 'True') {
+                return '<img src="/static/circle_check.png" title="Found in server repository">';
+              } else {
+                return '<img src="/static/exclamation.png" title="Not found in server repository">';
+              }
+            }
+          },
+          {
+            "targets": 2, 
+            "data" : 'posted_date'
+          },
+          {
+            "targets": 3,
+            "data" : 'ddts'
+          },
+          {
+            "targets": 4,
+            "data" : 'type'
+          },
+          {
+            "targets": 5, 
+            "width": "50%",
+            "data" : 'description'
+          },
+          {
+            "targets": 6,
+            "data" : 'impact'
+          },
+          {
+            "targets": 7,
+            "data" : 'functional_areas'
+          },
+          {
+            "targets": 8,
+            "data" : 'id'
+          },
+          {
+            "targets": 9,
+            "data" : 'name'
+          },
+          {
+            "targets": 10,
+            "data" : 'status'
+          },
+          {
+            "targets": 11,
+            "data" : 'package_bundles'
+          },
+          {
+            "targets": 12,
+            "data" : 'compressed_image_size'
+          },
+          {
+            "targets": 13,
+            "data" : 'uncompressed_image_size'
+          },
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_sp_list', platform=platform, release=release) }}" + "?filter=" + filter_option
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        var rows = sp_table.api().ajax.json().data.length; 
+        $('#badge-sp-list').html(rows); 
+      });
+      
+      /*
+      $('#smu-datatable tbody').on('click', 'tr', function () {
+        $(this).toggleClass('selected');
+        //alert( smu_table.api().rows('.selected').data().length +' row(s) selected' );
+      });
+      
+      $('#sp-datatable tbody').on('click', 'tr', function () {
+        $(this).toggleClass('selected');
+      });
+      */
+      
+      function refresh_smu_list_table() {
+        smu_table.api().ajax.url("{{ url_for('api_get_smu_list', platform=platform, release=release) }}" + 
+          "?filter=" + filter_option).load();
+      }
+      
+      function refresh_sp_list_table() {
+        sp_table.api().ajax.url("{{ url_for('api_get_sp_list', platform=platform, release=release) }}" + 
+          "?filter=" + filter_option).load();
+      }
+      
+      function toggle_filter_icon_color(filter_option) {
+          if (filter_option == 'Optimal') {
+            $('#filter-icon').addClass("DarkGreen");
+            $('#filter-icon').removeClass("Red");
+          } else {
+            $('#filter-icon').removeClass("DarkGreen");
+            $('#filter-icon').addClass("Red"); 
+          }
+      } 
+      
+      var software_packages = '';
+      
+      $('#download-software').on('click', function () {
+        // Re-initialize the package list
+        software_packages = "";
+        
+        $('.check').each(function(index) {
+          if (this.checked) {
+            software_packages += $(this).val() + '\n';
+          }
+        }); 
+        
+        if (software_packages.length > 0) {             
+          $('#select-server-dialog').modal({show:true}) 
+         
+          $('#dialog_server').val($.cookie('server_id') == null ? -1 : parseInt($.cookie('server_id')) );
+          var preferred_server_directory = $.cookie('server_directory') == null ? "" : $.cookie('server_directory');    
+
+          retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), preferred_server_directory)
+        } else {
+          bootbox.alert("No SMU or Service Pack was selected.");
+        }
+      });
+      
+      $('#dialog_server').on('change', function (e) {
+        retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), '');
+      });
+      
+          
+      $('#dialog_server_directory').on('change', function (e) {        
+        retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val())
+      });
+      
+      function retrieve_directory_list(server_id, server_directory_selector, server_directory) { 
+        server_directory_selector.html('');
+        
+        if (server_id == -1) {
+          return;
+        }
+               
+        server_directory_selector.append('<option value="' + server_directory  +'">' + server_directory + '</option>');
+        
+        browse_spinner.show();
+
+        $.ajax({
+          url: "/api/get_server_file_dict/" + server_id,
+          dataType: 'json',
+          data: { server_directory: server_directory} ,
+          success: function (response) {          
+            if (response.status == 'Failed') {        
+              bootbox.alert("Either the server repository is not reachable or server directory does not exist.");
+            } else {
+              $.each(response, function(index, element) {
+                //populate_file_list(element, server_directory_selector, server_directory);
+                for (i = 0; i < element.length; i++) {          
+                  if (element[i].is_directory == true) {
+                    server_directory_selector.append('<option value="' + element[i].filename + '">' + element[i].filename + '</option>');
+                  } 
+                }
+              }); 
+            }       
+            browse_spinner.hide();
+          },
+          error: function(XMLHttpRequest, textStatus, errorThrown) { 
+            bootbox.alert("Unable to list files. Error=" + errorThrown);
+            browse_spinner.hide();
+          }  
+        });      
+      }
+      
+      $('#dialog-move-up').on('click', function (e) {
+        retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()) );
+      }); 
+      
+      $('#dialog-reset-server-directory').on('click', function (e) {
+        reset_server_directory($('#dialog_server_directory'), $('#dialog_server_directory').val());
+      });
+      
+      function reset_server_directory(server_directory_selector, server_directory) {
+        if (server_directory == '') {
+          return;
+        }
+        bootbox.confirm('Reset the server directory to use the server repository base directory?', function(result) {
+          if (result) {
+            retrieve_directory_list($('#dialog_server').val(), server_directory_selector, '')
+          }
+        });   
+      }
+      
+      $('#on-select-server-submit').click(function(e) {    
+        if ($('#dialog_server').val() == -1) {
+          bootbox.alert("Server Repository has not been specified.");
+          return false;
+        } 
+        
+        server_id = $('#dialog_server').val();
+        server_directory = $('#dialog_server_directory').val();  
+        
+        // Remember the selections
+        $.cookie('server_id', server_id);
+        $.cookie('server_directory', server_directory);      
+        
+        var validate_object = {
+          form: null,
+          hostname: null,
+          server_id: server_id,
+          server_directory: server_directory,
+          software_packages: software_packages,
+          spinner: browse_spinner,
+          check_missing_file_on_server: true,
+          callback: on_finish_validate,
+          pending_downloads: null
+        };
+           
+        on_validate_prerequisites_and_files_on_server(validate_object);           
+      });
+      
+      function on_finish_validate(validate_object) {
+        if (validate_object.pending_downloads == null) {
+          return;
+        }
+        
+        $.ajax({
+          url: "/api/create_download_jobs",
+          dataType: 'json',
+          data: { server_id: validate_object.server_id, server_directory: validate_object.server_directory, smu_list: validate_object.software_packages, pending_downloads: validate_object.pending_downloads} ,
+          success: function (response) {          
+            if (response.status == 'Failed') {        
+              bootbox.alert("Unable to create download jobs.");
+            } else {
+              bootbox.alert("Requested download has been submitted.");
+            }       
+            validate_object.spinner.hide();
+          },
+          error: function(XMLHttpRequest, textStatus, errorThrown) { 
+            bootbox.alert("on_finish_validate() Error=" + errorThrown);
+            validate_object.spinner.hide();
+          }  
+        });     
+      }
+      
+    });
+  </script>
+  
+  <style>
+    .modal-dialog {
+      width: 700px;
+    }
+  </style>
+  
+{% endblock extra_head %}
+
+{% block main %}
+
+<div id="select-server-dialog" class="modal" role="dialog">
+  <div class="modal-dialog">
+    <form method="post" class="form-horizontal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">x</button>
+          <h4>Select Server Repository</h4> 
+        </div>
+        <div class="modal-body">          
+        
+          <div class="form-group ">
+            <label class="col-sm-4 control-label"></label>
+            <div class="col-sm-8"><label class="col-sm-4 control-label"></label></div>
+          </div>
+                 
+          {{ edit_field(form.dialog_server, field_width="col-sm-8", class="form-control") }}  
+          
+          <div class="form-group ">
+            <label class="col-sm-4 control-label" id="label_dialog_server_directory" for="dialog_server_directory">Server Directory</label>
+            <div class=col-sm-6>
+              <select class="form-control" id="dialog_server_directory" name="dialog_server_directory"><option value=""></option></select>
+            </div>    
+            <a href="javascript://">
+              <img id='dialog-move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
+              <img id='dialog-reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
+            </a>           
+          </div>        
+        </div>
+        
+        <div class="modal-footer">
+  	      <div class="form-actions">
+            <div class="btn col-sm-offset-4">   
+              <button id="on-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">Continue</button>
+              <button class="btn" data-dismiss="modal">Cancel</button>
+              <img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="container"> 
+
+  <div class="row">
+    <div class="col-sm-12">
+          
+       <!--
+       <div class="col-sm-2">
+         Last Updated: <span id="creation-date"></span>
+       </div>
+       -->
+       
+       <div class="col-sm-offset-8 col-sm-2"> 
+         <div class="input-group">
+           <span id="filter-icon" title="SMU/Service Pack Filter" class="input-group-addon glyphicon glyphicon-filter"></span>
+           <select class="form-control" id="filter-selector" name="filter-selector"><option value="Optimal">Optimal</option><option value="All">All</option></select>
+         </div>
+       </div>         
+      
+       <div class="col-sm-1">  
+         <div class="btn-group">      
+           <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">        
+              Action
+             <span class="glyphicon glyphicon-link"> 
+             <span class="caret"></span>
+           </button>
+           <ul class="dropdown-menu">
+             <li id="download-software"><a href="javascript://">Download SMU/Service Pack</a></li>
+           </ul>
+        </div>          
+      </div>
+      
+      <div class="col-sm-1"> 
+        <span id="spinner"><center><img src="{{ url_for('static', filename='spinner.gif') }}"></center></span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- upper section -->
+  <div class="row"> 
+    <div class="col-sm-12">
+     
+      <ul class="nav nav-tabs" id="smu-list-tab">
+        <li>
+          <a data-toggle="tab" href="#smu-tab">
+            {{ platform | beautify_platform }}-{{ release }} > SMUs &nbsp;
+            <span id="badge-smu-list" class="badge alert-success">0</span>
+          </a>
+        </li>
+        <li>
+          <a data-toggle="tab"  href="#sp-tab">
+            Service Packs &nbsp;
+            <span id="badge-sp-list" class="badge alert-success">0</span>
+          </a>
+        </li> 
+      </ul>
+      
+      <div class="tab-content" style="margin-top:20px;">
+        
+        <div id="smu-tab" class="tab-pane fade in active">
+          <table cellspacing="0" class="display table" id="smu-datatable">    
+            <thead> 
+              <tr> 
+                <th>S</th>  
+                <th>ST</th> 
+                <th>Posted Date</th>  
+                <th>DDTS</th>  
+                <th>Type</th> 
+                <th>Description</th> 
+                <th>Impact</th>
+                <th>Functional Areas</th>
+                <th>SMU ID</th> 
+                <th>SMU Name</th> 
+                <th>Status</th> 
+                <th>Package Bundles</th> 
+                <th>Compressed Size (Bytes)</th> 
+                <th>UnCompressed Size (Bytes)</th> 
+            </thead>  
+          </table>
+        </div> 
+        
+        <div id="sp-tab" class="tab-pane fade in">
+          <table cellspacing="0" class="display table" id="sp-datatable">    
+            <thead> 
+              <tr> 
+                <th>S</th> 
+                <th>ST</th>  
+                <th>Posted Date</th>  
+                <th>DDTS</th>  
+                <th>Type</th> 
+                <th>Description</th> 
+                <th>Impact</th>
+                <th>Functional Areas</th>
+                <th>SMU ID</th> 
+                <th>SMU Name</th>  
+                <th>Status</th> 
+                <th>Package Bundles</th> 
+                <th>Compressed Size (Bytes)</th> 
+                <th>UnCompressed Size (Bytes)</th> 
+              </tr>  
+            </thead>  
+          </table>
+        </div>
+        
+      </div>
+    </div>
+  </div> <!-- /upper section -->
+
+</div> <!-- Main -->
+
+
+{% endblock main %}

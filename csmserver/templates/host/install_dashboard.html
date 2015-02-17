@@ -1,0 +1,653 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import log_icon %}
+
+{% block extra_head %}
+  <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+
+  <script>
+    $(function() {
+
+      var record_limit = $.cookie('install-dashboard-record-limit') == null ? '10' : $.cookie('install-dashboard-record-limit');
+      $("#record-limit-selector option[value='" + record_limit + "']").attr('selected', 'selected');
+      update_record_limit_label(record_limit);
+      
+      var last_completed_install_job_count = 0;
+      var new_completed_install_job_count = 0;
+      get_install_dashboard_cookie();
+    
+      $('#record-limit-selector').on('change', function (e) {       
+        update_record_limit_label($(this).val()); 
+        $.cookie('install-dashboard-record-limit', record_limit);  
+        refresh_install_completed_table();
+      });
+      
+      function update_record_limit_label(selected_value) {
+        if (selected_value == 'ALL') {
+          $("#record-limit-selector-label").text('Retrieve ALL the Records:');
+        } else {
+          $("#record-limit-selector-label").text('Retrieve Last ' + selected_value + ' Records:');
+        }
+        record_limit = selected_value;
+      }
+      
+      function insert_slider(packages, install_job_id) {
+        if (packages.length > 0) {
+          var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + install_job_id + '">' + 
+                        '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
+                     '</a>' +
+                     '<!-- Collapsible Element HTML -->' +
+                     '<div id="toggle' + install_job_id + '" class="collapse">' +
+                       display_packages(packages) +
+                     '</div>';
+            return html;
+        } else {
+            return '&nbsp;';
+        }
+      }
+      
+      $(".install-delete-all").on("click", function() {
+        var delete_url = $(this).attr('install-delete-url');
+        var return_url = $(this).attr('return-url');
+        var status = $(this).attr('status');
+        
+        var message = "";
+        if (status == 'failed') {
+          message="Delete All Failed Installs?<br>(Notice: Any scheduled installs dependent on the failed installs will also be deleted.)"
+        } else {
+          message="Delete All Scheduled Installs?";
+        }
+
+        bootbox.confirm(message, function(result) {
+          if (result) {
+            $.ajax({
+              url: delete_url,
+              type: 'DELETE',
+              success: function(response) {
+                if (response.status == 'OK') {
+                  window.location = return_url;
+                } else {
+                  bootbox.alert('Unable to delete.');
+                }
+              }
+           });
+          }
+        }); 
+      });
+      
+      // Use delegate pattern for event
+      $("#install-failed-datatable").on("click", ".install-scheduled-delete-link", function() {
+        delete_record($(this));
+      });
+      
+      $("#install-scheduled-datatable").on("click", ".install-scheduled-delete-link", function() {
+        delete_record($(this));
+      });
+      
+      function delete_record(this_record) {
+        var delete_url = this_record.attr('data-delete-url');
+        var delete_host = this_record.attr('delete-host');
+        var install_action = this_record.attr('install-action');
+        var status = this_record.attr('status');
+
+        var message = status == 'failed' ? "Delete this failed install" : "Delete this scheduled install";
+        bootbox.confirm(message + ", '<b>" + install_action + "</b>' for host '<b>" + delete_host + "</b>'?<br>" +
+          "(Notice: Any scheduled installs dependent on this item will also be deleted.)", function(result) {
+          if (result) {
+            $.ajax({
+              url: delete_url,
+              type: 'DELETE',
+              success: function(result) {
+                if (result.status == 'OK') {
+                  window.location = "{{ url_for('install_dashboard') }}";
+                  if (status == 'failed') {
+                    install_failed_table.api().ajax.reload(); 
+                  } else {
+                    install_scheduled_table.api().ajax.reload(); 
+                  }
+                } else {
+                  bootbox.alert('Unable to delete.');
+                }
+              }
+            });
+          }
+        }); 
+      } 
+
+      $("#install-scheduled-datatable").on("click", ".resubmit-download-link", function() {
+        resubmit_download($(this));
+      });
+      
+      function resubmit_download(this_record) {
+        var hostname = this_record.attr('data-hostname');
+        var install_action = this_record.attr('data-install-action');
+        var resubmit_url = this_record.attr('data-resubmit-url');
+        var user_id = this_record.attr('data-user-id');
+        var server_id = this_record.attr('data-server-id');
+        var server_directory = this_record.attr('data-server-directory');
+   
+        var message = "Re-submit the failed downloads for <b>" + install_action + "</b>' for host '<b>" + hostname + "</b>'?<br>" +
+          "(Notice: Until all downloads are successful, the scheduled install will not proceed.)"
+        bootbox.confirm(message, function(result) {
+          if (result) {
+            $.ajax({
+              url: resubmit_url,
+              data: { user_id: user_id, server_id: server_id, server_directory: server_directory} ,
+              success: function(result) {
+                if (result.status == 'OK') {
+                  //window.location = "{{ url_for('install_dashboard') }}";
+                  install_scheduled_table.api().ajax.reload(); 
+                } else {
+                  bootbox.alert('Failed to submit download(s).  Check system logs for details.');
+                }
+              }
+            });
+          }
+        }); 
+      }
+      
+      var selected_tab = $.cookie('install-dashboard-tab') == null ? '#install-scheduled' : $.cookie('install-dashboard-tab');
+      $('a[href=' + selected_tab + ']').tab('show');
+
+      $('#install-dashboard-tab').on('shown.bs.tab', function () {
+        $.cookie('install-dashboard-tab', $('.nav-tabs .active > a').attr('href'));
+      });
+      
+      var install_scheduled_table = $("#install-scheduled-datatable").dataTable({
+        "order": [[ 3, "asc" ]],
+        "columnDefs": [ 
+          {
+            "targets": 0, 
+            "data" : 'hostname',
+            "render": function ( data, type, row ) {
+              return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+            }
+          },
+          {
+            "targets": 1,
+            "data" : 'install_action',
+            "render": function ( data, type, row ) {
+              return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
+            }
+          },
+          {
+            "targets": 2,
+            "data" : 'dependency',
+            "render": function ( data, type, row ) {
+              if (data.indexOf('failed') > 0) {
+                return data + '&nbsp;<a class="resubmit-download-link" href="javascript://"  \
+                  data-hostname="' + row['hostname'] + '" \
+                  data-install-action="' + row['install_action'] + '" \
+                  data-server-id="' + row['server_id'] + '" \
+                  data-server-directory="' + row['server_directory'] + '" \
+                  data-user-id="' + row['user_id'] + '" \
+                  data-resubmit-url="/api/resubmit_download_jobs/"><img src="/static/download.png" title="Re-submit Failed Download(s)"></a>';
+              } 
+              return data;
+              
+            }
+          },
+          {
+            "targets": 3,
+            "data" : 'scheduled_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 4,
+            "data" : 'packages',
+            "render": function ( data, type, row ) {
+                return display_packages(data);
+            }
+          },
+          {
+            "targets": 5,
+            "data" : 'created_by'
+          },
+          {
+            "targets": 6, 
+            "data" : 'install_job_id',
+            "render": function ( data, type, row ) {
+              return '<a class="install-scheduled-delete-link" href="javascript://"  \
+                delete-host="' + row['hostname'] + '" \
+                install-action="' + row['install_action'] + '" \
+                status="scheduled" + \
+                data-delete-url="/hosts/' + data + '/delete_install_job/">Delete</a>';
+            }
+          },
+          
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_install_scheduled') }}",
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        $('#badge-scheduled').html(install_scheduled_table.api().page.info().recordsTotal);
+      });
+
+      var install_in_progress_table = $("#install-in-progress-datatable").dataTable({
+        "order": [[ 3, "asc" ]],
+        "columnDefs": [ 
+           {
+            "targets": 0, 
+            "data" : 'hostname',
+            "render": function ( data, type, row ) {
+              return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+            }
+          },
+          {
+            "targets": 1,
+            "data" : 'install_action',
+          },
+          {
+            "targets": 2, 
+            "data" : 'packages',
+            "render": function ( data, type, row ) {
+              return display_packages(data);
+            }
+          },
+          {
+            "targets": 3,
+            "data" : 'start_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {"targets": 4, "data" : 'status'},
+          {
+            "targets": 5,
+            "render": function ( data, type, row ) {
+              return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace']);
+            }
+          },
+          {
+            "targets": 6,
+            "data" : 'created_by'
+          },
+        ],
+        "ajax": {
+          "url": "{{ url_for('api_get_install_in_progress') }}",
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        $('#badge-in-progress').html(install_in_progress_table.api().page.info().recordsTotal);
+      });
+
+      var install_failed_table = $("#install-failed-datatable").dataTable({
+        "order": [[ 5, "desc" ]],
+        "columnDefs": [ 
+           {
+            "targets": 0, 
+            "data" : 'hostname',
+            "render": function ( data, type, row ) {
+              return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+            }
+          },
+          {
+            "targets": 1,
+            "data" : 'install_action'
+          },
+          {
+            "targets": 2,
+            "data" : 'scheduled_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 3,
+            "data" : 'start_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 4,
+            "data" : 'packages',
+            "render": function ( data, type, row ) {
+              return display_packages(data);
+            }
+          },
+          {
+            "targets": 5,
+            "data" : 'status_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 6,
+            "render": function ( data, type, row ) {
+              return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace']);
+            }
+          },
+          {
+            "targets": 7,
+            "data" : 'created_by'
+          },        
+          {
+            "targets": 8, 
+            "data" : 'install_job_id',
+            "render": function ( data, type, row ) {
+              return '<a class="install-scheduled-delete-link" href="javascript://"  \
+                delete-host="' + row['hostname'] + '" \
+                install-action="' + row['install_action'] + '" \
+                status="failed" + \
+                data-delete-url="/hosts/' + data + '/delete_install_job/">Delete</a>';
+            }
+          }
+        ],          
+        "ajax": {
+          "url": "{{ url_for('api_get_install_failed') }}",
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        $('#badge-failed').html(install_failed_table.api().page.info().recordsTotal);
+      });
+      
+      function get_log_icon(hostname, table, id, session_log, trace) {
+        if (trace || session_log) {
+          data = "<center>";
+           
+          if (session_log) {
+            data += "<a href='/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
+            data += "<img src='/static/file.png' title='Session Log'></a>";
+          }
+
+          if (trace) {
+            data += "<a href='/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
+            data += "<img src='/static/error.png' title='debug trace'></a>";
+          }
+          
+          data += "</center>";
+          return data;
+
+        } else {
+          return '&nbsp;';
+        }
+      }
+    
+      function display_packages(packages) {
+        if (packages) {
+          data = "<div class='package-slider'>";
+          data += packages.replace(/,/g,"<br/>");
+          data += "</div>";
+          return data;
+        } else {
+          return '&nbsp;';
+        }       
+      }
+
+      var install_completed_table = $("#install-completed-datatable").dataTable({
+        "order": [[ 5, "desc" ]],
+        "columnDefs": [ 
+           {
+            "targets": 0, 
+            "data" : 'hostname',
+            "render": function ( data, type, row ) {
+              return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+            }
+          },
+          {
+            "targets": 1,
+            "data" : 'install_action'
+          },
+          {
+            "targets": 2,
+            "data" : 'scheduled_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 3,
+            "data" : 'start_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 4,
+            "data" : 'packages',
+            "render": function ( data, type, row ) {
+              return insert_slider(data, row['install_job_id']);
+            }
+          },
+          {
+            "targets": 5,
+            "data" : 'status_time',
+            "render": function ( data, type, row ) {
+              return convertToLocaleString(data);
+            }
+          },
+          {
+            "targets": 6,
+            "render": function ( data, type, row ) {
+              return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace']);
+            }
+          },
+          {
+            "targets": 7,
+            "data" : 'created_by'
+          },
+        ],          
+        "ajax": {
+          "url": "{{ url_for('api_get_install_completed') }}" + "?record_limit=" + record_limit,          
+        }
+      }).on('draw.dt', function ( e, settings, json ) {
+        var json_data = install_completed_table.api().ajax.json().data;     
+        $('#badge-completed').html(json_data.length);       
+        $('#badge-completed-total').html(new_completed_install_job_count);
+        last_completed_install_job_count = new_completed_install_job_count
+      });
+      
+      function get_install_dashboard_cookie() {
+        $.ajax({
+          url: "{{ url_for('api_get_install_dashboard_cookie') }}",
+          dataType: 'json',
+          success: function(data) {
+            $.each(data, function(index, element) {
+              new_completed_install_job_count = element[0].last_completed_install_job_count;
+
+              if (last_completed_install_job_count != new_completed_install_job_count) {
+                refresh_install_completed_table();
+              }
+              
+              display_alert(element[0].can_schedule, element[0].can_install);
+            });
+          }
+        });
+      }
+      
+      function refresh_install_completed_table() {
+        install_completed_table.api().ajax.url("{{ url_for('api_get_install_completed') }}" + 
+          "?record_limit=" + record_limit).load();
+      }
+           
+      setInterval( function () {
+        install_scheduled_table.api().ajax.reload(); 
+        install_in_progress_table.api().ajax.reload(); 
+        install_failed_table.api().ajax.reload();       
+        get_install_dashboard_cookie();
+
+      }, 10000 ); 
+      
+      function display_alert(can_schedule, can_install) { 
+        if (can_schedule) {
+          $("#schedule-install-menu-item").removeClass("disabled");
+        } else {
+          $("#schedule-install-menu-item").addClass("disabled");
+        }
+        
+        if (can_schedule && can_install) {
+          $('#alerts').html('');
+        } else {
+          var cannot_html = ' schedule any install';
+          if (!can_install) {
+            if (!can_schedule) {
+              cannot_html += ' and execute any install ';
+            } else {
+              cannot_html = ' execute any install';
+            }
+          } 
+          
+          $('#alerts').html(
+            '<div class="alert alert-danger"> ' +
+            '<strong>NOTICE:&nbsp;</strong>  ' + 
+            'The system administrator has halted the capability to ' + cannot_html + '.  Contact the system administrator for more information.' +        
+            '</div>');
+        } 
+      }
+     
+    });
+  </script>
+
+  <style>
+    .package-slider {
+      white-space: nowrap;
+    }
+    .dropdown-menu > .disabled{
+      cursor: not-allowed; 
+    }
+ 
+    /* The real magic ;) */
+    .dropdown-menu > .disabled > a{
+      pointer-events: none;
+    }
+  </style>
+
+{% endblock extra_head %}
+
+{% block main %}
+
+
+<!-- Main -->
+<div class="container">
+
+  <div class="row">
+    <div class="col-sm-12">
+      <div id="alerts"></div>
+      
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Install Dashboard </strong></span>
+      <div class="btn-group pull-right">      
+        <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">        
+          Action
+          <span class="glyphicon glyphicon-link"> 
+          <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li id="schedule-install-menu-item"><a href="{{ url_for('schedule_install') }}?return_url=install_dashboard">Schedule Batch Installs</a></li>
+          <li class="divider"></li>
+          <li><a href="javascript://" class="install-delete-all" status="" return-url="{{ url_for('install_dashboard') }}" install-delete-url="{{ url_for('delete_all_scheduled_installs') }}">Delete All Scheduled Installs</a></li>
+          <li><a href="javascript://" class="install-delete-all" status="failed" return-url="{{ url_for('install_dashboard') }}" install-delete-url="{{ url_for('delete_all_failed_installs') }}">Delete All Failed Installs</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <!-- upper section -->
+  <div class="row">
+ 
+    <div class="col-sm-12">
+
+      <hr>
+
+      <ul class="nav nav-tabs" id="install-dashboard-tab">
+        <li><a data-toggle="tab" href="#install-scheduled">Scheduled &nbsp;<span id="badge-scheduled" class="badge alert-default">0</span></a></li>
+        <li><a data-toggle="tab" href="#install-in-progress">In Progress &nbsp;<span id="badge-in-progress" class="badge alert-info">0</span></a></li>
+        <li><a data-toggle="tab" href="#install-failed">Failed &nbsp;<span id="badge-failed" class="badge alert-danger">0</span></a></li>
+        <li><a data-toggle="tab" href="#install-completed">Completed &nbsp;(showing <span id="badge-completed" class="badge alert-success">0</span>&nbsp;of <span id="badge-completed-total" class="badge alert-success"></span>)</a></li>
+      </ul>
+      <div class="tab-content" style="margin-top:20px;">
+        <div id="install-scheduled" class="tab-pane fade in active">
+          <table cellspacing="0" class="display table" id="install-scheduled-datatable">    
+            <thead> 
+              <tr>  
+                <th>Hostname</th>  
+                <th>Install Action</th> 
+                <th>Dependency</th>  
+                <th>Scheduled Time</th>  
+                <th>Packages</th>
+                <th>Created By</th> 
+                <th>Action</th>
+              </tr>  
+            </thead>  
+          </table>
+        </div>
+
+        <div id="install-in-progress" class="tab-pane fade in">
+          <table cellspacing="0" class="display table" id="install-in-progress-datatable">    
+            <thead> 
+              <tr>  
+                <th style="width:50px">Hostname</th>  
+                <th style="width:50px">Install Action</th>  
+                <th style="width:50px">Packages</th> 
+                <th style="width:50px">Start Time</th> 
+                <th style="width:300px">Status</th>
+                <th style="width:50px">Log</th>
+                <th style="width:50px">Created By</th> 
+              </tr>  
+            </thead>  
+          </table>
+        </div>
+
+        <div id="install-failed" class="tab-pane fade in">
+
+          <table cellspacing="0" class="display table" id="install-failed-datatable">    
+            <thead> 
+              <tr>  
+                <th>Hostname</th>  
+                <th>Install Action</th>  
+                <th>Scheduled Time</th> 
+                <th>Start Time</th> 
+                <th>Packages</th>  
+                <th>Failed Time</th> 
+                <th>Log</th>
+                <th>Created By</th>
+                <th>Action</th>
+              </tr>  
+            </thead>  
+           </table>
+        </div>
+        
+        <div id="install-completed" class="tab-pane fade in">
+        
+          <div class="container">
+            <div class="form-group">  
+              <label class="DodgerBlue col-sm-3 control-label" id="record-limit-selector-label">Number of Records to Retrieve:</label>
+
+              <div class="col-sm-4">
+              <select class="form-control" id="record-limit-selector" name="record-limit-selector" style="width:200px">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="ALL">ALL</option>
+              </select>
+              </div>
+            </div>
+          </div>
+
+          <table cellspacing="0" class="display table" id="install-completed-datatable">    
+            <thead> 
+              <tr>  
+                <th>Hostname</th>  
+                <th>Install Action</th>  
+                <th>Scheduled Time</th>
+                <th>Start Time</th>  
+                <th>Packages</th>  
+                <th>Completed Time</th> 
+                <th>Log</th>
+                <th>Created By</th>
+              </tr>  
+            </thead>  
+           </table>
+        </div>
+      </div>     
+    </div>
+
+  </div> <!-- /upper section -->
+
+</div> <!-- Main -->
+
+
+{% endblock main %}

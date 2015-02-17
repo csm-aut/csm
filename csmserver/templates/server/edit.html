@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import edit_field %}
+{% from 'host/common.html' import alert_duplicate %}
+{% from 'host/common.html' import green_check_icon %}
+
+{% if request.endpoint.endswith('edit') %}
+  {% set isEdit = True %}
+{% else %}
+  {% set isEdit = False %}
+{% endif %}
+
+{% block extra_head %}
+  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+  <script src="/static/showhidepassword-1.0.0/js/password.js"></script>
+  
+  <script>
+    $(function() {
+     
+      var spinner = $('#spinner');    
+      spinner.hide();
+      
+      {% if isEdit %}
+        var is_password_panel_visible = false;
+        var password_panel = $('#password-panel');
+        password_panel.hide();
+        
+        $('#modify-password').on("click", function() {
+          if (is_password_panel_visible) {
+            password_panel.hide();
+            is_password_panel_visible = false;
+          } else {
+            password_panel.show();
+            is_password_panel_visible = true;
+          }
+        });    
+      {% endif %}
+      
+      // initialize the show/hide password widget
+      $('#password').password();
+    
+      $('#server_type').val(function(index, currentValue) {
+        toggle_server($(this).val());
+        return currentValue
+      });
+      
+      $('#server_type').on("click", function() {
+        toggle_server($(this).val());
+      });
+       
+      function toggle_server(server_type) {
+        if (server_type == "TFTP") {
+          $('#authentiation-panel').hide();
+          $('#label_server_url').text('TFTP Server Path');
+          $('#label_server_directory').text('File Directory (Used by CSM Server)');
+        } else if (server_type == "FTP" ||
+                   server_type == "SFTP") {
+          $('#authentiation-panel').show();
+          $('#label_server_url').text(server_type + ' Server Address');
+          $('#label_server_directory').text('Remote Directory');
+        }
+      } 
+      
+      $('#verify-reachability').on("click", function() {
+        spinner.show();
+        
+        var formData = { 
+          hostname: '{{ form.hostname.data }}', 
+          server_type: $('#server_type').val(), 
+          server_url: $('#server_url').val(), 
+          username: $('#username').val(), 
+          password: $('#password').val(), 
+          server_directory: $('#server_directory').val()
+        };
+
+        $.ajax({
+           url: "/api/check_server_reachability",
+           dataType: 'json',
+           data: formData,
+           success: function (response) {              
+             if (response.status == 'OK') {
+               display_success();
+             } else {
+               display_error();
+             }
+           },
+           error: function(XMLHttpRequest, textStatus, errorThrown) { 
+             display_error();
+           }  
+         });  
+         
+         function display_success() {
+           spinner.hide();
+           $('#verify-reachability').removeClass("btn-danger");
+           $('#verify-reachability').addClass("btn-primary");
+           
+           bootbox.alert("<img src=\"{{ url_for('static', filename='green_check.png') }}\">CSM Server is able to reach the specified server.<br>" +
+             "(Notice: This allows the CSM Server to browse files on the specified " +
+             "server but does not guarantee that the host device will be able to do the same.)");
+         }
+         
+         function display_error() {
+           spinner.hide();
+           $('#verify-reachability').removeClass("btn-primary");
+           $('#verify-reachability').addClass("btn-danger");
+           
+           bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">Unable to reach the specified server or you are not an authorized user.");
+         }
+         
+      });
+      
+    });
+  </script>
+{% endblock extra_head %}
+ 
+ 
+{% block main %}
+<div class="row">
+  <div class="well col-sm-offset-2 col-sm-8">
+  <form method="post" class="form-horizontal">
+
+    <legend>{% if isEdit %}Edit Server Repository{% else %}Create Server Repository{% endif %}</legend>
+    
+    {{ alert_duplicate(form.hostname.data, duplicate_error) }}
+    
+    {{ edit_field(form.hostname, field_width="col-sm-4", class="form-control",
+      placeholder="Unique Name on CSM Server") }}
+    {{ edit_field(form.server_type, field_width="col-sm-2", class="form-control") }}
+    {{ edit_field(form.server_url, maxlength=100, class="form-control") }}
+    {{ edit_field(form.server_directory, maxlength=100, class="form-control") }}
+        
+    <div id="authentiation-panel">
+    
+      {% if isEdit %}
+        {% set extra_field ='<a href="javascript://" id="modify-password">
+          <img src=\"/static/lock.png\" title="Show/Hide Password Field"></a>' %}        
+        {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field ) }}
+      {% else %}
+        {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
+      {% endif %}
+
+      <div id="password-panel">
+        {% if isEdit %}
+          {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control",
+            placeholder="Use Password on File") }}
+        {% else %}
+          {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
+        {% endif %}
+      </div>
+      
+    </div>
+ 
+    <div class="form-actions">
+      <div class="btn col-sm-offset-4">
+        <button id="verify-reachability" type="button" class="btn btn-danger">Check Reachability</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" onClick="location.href='{{ url_for('home') }}'" class="btn btn-default">Cancel</button>
+        <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+      </div>
+    </div>
+  </form>
+  </div>
+</div>
+{% endblock main %}

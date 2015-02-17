@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+
+  <script charset="utf-8">
+    $(function() {
+    });
+  </script>
+
+  <style type="text/css">
+    h2{
+      margin: 0;     
+      color: #666;
+      padding-top: 90px;
+      font-size: 52px;
+      font-family: "trebuchet ms", sans-serif;    
+    }
+    .item{
+      background: #888;    
+      text-align: center;
+      height: 300px !important;
+    }
+    .carousel{
+      margin-top: 20px;
+    }
+    .bs-example{
+	  margin: 20px;
+    }
+  </style>
+  
+{% endblock extra_head %}
+
+{% block main %}
+
+  <div id="myCarousel" class="carousel slide" data-ride="carousel">
+  <!-- Carousel indicators -->
+    <ol class="carousel-indicators">
+      <li data-target="#myCarousel" data-slide-to="0" class="active"></li>
+      <li data-target="#myCarousel" data-slide-to="1"></li>
+    </ol>   
+
+  <!-- Carousel items -->
+    <div class="carousel-inner">
+      <div class="item active">
+        <h2>Cisco Software Manager</h2>
+        <div class="carousel-caption">
+          <h3>Time saved. No more searching and querying cisco.com for SMUs</h3>
+          <h3>Cost savings in avoiding incorrect and missing SMUs</h3>
+        </div>
+      </div>
+   
+      <div class="item">
+        <h2>Cisco Software Manager Server</h2>
+        <div class="carousel-caption">
+          <h3>Automation and Orchestration Framework</h3>
+          <h3>Simultaneously deploy IOS-XR SMUs & software upgrades</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carousel nav -->
+    <a class="carousel-control left" href="#myCarousel" data-slide="prev">
+      <span class="glyphicon glyphicon-chevron-left"></span>
+    </a>
+
+    <a class="carousel-control right" href="#myCarousel" data-slide="next">
+      <span class="glyphicon glyphicon-chevron-right"></span>
+    </a>
+  </div> 
+  
+  {% if build_date %}
+    <center>Build Date: {{ build_date }}</center>
+  {% endif %}
+{% endblock main %}
