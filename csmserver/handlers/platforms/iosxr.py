@@ -2,7 +2,11 @@ from base import BaseHandler
 from parsers.loader import get_package_parser_class 
 from utils import import_module
 
-import condor 
+try:
+    import condor 
+except ImportError:
+    pass
+
 import time
 
 AUT_PATH = '../aut'
@@ -17,10 +21,13 @@ class BaseConnectionHandler(BaseHandler):
             if status == 0 :
                 ctx.success = True
         else:    
-            conn = condor.make_connection_from_urls('host', ctx.urls)
-            conn.connect()
-            conn.disconnect()
-            ctx.success = True        
+            try:
+                conn = condor.make_connection_from_urls('host', ctx.urls)
+                conn.connect()
+                conn.disconnect()
+                ctx.success = True        
+            except:
+                pass
         
 class BaseInventoryHandler(BaseHandler):           
     def execute(self, ctx):
@@ -36,18 +43,21 @@ class BaseInventoryHandler(BaseHandler):
                     install_committed_cli=ctx.committed_cli)
                 ctx.success = True
         else:
-            conn = condor.make_connection_from_context(ctx)
-            conn.connect()
-            ctx.inactive_cli = conn.send('sh install inactive summary')
-            ctx.active_cli = conn.send('sh install active summary')
-            ctx.committed_cli = conn.send('sh install committed summary')       
-            conn.disconnect()
+            try:
+                conn = condor.make_connection_from_context(ctx)
+                conn.connect()
+                ctx.inactive_cli = conn.send('sh install inactive summary')
+                ctx.active_cli = conn.send('sh install active summary')
+                ctx.committed_cli = conn.send('sh install committed summary')       
+                conn.disconnect()
  
-            self.get_software(ctx.host,
-                install_inactive_cli=ctx.inactive_cli, 
-                install_active_cli=ctx.active_cli, 
-                install_committed_cli=ctx.committed_cli)
-            ctx.success = True
+                self.get_software(ctx.host,
+                    install_inactive_cli=ctx.inactive_cli, 
+                    install_active_cli=ctx.active_cli, 
+                    install_committed_cli=ctx.committed_cli)
+                ctx.success = True
+            except:
+                pass
 
     def get_software(self, host, install_inactive_cli, install_active_cli, install_committed_cli):
         package_parser_class = get_package_parser_class(host.platform)
@@ -68,10 +78,13 @@ class BaseInstallHandler(BaseHandler):
             if status == 0 :
                 ctx.success = True   
         else:
-            time.sleep(10)
-            ctx.post_status('Copying files from TFTP server to host...')
-            time.sleep(10)
-            ctx.success = True
+            try:
+                time.sleep(10)
+                ctx.post_status('Copying files from TFTP server to host...')
+                time.sleep(10)
+                ctx.success = True
+            except:
+                pass
     
 
     
