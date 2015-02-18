@@ -1,2 +1,2 @@
 # csm
-This repository contains csmserver and AUT source
+This repository contains csmserver, AUT, and condor source code
