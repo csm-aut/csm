@@ -44,7 +44,7 @@ XML_TAG_STATUS = 'status'
 XML_TAG_COMPRESSED_IMAGE_SIZE = 'compressedImageSize'
 XML_TAG_UNCOMPRESSED_IMAGE_SIZE = 'unCompressedImageSize'
 XML_TAG_CCO_FILE_NAME = 'ccoFileName'
-XML_TAG_COMPOSITE_DDTS = "compositeDDTS";   # Only SP has this attribute
+XML_TAG_COMPOSITE_DDTS = "compositeDDTS";  # Only SP has this attribute
 XML_TAG_SMU = 'smu'
 XML_TAG_SP = 'sp'
 XML_TAG_SMU_INTRANSIT = 'smuIntransit'
@@ -158,8 +158,8 @@ class SMUInfoLoader(object):
             smu_info.prerequisites = self.getChildElementText(node, XML_TAG_PRE_REQUISITES)
             smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)               
             smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
-            smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE) )              
-            smu_info.uncompressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE) )
+            smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))              
+            smu_info.uncompressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE))
         
             if package_type == PackageType.SMU:
                 smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS);
@@ -183,12 +183,12 @@ class SMUInfoLoader(object):
     def load(self):
         xmldoc = minidom.parseString(SMUInfoLoader.get_smu_meta_file(self.platform, self.release))
         
-        #self._platform = self.getChildElementText(xmldoc, XML_TAG_PLATFORM)
-        #self._release = self.getChildElementText(xmldoc, XML_TAG_RELEASE)
+        # self._platform = self.getChildElementText(xmldoc, XML_TAG_PLATFORM)
+        # self._release = self.getChildElementText(xmldoc, XML_TAG_RELEASE)
         self.smu_meta.downloaded_time = time.strftime('%m/%d/%Y %I:%M:%S %p')
         self.smu_meta.created_time = self.getChildElementText(xmldoc, XML_TAG_CREATION_DATE)
         self.smu_meta.file_suffix = self.getChildElementText(xmldoc, XML_TAG_SMU_SUFFIX)
-        self.smu_meta.smu_software_type_id  = self.getChildElementText(xmldoc, XML_TAG_SMU_SOFTWARE_TYPE_ID)
+        self.smu_meta.smu_software_type_id = self.getChildElementText(xmldoc, XML_TAG_SMU_SOFTWARE_TYPE_ID)
         self.smu_meta.sp_software_type_id = self.getChildElementText(xmldoc, XML_TAG_SP_SOFTWARE_TYPE_ID)
         
         node_list = xmldoc.getElementsByTagName(XML_TAG_PLATFORM_MDF_ID)
@@ -284,7 +284,7 @@ class SMUInfoLoader(object):
                 last_pos = line.rfind('_')
                 if last_pos > 0:
                     platform = line[:last_pos]
-                    release = line[last_pos+1:]
+                    release = line[last_pos + 1:]
                  
                     if len(platform) > 0 and len(release) > 0:                    
                         if platform in catalog:
@@ -300,5 +300,5 @@ class SMUInfoLoader(object):
 
 
 if __name__ == '__main__':
-    smu_loader = SMUInfoLoader('asr9k_px','4.2.1')
+    smu_loader = SMUInfoLoader('asr9k_px', '4.2.1')
 

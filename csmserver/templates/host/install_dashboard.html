@@ -285,7 +285,10 @@
           },
           {
             "targets": 1,
-            "data" : 'install_action'
+            "data" : 'install_action',
+            "render": function ( data, type, row ) {
+              return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
+            }
           },
           {
             "targets": 2,

@@ -2,6 +2,8 @@ DIRECTORY_AUT_LOGS = '../autlogs'
 DIRECTORY_REPOSITORY = '../repository'
 DIRECTORY_TEMP = '../temp'
 
+BUG_SEARCH_URL = 'https://tools.cisco.com/bugsearch/bug/'
+
 class ConnectionType:
     TELNET = 'telnet'
     SSH = 'ssh'

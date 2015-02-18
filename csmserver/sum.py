@@ -31,7 +31,7 @@ from mailer import send_install_status_email
 import traceback
 
 lock = threading.Lock()
-in_progress_hosts = {}
+in_progress_hosts = []
 
 class SoftwareManager(threading.Thread):
     def __init__(self, name, num_threads=None):
@@ -51,12 +51,15 @@ class SoftwareManager(threading.Thread):
     
     """
     In order for a scheduled install job to proceed, its dependency must be successfully completed
-    and is present in the InstallJobHistory table.  It is possible that the dependency has multiple
-    entries in the table.  This can happen when it takes multiple tries for the dependency to become
-    successful (i.e. after couple failed attempts).
+    and is present in the InstallJobHistory table.  It is possible that the dependency (install_job_id) 
+    has multiple entries in the table.  This can happen when it takes multiple tries for the dependency 
+    to become successful (i.e. after couple failed attempts).
     """
-    def get_install_job_dependency_entries(self, db_session, install_job_id):
-        return db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == install_job_id)
+    def get_install_job_dependency_completed(self, db_session, install_job):
+        return db_session.query(InstallJobHistory).filter(and_(
+           InstallJobHistory.install_job_id == install_job.dependency, 
+           InstallJobHistory.host_id == install_job.host_id,
+           InstallJobHistory.status == JobStatus.COMPLETED)).all()
         
     def dispatch(self):
         db_session = DBSession()
@@ -67,7 +70,7 @@ class SoftwareManager(threading.Thread):
                 
             resultSet = db_session.query(InstallJob).filter(InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
             download_job_key_dict = get_download_job_key_dict()
-            
+
             if len(resultSet)> 0:
                 for install_job in resultSet:
                     if install_job.status != JobStatus.FAILED:
@@ -77,18 +80,9 @@ class SoftwareManager(threading.Thread):
                         
                         # This install job has a dependency, check if the expected criteria is met
                         if install_job.dependency is not None:
-                            dependency_entries = self.get_install_job_dependency_entries(db_session, install_job.dependency)
-                            # If there is no dependency entry yet found, do not allow the install job to proceed
-                            if not dependency_entries:
-                                continue
-                            
-                            dependency_criteria_met = False
-                            for install_job_dependency in dependency_entries:
-                                if install_job_dependency.status == JobStatus.COMPLETED:
-                                    dependency_criteria_met = True
-                                    break
-
-                            if not dependency_criteria_met:
+                            dependency_completed = self.get_install_job_dependency_completed(db_session, install_job)
+                            # If the dependency has not been completed, don't proceed
+                            if len(dependency_completed) == 0:
                                 continue
                         
                         with lock:
@@ -97,12 +91,13 @@ class SoftwareManager(threading.Thread):
                             if install_job.host_id in in_progress_hosts:
                                 continue
                         
-                            in_progress_hosts[install_job.host_id] = install_job.host_id
+                            in_progress_hosts.append(install_job.host_id)
                         
                         # Allow the install job to proceed
-                        install_work_unit = InstallWorkUnit(install_job.id)
+                        install_work_unit = InstallWorkUnit(install_job.id, install_job.host_id)
                         self.pool.submit(install_work_unit)
         except:
+            # Purpose ignore.  Otherwise, it may generate continue exception
             pass
         finally:
             db_session.close()
@@ -120,16 +115,16 @@ def is_pending_on_download(download_job_key_dict, install_job):
 
 def remove_host_from_in_progress(host_id):
     with lock:
-        if host_id is not None and host_id in in_progress_hosts: del in_progress_hosts[host_id]
+        if host_id is not None and host_id in in_progress_hosts: in_progress_hosts.remove(host_id)
         
 def can_install(db_session):
     # Check if scheduled jobs are allowed to run  
-    system_option = SystemOption.get(db_session)
-    return system_option.can_install
+    return SystemOption.get(db_session).can_install
                 
 class InstallWorkUnit(WorkUnit):
-    def __init__(self, job_id):
+    def __init__(self, job_id, host_id):
         self.job_id = job_id
+        self.host_id = host_id
     
     def get_software(self, db_session, ctx):
         handler_class = get_inventory_handler_class(ctx.host.platform)
@@ -143,23 +138,20 @@ class InstallWorkUnit(WorkUnit):
             
     def process(self):
         db_session = DBSession()
-        host_id = None
         ctx = None
         try:                                  
             install_job = db_session.query(InstallJob).filter(InstallJob.id == self.job_id).first()    
             if install_job is None:
-                logger.error('Unable to retrieve install job %s', self.job_id)
+                # This is normal because of race condition. It means the job is already deleted (completed).
                 return
-            
-            host_id = install_job.host_id
+             
             if not can_install(db_session):
                 # This will halt this host that has already been queued
-                remove_host_from_in_progress(host_id)
                 return
             
-            host = db_session.query(Host).filter(Host.id == host_id).first()
+            host = db_session.query(Host).filter(Host.id == self.host_id).first()
             if host is None:
-                logger.error('Unable to retrieve host %s', host_id)
+                logger.error('Unable to retrieve host %s', self.host_id)
                 return
             
             handler_class = get_install_handler_class(host.platform)
@@ -173,7 +165,7 @@ class InstallWorkUnit(WorkUnit):
            
             ctx = InstallContext(host, db_session, install_job)
             ctx.operation_id = get_last_operation_id(db_session, install_job)
-          
+           
             handler = handler_class()
             handler.execute(ctx)
             
@@ -187,7 +179,6 @@ class InstallWorkUnit(WorkUnit):
             db_session.commit()
             
         except: 
-
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
                 archive_install_job(db_session, ctx, install_job, JobStatus.FAILED, trace=traceback.format_exc())
@@ -195,7 +186,8 @@ class InstallWorkUnit(WorkUnit):
             except:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
-            remove_host_from_in_progress(host_id)
+            # Must remove the host from the in progress list
+            remove_host_from_in_progress(self.host_id)
             db_session.close()     
 
 def get_last_operation_id(db_session, install_activate_job, trace=None):
@@ -252,13 +244,3 @@ def archive_install_job(db_session, ctx, install_job, job_status, trace=None):
     
 if __name__ == '__main__': 
     pass
-    """
-    db_session = DBSession()
-    install_activate_job = InstallJob()
-    install_activate_job.host_id = 25
-    install_activate_job.install_action = InstallAction.ACTIVATE
-    install_activate_job.packages = 'boydbear.jpg'
-    
-    operation_id = get_last_operation_id(db_session, install_activate_job)
-    print(operation_id)
-    """

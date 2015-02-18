@@ -192,6 +192,11 @@ def is_empty(obj):
         return True
     else:
         return False
+    
+def comma_delimited_str_to_array(comma_delimited_str):
+    if comma_delimited_str is None or len(comma_delimited_str) == 0:
+        return []
+    return comma_delimited_str.split(',')   
 
 if __name__ == '__main__':
     pass

@@ -1,5 +1,27 @@
 
 /*
+Given the field and value, returns the html code for a table row.
+The argument value may contain ','.  In that case, it will be displayed
+as multiple lines.
+*/
+function create_html_table_row(field, value) {
+  var html_code = '';
+  if (value != null && value.length > 0) {
+    var an_array = value.split(',');
+    for (var i = 0; i < an_array.length; i++) {
+      if (i == 0) {
+        html_code = '<tr><td>' + field + '</td><td>' + an_array[i] + '</td></tr>';;
+      } else {
+        html_code += '<tr><td>&nbsp;</td><td>' + an_array[i] + '</td></tr>';
+      }
+     }
+     return html_code;
+   } else {
+     return '';
+ }       
+}
+      
+/*
 Trim all spaces from lines
 */
 function trim_lines(lines) {

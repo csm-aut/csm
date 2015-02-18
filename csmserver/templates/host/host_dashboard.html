@@ -427,23 +427,6 @@
         }
       });
       
-      function create_host_info_row(header, value) {
-        var html_code = '';
-        if (value != null && value.length > 0) {
-          var res = value.split(',');
-          for (var i = 0; i < res.length; i++) {
-            if (i == 0) {
-              html_code = '<tr><td>' + header + '</td><td>' + res[i] + '</td></tr>';;
-            } else {
-              html_code += '<tr><td>&nbsp;</td><td>' + res[i] + '</td></tr>';
-            }
-          }
-          return html_code;
-        } else {
-          return '';
-        }       
-      }
-      
       var last_successful_inventory_time = '';
       var new_last_successful_inventory_time = '';
       
@@ -456,16 +439,16 @@
           success: function(data) {
             $.each(data, function(index, element) {
               var html = '';
-              html += create_host_info_row('Region', element[0].region);
-              html += create_host_info_row('Roles', element[0].roles);
-              html += create_host_info_row('Platform', element[0].platform);
-              html += create_host_info_row('Software', element[0].software);
-              html += create_host_info_row('Host or IP', element[0].host_or_ip);
-              html += create_host_info_row('Username', element[0].username);
-              html += create_host_info_row('Connection', element[0].connection);
-              html += create_host_info_row('Port Number', element[0].port_number);
-              html += create_host_info_row('Jump Server', element[0].jump_host);
-              html += create_host_info_row('Created By', element[0].created_by);
+              html += create_html_table_row('Region', element[0].region);
+              html += create_html_table_row('Roles', element[0].roles);
+              html += create_html_table_row('Platform', element[0].platform);
+              html += create_html_table_row('Software', element[0].software);
+              html += create_html_table_row('Host or IP', element[0].host_or_ip);
+              html += create_html_table_row('Username', element[0].username);
+              html += create_html_table_row('Connection', element[0].connection);
+              html += create_html_table_row('Port Number', element[0].port_number);
+              html += create_html_table_row('Jump Server', element[0].jump_host);
+              html += create_html_table_row('Created By', element[0].created_by);
              
               $('#host-info-table').html(html); 
               

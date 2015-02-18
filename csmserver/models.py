@@ -562,19 +562,12 @@ class SMUInfo(Base):
     compressed_image_size = Column(Integer, default=0)              
     uncompressed_image_size = Column(Integer, default=0)  
     
-    # Internally, these four variables are stored as comma delimited string.  When
-    # their get() is called, they return as a list or an empty list if None.
-    _supersedes = Column('supersedes', Text)
-    _superseded_by = Column('superseded_by', Text)
-    _prerequisites = Column('prerequisites', Text)
-    _prerequisite_to = Column('prerequisite_to', Text)
+    supersedes = Column(Text)
+    superseded_by = Column(Text)
+    prerequisites = Column(Text)
+    prerequisite_to = Column(Text)
     platform_release = Column(String(40), ForeignKey('smu_meta.platform_release'))
-    
-    def comma_delimited_str_to_array(self, comma_delimited_str):
-        if comma_delimited_str is None or len(comma_delimited_str) == 0:
-            return []
-        return comma_delimited_str.split(',')
-    
+
     @property
     def cco_filename(self):
         # Somehow,PIMS did not fill in the cco_filename
@@ -585,40 +578,8 @@ class SMUInfo(Base):
     @cco_filename.setter
     def cco_filename(self, value):
         self._cco_filename = value
-    
-    @property
-    def supersedes(self):
-        return self.comma_delimited_str_to_array(self._supersedes)
-    
-    @supersedes.setter
-    def supersedes(self, value):
-        self._supersedes = value 
         
-    @property
-    def superseded_by(self):
-        return self.comma_delimited_str_to_array(self._superseded_by)
-    
-    @superseded_by.setter
-    def superseded_by(self, value):
-        self._superseded_by = value 
-        
-    @property
-    def prerequisites(self):
-        return self.comma_delimited_str_to_array(self._prerequisites)
-    
-    @prerequisites.setter
-    def prerequisites(self, value):
-        self._prerequisites = value 
-        
-    @property
-    def prerequisite_to(self):
-        return self.comma_delimited_str_to_array(self._prerequisite_to)
-    
-    @prerequisite_to.setter
-    def prerequisite_to(self, value):
-        self._prerequisite_to = value 
-        
-    
+   
 class SystemOption(Base):
     __tablename__ = 'system_option'   
     id = Column(Integer, primary_key=True)

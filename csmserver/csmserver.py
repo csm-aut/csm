@@ -41,6 +41,7 @@ from models import SystemOption
 from models import Package
 from models import Preferences
 from models import SMUMeta
+from models import SMUInfo
 from models import DownloadJob
 from models import DownloadJobHistory
 from models import get_download_job_key_dict
@@ -54,8 +55,8 @@ from constants import JobStatus
 from constants import PackageState
 from constants import ServerType
 from constants import UserPrivilege
-
 from constants import ConnectionType
+from constants import BUG_SEARCH_URL
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -80,6 +81,7 @@ from smu_utils import SP_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
 from bsd_service import BSDServiceHandler
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 import os
 import io
@@ -99,7 +101,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 filters.init(app)
 
 app.secret_key = 'CSMSERVER'
-
+    
 # Use Flask-Login to track the current user in Flask's session.
 login_manager = LoginManager()
 login_manager.setup_app(app)
@@ -130,7 +132,7 @@ def home():
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
     system_option = SystemOption.get(db_session)
-    
+
     return render_template('host/home.html', hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
         servers=servers, hosts_info_json=get_host_platform_json(hosts), system_option=system_option, current_user=current_user) 
 
@@ -2725,6 +2727,7 @@ def get_smu_or_sp_list(smu_info_list, file_suffix):
         row['package_name'] = smu_info.name + '.' + file_suffix 
         row['posted_date'] = smu_info.posted_date.split()[0]
         row['ddts'] = smu_info.ddts
+        row['ddts_url'] = '<a href="' + BUG_SEARCH_URL + smu_info.ddts + '" target="_blank">' + smu_info.ddts + '</a>'
         row['type'] = smu_info.type
         row['description'] = smu_info.description
         row['impact'] = smu_info.impact
@@ -2737,6 +2740,34 @@ def get_smu_or_sp_list(smu_info_list, file_suffix):
         row['uncompressed_image_size'] = smu_info.uncompressed_image_size
         rows.append(row)
     
+    return jsonify( **{'data':rows} )
+
+@app.route('/api/get_smu_details/smu_id/<smu_id>')
+@login_required
+def api_get_smu_details(smu_id):
+    rows = []
+    db_session = DBSession()
+    
+    smu_info = db_session.query(SMUInfo).filter(SMUInfo.id == smu_id).first()
+    if smu_info is not None:
+        row = {}
+        row['id'] = smu_info.id
+        row['name'] = smu_info.name
+        row['status'] = smu_info.status
+        row['type'] = smu_info.type
+        row['posted_date'] = smu_info.posted_date
+        row['ddts'] = smu_info.ddts
+        row['description'] = smu_info.description
+        row['functional_areas'] = smu_info.functional_areas
+        row['impact'] = smu_info.impact
+        row['package_bundles'] = smu_info.package_bundles
+        row['compressed_image_size'] = str(smu_info.compressed_image_size)
+        row['uncompressed_image_size'] = str(smu_info.uncompressed_image_size)
+        row['prerequisites'] = smu_info.prerequisites
+        row['supersedes'] = smu_info.supersedes
+        row['superseded_by'] = smu_info.superseded_by
+        rows.append(row)
+
     return jsonify( **{'data':rows} )
 
 @app.route('/optimize_list')

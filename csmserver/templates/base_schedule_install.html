@@ -384,30 +384,35 @@
           },
           {
             "targets": 2,
-            "data" : 'ddts'
+            "data" : 'id',
+            /*
+            "render": function ( data, type, row ) {
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+            }
+            */
           },
           {
             "targets": 3,
+            "data" : 'ddts_url'
+          },
+          {
+            "targets": 4,
             "data" : 'type'
           },
           {
-            "targets": 4, 
+            "targets": 5, 
             "width": "50%",
             "data" : 'description'
           },
           {
-            "targets": 5,
+            "targets": 6,
             "width": "10%",
             "data" : 'impact'
           },
           {
-            "targets": 6,
+            "targets": 7,
             "width": "10%",
             "data" : 'functional_areas'
-          },
-          {
-            "targets": 7,
-            "data" : 'id'
           },
           {
             "targets": 8,
@@ -458,29 +463,34 @@
           },
           {
             "targets": 2,
-            "data" : 'ddts'
+            "data" : 'id',
+            /*
+            "render": function ( data, type, row ) {
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+            } 
+            */
           },
           {
             "targets": 3,
+            "data" : 'ddts_url'
+          },
+          {
+            "targets": 4,
             "data" : 'type'
           },
           {
-            "targets": 4, 
+            "targets": 5, 
             "width": "40%",
             "data" : 'description'
           },
           {
-            "targets": 5,
+            "targets": 6,
             "width": "10%",
             "data" : 'impact'
           },
           {
-            "targets": 6,
-            "data" : 'functional_areas'
-          },
-          {
             "targets": 7,
-            "data" : 'id'
+            "data" : 'functional_areas'
           },
           {
             "targets": 8,
@@ -688,13 +698,13 @@
                     <thead> 
                     <tr>  
                       <th>ST</th> 
-                      <th>Posted Date</th>  
+                      <th>Posted Date</th> 
+                      <th>SMU ID</th>  
                       <th>DDTS</th>  
                       <th>Type</th> 
                       <th>Description</th> 
                       <th>Impact</th>
                       <th>Functional Areas</th>
-                      <th>SMU ID</th> 
                       <th>SMU Name</th> 
                       <th>Status</th> 
                       <th>Package Bundles</th> 
@@ -711,12 +721,12 @@
                     <tr>  
                       <th>ST</th> 
                       <th>Posted Date</th>  
+                      <th>SMU ID</th> 
                       <th>DDTS</th>  
                       <th>Type</th> 
                       <th>Description</th> 
                       <th>Impact</th>
                       <th>Functional Areas</th>
-                      <th>SMU ID</th> 
                       <th>SMU Name</th> 
                       <th>Status</th> 
                       <th>Package Bundles</th> 

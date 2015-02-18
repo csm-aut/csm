@@ -68,30 +68,33 @@
           },
           {
             "targets": 3,
-            "data" : 'ddts'
+            "data" : 'id',
+            "render": function ( data, type, row ) {
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+            }
           },
           {
             "targets": 4,
+            "data" : 'ddts_url'
+          },
+          {
+            "targets": 5,
             "data" : 'type'
           },
           {
-            "targets": 5, 
+            "targets": 6, 
             "width": "50%",
             "data" : 'description'
           },
           {
-            "targets": 6,
+            "targets": 7,
             "width": "10%",
             "data" : 'impact'
           },
           {
-            "targets": 7,
+            "targets": 8,
             "width": "10%",
             "data" : 'functional_areas'
-          },
-          {
-            "targets": 8,
-            "data" : 'id'
           },
           {
             "targets": 9,
@@ -156,28 +159,31 @@
           },
           {
             "targets": 3,
-            "data" : 'ddts'
+            "data" : 'id',
+            "render": function ( data, type, row ) {
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+            }
           },
           {
             "targets": 4,
+            "data" : 'ddts_url'
+          },
+          {
+            "targets": 5,
             "data" : 'type'
           },
           {
-            "targets": 5, 
+            "targets": 6, 
             "width": "50%",
             "data" : 'description'
           },
           {
-            "targets": 6,
+            "targets": 7,
             "data" : 'impact'
           },
           {
-            "targets": 7,
-            "data" : 'functional_areas'
-          },
-          {
             "targets": 8,
-            "data" : 'id'
+            "data" : 'functional_areas'
           },
           {
             "targets": 9,
@@ -380,6 +386,51 @@
         });     
       }
       
+      // Use delegate pattern for event
+      $("#smu-datatable").on("click", ".show-smu-details", function() {
+        display_smu_details_dialog($(this).attr('smu_id') );
+      });
+      
+      $("#sp-datatable").on("click", ".show-smu-details", function() {
+        display_smu_details_dialog($(this).attr('smu_id') );
+      });
+      
+      function display_smu_details_dialog(smu_id) {
+        $('#display-smu-details-dialog').modal({show:true}) 
+        display_smu_details(smu_id)
+      }
+      
+      function display_smu_details(smu_id) {
+        $.ajax({
+          url: "/api/get_smu_details/smu_id/" + smu_id,
+          dataType: 'json',
+          success: function(data) {
+            $.each(data, function(index, element) {
+              var html = '';
+              html += create_html_table_row('SMU ID', element[0].id);
+              html += create_html_table_row('SMU Name', element[0].name);
+              html += create_html_table_row('Posted Date', element[0].posted_date);
+              html += create_html_table_row('Type', element[0].type);
+              html += create_html_table_row('Impact', element[0].impact);
+              html += create_html_table_row('Functional Areas', element[0].functional_areas);
+              html += create_html_table_row('DDTS', element[0].ddts);
+              html += create_html_table_row('Description', element[0].description);
+              html += create_html_table_row('Status', element[0].status);
+              html += create_html_table_row('Compressed Image Size', element[0].compressed_image_size);
+              html += create_html_table_row('Uncompressed Image Size', element[0].uncompressed_image_size);
+              html += create_html_table_row('Package Bundles', element[0].package_bundles);
+              html += create_html_table_row('Pre-requisites', element[0].prerequisites);
+              html += create_html_table_row('Supersedes', element[0].supersedes);
+              html += create_html_table_row('Superseded By', element[0].superseded_by);
+                        
+              $('#smu-name-title').text('SMU Name: ' + element[0].name);
+              $('#smu-details-table').html(html); 
+     
+            });
+          }
+        });
+      }
+      
     });
   </script>
   
@@ -392,6 +443,33 @@
 {% endblock extra_head %}
 
 {% block main %}
+
+<div id="display-smu-details-dialog" class="modal" role="dialog">
+  <div class="modal-dialog">
+    <form method="post" class="form-horizontal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">x</button>
+          <h4><center><span id="smu-name-title"></span></center></h4>
+        </div>
+        <div class="modal-body">          
+          <div style="height:350px; overflow-y: scroll;">     
+            <table class="table table-striped" id="smu-details-table">    
+              <thead> 
+                <tr>  
+                  <th>Field Name</th> 
+                  <th>Value</th>  
+                </tr>  
+              </thead>  
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer"> 	     
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 
 <div id="select-server-dialog" class="modal" role="dialog">
   <div class="modal-dialog">
@@ -501,13 +579,13 @@
               <tr> 
                 <th>S</th>  
                 <th>ST</th> 
-                <th>Posted Date</th>  
+                <th>Posted Date</th> 
+                <th>SMU ID</th>  
                 <th>DDTS</th>  
                 <th>Type</th> 
                 <th>Description</th> 
                 <th>Impact</th>
                 <th>Functional Areas</th>
-                <th>SMU ID</th> 
                 <th>SMU Name</th> 
                 <th>Status</th> 
                 <th>Package Bundles</th> 
@@ -524,12 +602,12 @@
                 <th>S</th> 
                 <th>ST</th>  
                 <th>Posted Date</th>  
+                <th>SMU ID</th>
                 <th>DDTS</th>  
                 <th>Type</th> 
                 <th>Description</th> 
                 <th>Impact</th>
-                <th>Functional Areas</th>
-                <th>SMU ID</th> 
+                <th>Functional Areas</th> 
                 <th>SMU Name</th>  
                 <th>Status</th> 
                 <th>Package Bundles</th> 
