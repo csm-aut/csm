@@ -8,6 +8,7 @@
   <link href="/static/duallistbox-2.1.1/css/bootstrap-duallistbox.css" rel="stylesheet" type="text/css" media="all">
   <script src="/static/duallistbox-2.1.1/js/jquery.bootstrap-duallistbox.js"></script>
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+  <script src="/static/jquery/js/smu_info_dialog.js"></script>
   <style>
     .modal-dialog {
       /* new custom width */
@@ -385,11 +386,9 @@
           {
             "targets": 2,
             "data" : 'id',
-            /*
             "render": function ( data, type, row ) {
               return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
             }
-            */
           },
           {
             "targets": 3,
@@ -464,11 +463,9 @@
           {
             "targets": 2,
             "data" : 'id',
-            /*
             "render": function ( data, type, row ) {
               return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
             } 
-            */
           },
           {
             "targets": 3,
@@ -596,7 +593,19 @@
       });
       
       
-      {% block head_schedule_install %} {% endblock head_schedule_install %}
+      // Use delegate pattern for event
+      $("#smu-datatable").on("click", ".show-smu-details", function() {
+        display_smu_details_dialog($(this).attr('smu_id') );
+      }); 
+      
+      $("#sp-datatable").on("click", ".show-smu-details", function() {
+        display_smu_details_dialog($(this).attr('smu_id') );
+      });
+    
+      function display_smu_details_dialog(smu_id) {
+        $('#display-smu-details-dialog').modal({show:true}) 
+        display_smu_details($('#smu-details-table'), $('#smu-name-title'), smu_id)
+      }   
 
     });
   </script>
@@ -604,6 +613,33 @@
 {% endblock extra_head %}
 
 {% block main %}
+
+<div id="display-smu-details-dialog" class="modal" role="dialog">
+  <div class="modal-dialog">
+    <form method="post" class="form-horizontal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">x</button>
+          <h4><center><span id="smu-name-title"></span></center></h4>
+        </div>
+        <div class="modal-body">          
+          <div style="height:350px; overflow-y: scroll;">     
+            <table class="table table-striped" id="smu-details-table">    
+              <thead> 
+                <tr>  
+                  <th>Field Name</th> 
+                  <th>Value</th>  
+                </tr>  
+              </thead>  
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer"> 	     
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 
 <div id="select-software-dialog" class="modal" role="dialog">
   <div class="modal-dialog">
