@@ -8,7 +8,7 @@
   <link href="/static/duallistbox-2.1.1/css/bootstrap-duallistbox.css" rel="stylesheet" type="text/css" media="all">
   <script src="/static/duallistbox-2.1.1/js/jquery.bootstrap-duallistbox.js"></script>
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
-  <script src="/static/jquery/js/smu_info_dialog.js"></script>
+  <script src="/static/jquery/js/smu_info_dialog.js"></script> 
   <style>
     .modal-dialog {
       /* new custom width */
@@ -592,23 +592,38 @@
         $('#software-packages').val(String(software_packages));  
       });
       
+      // Use delegate pattern for event
+      // This happens when the user clicks a pre-requisite/supersedes/superseded by SMU 
+      // on the SMU info dialog.
+      $("#display-smu-details-dialog").on("click", ".show-smu-hyperlink-details", function() {
+        display_smu_details($('#smu-details-table'), $('#smu-name-title'), $(this).attr('smu_id'));
+        add_to_history($(this).attr('smu_id'));
+      });
       
       // Use delegate pattern for event
       $("#smu-datatable").on("click", ".show-smu-details", function() {
         display_smu_details_dialog($(this).attr('smu_id') );
-      }); 
+      });
       
       $("#sp-datatable").on("click", ".show-smu-details", function() {
         display_smu_details_dialog($(this).attr('smu_id') );
       });
-    
+      
       function display_smu_details_dialog(smu_id) {
+        init_history(smu_id);
         $('#display-smu-details-dialog').modal({show:true}) 
         display_smu_details($('#smu-details-table'), $('#smu-name-title'), smu_id)
-      }   
+      }
+      
+      $("#move-back").on("click", function() {
+        move_back($('#smu-details-table'), $('#smu-name-title'));
+      });
 
+      $("#move-forward").on("click", function() {
+        move_forward($('#smu-details-table'), $('#smu-name-title'));
+      });
+      
       {% block head_schedule_install %} {% endblock head_schedule_install %}
-
     });
   </script>
 
@@ -622,6 +637,10 @@
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal">x</button>
+          <a href="javascript://">
+            <img id='move-back' src="/static/blue_left_arrow.png" title="Go Left">
+            <img id='move-forward' src="/static/blue_right_arrow.png" title="Go Right">
+          </a>
           <h4><center><span id="smu-name-title"></span></center></h4>
         </div>
         <div class="modal-body">          

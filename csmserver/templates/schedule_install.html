@@ -8,7 +8,7 @@
     nonselectedlistlabel: 'Available Hosts',
     selectedlistlabel: 'Selected Hosts',
     preserveselectiononmove: 'moved',
-    moveonselect: false
+    moveonselect: false,
   });
            
   $('#form').submit(function() {  
@@ -33,8 +33,7 @@
   
   function populate_host_duallist(region_id, selected_role) {
     // Re-initialize the dual-listbox
-    //select_hosts_duallist.html('');
-    $("#selected-hosts option").text('');
+    select_hosts_duallist.html('');
       
     $.ajax({
       url: "/api/get_hosts/region/" + region_id + "/role/" + selected_role,

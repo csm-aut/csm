@@ -69,6 +69,7 @@ from utils import trim_last_slash
 from utils import is_empty
 from utils import get_tarfile_file_list
 from utils import create_directory
+from utils import comma_delimited_str_to_array
 from constants import DIRECTORY_AUT_LOGS, DIRECTORY_TEMP, DIRECTORY_REPOSITORY
 
 from server_helper import get_server_impl
@@ -2766,9 +2767,26 @@ def api_get_smu_details(smu_id):
         row['prerequisites'] = smu_info.prerequisites
         row['supersedes'] = smu_info.supersedes
         row['superseded_by'] = smu_info.superseded_by
+        row['prerequisites_smu_ids'] = get_smu_ids(db_session, smu_info.prerequisites)
+        row['supersedes_smu_ids'] = get_smu_ids(db_session, smu_info.supersedes)
+        row['superseded_by_smu_ids'] = get_smu_ids(db_session, smu_info.superseded_by)
+
         rows.append(row)
 
     return jsonify( **{'data':rows} )
+
+def get_smu_ids(db_session, smu_name_list):
+    smu_ids = []
+    smu_names = comma_delimited_str_to_array(smu_name_list)
+    for smu_name in smu_names:
+        smu_info = db_session.query(SMUInfo).filter(SMUInfo.name == smu_name).first()
+        if smu_info is not None:
+            smu_ids.append(smu_info.id)
+        else:
+            smu_ids.append('Unknown')
+                  
+    return ','.join([id for id in smu_ids])
+    
 
 @app.route('/optimize_list')
 @login_required

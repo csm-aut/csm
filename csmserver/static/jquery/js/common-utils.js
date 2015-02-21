@@ -10,7 +10,7 @@ function create_html_table_row(field, value) {
     var an_array = value.split(',');
     for (var i = 0; i < an_array.length; i++) {
       if (i == 0) {
-        html_code = '<tr><td>' + field + '</td><td>' + an_array[i] + '</td></tr>';;
+        html_code = '<tr><td>' + field + '</td><td>' + an_array[i] + '</td></tr>';
       } else {
         html_code += '<tr><td>&nbsp;</td><td>' + an_array[i] + '</td></tr>';
       }
