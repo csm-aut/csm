@@ -80,7 +80,7 @@ def get_database_settings():
       
     else:
         db_dict['username'] = username.replace(PREFIX, '')
-        db_dict['password'] = username.replace(PREFIX, '')
+        db_dict['password'] = password.replace(PREFIX, '')
         
     ENABLE_DEBUG = config.getboolean('Debug', 'debug')
     return db_dict
