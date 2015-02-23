@@ -83,7 +83,7 @@
           },
           {
             "targets": 6, 
-            "width": "50%",
+            "width": "42%",
             "data" : 'description'
           },
           {
@@ -98,25 +98,12 @@
           },
           {
             "targets": 9,
-            "width": "20%",
-            "data" : 'name'
-          },
-          {
-            "targets": 10,
             "data" : 'status'
           },
           {
-            "targets": 11,
+            "targets": 10,
             "width": "20%",
             "data" : 'package_bundles'
-          },
-          {
-            "targets": 12,
-            "data" : 'compressed_image_size'
-          },
-          {
-            "targets": 13,
-            "data" : 'uncompressed_image_size'
           }, 
         ],
         "ajax": {
@@ -174,7 +161,7 @@
           },
           {
             "targets": 6, 
-            "width": "50%",
+            "width": "42%",
             "data" : 'description'
           },
           {
@@ -187,23 +174,12 @@
           },
           {
             "targets": 9,
-            "data" : 'name'
-          },
-          {
-            "targets": 10,
             "data" : 'status'
           },
           {
-            "targets": 11,
-            "data" : 'package_bundles'
-          },
-          {
-            "targets": 12,
-            "data" : 'compressed_image_size'
-          },
-          {
-            "targets": 13,
-            "data" : 'uncompressed_image_size'
+            "targets": 10,
+            "width": "20%",
+            "data" : 'package_bundles',
           },
         ],
         "ajax": {
@@ -436,8 +412,8 @@
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal">x</button>
           <a href="javascript://">
-            <img id='move-back' src="/static/blue_left_arrow.png" title="Go Left">
-            <img id='move-forward' src="/static/blue_right_arrow.png" title="Go Right">
+            <img id='move-back' src="/static/blue_left_arrow.png" title="Go Back">
+            <img id='move-forward' src="/static/blue_right_arrow.png" title="Go Forward">
           </a> 
           <h4><center><span id="smu-name-title"></span></center></h4>
         </div>
@@ -575,11 +551,8 @@
                 <th>Description</th> 
                 <th>Impact</th>
                 <th>Functional Areas</th>
-                <th>SMU Name</th> 
                 <th>Status</th> 
                 <th>Package Bundles</th> 
-                <th>Compressed Size (Bytes)</th> 
-                <th>UnCompressed Size (Bytes)</th> 
             </thead>  
           </table>
         </div> 
@@ -597,11 +570,8 @@
                 <th>Description</th> 
                 <th>Impact</th>
                 <th>Functional Areas</th> 
-                <th>SMU Name</th>  
                 <th>Status</th> 
                 <th>Package Bundles</th> 
-                <th>Compressed Size (Bytes)</th> 
-                <th>UnCompressed Size (Bytes)</th> 
               </tr>  
             </thead>  
           </table>
