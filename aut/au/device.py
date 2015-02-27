@@ -259,7 +259,7 @@ class Device(object):
 
         """
         status = False
-        timeout = 300
+        timeout = 900
         poll_time = 30
         time_waited = 0
         print "System going for reload., please wait!!"
@@ -280,7 +280,7 @@ class Device(object):
 
                 if status :
                     return True
-        return connected
+        return status
 
     def _dbg(self, level, msg):
         if self.debug <= level:
