@@ -191,6 +191,9 @@ class OnboxPackage():
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\w*)\.(?P<PKGNAME>\w+)-(?P<SUBVERSION>\d+\.\d+\.\d+.\w*)')
         smu_expr_internal = re.compile(
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\w*)\.(?P<PKGNAME>\w+)-(?P<SUBVERSION>\d+\.\d+\.\d+)')
+        pkg_expr_noarch = re.compile(
+            r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
+
         pkgobj = PackageClass()
 
         p = pkg_expr_2pkg.search(pkg)
@@ -204,6 +207,8 @@ class OnboxPackage():
             p = smu_expr.search(pkg)
         if not p:
             p = smu_expr_internal.search(pkg)
+        if not p:
+            p = pkg_expr_noarch.search(pkg)
         if p:
             pkgobj.platform = p.group("PLATFORM")
             if "SUBPKGNAME" in p.groupdict().keys():
@@ -212,7 +217,10 @@ class OnboxPackage():
                 packagename = p.group("PKGNAME")
             pkgobj.pkg = packagename
             pkgobj.partition = p.group("DISK")
-            pkgobj.arch = p.group("ARCH")
+            try:
+               pkgobj.arch = p.group("ARCH")
+            except:
+               pkgobj.arch = "px"
             pkgobj.version = p.group("VERSION")
             if "SUBVERSION" in p.groupdict().keys():
                 pkgobj.subversion = p.group("SUBVERSION")
