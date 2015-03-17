@@ -25,3 +25,11 @@ $ unzip csm-master.zip
 $ cd /usr/local/csm/csmserver
 $ ./csmserver stop
 ```
+
+## Copy the Data Directories
+
+```shell
+$ cd /usr/local/csm/csmserver
+$ ./csmserver stop
+```
+
