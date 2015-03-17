@@ -94,6 +94,7 @@ function display_smu_details(table, title, smu_id) {
         html += create_html_table_row('Compressed Image Size', element[0].compressed_image_size);
         html += create_html_table_row('Uncompressed Image Size', element[0].uncompressed_image_size);
         html += create_html_table_row('Package Bundles', element[0].package_bundles);
+        html += create_html_table_row('Constituent DDTS', element[0].composite_DDTS);
         html += create_hyperlink_html_table_row('Pre-requisites', element[0].prerequisites_smu_ids, element[0].prerequisites);
         html += create_hyperlink_html_table_row('Supersedes', element[0].supersedes_smu_ids, element[0].supersedes);
         html += create_hyperlink_html_table_row('Superseded By', element[0].superseded_by_smu_ids, element[0].superseded_by);

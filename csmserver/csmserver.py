@@ -133,8 +133,11 @@ def home():
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
     system_option = SystemOption.get(db_session)
+    
+    form = DialogServerForm(request.form)
+    fill_servers(form.dialog_server.choices, get_server_list(DBSession()))
 
-    return render_template('host/home.html', hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
+    return render_template('host/home.html', form=form, hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
         servers=servers, hosts_info_json=get_host_platform_json(hosts), system_option=system_option, current_user=current_user) 
 
 def get_host_platform_json(hosts):
@@ -1573,7 +1576,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_job.pending_downloads = ','.join(form.hidden_pending_downloads.data.split())
     else:
         install_job.pending_downloads = ''
-    
+
     install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
     install_job.server_id = form.server.data if form.server.data > 0 else None
     install_job.server_directory = form.hidden_server_directory.data
@@ -2767,6 +2770,7 @@ def api_get_smu_details(smu_id):
         row['prerequisites'] = smu_info.prerequisites
         row['supersedes'] = smu_info.supersedes
         row['superseded_by'] = smu_info.superseded_by
+        row['composite_DDTS'] = smu_info.composite_DDTS
         row['prerequisites_smu_ids'] = get_smu_ids(db_session, smu_info.prerequisites)
         row['supersedes_smu_ids'] = get_smu_ids(db_session, smu_info.supersedes)
         row['superseded_by_smu_ids'] = get_smu_ids(db_session, smu_info.superseded_by)
@@ -2880,7 +2884,7 @@ def api_get_missing_prerequisite_list():
     hostname = request.args.get('hostname')
     # The SMUs selected by the user to install
     smu_list = request.args.get('smu_list').split()
-  
+
     prerequisite_list = get_missing_prerequisite_list(smu_list)
     host_packages = get_host_active_packages(hostname)
     

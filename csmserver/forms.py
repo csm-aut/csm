@@ -57,8 +57,8 @@ class HostImportForm(Form):
     data_list = TextAreaField('Comma Delimited Fields')   
     
 class JumpHostForm(Form):
-    hostname = TextField('Server Name', [required(), Length(max=255)])
-    host_or_ip = TextField('Server or IP', [required(), Length(max=255)])
+    hostname = TextField('Jump Server', [required(), Length(max=255)])
+    host_or_ip = TextField('Name or IP', [required(), Length(max=255)])
     username = TextField('Username')
     password = PasswordField('Password')
     connection_type = SelectField('Connection Type', coerce=str,

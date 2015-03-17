@@ -167,6 +167,7 @@ def get_optimize_list(smu_list):
     
     # Load the SMU information
     smu_loader = SMUInfoLoader(platform, release)
+    file_suffix = smu_loader.file_suffix
     smu_info_list= []
     smu_name_set = set()
     
@@ -193,15 +194,15 @@ def get_optimize_list(smu_list):
         
         missing_required_prerequisite_set = get_unique_set_from_dict(missing_required_prerequisite_dict)
         for pre_requisite_smu in missing_required_prerequisite_set:
-            result_list.append(pre_requisite_smu + ' (A Missing Pre-requisite)')
+            result_list.append(pre_requisite_smu + '.' + file_suffix + ' (A Missing Pre-requisite)')
             
         excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
         
         for smu_info in smu_info_list:
             if smu_info.name not in excluded_supersede_dict:
-                result_list.append(smu_info.name + ' (Superseded)')
+                result_list.append(smu_info.name + '.' + file_suffix + ' (Superseded)')
             else:
-                result_list.append(smu_info.name)
+                result_list.append(smu_info.name + '.' + file_suffix)
                 
     return result_list, error_list
 

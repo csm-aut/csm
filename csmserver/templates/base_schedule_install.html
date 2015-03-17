@@ -73,7 +73,7 @@
         retrieve_file_list(server_id, $('#server_directory'), $('#hidden_server_directory').val());
       }
       
-      $('#browse-button').on('click', function (e) {
+      $('#browse-repository-button').on('click', function (e) {
          server_id = $('#server option:selected').val();
          
          $('#dialog_server').val(server_id);
@@ -277,7 +277,7 @@
          }
         
          $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()) );
-                 
+         
         // Record the newly selected directory
         $('#hidden_server_directory').val($('#server_directory').val());  
   

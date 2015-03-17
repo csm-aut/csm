@@ -160,9 +160,7 @@ class SMUInfoLoader(object):
             smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
             smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))              
             smu_info.uncompressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE))
-        
-            if package_type == PackageType.SMU:
-                smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS);
+            smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS);
             smu_info.package_type = package_type
                 
             self.smu_meta.smu_info.append(smu_info)

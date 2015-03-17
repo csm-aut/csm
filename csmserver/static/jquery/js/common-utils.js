@@ -20,15 +20,16 @@ function create_html_table_row(field, value) {
      return '';
  }       
 }
-      
+
 /*
-Trim all spaces from lines
+Trims all whitespaces from lines and returns them as separate line
 */
 function trim_lines(lines) {
   var result = '';
-  var temp = lines.split("\n");
+  // Use a regex to split the String literal by all whitespace (i.e. spaces/newlines/tabs). 
+  var temp = lines.split(/\s+/g);
   for (var i = 0; i < temp.length; i++) {
-    var line = temp[i].replace(/ /g,'');
+    var line = temp[i]
     if (line.length > 0) {
       if (i == temp.length -1) {
         result += line;

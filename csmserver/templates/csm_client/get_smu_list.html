@@ -5,6 +5,7 @@
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
   <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
   <script src="/static/jquery/js/smu_info_dialog.js"></script>
+  <script src="/static/jquery/js/browse_server_dialog.js"></script>
   <script>  
     $(function() {
             
@@ -117,7 +118,6 @@
     
       var sp_table = $("#sp-datatable").dataTable({
         "order": [[ 2, "desc" ]],
-
         "pageLength": 100,
         "scrollX": true,
         "scrollY": 350,
@@ -212,13 +212,13 @@
       }
       
       function toggle_filter_icon_color(filter_option) {
-          if (filter_option == 'Optimal') {
-            $('#filter-icon').addClass("DarkGreen");
-            $('#filter-icon').removeClass("Red");
-          } else {
-            $('#filter-icon').removeClass("DarkGreen");
-            $('#filter-icon').addClass("Red"); 
-          }
+        if (filter_option == 'Optimal') {
+          $('#filter-icon').addClass("DarkGreen");
+          $('#filter-icon').removeClass("Red");
+        } else {
+          $('#filter-icon').removeClass("DarkGreen");
+          $('#filter-icon').addClass("Red"); 
+        }
       } 
       
       var software_packages = '';
@@ -246,69 +246,20 @@
       });
       
       $('#dialog_server').on('change', function (e) {
-        retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), '');
+        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), '','');
       });
-      
-          
+              
       $('#dialog_server_directory').on('change', function (e) {        
-        retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val())
+        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(),'')
       });
-      
-      function retrieve_directory_list(server_id, server_directory_selector, server_directory) { 
-        server_directory_selector.html('');
-        
-        if (server_id == -1) {
-          return;
-        }
-               
-        server_directory_selector.append('<option value="' + server_directory  +'">' + server_directory + '</option>');
-        
-        browse_spinner.show();
-
-        $.ajax({
-          url: "/api/get_server_file_dict/" + server_id,
-          dataType: 'json',
-          data: { server_directory: server_directory} ,
-          success: function (response) {          
-            if (response.status == 'Failed') {        
-              bootbox.alert("Either the server repository is not reachable or server directory does not exist.");
-            } else {
-              $.each(response, function(index, element) {
-                //populate_file_list(element, server_directory_selector, server_directory);
-                for (i = 0; i < element.length; i++) {          
-                  if (element[i].is_directory == true) {
-                    server_directory_selector.append('<option value="' + element[i].filename + '">' + element[i].filename + '</option>');
-                  } 
-                }
-              }); 
-            }       
-            browse_spinner.hide();
-          },
-          error: function(XMLHttpRequest, textStatus, errorThrown) { 
-            bootbox.alert("Unable to list files. Error=" + errorThrown);
-            browse_spinner.hide();
-          }  
-        });      
-      }
-      
+          
       $('#dialog-move-up').on('click', function (e) {
-        retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()) );
+        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()),'' );
       }); 
       
       $('#dialog-reset-server-directory').on('click', function (e) {
-        reset_server_directory($('#dialog_server_directory'), $('#dialog_server_directory').val());
+        reset_server_directory(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(),'');
       });
-      
-      function reset_server_directory(server_directory_selector, server_directory) {
-        if (server_directory == '') {
-          return;
-        }
-        bootbox.confirm('Reset the server directory to use the server repository base directory?', function(result) {
-          if (result) {
-            retrieve_directory_list($('#dialog_server').val(), server_directory_selector, '')
-          }
-        });   
-      }
       
       $('#on-select-server-submit').click(function(e) {    
         if ($('#dialog_server').val() == -1) {

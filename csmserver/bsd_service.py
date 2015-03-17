@@ -1,4 +1,4 @@
-
+from models import logger
 import requests
 import json
 import os
@@ -53,22 +53,24 @@ class BSDServiceHandler(object):
             image_size = self.get_json_value(json_text, BSD_IMAGE_SIZE)
             exception_message = self.get_json_value(json_text, BSD_EXCEPTION_MESSAGE)
             
-            if exception_message is not None:
-                return
-            
-            if metadata_trans_ID is not None and image_GUID is not None:
-                response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
-                if response is not None:
-                    #print('response', response.text)
-                    json_text = response.json() 
-                    download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
-                    download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
+            if exception_message is None:          
+                if metadata_trans_ID is not None and image_GUID is not None:
+                    response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
+                    if response is not None:
+                        #print('response', response.text)
+                        json_text = response.json() 
+                        download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
+                        download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
                     
-                    if download_url is not None and download_session_ID is not None:
-                        #print('download_url', download_url)
-                        #print('download_session', download_session_ID)
-                        self.send_get_image(access_token, download_url, output_file_path, self.image_name, image_size, callback)
-
+                        if download_url is not None and download_session_ID is not None:
+                            #print('download_url', download_url)
+                            #print('download_session', download_session_ID)
+                            self.send_get_image(access_token, download_url, output_file_path, self.image_name, image_size, callback)
+                        else:
+                            logger.error('bsd_service: user "%s" may not have BSD download privilege', self.username)
+                            
+            else:
+                logger.error('bsd_service hit exception %s', exception_message)
     
     def send_get_image(self, access_token, url_string, output_file_path, image_name, image_size, callback=None):
         # Segment is 1 MB.  For 40 MB files, there will be about 40 updates (i.e. database writes)
