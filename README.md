@@ -12,11 +12,12 @@ Consult the Installation Guide to install CSM Server.
 
 # For Upgrade to Latest Code
 
-This assumes you have already installed CSM Server and wanted to get the latest code.  The existing CSM Server should have  been installed on /usr/local/csm.  Copy csm-master.zip to /usr/local and unzip its contents.
+This section assumes you have already installed CSM Server and wanted to get the latest code.  CSM Server should have  been installed on /usr/local/csm.  Copy csm-master.zip to /usr/local and unzip its contents.
 
 ```shell
 $ cd /usr/local
 $ unzip csm-master.zip
 ```
 
+## Shut Down Existing CSM Server
 
