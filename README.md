@@ -12,6 +12,8 @@ $ unzip csm-master.zip
 
 # For New Installation
 
-Follow the CSM Server Install Guide for more information.
+Consult the CSM Server Installation Guide.
 
 # For Upgrade to Latest Code
+
+This assumes you have already installed CSM Server and wanted to get the latest code.
