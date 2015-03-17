@@ -6,4 +6,6 @@ CSM Server is an automation and orchestration framework for IOS-XR devices.  It 
 
 Click the Download ZIP button on the right to download csm-master.zip.  
 
-'unzip csm-master.zip'.
+```shell
+$ unzip csm-master.zip
+```
