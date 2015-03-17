@@ -6,11 +6,11 @@ CSM Server is an automation and orchestration framework for IOS-XR devices.  It 
 
 Click the Download ZIP button on the right to download csm-master.zip.  
 
-# For New Installation
+# For a New Installation
 
 Consult the Installation Guide to install CSM Server.
 
-# For Upgrade to Latest Code
+# For Upgrading to Latest Code
 
 This section assumes you have already installed CSM Server and wanted to get the latest code.  CSM Server should have  been installed on /usr/local/csm.  Copy csm-master.zip to /usr/local and unzip its contents.
 
@@ -21,3 +21,7 @@ $ unzip csm-master.zip
 
 ## Shut Down Existing CSM Server
 
+```shell
+$ cd /usr/local/csm/csmserver
+$ ./csmserver stop
+```
