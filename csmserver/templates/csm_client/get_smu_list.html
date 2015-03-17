@@ -239,7 +239,7 @@
           $('#dialog_server').val($.cookie('server_id') == null ? -1 : parseInt($.cookie('server_id')) );
           var preferred_server_directory = $.cookie('server_directory') == null ? "" : $.cookie('server_directory');    
 
-          retrieve_directory_list($('#dialog_server').val(), $('#dialog_server_directory'), preferred_server_directory)
+          retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), preferred_server_directory, '')
         } else {
           bootbox.alert("No SMU or Service Pack was selected.");
         }
