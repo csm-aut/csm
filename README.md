@@ -21,7 +21,7 @@ $ unzip csm-master.zip
 
 ## Edit csmserver launch script and database.ini
 
-If previously, you have made modifications to csmserver launch script (e.g. use a different python interpreter) or database.ini (e.g. use different uesrname and password to connect to the database), you will need to make the same changes here.
+If you have previously made modifications to csmserver launch script (e.g. use a different python interpreter) or database.ini (e.g. use different username and password to connect to the database), you will need to make the same changes here.
 
 ```shell
 $ vi /usr/local/csm-master/csmserver/csmserver
@@ -30,7 +30,7 @@ $ vi /usr/local/csm-master/csmserver/database.ini
 
 ## Use the Latest Code
 
-Before you do that, be sure to shutdown CSM Server.
+To use the latest code, shutdown CSM Server.  Rename the current CSM Server directory to csm_old and the latest code directory to csm.  Then, restart CSM Server.
 
 ```shell
 $ cd /usr/local
