@@ -30,7 +30,14 @@ $ vi /usr/local/csm-master/csmserver/database.ini
 
 ## Use the Latest Code
 
-To use the latest code, shutdown CSM Server.  Rename the current CSM Server directory to csm_old and the latest code directory to csm.  Then, restart CSM Server.
+To use the latest code, shutdown existing CSM Server.  
+
+```shell
+$ cd /usr/local/csm/csmserver
+$ ./csmserver stop
+```
+
+Rename the current CSM Server folder to csm_old and the csm-master folder to csm.  
 
 ```shell
 $ cd /usr/local
@@ -38,3 +45,9 @@ $ mv csm csm_old
 $ mv csm-master csm
 ```
 
+Then, restart CSM Server.
+
+```shell
+$ cd /usr/local/csm/csmserver
+$ ./csmserver start
+```
