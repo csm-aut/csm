@@ -16,7 +16,7 @@ function start_csmserver
     echo "starting CSM Server....."
     # This will force database creation for a new installation via a single entry point.
     # Otherwise, gunicorn multiple workers will create contention when they all start.
-    $PYTHON create_schema.py
+    $PYTHON initialize.py
     gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- csmserver:app > /dev/null &
     $PYTHON csmdispatcher.py > /dev/null & 
 }
@@ -37,7 +37,7 @@ function start_secure_csmserver
     fi
 
     echo "starting Secure CSM Server"
-    $PYTHON create_schema.py
+    $PYTHON initialize.py
     gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- --keyfile=$SSLKEY --certfile=$SSLCERT  csmserver:app > /dev/null &
     $PYTHON csmdispatcher.py > /dev/null &
 }

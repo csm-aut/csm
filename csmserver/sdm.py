@@ -25,7 +25,7 @@ from utils import get_tarfile_file_list
 import os
 import traceback
     
-from constants import DIRECTORY_REPOSITORY 
+from constants import get_repository_directory
 
 lock = threading.Lock()
 in_progress_downloads = {}
@@ -89,7 +89,7 @@ class DownloadWorkUnit(WorkUnit):
                 return
             
             self.download_job = download_job
-            output_file_path = DIRECTORY_REPOSITORY + os.path.sep + download_job.cco_filename
+            output_file_path = get_repository_directory() + download_job.cco_filename
       
             # Only download if the image (tar file) is not in the downloads directory.
             # And, the image is a good one.
@@ -114,10 +114,9 @@ class DownloadWorkUnit(WorkUnit):
                 download_job.set_status('Preparing to download from cisco.com.')
                 db_session.commit() 
                 
-                bsd.download(output_file_path, callback=self.progress_listener)
-            
+                bsd.download(output_file_path, callback=self.progress_listener)         
                 # Untar the file to the output directory
-                tarfile_file_list = untar(output_file_path, DIRECTORY_REPOSITORY)
+                tarfile_file_list = untar(output_file_path, get_repository_directory())
             else:
                 tarfile_file_list = get_tarfile_file_list(output_file_path)
             
@@ -129,7 +128,7 @@ class DownloadWorkUnit(WorkUnit):
             if server is not None:
                 server_impl = get_server_impl(server) 
                 for filename in tarfile_file_list:
-                    server_impl.upload_file(DIRECTORY_REPOSITORY + os.path.sep + filename, filename, sub_directory=download_job.server_directory)       
+                    server_impl.upload_file(get_repository_directory() + filename, filename, sub_directory=download_job.server_directory)       
             
             archive_download_job(db_session, download_job, JobStatus.COMPLETED) 
             db_session.commit()

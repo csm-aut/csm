@@ -10,7 +10,7 @@ import importlib
 import tarfile
 import traceback
 
-from constants import DIRECTORY_AUT_LOGS
+from constants import get_autlogs_directory
 
 def import_class(cl):
     d = cl.rfind(".")
@@ -29,12 +29,12 @@ def import_module(module, path=None):
 def create_log_directory(host_or_ip, id):
     host = host_or_ip.strip().replace('.', '_').replace(' ','_')
     date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
-    directory = DIRECTORY_AUT_LOGS + sep + host + '-' + date_string + '-' + str(id)
+    directory = get_autlogs_directory() + host + '-' + date_string + '-' + str(id)
 
     if not path.exists(directory):
         makedirs(directory)
             
-    return directory
+    return host + '-' + date_string + '-' + str(id)
 
 def create_directory(directory):
     # Creates the a directory if not exist
@@ -42,7 +42,7 @@ def create_directory(directory):
         try:
             os.makedirs(directory)
         except:
-            print('Unable to create directory' + directory)
+            print('ERROR: Unable to create directory' + directory)      
         
 """
 Converts a datetime string to internal python datetime.  

@@ -57,6 +57,7 @@ from constants import ServerType
 from constants import UserPrivilege
 from constants import ConnectionType
 from constants import BUG_SEARCH_URL
+from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -68,9 +69,7 @@ from utils import make_url
 from utils import trim_last_slash
 from utils import is_empty
 from utils import get_tarfile_file_list
-from utils import create_directory
 from utils import comma_delimited_str_to_array
-from constants import DIRECTORY_AUT_LOGS, DIRECTORY_TEMP, DIRECTORY_REPOSITORY
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -108,11 +107,6 @@ login_manager = LoginManager()
 login_manager.setup_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in.'
-
-# Create the necessary support directories
-create_directory(DIRECTORY_TEMP)
-create_directory(DIRECTORY_REPOSITORY)
-create_directory(DIRECTORY_AUT_LOGS)
  
 @login_manager.user_loader
 def load_user(user_id):
@@ -592,7 +586,7 @@ def delete_host_inventory_job_session_logs(db_session, host):
     inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id)
     for inventory_job in inventory_jobs:
         try:
-            shutil.rmtree(inventory_job.session_log)   
+            shutil.rmtree(get_autlogs_directory() + inventory_job.session_log)   
         except:
             logger.exception('delete_host_inventory_job_session_logs hit exception')
             
@@ -600,7 +594,7 @@ def delete_host_install_job_session_logs(db_session, host):
     install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id)
     for install_job in install_jobs:
         try:
-            shutil.rmtree(install_job.session_log)   
+            shutil.rmtree(get_autlogs_directory() + install_job.session_log)   
         except:
             logger.exception('delete_host_install_job_session_logs hit exception')
 
@@ -1171,11 +1165,11 @@ def get_install_job_json_dict(install_jobs):
 @login_required
 def get_files_from_csm_repository():
     result_list = {}
-    file_list = get_file_list(DIRECTORY_REPOSITORY)
+    file_list = get_file_list(get_repository_directory())
     
     for filename in file_list:
         if '.size' in filename:
-            recorded_size = open(DIRECTORY_REPOSITORY + os.sep + filename, 'r').read()
+            recorded_size = open(get_repository_directory() + filename, 'r').read()
             # Pick out the tar files that have been download completely
             result_list[filename.replace('.size','')] = recorded_size
     
@@ -1195,11 +1189,11 @@ def api_delete_image_from_repository(image_name):
     if current_user.privilege != UserPrivilege.ADMIN:
         abort(401)
         
-    tar_image_path = DIRECTORY_REPOSITORY + os.sep + image_name
+    tar_image_path = get_repository_directory() + image_name
     file_list = get_tarfile_file_list(tar_image_path)
     for filename in file_list:
         try:
-            os.remove(DIRECTORY_REPOSITORY + os.sep + filename)
+            os.remove(get_repository_directory() + filename) 
         except:
             pass
        
@@ -2010,7 +2004,7 @@ def host_session_log(hostname, table, id):
         abort(404)
         
     # Gets the absolute file path of the file
-    absolute_file_path = os.path.dirname(os.path.abspath(__file__)) + os.sep + file_path
+    absolute_file_path = os.path.dirname(os.path.abspath(__file__)) + os.sep + get_autlogs_directory() + file_path
     if not(os.path.isdir(absolute_file_path) or os.path.isfile(absolute_file_path)):
         abort(404)
     
@@ -2020,7 +2014,7 @@ def host_session_log(hostname, table, id):
         # Returns all files under the requeted directory
         file_list = get_file_list(absolute_file_path)
         for file in file_list:
-            file_entries.append(file_path + os.sep + file)
+            file_entries.append(get_autlogs_directory() + file_path + os.sep + file) 
     else:
         # Returns the contents of the requested file
         fo = None
@@ -2722,7 +2716,7 @@ def api_get_sp_list(platform, release):
  
 def get_smu_or_sp_list(smu_info_list, file_suffix): 
 
-    file_list = get_file_list(DIRECTORY_REPOSITORY, '.' + file_suffix)
+    file_list = get_file_list(get_repository_directory(), '.' + file_suffix)
     
     rows = []  
     for smu_info in smu_info_list:
@@ -2951,11 +2945,11 @@ def download_system_logs():
         contents += '-' * 70 + '\n'
         
     # Create a file which contains the size of the image file.
-    log_file = open(DIRECTORY_TEMP + os.path.sep + 'system_logs', 'w')
+    log_file = open(get_temp_directory() + 'system_logs', 'w')
     log_file.write(contents)
     log_file.close()  
         
-    return send_file(DIRECTORY_TEMP + os.path.sep + 'system_logs', as_attachment=True)
+    return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
         
 if __name__ == '__main__':    
     app.run(host='0.0.0.0', use_reloader=False, threaded=True, debug=False)

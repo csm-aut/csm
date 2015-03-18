@@ -2,7 +2,7 @@
 from constants import ServerType
 from models import Server
 from utils import concatenate_dirs
-from constants import DIRECTORY_TEMP
+from constants import get_temp_directory, get_autlogs_directory
 
 class Context(object):
     def __init__(self):
@@ -42,7 +42,7 @@ class ConnectionContext(Context):
 
     @property
     def log_directory(self):
-        return DIRECTORY_TEMP
+        return get_temp_directory()
 
     def post_status(self, message):
         pass
@@ -62,7 +62,7 @@ class InventoryContext(ImageContext):
     
     @property
     def log_directory(self):
-        return self.inventory_job.session_log  
+        return get_autlogs_directory() + self.inventory_job.session_log  
     
     def post_status(self, message):
         if self.db_session is not None and \
@@ -87,7 +87,7 @@ class InstallContext(ImageContext):
     
     @property
     def log_directory(self):
-        return self.install_job.session_log 
+        return get_autlogs_directory() + self.install_job.session_log 
     
     @property
     def operation_id(self):

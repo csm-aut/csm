@@ -7,6 +7,8 @@ from models import InventoryJobHistory
 from models import InstallJobHistory
 from models import DownloadJobHistory
 
+from constants import get_autlogs_directory
+
 import threading 
 import sched
 import datetime
@@ -109,8 +111,8 @@ class InventoryManagerScheduler(threading.Thread):
             if skip_count >= inventory_history_per_host:
                 # Delete the session log directory
                 try:
-                    if inventory_job.session_log is not None:
-                        shutil.rmtree(inventory_job.session_log)   
+                    if inventory_job.session_log is not None: 
+                        shutil.rmtree(get_autlogs_directory() + inventory_job.session_log)   
                 except:
                     logger.exception('InventoryManagerScheduler hit exception- inventory job = %s', inventory_job.id)
                     
@@ -136,7 +138,7 @@ class InventoryManagerScheduler(threading.Thread):
                 # Delete the session log directory
                 try:
                     if install_job.session_log is not None:
-                        shutil.rmtree(install_job.session_log)   
+                        shutil.rmtree(get_autlogs_directory() + install_job.session_log)   
                 except:
                     logger.exception('InventoryManagerScheduler hit exception - install job = %s', install_job.id)
                 
