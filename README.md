@@ -6,30 +6,48 @@ CSM Server is an automation and orchestration framework for IOS-XR devices.  It 
 
 Click the Download ZIP button on the right to download csm-master.zip.  
 
-# For a New Installation
+# New Installation
 
 Consult the Installation Guide to install CSM Server.
 
-# For Upgrading to Latest Code
+# Upgrading to the Latest Code
 
-This section assumes you have already installed CSM Server and wanted to get the latest code.  CSM Server should have  been installed on /usr/local/csm.  Copy csm-master.zip to /usr/local and unzip its contents.
+This section assumes that CSM Server has been installed on /usr/local/csm and you wanted to get the latest code.  Copy csm-master.zip to /usr/local and unzip its contents.
 
 ```shell
 $ cd /usr/local
 $ unzip csm-master.zip
 ```
 
-## Shut Down Existing CSM Server
+## Edit csmserver launch script and database.ini
+
+If you have previously made modifications to csmserver launch script (e.g. use a different python interpreter) or database.ini (e.g. use different username and password to connect to the database), you will need to make the same changes here.
+
+```shell
+$ vi /usr/local/csm-master/csmserver/csmserver
+$ vi /usr/local/csm-master/csmserver/database.ini
+```
+
+## Use the Latest Code
+
+To use the latest code, shutdown existing CSM Server.  
 
 ```shell
 $ cd /usr/local/csm/csmserver
 $ ./csmserver stop
 ```
 
-## Copy the Data Directories
+Rename the current CSM Server folder to csm_old and the csm-master folder to csm.  
+
+```shell
+$ cd /usr/local
+$ mv csm csm_old              
+$ mv csm-master csm
+```
+
+Then, restart CSM Server.
 
 ```shell
 $ cd /usr/local/csm/csmserver
-$ ./csmserver stop
+$ ./csmserver start
 ```
-
