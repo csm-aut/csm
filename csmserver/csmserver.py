@@ -2000,40 +2000,37 @@ def host_session_log(hostname, table, id):
         abort(404)
        
     file_path = request.args.get('file_path')
-    if file_path is None:
+    autlogs_file_path = get_autlogs_directory() + file_path
+
+    if not(os.path.isdir(autlogs_file_path) or os.path.isfile(autlogs_file_path)):
         abort(404)
-        
-    # Gets the absolute file path of the file
-    absolute_file_path = os.path.dirname(os.path.abspath(__file__)) + os.sep + get_autlogs_directory() + file_path
-    if not(os.path.isdir(absolute_file_path) or os.path.isfile(absolute_file_path)):
-        abort(404)
-    
+
     file_entries = []
-    log_content = '\n' 
-    if os.path.isdir(absolute_file_path):
-        # Returns all files under the requeted directory
-        file_list = get_file_list(absolute_file_path)
+    log_content = '\n'
+    if os.path.isdir(autlogs_file_path):
+        # Returns all files under the requested directory
+        file_list = get_file_list(autlogs_file_path)
         for file in file_list:
-            file_entries.append(get_autlogs_directory() + file_path + os.sep + file) 
+            file_entries.append(file_path + os.sep + file)
     else:
         # Returns the contents of the requested file
         fo = None
         try:
-            fo = io.open(file_path, "r", encoding = 'utf-8')
+            fo = io.open(autlogs_file_path, "r", encoding = 'utf-8')
             lines = fo.readlines()
-            
+
             for line in lines:
                 # Trim UNIX ^M characters
                 line = line.replace("\r","").replace("\n","")
                 if len(line) > 0:
                     log_content += line + '\n'
-            
+
         finally:
-            fo.close()         
+            fo.close()
 
-    return render_template('host/session_log.html', hostname=hostname, table=table, table_id=id, file_entries=file_entries, log_content=log_content, is_file=os.path.isfile(absolute_file_path))      
+    return render_template('host/session_log.html', hostname=hostname, table=table, table_id=id, file_entries=file_entries, log_content=log_content, is_file=os.path.isfile(autlogs_file_path))
 
- 
+
 @app.route('/hosts/<hostname>/<table>/trace/<int:id>/')
 @login_required
 def host_trace(hostname, table, id):
