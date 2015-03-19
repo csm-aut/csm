@@ -4,7 +4,7 @@
 import models
 
 from utils import create_directory
-from constants import, get_autlogs_directory, get_repository_directory, get_temp_directory
+from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
 
 # Create the necessary supporting directories
 create_directory(get_autlogs_directory())
