@@ -594,7 +594,7 @@ class SystemOption(Base):
     enable_inventory = Column(Boolean, default=True)
     inventory_hour = Column(Integer, default=0)
     inventory_history_per_host = Column(Integer, default=10)
-    download_history_per_user = Column(Integer, default=10)
+    download_history_per_user = Column(Integer, default=100)
     install_history_per_host = Column(Integer, default=1000)
     total_system_logs = Column(Integer, default=10000)
     enable_default_host_authentication = Column(Boolean, default=False)

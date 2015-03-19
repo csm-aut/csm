@@ -41,6 +41,7 @@ def create_directory(directory):
     if not os.path.exists(directory):
         try:
             os.makedirs(directory)
+            os.chmod(directory, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)  
         except:
             print('ERROR: Unable to create directory' + directory)      
         
