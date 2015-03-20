@@ -40,7 +40,7 @@ def make_connection_from_urls(
         platform='generic',
         account_manager=None):
 
-    module_str = 'condor.platforms.%s' % (platform)
+    module_str = 'au.condor.platforms.%s' % (platform)
     try:
         __import__(module_str)
         module = sys.modules[module_str]
