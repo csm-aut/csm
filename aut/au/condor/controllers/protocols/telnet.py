@@ -58,16 +58,14 @@ class Telnet(Protocol):
 
         self._spawn_session(command)
 
-    def _dbg(self, level, msg):
-        print "{}: {}".format(self.protocol, msg)
-
     def connect(self):
         state = 0
         transition = 0
         event = 0
         failed = False
         max_transitions = 10
-        timeout = 100  # TIME FOR TELNET CONNECTION BEFORE ERROR
+        timeout = 300  # TIME FOR TELNET CONNECTION BEFORE ERROR
+
         while not failed and transition < max_transitions + 1:
             transition += 1
             event = self.ctrl.expect(
@@ -80,7 +78,7 @@ class Telnet(Protocol):
             self._dbg(10, "{}: EVENT={}, STATE={}, TRANSITION={}".format(
                 self.hostname, event, state, transition
             ))
-            timeout = 30
+            timeout = 60
             if event == 0:  # ESCAPE_CHARACTER
                 if state == 0:
                     self._dbg(
@@ -95,7 +93,7 @@ class Telnet(Protocol):
                     raise ConnectionError("Unexpected session init")
 
             if event == 1:  # USERNAME
-                if state in [1, 2]:
+                if state in [0, 1, 2]:
                     self._dbg(
                         10,
                         "{}: Sending username: '{}'".format(
@@ -154,7 +152,7 @@ class Telnet(Protocol):
                     return False
 
             if event == 4:  # SHELL PROMPT
-                if state in [4, 5, 6]:
+                if state in [1, 4, 5, 6]:
                     self._dbg(
                         10,
                         "{}: Received Shell/Unix prompt".format(self.hostname)
@@ -233,7 +231,7 @@ class Telnet(Protocol):
                     )
                     self.ctrl.sendline('PS1="{}"'.format("AU_PROMPT"))
                     state = 5
-                    timeout = 10
+                    timeout = 5
                     continue
 
                 if state == 5:
@@ -244,7 +242,7 @@ class Telnet(Protocol):
                     )
                     self.ctrl.sendline('set prompt="{}"'.format("AU_PROMPT"))
                     state = 6
-                    timeout = 10
+                    timeout = 5
                     continue
 
                 if state == 6:
@@ -274,6 +272,7 @@ class Telnet(Protocol):
                 "{}: State machine error. Loop suspected".format(self.hostname)
             )
             return False
+
         return True
 
     def disconnect(self):

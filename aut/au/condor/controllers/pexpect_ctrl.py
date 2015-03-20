@@ -51,7 +51,7 @@ class Controller(object):
                  hostname,
                  hosts,
                  account_manager=None,
-                 max_attempts=3,
+                 max_attempts=1,
                  logfile=None):
 
         self.hosts = to_list(hosts)
@@ -66,14 +66,14 @@ class Controller(object):
     @property
     def before(self):
         """
-        Property added to imitated pexpect.spawn class
+        Property added to imitate pexpect.spawn class
         """
         return self._session.before if self._session else None
 
     @property
     def after(self):
         """
-        Property added to imitated pexpect.spawn class
+        Property added to imitate pexpect.spawn class
         """
         return self._session.after if self._session else None
 

@@ -255,7 +255,7 @@ class SSH(Protocol):
                     )
                     self.ctrl.sendline('PS1="{}"'.format("AU_PROMPT"))
                     state = 2
-                    timeout = 10
+                    timeout = 5
                     continue
 
                 if state == 2:
@@ -266,7 +266,7 @@ class SSH(Protocol):
                     )
                     self.ctrl.sendline('set prompt="{}"'.format("AU_PROMPT"))
                     state = 3
-                    timeout = 10
+                    timeout = 5
                     continue
 
                 if state == 3:
