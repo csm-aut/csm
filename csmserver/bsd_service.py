@@ -67,7 +67,7 @@ class BSDServiceHandler(object):
                             #print('download_session', download_session_ID)
                             self.send_get_image(access_token, download_url, output_file_path, self.image_name, image_size, callback)
                         else:
-                            logger.error('bsd_service: user "%s" may not have BSD download privilege', self.username)
+                             raise Exception('If user "' + self.username + '" has download software privilege from Cisco, he/she may have to accept the End User License Agreement at http://www.cisco.com/web/go/eula before proceeding.')
                             
             else:
                 logger.error('bsd_service hit exception %s', exception_message)
