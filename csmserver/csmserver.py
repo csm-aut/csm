@@ -2925,7 +2925,7 @@ def api_optimize_list():
 @app.route('/download_session_log')
 @login_required
 def download_session_log():
-    return send_file(request.args.get('file_path'), as_attachment=True)
+    return send_file(get_autlogs_directory() + request.args.get('file_path'), as_attachment=True)
 
 @app.route('/download_system_logs')
 @login_required
