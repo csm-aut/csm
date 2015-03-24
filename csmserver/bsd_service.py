@@ -61,17 +61,38 @@ class BSDServiceHandler(object):
                         json_text = response.json() 
                         download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
                         download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
-                    
+                        
+                        # When download_url is null, it may be that the user needs to
+                        # acknowledge the EULA or K9 agreement.
+                        if download_url is None:
+                            eula = self.get_json_value(json_text, BSD_EULA_FORM)
+                            if eula is not None:
+                                response = self.send_EULA_request(access_token, download_session_ID);
+                                response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
+                                if response is not None:
+                                    json_text = response.json() 
+                                    download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
+                                    download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
+                        
+                        #print('download_url', download_url)
+                        #print('download_session', download_session_ID)  
                         if download_url is not None and download_session_ID is not None:
-                            #print('download_url', download_url)
-                            #print('download_session', download_session_ID)
                             self.send_get_image(access_token, download_url, output_file_path, self.image_name, image_size, callback)
-                        else:
-                            message = 'If user "' + self.username + '" has download software privilege from Cisco, he/she may have to accept the End User License Agreement at http://www.cisco.com/web/go/eula before proceeding.'
-                            raise Exception(message)                            
+                        else:                             
+                            raise Exception('User "' + self.username + '" may not have software download privilege from Cisco.')
+                            
             else:
                 logger.error('bsd_service hit exception %s', exception_message)
     
+    def send_EULA_request(self, access_token, download_session_ID):
+        headers = {'Authorization': 'Bearer ' + access_token}
+        return requests.post(HTTP_GET_EULA_URL + "?download_session_id=" + download_session_ID +
+            "&user_action=Accepted", headers=headers)
+        
+    def send_K9_request(self, access_token, download_session_ID):
+        headers = {'Authorization': 'Bearer ' + access_token}
+        return requests.post(HTTP_GET_K9_URL + "?download_session_id=" + download_session_ID , headers=headers)
+        
     def send_get_image(self, access_token, url_string, output_file_path, image_name, image_size, callback=None):
         # Segment is 1 MB.  For 40 MB files, there will be about 40 updates (i.e. database writes)
         chunk_list= get_chunks((int)(image_size), (int)(image_size) / 1048576)
