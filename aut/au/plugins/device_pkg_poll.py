@@ -46,18 +46,6 @@ class DevicePackageSatePlugin(IPlugin):
         """
         """
         success = None
-        try:
-            success = device.connect()
-        except DeviceError:
-            print("Device Error: {}".format(device.error_code))
+        get_package(device)
+        return True
 
-        if success:
-            self.log(
-                "Device {} connected successfully.".format(device.name)
-            )
-            get_package(device)
-            return True
-
-        self.error(
-            "Can not connect to device {}".format(device.name)
-        )

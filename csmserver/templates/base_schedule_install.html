@@ -29,14 +29,30 @@
       submit_spinner.hide();
      
       $('#install_action').on('change', function (e) {
-        toggle_ui( $('#install_action').val() );   
+        if (has_install_action_ALL($('#install_action').val() )) {
+          $("#install_action").val(["Pre-Upgrade","Install Add","Activate","Post-Upgrade","Install Commit"]).trigger('change');
+        }
+ 
+        toggle_ui( $('#install_action').val() );  
+        
       });
-  
+
       $('#install_action').val(function(index, currentValue) {
         toggle_ui($(this).val());
         return currentValue
       });
   
+      function has_install_action_ALL(install_action) {
+        if (install_action != null) {
+          for (i = 0; i < install_action.length; i++) {
+            if (install_action[i] == 'ALL') {
+                return true;
+            }
+          }
+        }
+        return false;
+      }
+      
       function should_hide_panel(install_action) {
         if (install_action != null) {
           for (i = 0; i < install_action.length; i++) {
@@ -57,7 +73,7 @@
           $('#packages-panel').show();
         }
     
-        if (install_action == 'ALL' || (install_action != null && install_action.length > 1) ) {
+        if (install_action != null && install_action.length > 1) {
           $('#dependency').val(-1);
           $('#dependency-panel').hide();
         } else {
