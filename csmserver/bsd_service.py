@@ -78,8 +78,9 @@ class BSDServiceHandler(object):
                         #print('download_session', download_session_ID)  
                         if download_url is not None and download_session_ID is not None:
                             self.send_get_image(access_token, download_url, output_file_path, self.image_name, image_size, callback)
-                        else:                             
-                            raise Exception('User "' + self.username + '" may not have software download privilege from Cisco.')
+                        else:                      
+                            message = 'User "' + self.username + '" may not have software download privilege on cisco.com.'       
+                            raise Exception(message)
                             
             else:
                 logger.error('bsd_service hit exception %s', exception_message)

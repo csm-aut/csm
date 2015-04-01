@@ -76,6 +76,7 @@ class InventoryWorkUnit(WorkUnit):
         db_session = DBSession()
         host_id = None
         inventory_job = None
+        ctx = None
         try:
             
             inventory_job = db_session.query(InventoryJob).filter(InventoryJob.id == self.job_id).first()    
@@ -116,11 +117,10 @@ class InventoryWorkUnit(WorkUnit):
         except:
             try:
                 logger.exception('InventoryManager hit exception - inventory job = %s', self.job_id)
-                if ctx is not None:
-                    archive_inventory_job(db_session, inventory_job, JobStatus.FAILED, trace=sys.exc_info)
-                    # Reset the pending retrieval flag
-                    inventory_job.pending_submit = False
-                    db_session.commit()
+                archive_inventory_job(db_session, inventory_job, JobStatus.FAILED, trace=sys.exc_info)
+                # Reset the pending retrieval flag
+                inventory_job.pending_submit = False
+                db_session.commit()
             except:
                 logger.exception('InventoryManager hit exception - inventory job = %s', self.job_id)
         finally:

@@ -48,6 +48,7 @@ from au.plugins.cfg_backup import ConfigBackupPlugin
 from au.plugins.cmd_snapshot_backup import CommandSnapshotPlugin
 from au.plugins.install_add import InstallAddPlugin
 from au.plugins.install_act import InstallActivatePlugin
+from au.plugins.install_commit import InstallCommitPlugin
 from au.plugins.cfg_consistency import ConfigConsistencyPlugin
 from au.plugins.err_core_check import ErrorCorePlugin
 from au.plugins.device_pkg_poll import DevicePackageSatePlugin
@@ -76,16 +77,18 @@ plugin_classes = [
 #    isisunSetOverloadPostPlugin,
     ErrorCorePlugin,
     DevicePackageSatePlugin,
+    InstallCommitPlugin,
 ]
 plugins = []
 plugin_map = defaultdict(list)
 
 plugin_types = ["ADD","UPGRADE", "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE",
-                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE"]
+                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT"]
 
 phases = {
     "POLL":["POLL"],
     "ADD":["ADD"],
+    "COMMIT":["COMMIT"],
     "PRE_UPGRADE": [
         "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE"
     ],

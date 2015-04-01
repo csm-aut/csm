@@ -36,6 +36,7 @@ def execute(context,testing_csm = False):
     options.preupgradeset = False
     options.upgradeset = False
     options.postupgradeset = False
+    options.commitset = False
     options.pkg_state = False
     options.cli_file = None
     options.turboboot = False
@@ -69,6 +70,9 @@ def execute(context,testing_csm = False):
 
     elif ctx.requested_action == 'Get-Package':
         options.pkg_state = True
+
+    elif ctx.requested_action == 'Install Commit':
+        options.commitset = True
 
     options.ctx = ctx
     status = main.execute(options, args, oparser)
@@ -106,6 +110,8 @@ class CsmContext(object):
             self.requested_action = 'Post-Upgrade'
         elif options.pkg_state:
             self.requested_action = 'Get-Package'
+        elif options.commitset :
+            self.requested_action = 'Install Commit'
         if options.repository_path :
             self.server_repository_url = options.repository_path
        

@@ -95,33 +95,51 @@
          var row = "<tr><td>" + items[key].platform + "</td><td>" + items[key].software + "</td><td>" + items[key].count  + "</td></tr>"
          $(row).appendTo("#host-platform-table tbody");
       } 
-           
+      
+      var file_list_table = $("#file-list-table").dataTable({
+        "scrollY": "250px",
+        "bSort" : false,
+        "iDisplayLength": 5000,
+        "sDom": 'ift',      
+      });
+      
+      <!-- hide the table header to preserve space -->
+      $(".hide-header").hide();
+      
       $('#browse-server-button').on('click', function () {
         // Initializes the variables
         $('#dialog_server').val(-1);      
-        $('#file-list-table').html('');
+        $('#dialog_server_directory').html('');      
+        file_list_table.api().clear().draw();
 
         $('#select-server-dialog').modal({show:true}) 
       });
       
       $('#dialog_server').on('change', function (e) {
-        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), '', $('#file-list-table'));
+        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), '', file_list_table);
       });
                 
       $('#dialog_server_directory').on('change', function (e) {        
-        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), $('#file-list-table'))
+        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), file_list_table)
       });
       
       $('#dialog-move-up').on('click', function (e) {
-        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()), $('#file-list-table') );
+        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()), file_list_table );
       }); 
       
       $('#dialog-reset-server-directory').on('click', function (e) {
-        reset_server_directory(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), $('#file-list-table'));
+        reset_server_directory(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), file_list_table);
       });    
       
     });
   </script>
+  
+  <style>
+    .modal-dialog {
+      /* new custom width */
+      width: 700px;
+    }
+  </style>
 
 {% endblock extra_head %}
 
@@ -156,15 +174,13 @@
             </a>           
           </div>    
           <hr>
-          <div style="height:300px; overflow-y: scroll;"> 
-            <table cellspacing="0" class="table table-striped" id="file-list-table">    
-              <thead> 
-                <tr> 
-                  <th>File Name</th> 
-                </tr>  
-              </thead>  
-            </table>     
-          </div>        
+          <table class="display table" id="file-list-table">    
+            <thead class="hide-header"> 
+              <tr> 
+                <th>&nbsp;</th>  
+              </tr>  
+            </thead>   
+          </table>          
         </div>
         
       </div>

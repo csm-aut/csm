@@ -570,6 +570,8 @@ class Manager(object):
             plugins_types = "ADD"
         if self.options.pkg_state:
             plugins_types = "POLL"
+        if self.options.commitset:
+            plugins_types = "COMMIT"
         if self.options.preupgradeset:
             plugins_types = "PRE_UPGRADE"
         elif self.options.upgradeset:

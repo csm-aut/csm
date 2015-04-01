@@ -37,8 +37,21 @@
         return currentValue
       });
   
+      function should_hide_panel(install_action) {
+        if (install_action != null) {
+          for (i = 0; i < install_action.length; i++) {
+            if (install_action[i] != 'Pre-Upgrade' &&
+                install_action[i] != 'Install Commit') {
+                return false;
+            }
+          }
+          return true;
+        }
+        return false;
+      }
+      
       function toggle_ui(install_action) {
-        if (install_action == 'Pre-Upgrade') {
+        if (should_hide_panel(install_action) ) {
           $('#packages-panel').hide();
         } else {
           $('#packages-panel').show();
@@ -263,14 +276,6 @@
            return false;
          }
          
-         /*
-         if (install_action != 'Pre-Upgrade' &&
-             (server_name.length == 0 || software_packages.length == 0) ) {
-           bootbox.alert("Either Server Repository or Software Packages has not been specified.");
-           return false;
-         }
-         */
-         
          if (trim_lines(software_packages).split('\n').length > 16) {
            bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 16 software packages at a time.  To circumvent this issue, use a tar archive file instead.");
            return false;
@@ -296,7 +301,9 @@
       // Called by the $('#form').submit() function.
       function on_final_submit(current_form, hostname) {
         
-        if ($('#install_action').val() == 'Pre-Upgrade' || packages_contains_tar_file($('#software-packages').val())) {
+        if ($('#install_action').val() == 'Pre-Upgrade' || 
+            $('#install_action').val() == 'Install Commit' ||
+            packages_contains_tar_file($('#software-packages').val())) {
           current_form.submit();
         }
  

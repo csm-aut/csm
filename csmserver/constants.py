@@ -13,7 +13,7 @@ DIRECTORY_BASE = '../../csm_data/'
 DIRECTORY_AUT_LOGS = DIRECTORY_BASE + 'autlogs/'
 DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'
 DIRECTORY_TEMP = DIRECTORY_BASE + 'temp/'
-
+    
 def get_autlogs_directory():
     return DIRECTORY_AUT_LOGS
 
@@ -63,6 +63,7 @@ class InstallAction:
     INSTALL_ADD = 'Install Add'
     ACTIVATE = 'Activate'
     POST_UPGRADE = 'Post-Upgrade'
+    INSTALL_COMMIT = 'Install Commit'
     ALL = 'ALL'
 
 class PackageType:
