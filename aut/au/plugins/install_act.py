@@ -100,7 +100,7 @@ class InstallActivatePlugin(IPlugin):
 
     def _wait_for_reload(self, device):
         """
-         Wait for system to come up with max timeout as 10 Minutes
+         Wait for system to come up with max timeout as 25 Minutes
 
         """
         status = device.reconnect()
@@ -109,7 +109,7 @@ class InstallActivatePlugin(IPlugin):
             return status
 
         # Connection to device is stablished , now look for all nodes to xr run state
-        timeout = 450
+        timeout = 1500
         poll_time = 30
         time_waited = 0
         xr_run = "IOS XR RUN"
@@ -215,9 +215,44 @@ class InstallActivatePlugin(IPlugin):
         else:
             self.error('{} \n {}'.format(cmd, output))
 
+
+    def _clear_cfg_incon(self, device, kwargs):
+        """
+        perform clear configuration inconsistency both from exec and
+        admin-exec mode
+        """
+
+        fail_flag = 0
+        cmd = 'clear configuration inconsistency'
+        adm_cmd = 'admin clear configuration inconsistency'
+
+        success, output = device.execute_command(cmd)
+        output = output.split('\n')
+
+        for line in output:
+            if not line == '':
+                if not re.search('...OK',line):
+                    fail_flag = 1
+
+        if fail_flag == 1:
+            self.error("%s command execution failed" % (cmd))
+
+        success, output = device.execute_command(adm_cmd)
+        output = output.split('\n')
+
+        for line in output:
+            if not line == '':
+                if not re.search('...OK',line):
+                    fail_flag = 1
+
+        if fail_flag ==1:
+            self.error("%s command execution failed" % (cmd))
+
     def start(self, device, *args, **kwargs):
         """
         Start the plugin
         Return False if the plugin has found an error, True otherwise.
         """
+
+        self._clear_cfg_incon(device, kwargs)
         self._install_act(device, kwargs)
