@@ -56,7 +56,7 @@ $ ./csmserver start
 
 ### Restart CSM Server - inside a virtual environment
 
-Copy the virtual environment directory which contains python interpreter and library modules, to the new application directory.
+Copy the virtual environment directory (e.g. env) which contains python interpreter and library modules, to the new application directory.
 
 ```shell
 $ cd /usr/local/csm/csmserver
