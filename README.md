@@ -54,7 +54,7 @@ $ cd /usr/local/csm/csmserver
 $ ./csmserver start
 ```
 
-### Restart CSM Server if it is running inside a virtual environment
+### Restart CSM Server - inside a virtual environment
 
 ```shell
 $ cd /usr/local/csm/csmserver
