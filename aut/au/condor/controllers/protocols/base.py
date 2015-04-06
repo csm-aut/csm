@@ -35,9 +35,9 @@ import pexpect
 PASS = "[P|p]assword:\s*"
 XR_PROMPT = "\w+/\w+/\w+/\w+:.+#"
 USERNAME = "[U|u]sername:\s?|\nlogin:\s?"
-PERMISSION_DENIED = ".*enied|.*nvalid|.*ailed"
+PERMISSION_DENIED = "Permission denied"
 AUTH_FAILED = "Authentication failed|not authorized|Login incorrect"
-SHELL_PROMPT = re.compile(r'\$\s*|>\s+|\r\nAU_PROMPT')
+SHELL_PROMPT = re.compile(r'\$\s?$|>\s?$|#\s?$|\r\nAU_PROMPT')
 CONNECTION_REFUSED = "Connection refused"
 RESET_BY_PEER = "reset by peer|closed by foreign host"
 

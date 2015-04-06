@@ -61,6 +61,7 @@ def make_hop_info_from_url(url, verify_reachability=None):
         HopInfo object or None if url is invalid or protocol not supported
 
     """
+
     parsed = urlparse(url)
     hop_info = HopInfo(
         parsed.scheme,
@@ -121,8 +122,6 @@ class HopInfo(object):
 
     def is_valid(self):
         if self.protocol not in ['telnet', 'ssh']:
-            return False
-        if self.username is None:
             return False
         return True
 

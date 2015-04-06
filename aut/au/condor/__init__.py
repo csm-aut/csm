@@ -39,6 +39,7 @@ def make_connection_from_urls(
         urls,
         platform='generic',
         account_manager=None):
+
     module_str = 'au.condor.platforms.%s' % (platform)
     try:
         __import__(module_str)
@@ -50,6 +51,7 @@ def make_connection_from_urls(
     nodes = []
     for url in urls:
         nodes.append(make_hop_info_from_url(url))
+
     return driver_class(
         name,
         nodes,
