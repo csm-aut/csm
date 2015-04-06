@@ -4,7 +4,7 @@ CSM Server is an automation and orchestration framework for IOS-XR devices.  It 
 
 # Getting the Latest Code
 
-The latest Build is 03/17/2015.  To lookup the Build Date, click Tools - About CSM Server
+The latest Build is 04/01/2015.  To lookup the Build Date, click Tools - About CSM Server
 
 Click the Download ZIP button on the right to download csm-master.zip.  
 
@@ -47,9 +47,18 @@ $ mv csm csm_old
 $ mv csm-master csm
 ```
 
-### Restart CSM Server.
+### Restart CSM Server
 
 ```shell
+$ cd /usr/local/csm/csmserver
+$ ./csmserver start
+```
+
+### Restart CSM Server if it is running inside a virtual environment
+
+```shell
+$ cd usr/local/csm/csmserver
+$ cp –R /usr/local/csm_old/csmserver/env .
 $ cd /usr/local/csm/csmserver
 $ ./csmserver start
 ```
