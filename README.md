@@ -57,8 +57,8 @@ $ ./csmserver start
 ### Restart CSM Server if it is running inside a virtual environment
 
 ```shell
-$ cd usr/local/csm/csmserver
-$ cp –R /usr/local/csm_old/csmserver/env .
 $ cd /usr/local/csm/csmserver
+$ cp –R /usr/local/csm_old/csmserver/env .
+$ source env/bin/activate
 $ ./csmserver start
 ```
