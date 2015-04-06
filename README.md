@@ -12,13 +12,20 @@ Click the Download ZIP button on the right to download csm-master.zip.
 
 Consult the Installation Guide to install CSM Server.
 
-# Upgrading to the Latest Code
+# Upgrade to the Latest Code
 
-This section assumes that CSM Server has been installed on /usr/local/csm and you wanted to get the latest code.  Copy csm-master.zip to /usr/local and unzip its contents.
+This section assumes that CSM Server has been installed on /usr/local/csm and you wanted to upgrade to the latest code.  Copy csm-master.zip to /usr/local and unzip its contents.
 
 ```shell
 $ cd /usr/local
 $ unzip csm-master.zip
+```
+
+## Shut download CSM Server
+
+```shell
+$ cd /usr/local/csm/csmserver
+$ ./csmserver stop
 ```
 
 ## Edit csmserver launch script and database.ini
@@ -30,14 +37,7 @@ $ vi /usr/local/csm-master/csmserver/csmserver
 $ vi /usr/local/csm-master/csmserver/database.ini
 ```
 
-## Use the Latest Code
-
-To use the latest code, shutdown existing CSM Server.  
-
-```shell
-$ cd /usr/local/csm/csmserver
-$ ./csmserver stop
-```
+## Switch to the Latest Code
 
 Rename the current CSM Server folder to csm_old and the csm-master folder to csm.  
 
@@ -47,7 +47,7 @@ $ mv csm csm_old
 $ mv csm-master csm
 ```
 
-Then, restart CSM Server.
+### Restart CSM Server.
 
 ```shell
 $ cd /usr/local/csm/csmserver
