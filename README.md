@@ -21,7 +21,7 @@ $ cd /usr/local
 $ unzip csm-master.zip
 ```
 
-## Shut download CSM Server
+## Shut down CSM Server
 
 ```shell
 $ cd /usr/local/csm/csmserver
