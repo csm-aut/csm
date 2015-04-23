@@ -41,6 +41,7 @@ class GeneralError(Exception):
 
 class ConnectionError(GeneralError):
     """General connection error"""
+    pass
 
 
 class ConnectionAuthenticationError(ConnectionError):
