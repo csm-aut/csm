@@ -372,6 +372,11 @@ class Connection(object):
                     self.hostname,
                     "Syntax error: '{}'".format(cmd)))
                 raise
+            except ConnectionError:
+                _logger.error(_c(
+                    self.hostname,
+                    "Connection Error: '{}'".format(cmd)))
+                raise
             except Exception, err:
                 print Exception, err                
 
@@ -433,7 +438,7 @@ class Connection(object):
                 # Trying to get prompt again
                 self.ctrl.sendline()
 
-            if index in [5 and 6]:
+            if index in [5, 6]:
                 raise ConnectionError(
                     "Unexpected device disconnect", self.hostname)
 
