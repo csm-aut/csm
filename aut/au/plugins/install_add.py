@@ -90,12 +90,33 @@ class InstallAddPlugin(IPlugin):
 
         return True
 
+    def update_csm_context(self, add_id, device, input_has_tar):
+        """
+       put install add id into csm context
+        """
+        csm_ctx = device.get_property('ctx')
+        if csm_ctx :
+           if hasattr(csm_ctx, 'install_add_id'):
+              csm_ctx.install_add_id = add_id
+              if hasattr(csm_ctx, 'added_tar_file'):
+                if input_has_tar is True:
+                    csm_ctx.added_tar_file = True
+        # for non CSM case 
+        device.store_property('install_add_id', add_id)
+        if input_has_tar is True:
+           device.store_property('added_tar_file', True)
+        else:
+           device.store_property('added_tar_file', False)
+
+
     def install_add(self, device, kwargs):
         """
         It performs add operation of the pies listed in given file
         """
         file_list = ""
         error_str = "Error:  "
+        input_has_tar = False
+
 
         repo_str = kwargs.get('repository', None)
         if not repo_str:
@@ -115,11 +136,16 @@ class InstallAddPlugin(IPlugin):
         for pkg in pkg_name_list :
             if pkg.find('.vm-') >= 0:
                 pkg_name_list.remove(pkg)
+            if pkg.find('.tar') >=0:
+                input_has_tar = True
+
         packages = " ".join(pkg_name_list) 
         cmd = "admin install add source %s %s async" % (repo_str, packages)
         success, output = device.execute_command(cmd)
         if success and error_str not in output:
             op_id = re.search('Install operation (\d+) \'', output).group(1)
+            self.update_csm_context(op_id, device, input_has_tar)
+
             self.watch_operation(device,op_id)
         else :
             self.error("Command :%s \n%s"%(cmd,output))
