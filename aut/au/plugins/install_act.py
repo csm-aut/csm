@@ -196,15 +196,32 @@ class InstallActivatePlugin(IPlugin):
         """
         Performs install activate operation
         """
+        activate_with_id = False
+        id_to_activate = None
         op_success = "The install operation will continue asynchronously"
+        csm_ctx = device.get_property('ctx')
+        if csm_ctx :
+           if hasattr(csm_ctx, 'added_tar_file'):
+              if csm_ctx.added_tar_file is True:
+                  activate_with_id = True
+                  if hasattr(csm_ctx, 'install_add_id'):
+                     id_to_activate = csm_ctx.install_add_id
+        else:
+           id_to_activate = device.get_property('install_add_id')
+           activate_with_id = device.get_property('added_tar_file')
 
-        tobe_activated = self._get_tobe_activated_pkglist(device, kwargs)
-        if not tobe_activated:
-            self.log(
+        if not activate_with_id:
+           tobe_activated = self._get_tobe_activated_pkglist(device, kwargs)
+           if not tobe_activated:
+               self.log(
                 'The packages are already active, nothing to be activated.')
-            return True
+               return True
 
-        cmd = 'admin install activate {} prompt-level none async'.format(
+        if activate_with_id is True:
+           if id_to_activate:
+              cmd = 'admin install activate id {} prompt-level none async'.format(id_to_activate)
+        else:
+           cmd = 'admin install activate {} prompt-level none async'.format(
             tobe_activated)
         success, output = device.execute_command(cmd)
         if success and op_success in output:

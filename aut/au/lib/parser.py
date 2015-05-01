@@ -105,6 +105,14 @@ def parsecli():
         help="do an upgrade without running pre and post upgrade checks")
 
     oparser.add_option(
+        "--commit",
+        action="store_true",
+        dest="commitset",
+        default=False,
+        metavar=" ",
+        help="do install commit")
+
+    oparser.add_option(
         "--turboboot",
         action="store_true",
         dest="turboboot",
