@@ -989,7 +989,7 @@
       var inactive_software = []
         
       $.ajax({
-        url: '/api/hosts/' + hostname + '/packages/active-committed',  // FIXME: Change back to inactive
+        url: '/api/hosts/' + hostname + '/packages/inactive',  
         dataType: 'json',
         success: function(data) {
           $.each(data, function(index, element) {
