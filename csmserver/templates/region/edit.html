@@ -10,16 +10,63 @@
 {% endif %}
 
 {% block extra_head %}
-  <link href="/static/duallistbox-2.1.1/css/bootstrap-duallistbox.css" rel="stylesheet" type="text/css" media="all">
-  <script src="/static/duallistbox-2.1.1/js/jquery.bootstrap-duallistbox.js"></script>
+  <script src="/static/duallistbox/dist/dual-list-box.js"></script>
   <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
   
   <script type="text/javascript">
     $(function() {
-    
-      var spinner = $('#spinner');    
-      spinner.hide();
-    
+      
+      var available_servers = [];
+      var selected_servers = [];
+      
+      {% if region %}
+        {% for server in region.servers %}
+            selected_servers.push({
+              'id'  : "{{ server.id }}",
+              'name': "{{ server.hostname }}"
+            });
+        {% endfor %}
+      {% endif %}
+      
+      function check_contains(selected_servers, server_id) {
+        for (j = 0; j < selected_servers.length; j++) {
+          if (selected_servers[j].id == server_id) {
+            return true;
+          }
+        }
+        return false;
+      }
+                        
+      var server_selector = $('#server-selector').DualListBox();
+
+      $.ajax({
+        url: "/api/get_servers",
+        dataType: 'json',
+        success: function (data) {
+          $.each(data, function(index, element) {
+            for (i = 0; i < element.length; i++) {
+            
+              var server_id = element[i].server_id;
+              var hostname = element[i].hostname;
+              
+              if (!check_contains(selected_servers, server_id) ) {
+                available_servers.push({
+                  'id'  : server_id,
+                  'name': hostname
+                });
+              }
+            }
+          });
+                  
+          server_selector.initialize(available_servers, selected_servers);
+        },
+        error: function(xhr, status, errorThrown) { 
+          bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
+        }  
+      });       
+      
+      
+      /*
       $('#form').submit(function() {
         var server_id = $('#server').val();
         if (server_id < 0) {
@@ -29,59 +76,7 @@
         currentForm.submit();
 
       });
-      
-      var duallist = $('#selected-servers').bootstrapDualListbox({
-        nonselectedlistlabel: 'Available Servers',
-        selectedlistlabel: 'Servers Assigned to this Region',
-        preserveselectiononmove: 'moved',
-        moveonselect: false
-      });
-      
-      spinner.show();
-      
-      var selectedItems = new Array();
-      var lines = String(duallist.val()).split(',')
-
-      $.each(lines, function() {
-        var line = this.trim();
-        if (line.length > 0) {
-          selectedItems.push(line);
-        }
-      });
-      
-      $.ajax({
-        url: "/api/get_servers",
-        dataType: 'json',
-        success: function (data) {
-          $.each(data, function(index, element) {
-            for (i = 0; i < element.length; i++) {
-              var server_id = element[i].server_id;
-              var hostname = element[i].hostname;
-
-              if (!selectedItems.contains(server_id) ) {
-                duallist.append('<option value="' + server_id + '">' + hostname + '</option>');
-              }
-            }
-          });
-          
-          duallist.trigger('bootstrapduallistbox.refresh', true)           
-          spinner.hide();
-        },
-        error: function(xhr, status, errorThrown) { 
-          bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
-          spinner.hide();
-        }  
-      });       
-      
-      Array.prototype.contains = function(obj) {
-        var i = this.length;
-        while (i--) {
-          if (this[i] == obj) {
-            return true;
-          }
-        }
-        return false;
-      }
+      */
   
     });
   </script>
@@ -102,25 +97,17 @@
     
     <legend>Server Repositories</legend>
     
-    <div class="col-sm-offset-1 col-sm-10">
+    <div class="col-sm-12">
       <div class="form-group">
-        <select id="selected-servers" name="selected-servers" multiple>
-        
-          {% if region %}
-            {% for server in region.servers %}
-               <option value="{{ server.id }}" selected>{{ server.hostname }}</option>'
-            {% endfor %}
-          {% endif %}
-          
+        <select id="server-selector" name="selected-servers" multiple="multiple" data-title="Servers" data-json=false>          
         </select>
-        <span id="spinner"><center><img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center></span>
       </div>
     </div>
  
     <div class="form-actions">
-      <div class="btn col-sm-offset-4">
+      <div class="btn col-sm-offset-5">
         <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" onClick="location.href='{{ url_for('home') }}'" class="btn btn-default">Cancel</button>
+        <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
       </div>
     </div>
   </form>

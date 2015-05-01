@@ -148,7 +148,7 @@
       <div class="btn col-sm-offset-4">
         <button id="verify-reachability" type="button" class="btn btn-danger">Check Reachability</button>
         <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" onClick="location.href='{{ url_for('home') }}'" class="btn btn-default">Cancel</button>
+        <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
         <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
       </div>
     </div>

@@ -68,30 +68,36 @@ class JumpHostForm(Form):
      
 class HostScheduleInstallForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
-    server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])     
+       
     scheduled_time = TextField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
     dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])        
     software_packages = TextAreaField('Software Packages')
-    dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
-    hidden_server_directory = HiddenField('Server Directory', default='')
+    install_history_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
+    inactive_software_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
+    inactive_software_dialog_last_successful_inventory_elapsed_time = TextField('Last Successful Retrieval') 
+    
+    server_dialog_target_software = TextField('Target Software Release')
+    server_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
+    server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices = [('', '')])
+    
+    cisco_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
+    cisco_dialog_server_directory = SelectField('Server Directory', coerce=str, choices = [('', '')])
+    
+    advisor_dialog_current_software_version = TextField('Current Software Version') 
+    advisor_dialog_new_software_version = TextField('New Software Version') 
+    
+    hidden_server = HiddenField('')   
+    hidden_server_name = HiddenField('')   
+    hidden_server_directory = HiddenField('')
+    
     hidden_pending_downloads = HiddenField('Pending Downloads')
     hidden_edit = HiddenField('Edit')
     
 class ScheduleInstallForm(HostScheduleInstallForm):
     region = SelectField('Region', coerce=int, choices = [(-1, '')]) 
     role = SelectField('Role', coerce=str, choices = [('Any', 'Any')]) 
-    """
-    install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])  
-    server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])    
-    scheduled_time = TextField('Scheduled Time', [required()])
-    scheduled_time_UTC = HiddenField('Scheduled Time')
-    dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])        
-    software_packages = TextAreaField('Software Packages')   
-    dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
-    hidden_server_directory = HiddenField('Server Directory', default='')
-    hidden_pending_downloads = HiddenField('Pending Downloads')
-    """
+    software = SelectField('Software', coerce=str, choices = [('Any', 'Any')]) 
     
 class ServerForm(Form):
     hostname = TextField('Server Repository Name', [required()])
@@ -144,9 +150,9 @@ class PreferencesForm(Form):
     cco_username = TextField('Username')
     cco_password = PasswordField('Password')
 
-class DialogServerForm(Form):
+class ServerDialogForm(Form):
     dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
-    
+
 if __name__ == '__main__':
     pass
     

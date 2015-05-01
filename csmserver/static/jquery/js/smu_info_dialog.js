@@ -121,8 +121,8 @@ function create_hyperlink_html_table_row(field, smu_id_list, smu_name_list) {
         html_code += '<tr><td>&nbsp;</td><td>' + hyperlink + '</td></tr>';
       }
     }
-    return html_code;
   } else {
-    return '';
- }       
+    html_code = '<tr><td>' + field + '</td><td> None </td></tr>';
+  } 
+  return html_code;      
 }

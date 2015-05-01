@@ -1,116 +1,171 @@
 {% extends 'base_schedule_install.html' %}
 
-{% from 'host/common.html' import edit_field %}
-
 {% block head_schedule_install %}
   
-  var select_hosts_duallist = $('#selected-hosts').bootstrapDualListbox({
-    nonselectedlistlabel: 'Available Hosts',
-    selectedlistlabel: 'Selected Hosts',
-    preserveselectiononmove: 'moved',
-    moveonselect: false,
-  });
-           
-  $('#form').submit(function() {  
-    var region_id = $('#region option:selected').val();
-    if (region_id == -1) {
-      bootbox.alert("Region has not been specified.");
-      return false;
-    } 
-     
-    var selected_hosts = $('[name="selected-hosts"]').val();
-    if (!selected_hosts) {
-      bootbox.alert("No host has been specified.");
-      return false;
-    }
-    
-    on_final_submit(this, null);
+var host_selector = $('#host-selector').DualListBox();
 
-    // prevent the form from closing 
+$('#form').submit(function() {
+
+  if (!validate_region()) {
     return false;
-          
-  });
-  
-  function populate_host_duallist(region_id, selected_role) {
-    // Re-initialize the dual-listbox
-    select_hosts_duallist.html('');
-      
-    $.ajax({
-      url: "/api/get_hosts/region/" + region_id + "/role/" + selected_role,
-      dataType: 'json',
-      success: function (data) {
-      
-        var roles = []
-        $.each(data, function(index, element) {
-          for (i = 0; i < element.length; i++) {
-            select_hosts_duallist.append('<option value="' + element[i].hostname + '">' + element[i].hostname + '</option>');
-            
-            // host_roles may contain comma delimited roles.
-            if (selected_role == 'Any') {
-              var host_roles = element[i].roles;
-              if (host_roles != null) {
-                host_roles = host_roles.split(',');
-                for (var j = 0; j < host_roles.length; j++) {
-                  if ($.inArray(host_roles[j].trim(), roles) == -1) {
-                    roles.push(host_roles[j].trim());
-                  }
-                }
-              } 
-            }                    
-          }
-        });
-        
-        // Populate the role selector with newly selected region.
-        if (selected_role == 'Any') {
-          $('#role').find('option').remove();
-          $('#role').append('<option value="Any">Any</option>'); 
-          
-          for (var i = 0; i < roles.length; i++) {
-            $('#role').append('<option value="' + roles[i] + '">' + roles[i] + '</option>');          
-          }          
-        }    
-        select_hosts_duallist.trigger('bootstrapduallistbox.refresh', true)
-      }
-    });   
   }
-     
-  
-  var region_id = -1;
-  
-  $('#role').on('change', function (e) {
-    populate_host_duallist(region_id, $('#role option:selected').val());
-  });        
-  
-  $('#region').on('change', function (e) {
-    
-    if ($('#region option:selected').val() == -1) {
-      return;
-    }
-    
-    region_id = $('#region option:selected').val();   
-    populate_host_duallist(region_id, 'Any');
-    
-    // Now, gets the servers for the selected region
-    $('#server').html('');
-    $.ajax({
-      url: "/api/get_servers/region/" + region_id,
-      dataType: 'json',
-      success: function (data) {
-        $.each(data, function(index, element) {
-          for (i = 0; i < element.length; i++) {
-            var server_id = element[i].server_id;
-            var hostname = element[i].hostname;
-            $('#server').append('<option value="' + server_id + '">' + hostname + '</option>');
+
+  var selected_hosts = host_selector.get_selected_items();
+  if (selected_hosts.length == 0) {
+    bootbox.alert("Host has not been specified.");
+    return false;
+  }
+
+  on_final_submit(this, null);
+
+  // prevent the form from closing 
+  return false;
+});
+
+function populate_host_duallist(region_id, selected_role, selected_software) {
+
+  $.ajax({
+    url: "/api/get_hosts/region/" + region_id + "/role/" + selected_role + "/software/" + selected_software,
+    dataType: 'json',
+    success: function(data) {
+
+      var roles = []
+      var platform_software = []
+      var available_hosts = []
+      $.each(data, function(index, element) {
+        for (i = 0; i < element.length; i++) {
+          available_hosts.push({
+            'id': element[i].hostname,
+            'name': element[i].hostname
+          });
+
+          // host_roles may contain comma delimited roles.
+          if (selected_role == 'Any') {
+            var host_roles = element[i].roles;
+            if (host_roles != null) {
+              host_roles = host_roles.split(',');
+              for (var j = 0; j < host_roles.length; j++) {
+                if ($.inArray(host_roles[j].trim(), roles) == -1) {
+                  roles.push(host_roles[j].trim());
+                }
+              }
+            }
           }
-        });
-          
-      },
-      error: function(xhr, status, errorThrown) { 
-        bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
-      }  
-    });  
-      
+
+          if (selected_software == 'Any') {
+            if ($.inArray(element[i].platform_software, platform_software) == -1) {
+              platform_software.push(element[i].platform_software);
+            }
+          }
+        }
+      });
+
+      host_selector.initialize(available_hosts);
+
+      // Populate the role selector with newly selected region.
+      if (selected_role == 'Any') {
+        $('#role').find('option').remove();
+        $('#role').append('<option value="Any">Any</option>');
+
+        for (var i = 0; i < roles.length; i++) {
+          $('#role').append('<option value="' + roles[i] + '">' + roles[i] + '</option>');
+        }
+      }
+
+      // Populate the software selector with newly selected region.
+      if (selected_software == 'Any') {
+        $('#software').find('option').remove();
+        $('#software').append('<option value="Any">Any</option>');
+
+        for (var i = 0; i < platform_software.length; i++) {
+          $('#software').append('<option value="' + platform_software[i] + '">' + platform_software[i] + '</option>');
+        }
+      }
+    }
   });
+}
+
+$('#role').on('change', function(e) {
+  populate_host_duallist($('#region option:selected').val(), $('#role option:selected').val(), $('#software option:selected').val());
+});
+
+$('#software').on('change', function(e) {
+  populate_host_duallist($('#region option:selected').val(), $('#role option:selected').val(), $('#software option:selected').val());
+});
+
+$('#browse-install-history-button').on('click', function(e) {
+  var selected_hosts = host_selector.get_selected_items();
+  if (selected_hosts.length == 0) {
+    bootbox.alert("Host has not been specified.");
+  } else {
+    display_install_history_dialog(selected_hosts);
+  }
+});
+
+$('#browse-inactive-software-button').on('click', function(e) {
+  var selected_hosts = host_selector.get_selected_items();
+  if (selected_hosts.length == 0) {
+    bootbox.alert("Host has not been specified.");
+  } else {
+    display_inactive_software_dialog(selected_hosts);
+  }
+});
+
+$('#browse-repository-button').on('click', function(e) {
+  if (!validate_region()) {
+    return;
+  }
+  display_server_repository_dialog($('#region option:selected').val());
+});
+
+$('#browse-cisco-button').on('click', function(e) {
+  if (!validate_region()) {
+    return;
+  } 
+  display_cisco_software_dialog($('#region option:selected').val());
+});
+
+function validate_region() {
+  if ($('#region option:selected').val() == -1) {
+    bootbox.alert("Region has not been specified.");
+    return false;
+  }
+  return true;
+}
+
+$('#region').on('change', function(e) {
+  var region_id = $('#region option:selected').val();
+  if (region_id == -1) {
+    return;
+  }
+
+  populate_host_duallist(region_id, 'Any', 'Any');
+
+  // Now, gets the servers for the selected region
+  $('#server_dialog_server').empty().append('<option value=-1></option>');    
+  $('#cisco_dialog_server').empty().append('<option value=-1></option>');
+   
+  $.ajax({
+    url: "/api/get_servers/region/" + region_id,
+    dataType: 'json',
+    success: function(data) {
+      $.each(data, function(index, element) {
+        for (i = 0; i < element.length; i++) {
+          var server_id = element[i].server_id;
+          var hostname = element[i].hostname;
+          
+          $('#server_dialog_server').append('<option value="' + server_id + '">' + hostname + '</option>');
+          $('#cisco_dialog_server').append('<option value="' + server_id + '">' + hostname + '</option>');
+        }
+      });
+
+    },
+    error: function(xhr, status, errorThrown) {
+      bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
+    }
+  });
+  
+});
 
 {% endblock head_schedule_install %}
 
@@ -119,81 +174,30 @@
 <div class="row">
   <div class="well col-sm-offset-2 col-sm-8">
     <form id="form" method="post"  class="form-horizontal">
-      <legend><h4>Select Hosts</h4></legend>
-        
-       {{ edit_field(form.region, field_width="col-sm-5", class="form-control") }}
-       {{ edit_field(form.role, field_width="col-sm-5", class="form-control") }}
-        
-       <div class="col-sm-12">
-         <div class="form-group">
-           <select id="selected-hosts" name="selected-hosts" multiple>
-           </select>
-         </div>
-       </div>
-    
-       <legend><h4>Schedule Batch Installs</h4></legend>
-       
-       {{ edit_field(form.install_action, field_width="col-sm-5", class="form-control") }}
-       
-       <div id="packages-panel">
-         {{ edit_field(form.server, field_width="col-sm-5", class="form-control") }}
-         
-         <div class="form-group ">
-            <label class="col-sm-4 control-label" id="label_server_directory" for="server_directory">Server Directory</label>
-            <div class=col-sm-6>
-              <select class="form-control" id="server_directory" name="server_directory"><option value=""></option></select>
-            </div>    
-            <a href="javascript://">
-              <img id='move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
-              <img id='reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
-            </a>           
-          </div>   
-
-          <div class="form-group ">
-           <label class="col-sm-4 control-label" for="software_packages">{{ form.software_packages.label() }}</label>         
-           <div class="col-sm-6">
-             <textarea spellcheck="false" class="form-control" rows="5" id="software-packages" name="software_packages">{{ form.software_packages.data | none2blank }}</textarea>
-           </div>
-         </div>
+      <legend>
+        <h4>Select Hosts</h4>
+      </legend>
+      
+      {{ edit_field(form.region, field_width="col-sm-5", class="form-control") }}
+      {{ edit_field(form.role, field_width="col-sm-5", class="form-control") }}
+      {{ edit_field(form.software, field_width="col-sm-5", class="form-control") }}
+      
+      <div class="col-sm-12">
+        <div class="form-group row">
+          <select id="host-selector" name="host-selector" multiple="multiple" data-title="Hosts" data-json=false></select>
+        </div>
+      </div>
+      
+      <legend>
+        <h4>Schedule Batch Installs</h4>
+      </legend>
+      
+      {{ common_schedule_install_gui() }}
      
-         <div class="form-group ">
-           <label class="col-sm-4 control-label"></label>
-           <div class=col-sm-8>         
-             Browse&nbsp;&nbsp; 
-             <a id='browse-repository-button' href="javascript://">
-               <img src="/static/browse_server.png">&nbsp;Repository
-             </a>
-             &nbsp;&nbsp;
-             <a id='browse-cisco-button' href="javascript://">
-               <img src="/static/internet.png">&nbsp;Cisco.com
-             </a>                        
-           </div>        
-         </div>
-        </div>
-  
-      <div class="form-group ">
-        <label class="col-sm-4 control-label" for="{{ form.scheduled_time.name }}">{{ form.scheduled_time.label() }}</label>
-
-        <div class="col-sm-5">
-          <div  class="input-group date form_datetime">
-            <input id="scheduled-time" name="{{ form.scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
-            <input id="scheduled-time-UTC" name="{{ form.scheduled_time_UTC.name }}" value="{{ form.scheduled_time_UTC.data }}" class="form-control" type="hidden">
-            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span></span>
-          </div>     
-        </div>
-      </div>
-       
-      <div id="dependency-panel">
-        {{ edit_field(form.dependency, field_width="col-sm-5", class="form-control") }}
-      </div>
-      
-      <input id="hidden_pending_downloads" name="{{ form.hidden_pending_downloads.name }}" value="{{ form.hidden_pending_downloads.data }}" class="form-control" type="hidden">
-      <input id="hidden_server_directory" name="{{ form.hidden_server_directory.name }}" value="{{ form.hidden_server_directory.data }}" class="form-control" type="hidden">
-      
       <div class="form-actions">
         <div class="btn col-sm-offset-5">
           <button id="on-submit" type="submit" class="btn btn-primary">          
-            Schedule          
+          Schedule          
           </button>
           <button type="button" onClick="location.href='{{ url_for(return_url) }}'" class="btn btn-default">Cancel</button>
           <img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}">

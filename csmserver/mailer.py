@@ -50,7 +50,7 @@ def send_install_status_email(install_job):
     message += 'Install Action: ' + install_job.install_action + '<br><br>'
     
     if install_job.packages is not None and len(install_job.packages) > 0:
-        message += 'Following are the software packages: <br>' + install_job.packages.replace('\n','<br>')
+        message += 'Following are the software packages: <br>' + install_job.packages.replace(',','<br>')
         
     message += '</body></head></html>'
     

@@ -128,7 +128,7 @@
         //var filename = url.substr(url.lastIndexOf('/') + 1);
         //$('.navbar a[href$="' + filename + '"]').parent().addClass("active");
         
-        $('#host-selector').select2({
+        $('#search-host-selector').select2({
           placeholder: "Search a host",     
           allowClear: true,  
           ajax: {
@@ -146,7 +146,7 @@
           },        
         });         
         
-        $('#host-selector').on('change', function (e) {        
+        $('#search-host-selector').on('change', function (e) {        
           var host = $(this).val();   
           window.location = "/hosts/" + host + "/host_dashboard/"
         })      
@@ -271,7 +271,7 @@
               <form class="navbar-form navbar-left pull-right" role="search">
               
                 <div class="form-group">
-                 <input type="hidden" class="select2" id="host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
+                 <input type="hidden" class="select2" id="search-host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
                  </select>                 
                 </div>     
               </form>

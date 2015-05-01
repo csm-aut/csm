@@ -23,7 +23,7 @@ from forms import AdminConsoleForm
 from forms import SMTPForm
 from forms import PreferencesForm
 from forms import HostImportForm
-from forms import DialogServerForm
+from forms import ServerDialogForm
 
 from models import Host
 from models import JumpHost
@@ -58,6 +58,7 @@ from constants import UserPrivilege
 from constants import ConnectionType
 from constants import BUG_SEARCH_URL
 from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
+from constants import PackageType
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -78,10 +79,13 @@ from smu_utils import get_optimize_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import SP_INDICATOR
+from smu_utils import get_package_type
 
 from smu_info_loader import SMUInfoLoader
 from bsd_service import BSDServiceHandler
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+
+from package_utils import get_target_software_package_list
 
 import os
 import io
@@ -128,7 +132,7 @@ def home():
     servers = get_server_list(db_session)
     system_option = SystemOption.get(db_session)
     
-    form = DialogServerForm(request.form)
+    form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()))
 
     return render_template('host/home.html', form=form, hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
@@ -882,6 +886,25 @@ def remove_validator(field, validator_class):
         if isinstance(v, validator_class):
             validators.remove(v) 
 
+@app.route('/api/hosts/<hostname>/last_successful_inventory_elapsed_time/')
+@login_required 
+def api_get_last_successful_inventory_elapsed_time(hostname):
+    db_session = DBSession()
+    
+    return jsonify( **{'data': [ 
+        {'last_successful_inventory_elapsed_time': get_last_successful_inventory_elapsed_time(get_host(db_session, hostname)) }
+    ] } )
+
+def get_last_successful_inventory_elapsed_time(host):
+    if host is not None:
+        # Last inventory successful time
+        inventory_job = host.inventory_job[0]
+        if inventory_job.pending_submit:
+            return 'Pending Retrieval'
+        else:
+            return  time_difference_UTC(inventory_job.last_successful_time)
+        
+    return ''
 
 @app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
 @login_required
@@ -980,11 +1003,7 @@ def api_get_host_dashboard_cookie(hostname):
             
         # Last inventory successful time
         inventory_job = host.inventory_job[0]
-        if inventory_job.pending_submit:
-            row['since_last_successful_inventory_time'] = 'Pending Retrieval'
-        else:
-            row['since_last_successful_inventory_time'] = time_difference_UTC(inventory_job.last_successful_time)
-            
+        row['last_successful_inventory_elapsed_time'] = get_last_successful_inventory_elapsed_time(host)
         row['last_successful_inventory_time'] = inventory_job.last_successful_time
         
         install_job_history_count = 0
@@ -1481,14 +1500,19 @@ def schedule_install():
     fill_install_actions(choices=form.install_action.choices, include_ALL=True)
     fill_regions(form.region.choices)
     fill_dependencies(form.dependency.choices)
-    fill_servers(form.server.choices, get_server_list(db_session))
-    fill_servers(form.dialog_server.choices, get_server_list(db_session))
     
     return_url = get_return_url(request, 'home')
     
     if request.method == 'POST': # and form.validate():
+        """
+        f = request.form
+        for key in f.keys():
+            for value in f.getlist(key):
+               print(key,":",value)
+        """       
         # Retrieves from the multi-select box
-        hostnames = request.form.getlist('selected-hosts')
+        hostnames = request.form.getlist('host-selector')
+
         install_action = form.install_action.data 
         
         if hostnames is not None:
@@ -1496,34 +1520,33 @@ def schedule_install():
                 host = get_host(db_session, hostname)  
                 if host is not None:
                     db_session = DBSession()
-
-                    if InstallAction.ALL in install_action:
-                        create_install_jobs_for_all_install_actions(db_session=db_session, host_id=host.id, form=form)
-                    else:        
-                        # If only one install_action, accept the selected dependency if any
-                        dependency = 0
-                        if len(install_action) == 1:
-                            # No dependency when it is 0 (a digit)
-                            if not form.dependency.data.isdigit():
-                                prerequisite_install_job = get_first_install_action(db_session, form.dependency.data)
-                                if prerequisite_install_job is not None:
-                                    dependency = prerequisite_install_job.id
+       
+                    # If only one install_action, accept the selected dependency if any
+                    dependency = 0
+                    if len(install_action) == 1:
+                        # No dependency when it is 0 (a digit)
+                        if not form.dependency.data.isdigit():
+                            prerequisite_install_job = get_first_install_action(db_session, form.dependency.data)
+                            if prerequisite_install_job is not None:
+                                dependency = prerequisite_install_job.id
                                     
-                            create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                                install_action=install_action[0], dependency=dependency)
-                        else:
-                            # The dependency on each install action is already indicated in the implicit ordering in the selector.
-                            # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
-                            # have Pre-Upgrade (predecessor) as the dependency.
-                            dependency = 0              
-                            for one_install_action in install_action:
-                                new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                                    install_action=one_install_action, dependency=dependency)
-                                dependency = new_install_job.id
+                        create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
+                            install_action=install_action[0], dependency=dependency)
+                    else:
+                        # The dependency on each install action is already indicated in the implicit ordering in the selector.
+                        # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
+                        # have Pre-Upgrade (predecessor) as the dependency.
+                        dependency = 0              
+                        for one_install_action in install_action:
+                            new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
+                                install_action=one_install_action, dependency=dependency)
+                            dependency = new_install_job.id
                                                   
         return redirect(url_for(return_url))
     else:                
         # Initialize the hidden fields
+        form.hidden_server.data = -1
+        form.hidden_server_name.data = ''
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''
             
@@ -1572,7 +1595,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_job.pending_downloads = ''
 
     install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
-    install_job.server_id = form.server.data if form.server.data > 0 else None
+    install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
     install_job.server_directory = form.hidden_server_directory.data
 
     # Form a comma delimited list from newlines
@@ -1721,8 +1744,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         
     # Fills the selection
     fill_install_actions(choices=form.install_action.choices, include_ALL=True)
-    fill_servers(form.server.choices, host.region.servers)
-    fill_servers(form.dialog_server.choices, host.region.servers)
+    fill_servers(form.server_dialog_server.choices, host.region.servers)
+    fill_servers(form.cisco_dialog_server.choices, host.region.servers)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs, (-1 if install_job is None else install_job.id))
         
     if request.method == 'POST':
@@ -1734,40 +1757,42 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             install_action = form.install_action.data
         
         # install_action is a list object which may contain multiple install actions.
-        # If 'ALL' is among the selected install actions, do 'ALL' and ignore others
-        if InstallAction.ALL in install_action:
-            # The ALL install action is available for newly created install job
-            if install_job is None:
-                create_install_jobs_for_all_install_actions(db_session=db_session, host_id=host.id, form=form)
+        # If only one install_action, accept the selected dependency if any
+        if len(install_action) == 1:
+            dependency = int(form.dependency.data)        
+            create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
+                install_action=install_action[0], dependency=dependency, install_job=install_job)
         else:
-            # If only one install_action, accept the selected dependency if any
-            if len(install_action) == 1:
-                dependency = int(form.dependency.data)        
-                create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                    install_action=install_action[0], dependency=dependency, install_job=install_job)
-            else:
-                # The dependency on each install action is already indicated in the implicit ordering in the selector.
-                # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
-                # have Pre-Upgrade (predecessor) as the dependency.
-                dependency = 0              
-                for one_install_action in install_action:
-                    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                        install_action=one_install_action, dependency=dependency, install_job=install_job)
-                    dependency = new_install_job.id
-                    
+            # The dependency on each install action is already indicated in the implicit ordering in the selector.
+            # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
+            # have Pre-Upgrade (predecessor) as the dependency.
+            dependency = 0              
+            for one_install_action in install_action:
+                new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
+                    install_action=one_install_action, dependency=dependency, install_job=install_job)
+                dependency = new_install_job.id
+                   
         return redirect(url_for(return_url, hostname=hostname))
     
     elif request.method == 'GET':
         # Initialize the hidden fields
+        form.hidden_server.data = -1
+        form.hidden_server_name.data = ''
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''
         form.hidden_edit.data = install_job is not None
-
+        
+        # In Edit mode
         if install_job is not None:   
             form.install_action.data = install_job.install_action
-            form.server.data = install_job.server_id
- 
-            form.hidden_server_directory.data = '' if install_job.server_directory is None else install_job.server_directory
+            if install_job.server_id is not None:
+                form.hidden_server.data = install_job.server_id
+                server = get_server_by_id(db_session, install_job.server_id)
+                if server is not None:
+                    form.hidden_server_name.data = server.hostname
+                   
+                form.hidden_server_directory.data = '' if install_job.server_directory is None else install_job.server_directory
+                
             form.hidden_pending_downloads.data = '' if install_job.pending_downloads is None else install_job.pending_downloads
 
             # Form a line separated list for the textarea
@@ -2167,22 +2192,28 @@ def api_get_last_successful_install_add_packages(host_id):
     
     return jsonify(**{'data':result_list})
 
-@app.route('/api/get_past_install_add_packages/hosts/<int:host_id>')
+@app.route('/api/get_install_history/hosts/<hostname>')
 @login_required
-def api_get_past_install_add_packages(host_id):
+def api_get_install_history(hostname):    
+    if not can_retrieve_software(current_user):
+        abort(401)
+    
     rows = []
     db_session = DBSession()
-    install_jobs = db_session.query(InstallJobHistory). \
-        filter((InstallJobHistory.host_id == host_id), 
-        and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD, InstallJobHistory.status == JobStatus.COMPLETED)). \
-        order_by(InstallJobHistory.status_time.desc())
+    
+    host = get_host(db_session, hostname)
+    if host is not None:
+        install_jobs = db_session.query(InstallJobHistory). \
+            filter((InstallJobHistory.host_id == host.id), 
+            and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD, InstallJobHistory.status == JobStatus.COMPLETED)). \
+            order_by(InstallJobHistory.status_time.desc())
         
-    for install_job in install_jobs:
-        row = {}
-        row['packages'] = install_job.packages
-        row['status_time'] = install_job.status_time
-        row['created_by'] = install_job.created_by
-        rows.append(row)
+        for install_job in install_jobs:
+            row = {}
+            row['packages'] = install_job.packages
+            row['status_time'] = install_job.status_time
+            row['created_by'] = install_job.created_by
+            rows.append(row)
     
     return jsonify(**{'data':rows})
 
@@ -2204,28 +2235,44 @@ def api_get_servers_by_region(region_id):
     result_list = [] 
     db_session = DBSession() 
     region = get_region_by_id(db_session, region_id)
-    result_list.append({ 'server_id': '-1', 'hostname': '' })
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
             result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
        
     return jsonify(**{'data':result_list})
 
-@app.route('/api/get_hosts/region/<int:region_id>/role/<role>')
+@app.route('/api/get_hosts/region/<int:region_id>/role/<role>/software/<software>')
 @login_required
-def api_get_hosts_by_region(region_id, role):
+def api_get_hosts_by_region(region_id, role, software):
 
     rows = []
     db_session = DBSession()    
-    hosts = db_session.query(Host). \
-        filter(Host.region_id == region_id). \
-        order_by(Host.hostname.asc())
+    
+    if software.lower() == 'any':
+        hosts = db_session.query(Host).filter(Host.region_id == region_id). \
+            order_by(Host.hostname.asc())
+    else:
+        if software == 'Unknown':  
+            platform = None
+            software = None
+        else:
+            platform = software.split()[0]
+            software = software.split()[1]
+            
+        hosts = db_session.query(Host). \
+            filter(and_(Host.region_id == region_id, Host.software_platform == platform, Host.software_version == software)). \
+            order_by(Host.hostname.asc())
         
     if hosts is not None:
         for host in hosts:
             row = {}
             row['hostname'] = host.hostname
             row['roles'] = host.roles
+            
+            if host.software_platform is not None and host.software_version is not None:
+                row['platform_software'] = host.software_platform + ' ' + host.software_version
+            else:
+                row['platform_software'] = 'Unknown'
             
             if role.lower() == 'any':
                 rows.append(row)
@@ -2250,11 +2297,12 @@ def get_software(hostname):
     
     host = get_host(db_session, hostname)
     if host is not None:
-        host.inventory_job[0].pending_submit = True
-        db_session.commit()
-        return jsonify({'status':'OK'})
-    else:
-        return jsonify({'status':'Failed'}) 
+        if not host.inventory_job[0].pending_submit:
+            host.inventory_job[0].pending_submit = True
+            db_session.commit()
+            return jsonify({'status':'OK'})
+   
+    return jsonify({'status':'Failed'}) 
  
 @app.route('/api/remove_host_password/<hostname>', methods=['POST'])
 @login_required   
@@ -2341,6 +2389,23 @@ def check_host_reachability():
     
     return jsonify({'status':'OK'}) if is_connection_valid(platform, urls) else jsonify({'status':'Failed'})
     
+@app.route('/api/get_software_package_upgrade_list/hosts/<hostname>/release/<target_release>')
+@login_required
+def get_software_package_upgrade_list(hostname, target_release):
+    rows = []
+    db_session = DBSession()
+    
+    host = get_host(db_session, hostname)
+    if host is None:
+        abort(404)
+        
+    host_packages = get_host_active_packages(hostname) 
+    target_packages = get_target_software_package_list(host.platform, host_packages, target_release)
+    for package in target_packages:
+        rows.append({'package' : package})
+        
+    return jsonify( **{'data':rows} )
+
 @app.route('/api/check_jump_host_reachability')
 @login_required
 def check_jump_host_reachability():
@@ -2692,7 +2757,7 @@ def get_platforms_and_releases_dict(db_session):
 @app.route('/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def get_smu_list(platform, release):        
-    form = DialogServerForm(request.form)
+    form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()))
     
     return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release) 

@@ -41,13 +41,6 @@ function trim_lines(lines) {
   return result;
 }
 
-function packages_contains_tar_file(selected_packages) {
-  if (selected_packages.indexOf('.tar') == -1) {
-    return false
-  }
-  return true
-}
-  
 function beautify_platform(platform) {
   return platform.toUpperCase().replace('_','-');
 }
@@ -62,6 +55,17 @@ function get_parent_folder(directory) {
     }
   }
   return '';
+}
+
+var _MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+// a and b are javascript Date objects
+function date_diff_in_days(a, b) {
+  // Discard the time and time-zone information.
+  var utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  var utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+
+  return Math.floor((utc2 - utc1) / _MS_PER_DAY);
 }
 
 /*

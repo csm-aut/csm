@@ -51,10 +51,11 @@ function retrieve_directory_and_file_list(browse_spinner, server_id, server_dire
         }); 
       }       
       browse_spinner.hide();
-
+      
       if (file_list_table != null) {
         file_list_table.api().draw();
       }
+      
     },
     error: function(XMLHttpRequest, textStatus, errorThrown) { 
       bootbox.alert("Unable to list files. Error=" + errorThrown);

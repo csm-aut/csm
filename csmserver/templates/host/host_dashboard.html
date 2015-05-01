@@ -452,13 +452,13 @@
              
               $('#host-info-table').html(html); 
               
-              since_last_successful_inventory_time = element[0].since_last_successful_inventory_time;   
+              last_successful_inventory_elapsed_time = element[0].last_successful_inventory_elapsed_time;   
   
-              if (since_last_successful_inventory_time.indexOf("Pending") > -1) {
-                $('#since_last_successful_inventory_time').html(
-                  '<img src=\"{{ url_for('static', filename='runner.png') }}\">' + since_last_successful_inventory_time);
+              if (last_successful_inventory_elapsed_time.indexOf("Pending") > -1) {
+                $('#last_successful_inventory_elapsed_time').html(
+                  '<img src=\"{{ url_for('static', filename='runner.png') }}\">' + last_successful_inventory_elapsed_time);
               } else {
-                $('#since_last_successful_inventory_time').html(since_last_successful_inventory_time);
+                $('#last_successful_inventory_elapsed_time').html(last_successful_inventory_elapsed_time);
               }
               
               new_last_successful_inventory_time = element[0].last_successful_inventory_time;  
@@ -559,7 +559,7 @@
  
     <div class="col-sm-9">
         
-      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-briefcase"></i> Last Successful Retrieval: <span id="since_last_successful_inventory_time"></span></strong></span>
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-briefcase"></i> Last Successful Retrieval: <span id="last_successful_inventory_elapsed_time"></span></strong></span>
 
       <div class="btn-group pull-right"> 
         <button id="install-history-button" type="button" class="btn btn-default">Install History</button>
