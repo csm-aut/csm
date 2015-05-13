@@ -1016,6 +1016,7 @@ def api_get_host_dashboard_cookie(hostname):
         inventory_job = host.inventory_job[0]
         row['last_successful_inventory_elapsed_time'] = get_last_successful_inventory_elapsed_time(host)
         row['last_successful_inventory_time'] = inventory_job.last_successful_time
+        row['status'] = inventory_job.status
         
         install_job_history_count = 0
         if host is not None:

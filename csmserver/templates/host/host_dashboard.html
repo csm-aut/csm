@@ -458,6 +458,11 @@
                 $('#last_successful_inventory_elapsed_time').html(
                   '<img src=\"{{ url_for('static', filename='runner.png') }}\">' + last_successful_inventory_elapsed_time);
               } else {
+                if (element[0].status == 'failed') {
+                  $('#last_successful_inventory_elapsed_time').css('color','red');
+                } else {
+                  $('#last_successful_inventory_elapsed_time').removeAttr('style');
+                }
                 $('#last_successful_inventory_elapsed_time').html(last_successful_inventory_elapsed_time);
               }
               
@@ -651,12 +656,6 @@
 
           </div><!--/panel-->
           
-         {% if host.last_successful_install_time %}
-           <div class="alert alert-success">
-             <strong>Last Successful Install:&nbsp;</strong><span class="UTCDate">{{ host.last_successful_install_time | datetime_string }}</span>
-           </div> 
-         {% endif %}
-
         </div> <!-- /center right -->
 
       </div> <!-- /row -->

@@ -1097,7 +1097,9 @@
             $('#host_software_dialog_last_successful_inventory_elapsed_time').val(element[0].last_successful_inventory_elapsed_time);
             if (element[0].status == 'failed') {
               $('#host_software_dialog_last_successful_inventory_elapsed_time').css({'color' : 'red'});
-            }                               
+            } else {
+              $('#host_software_dialog_last_successful_inventory_elapsed_time').removeAttr('style');
+            }                           
           });
         }
       });

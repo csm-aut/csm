@@ -43,7 +43,7 @@
         "order": [[ 2, "desc" ]],
         "pageLength": 100,
         "scrollX": true,
-        "scrollY": 350,
+        "scrollY": 450,
         "fnCreatedRow": function( nRow, aData, iDataIndex ) {  
           var date_diff = date_diff_in_days(new Date($('td:eq(2)', nRow).text()), new Date() );       
           if (date_diff <= 7) {
@@ -128,7 +128,7 @@
         "order": [[ 2, "desc" ]],
         "pageLength": 100,
         "scrollX": true,
-        "scrollY": 350,
+        "scrollY": 450,
         "fnCreatedRow": function( nRow, aData, iDataIndex ) {  
           var date_diff = date_diff_in_days(new Date($('td:eq(2)', nRow).text()), new Date() );         
           if (date_diff <= 7) {
