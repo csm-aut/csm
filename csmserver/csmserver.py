@@ -890,9 +890,13 @@ def remove_validator(field, validator_class):
 @login_required 
 def api_get_last_successful_inventory_elapsed_time(hostname):
     db_session = DBSession()
+    host = get_host(db_session, hostname)
+    if host is None:
+        abort(404)
     
     return jsonify( **{'data': [ 
-        {'last_successful_inventory_elapsed_time': get_last_successful_inventory_elapsed_time(get_host(db_session, hostname)) }
+        {'last_successful_inventory_elapsed_time': get_last_successful_inventory_elapsed_time(host),
+         'status': host.inventory_job[0].status}
     ] } )
 
 def get_last_successful_inventory_elapsed_time(host):
@@ -905,17 +909,24 @@ def get_last_successful_inventory_elapsed_time(host):
             return  time_difference_UTC(inventory_job.last_successful_time)
         
     return ''
-
+    
 @app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
 @login_required
 def api_get_host_dashboard_packages(hostname, package_state):
     db_session = DBSession()
     host = get_host(db_session, hostname)
-    
+
     rows = []       
     if host is not None:
-        packages = db_session.query(Package).filter(and_(Package.host_id == host.id, Package.state == package_state)). \
-            order_by(Package.name).all()
+        # It is possible that package_state contains a commas delimited state list.
+        # In this case, the union of those packages will be used.
+        package_states = package_state.split(',')
+        packages = []
+        for package_state in package_states:
+            packages_list = db_session.query(Package).filter(and_(Package.host_id == host.id, Package.state == package_state)). \
+                order_by(Package.name).all()
+            if len(packages_list) > 0:
+                packages.extend(packages_list)
             
         has_module_packages = False
         for package in packages:        
@@ -1492,12 +1503,11 @@ For batch scheduled installation.
 def schedule_install():
     if not can_install(current_user):
         abort(401)
-        
+         
     db_session = DBSession()
     form = ScheduleInstallForm(request.form)
     
     # Fills the selections
-    fill_install_actions(choices=form.install_action.choices, include_ALL=True)
     fill_regions(form.region.choices)
     fill_dependencies(form.dependency.choices)
     
@@ -1551,7 +1561,7 @@ def schedule_install():
         form.hidden_pending_downloads.data = ''
             
         return render_template('schedule_install.html', form=form, 
-            server_time=datetime.datetime.utcnow(), return_url=return_url)
+            server_time=datetime.datetime.utcnow(), return_url=return_url, install_action=get_install_actions_dict())
 
 def get_first_install_action(db_session, install_action):
     return db_session.query(InstallJob).filter(InstallJob.install_action == install_action). \
@@ -1595,11 +1605,39 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_job.pending_downloads = ''
 
     install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
-    install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
-    install_job.server_directory = form.hidden_server_directory.data
 
-    # Form a comma delimited list from newlines
-    install_job.packages = ','.join(form.software_packages.data.split())
+    # Only Install Add should have server_id and server_directory
+    if install_action == InstallAction.INSTALL_ADD:
+        install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
+        install_job.server_directory = form.hidden_server_directory.data
+    else:
+        install_job.server_id = None
+        install_job.server_directory = ''
+        
+    # Only the following install actions should have software packages
+    if install_action == InstallAction.INSTALL_ADD or \
+        install_action == InstallAction.INSTALL_ACTIVATE or \
+        install_action == InstallAction.INSTALL_REMOVE or \
+        install_action == InstallAction.INSTALL_DEACTIVATE:
+        
+        package_list = ''
+        software_packages = form.software_packages.data.split()
+        for software_package in software_packages:
+            if install_action == InstallAction.INSTALL_ADD:
+                # Install Add only accepts external package names with the following suffix
+                if '.pie' in software_package or \
+                    '.tar' in software_package or \
+                    '.rpm' in software_package:
+                    package_list += software_package + ','
+            else:
+                # Install Activate can have external or internal package names
+                package_list += software_package + ','
+                
+        # remove trailing ',' if any
+        install_job.packages = package_list.rstrip(',')
+    else:
+        install_job.packages = ''
+        
     install_job.dependency = dependency if dependency > 0 else None
     install_job.created_by = current_user.username
     install_job.user_id = current_user.id
@@ -1720,7 +1758,7 @@ def create_install_jobs_for_all_install_actions(db_session, host_id, form):
             
     # Create Activate
     new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.ACTIVATE, dependency=new_install_job.id)
+        install_action=InstallAction.INSTALL_ACTIVATE, dependency=new_install_job.id)
               
     # Create Post-Upgrade
     new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
@@ -1742,8 +1780,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # the user to select which install job this install job can depend on.
     install_jobs = db_session.query(InstallJob).filter(InstallJob.host_id == host.id).order_by(InstallJob.scheduled_time.asc()).all()
         
-    # Fills the selection
-    fill_install_actions(choices=form.install_action.choices, include_ALL=True)
+    # Fills the selections
     fill_servers(form.server_dialog_server.choices, host.region.servers)
     fill_servers(form.cisco_dialog_server.choices, host.region.servers)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs, (-1 if install_job is None else install_job.id))
@@ -1796,7 +1833,9 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             form.hidden_pending_downloads.data = '' if install_job.pending_downloads is None else install_job.pending_downloads
 
             # Form a line separated list for the textarea
-            form.software_packages.data = '\n'.join(install_job.packages.split(','))
+            if install_job.packages is not None:
+                form.software_packages.data = '\n'.join(install_job.packages.split(','))
+                
             form.dependency.data = str(install_job.dependency)
         
             if install_job.scheduled_time is not None:
@@ -1804,7 +1843,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 get_datetime_string(install_job.scheduled_time)
         
     return render_template('host/schedule_install.html', form=form, \
-        host=host, server_time=datetime.datetime.utcnow(), install_job=install_job, return_url=return_url)
+        host=host, server_time=datetime.datetime.utcnow(), install_job=install_job, return_url=return_url, \
+        install_action=get_install_actions_dict())
 
 
 def get_host_schedule_install_form(request, host):
@@ -2483,20 +2523,18 @@ def get_host_json(hosts, request):
     
     return jsonify(**{'host':hosts_list})
 
-def fill_install_actions(choices, include_ALL=False):
-    # Remove all the existing entries
-    del choices[:]  
-     
-    # The install action is listed in implicit ordering.  This ordering
-    # is used to formulate the dependency.
-    choices.append((InstallAction.PRE_UPGRADE, InstallAction.PRE_UPGRADE))
-    choices.append((InstallAction.INSTALL_ADD, InstallAction.INSTALL_ADD))
-    choices.append((InstallAction.ACTIVATE, InstallAction.ACTIVATE))
-    choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
-    choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT))
-    
-    if include_ALL:
-        choices.append((InstallAction.ALL, InstallAction.ALL))
+def get_install_actions_dict():
+    return {
+        "pre_upgrade": InstallAction.PRE_UPGRADE, 
+        "add": InstallAction.INSTALL_ADD,
+        "activate": InstallAction.INSTALL_ACTIVATE,
+        "post_upgrade": InstallAction.POST_UPGRADE,
+        "commit": InstallAction.INSTALL_COMMIT,
+        "remove": InstallAction.INSTALL_REMOVE,
+        "deactivate": InstallAction.INSTALL_DEACTIVATE,
+        "rollback": InstallAction.INSTALL_ROLLBACK,
+        "all": InstallAction.ALL
+    }
         
 def fill_dependencies(choices):
     # Remove all the existing entries
@@ -2507,9 +2545,9 @@ def fill_dependencies(choices):
     # is used to formulate the dependency.
     choices.append((InstallAction.PRE_UPGRADE, InstallAction.PRE_UPGRADE))
     choices.append((InstallAction.INSTALL_ADD, InstallAction.INSTALL_ADD))
-    choices.append((InstallAction.ACTIVATE, InstallAction.ACTIVATE))
+    choices.append((InstallAction.INSTALL_ACTIVATE, InstallAction.INSTALL_ACTIVATE)) 
     choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
-    choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT))
+    choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT)) 
 
 def fill_servers(choices, servers):
     # Remove all the existing entries
@@ -2961,6 +2999,7 @@ def api_get_missing_prerequisite_list():
 
 def host_packages_contains(host_packages, smu_name):
     for package in host_packages:
+        # Performs a partial match
         if smu_name.replace('.pie','') in package:
             return True
     return False

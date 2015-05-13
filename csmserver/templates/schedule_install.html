@@ -103,13 +103,25 @@ $('#browse-install-history-button').on('click', function(e) {
 });
 
 $('#browse-inactive-software-button').on('click', function(e) {
+  invoke_host_software_dialog(FILTER_ACTIVATE);
+});
+
+$('#browse-remove-software-button').on('click', function(e) {
+  invoke_host_software_dialog(FILTER_REMOVE);
+});
+
+$('#browse-deactivate-software-button').on('click', function(e) {
+  invoke_host_software_dialog(FILTER_DEACTIVATE);
+});
+
+function invoke_host_software_dialog(title) {
   var selected_hosts = host_selector.get_selected_items();
   if (selected_hosts.length == 0) {
     bootbox.alert("Host has not been specified.");
-  } else {
-    display_inactive_software_dialog(selected_hosts);
+  } else { 
+    display_host_software_dialog(selected_hosts, title);
   }
-});
+}
 
 $('#browse-repository-button').on('click', function(e) {
   if (!validate_region()) {
@@ -199,7 +211,7 @@ $('#region').on('change', function(e) {
           <button id="on-submit" type="submit" class="btn btn-primary">          
           Schedule          
           </button>
-          <button type="button" onClick="location.href='{{ url_for(return_url) }}'" class="btn btn-default">Cancel</button>
+          <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
           <img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
         </div>
       </div>

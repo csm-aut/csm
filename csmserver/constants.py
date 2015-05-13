@@ -61,10 +61,13 @@ class InstallAction:
     UNKNOWN = 'Unknown'
     PRE_UPGRADE = 'Pre-Upgrade'
     INSTALL_ADD = 'Install Add'
-    ACTIVATE = 'Activate'
+    INSTALL_ACTIVATE = 'Activate'
     POST_UPGRADE = 'Post-Upgrade'
-    INSTALL_COMMIT = 'Install Commit'
+    INSTALL_COMMIT = 'Commit'
     ALL = 'ALL'
+    INSTALL_REMOVE = 'Remove'
+    INSTALL_DEACTIVATE = 'Deactivate'
+    INSTALL_ROLLBACK = 'Rollback'
 
 class PackageType:
     SMU = 'SMU'

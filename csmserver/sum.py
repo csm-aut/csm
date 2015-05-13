@@ -192,7 +192,7 @@ class InstallWorkUnit(WorkUnit):
 
 def get_last_operation_id(db_session, install_activate_job, trace=None):
     operation_id = -1
-    if install_activate_job.install_action == InstallAction.ACTIVATE:
+    if install_activate_job.install_action == InstallAction.INSTALL_ACTIVATE:
         install_add_job = get_last_successful_install_job(db_session, install_activate_job.host_id)
         if install_add_job is not None:
             # Check if Last Install Add and Activate have the same packages.

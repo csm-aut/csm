@@ -74,8 +74,9 @@ class HostScheduleInstallForm(Form):
     dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])        
     software_packages = TextAreaField('Software Packages')
     install_history_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
-    inactive_software_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
-    inactive_software_dialog_last_successful_inventory_elapsed_time = TextField('Last Successful Retrieval') 
+    
+    host_software_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
+    host_software_dialog_last_successful_inventory_elapsed_time = TextField('Last Successful Retrieval') 
     
     server_dialog_target_software = TextField('Target Software Release')
     server_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
@@ -97,7 +98,7 @@ class HostScheduleInstallForm(Form):
 class ScheduleInstallForm(HostScheduleInstallForm):
     region = SelectField('Region', coerce=int, choices = [(-1, '')]) 
     role = SelectField('Role', coerce=str, choices = [('Any', 'Any')]) 
-    software = SelectField('Software', coerce=str, choices = [('Any', 'Any')]) 
+    software = SelectField('Software Version', coerce=str, choices = [('Any', 'Any')]) 
     
 class ServerForm(Form):
     hostname = TextField('Server Repository Name', [required()])

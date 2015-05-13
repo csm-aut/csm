@@ -33,7 +33,7 @@
       }
       
       function insert_slider(packages, install_job_id) {
-        if (packages.length > 0) {
+        if (packages != null && packages.length > 0) {
           var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + install_job_id + '">' + 
                         '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
                      '</a>' +

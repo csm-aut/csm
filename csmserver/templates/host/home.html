@@ -139,6 +139,10 @@
       /* new custom width */
       width: 700px;
     }
+    .btn-select
+    {
+      line-height: 10px;
+    }
   </style>
 
 {% endblock extra_head %}
@@ -236,6 +240,7 @@
     <div class="container col-sm-9">
       <!-- left -->
       <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-briefcase"></i> Information</strong></span>
+      <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;<a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a></span>
       <hr>
 
       <div class="container col-sm-12">
@@ -273,7 +278,7 @@
                   <th>TS or IP</th>   
                   <th>Platform</th>  
                   <th>Software</th>  
-                  <th>Successful Retrieval</th>   
+                  <th>Last Successful Retrieval</th>   
                   <th>Action</th> 
                 </tr>  
               </thead>  
@@ -294,18 +299,21 @@
              
                     </td>
 
-                    {% set software_status = host.inventory_job[0] %}
+                    {% set inventory_job = host.inventory_job[0] %}
 
-                    {% if software_status and software_status.last_successful_time %}
-                      <td>{{ software_status.last_successful_time | elapsed_time }}</td>
+                    {% if inventory_job and inventory_job.last_successful_time %}
+                      {% if inventory_job.status == 'failed' %}
+                        <td style="color: red;" title="{{ host.hostname}} - Failed Last Software Retrieval">{{ inventory_job.last_successful_time | elapsed_time }}</td>
+                      {% else %} 
+                        <td>{{ inventory_job.last_successful_time | elapsed_time }}</td>                        
+                      {% endif %}
+                      
                     {% else %}
                       <td>None</td>
                     {% endif %}
 
-                    <td>           
-                      <a class="host-delete-link" href="#" 
-                        delete-host="{{ host.hostname }}"
-                        delete-url="{{ url_for('host_delete', hostname = host.hostname) }}">Delete</a>
+                    <td>
+                      <a href="{{ url_for('host_schedule_install', hostname = host.hostname) }}">Install</a></li>
                     </td>
                   </tr>
                 {% endfor %}

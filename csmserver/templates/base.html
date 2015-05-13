@@ -1,5 +1,39 @@
 <!DOCTYPE html>
 <html>
+
+{% macro non_admin_tools_menu() %}
+
+  <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
+  <!-- <li><a href="{{ url_for('jump_host_list') }}">List Jump Servers</a></li> -->
+  <li class="divider"></li>
+  <li><a href="{{ url_for('optimize_list') }}">Optimize List</a></li>
+  <li class="divider"></li> 
+  <!-- <li><a href="{{ url_for('login') }}?return_url=current_user_edit">Edit My Profile</a></li>  -->
+  <li><a href="{{ url_for('current_user_edit') }}">Edit User</a></li>
+  <li class="divider"></li> 
+  <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
+  <!-- <li class="divider"></li> -->
+  <!-- <li class="divider"></li> -->
+  <!-- <li><a href="{{ url_for('logout') }}">Logout</a></li>  -->
+
+{% endmacro %}
+
+{% macro admin_tools_menu() %}
+  <!-- <li><span style="background: red;"><center>Admin Tools</center></span></li> -->
+  <li><a href="{{ url_for('admin_console') }}">Admin Dashboard</a></li>
+  <li class="divider"></li> 
+  <li><a href="{{ url_for('import_hosts') }}">Import Hosts</a></li>
+  <li class="divider"></li> 
+  <li><a href="{{ url_for('user_create') }}">Create User</a></li> 
+  <li class="divider"></li> 
+  <li><a href="{{ url_for('user_list') }}">List All Users</a></li>
+  <li class="divider"></li> 
+  <!-- <li><a href="{{ url_for('failed_software_inventory_list') }}">Failed Last Software Inventory</a></li> -->
+  <!-- <li class="divider"></li>  -->
+  <li><a href="{{ url_for('logs') }}">System Logs</a></li>
+
+{% endmacro %}
+
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -28,97 +62,8 @@
     
     <script src="/static/select2-4.0.0/dist/js/select2.min.js"></script>  
     <link rel="stylesheet" href="/static/select2-4.0.0/dist/css/select2.css">
-
-    <style>
-      {# Add simple CSS style tweaks here. #}
-
-      body 
-      { 
-        padding-top: 100px; 
-        {# background-color:#f4f4f4; #}
-      }
-      .navbar-brand 
-      {
-        line-height:36px;
-        padding-top:5px;
-        padding-bottom:5px;
-      }
-      {# hover dropdown to open #}
-      ul.nav li.dropdown:hover > ul.dropdown-menu 
-      {
-        display: block;    
-      }
-      .navbar-nav > li > a 
-      {
-        font-size: 16px;
-        line-height: 20px;
-      }
-      .blue 
-      {
-        color: blue;
-      }
-      .DodgerBlue
-      {
-        color: #1E90FF;
-      }    
-      .DarkGreen
-      {
-        color: #006400;
-      }
-      .Red
-      {
-        color: #FF0000;
-      }     
-      
-      .dropdown-submenu {
-        position: relative;
-      }
-
-      .dropdown-submenu>.dropdown-menu {
-        top: 0;
-        left: 100%;
-        margin-top: -6px;
-        margin-left: -1px;
-        -webkit-border-radius: 0 6px 6px 6px;
-        -moz-border-radius: 0 6px 6px;
-        border-radius: 0 6px 6px 6px;
-      }
-
-      .dropdown-submenu:hover>.dropdown-menu {
-        display: block;
-      }
-
-      .dropdown-submenu>a:after {
-        display: block;
-        content: " ";
-        float: right;
-        width: 0;
-        height: 0;
-        border-color: transparent;
-        border-style: solid;
-        border-width: 5px 0 5px 5px;
-        border-left-color: #ccc;
-        margin-top: 5px;
-        margin-right: -10px;
-      }
-
-      .dropdown-submenu:hover>a:after {
-        border-left-color: #fff;
-      }
-
-      .dropdown-submenu.pull-left {
-        float: none;
-      }
-
-      .dropdown-submenu.pull-left>.dropdown-menu {
-        left: -100%;
-        margin-left: 10px;
-        -webkit-border-radius: 6px 0 6px 6px;
-        -moz-border-radius: 6px 0 6px 6px;
-        border-radius: 6px 0 6px 6px;
-      }
-      
-    </style>
+    
+    <link rel="stylesheet" type="text/css" href="/static/jquery/css/base.css">
     
     <script>
       $(function() {
@@ -208,7 +153,7 @@
           </button>
           <a class="navbar-brand" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
           <a class="navbar-brand" href="javascript://">&nbsp;</a>
-          <a class="navbar-brand" href="javascript://">CSM Server</a>
+          <a class="navbar-brand" href="{{ url_for('about') }}">CSM Server</a>
         </div>
 
         <div class="navbar-collapse collapse">
@@ -218,7 +163,7 @@
                  
                 <ul class="nav navbar-nav">
                   <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Platforms<b class="caret"></b></a>               
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Lookup SMUs<b class="caret"></b></a>               
                     <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>                         
                   </li>
                  </ul>
@@ -235,38 +180,41 @@
               
             </ul>
             
-            <ul class="nav navbar-nav navbar-right"> 
-              <li><a href="{{ url_for('static', filename='user_guide.pdf') }}" ><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"</img></a></li>
-            </ul>
-            
             {% if current_user.is_authenticated() %}
-                            
-              {% if current_user.privilege == 'Admin' %}
-                <ul class="nav navbar-nav navbar-right">           
-                  <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Admin<b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                      <li><a href="{{ url_for('login') }}?return_url=admin_console">Admin Dashboard</a></li>
-                      <li class="divider"></li> 
-                      <li><a href="{{ url_for('import_hosts') }}">Import Hosts</a></li>
-                      <li class="divider"></li> 
-                      <li><a href="{{ url_for('login') }}?return_url=user_create">Create User</a></li> 
-                      <li><a href="{{ url_for('login') }}?return_url=user_list">List All Users</a></li>
-                      <li class="divider"></li> 
-                      <li><a href="{{ url_for('failed_software_inventory_list') }}">Hosts that Failed Software Inventory</a></li>
-                      <!--
-                      <li class="dropdown-submenu">
-                        <a href="javascript://">Reports</a>
-                        <ul class="dropdown-menu">
-                          <li><a href="{{ url_for('failed_software_inventory_list') }}">Hosts that Failed Last Software Inventory</a></li>
-                        </ul>
-                      </li>
-                      -->
-                      <li><a href="{{ url_for('logs') }}">System Logs</a></li>
-                    </ul>
-                  </li>              
-                </ul>
-              {% endif %}
+            
+              <ul class="nav navbar-nav navbar-right"> 
+                <li><a href="{{ url_for('static', filename='user_guide.pdf') }}" ><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"</img></a></li>
+                <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"</img></a></li>
+              </ul>
+            
+              <ul class="nav navbar-nav navbar-right">           
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
+                  
+                  {% if current_user.privilege == 'Admin' %}
+                    <ul class="dropdown-menu multi-column columns-2">
+		              <div class="row">
+			            <div class="col-sm-6">
+				          <ul class="multi-column-dropdown">
+				            {{ non_admin_tools_menu() }}
+	  		              </ul>
+		                </div>
+			        
+			            <div class="col-sm-6">
+				          <ul class="multi-column-dropdown">				        
+					        {{ admin_tools_menu() }}                         
+				          </ul>
+			            </div>
+		              </div>
+	                </ul>
+	              {% else %}
+	                <ul class="dropdown-menu">
+	                  {{ non_admin_tools_menu() }}
+	                </ul>
+	              {% endif %}
+
+                </li>                  
+              </ul>
               
               <form class="navbar-form navbar-left pull-right" role="search">
               
@@ -276,27 +224,6 @@
                 </div>     
               </form>
             {% endif %}
-
-            <ul class="nav navbar-nav navbar-right">             
-              {% if current_user.is_authenticated() %}             
-                <li class="dropdown">
-                  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
-                  <ul class="dropdown-menu">
-                    <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
-                    <li><a href="{{ url_for('jump_host_list') }}">List Jump Servers</a></li>
-                    <li class="divider"></li>
-                    <li><a href="{{ url_for('optimize_list') }}">Optimize List</a></li>
-                    <li class="divider"></li> 
-                    <li><a href="{{ url_for('login') }}?return_url=current_user_edit">Edit My Profile</a></li>
-                    <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
-                    <li class="divider"></li>
-                    <li><a href="{{ url_for('about') }}">About CSM Server</a></li>
-                    <li class="divider"></li>
-                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
-                  </ul>
-                </li>              
-              {% endif %}
-            </ul>
             
         </div><!--/.nav-collapse -->
       </div>

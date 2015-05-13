@@ -41,23 +41,26 @@
   });  
               
   $('#browse-inactive-software-button').on('click', function (e) {   
-      display_inactive_software_dialog(["{{ host.hostname }}"]);
+      display_host_software_dialog(["{{ host.hostname }}"], FILTER_ACTIVATE);
   }); 
+   
+  $('#browse-remove-software-button').on('click', function (e) {   
+      display_host_software_dialog(["{{ host.hostname }}"], FILTER_REMOVE);
+  }); 
+  
+  $('#browse-deactivate-software-button').on('click', function (e) {   
+      display_host_software_dialog(["{{ host.hostname }}"], FILTER_DEACTIVATE);
+  });
   
   $('#browse-repository-button').on('click', function(e) {
     $('#toggle-auto-select-software').removeClass("collapse");                    
-    $('#server-repository-dialog-title').html("/ Host: {{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})");
+    $('#server-repository-dialog-title').html('> Host: <span style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span>');
     
     display_server_repository_dialog("{{ host.region.id }}");
   });
     
   $('#browse-cisco-button').on('click', function(e) {
     display_cisco_software_dialog("{{ host.region.id }}");
-  });
-  
-  $("#server-repository-dialog-title").on("click", "#upgrade-wizard", function() {
-    $('#advisor_dialog_current_software_version').val("{{ host.software_version }}");
-    $('#upgrade-advisor-dialog').modal({ show: true, backdrop:'static' });
   });
   
   $('#auto-select-software').on('click', function(e) {
@@ -71,42 +74,16 @@
 
 {% block main_schedule_install %}
 
-<div id="upgrade-advisor-dialog" class="modal" role="dialog">
-  <div class="modal-dialog">
-    <form method="post" class="form-horizontal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal">x</button>
-          <h4>Software Upgrade Advisor</h4>
-        </div>
-        <div class="modal-body">
-          The Software Upgrade Advisor automatically selects new version of the software packages 
-          from the Available Software to the Selected Software list box that matches the
-          device's software packages.  At this stage, you should have already selected the server repository and 
-          directory where all new software packages can be found.  Enter the new software version below (e.g. 5.3.0).<br><br>
-          
-          {{ edit_field(form.advisor_dialog_current_software_version, readonly=true, field_width="col-sm-4", class="form-control") }}  
-          {{ edit_field(form.advisor_dialog_new_software_version, field_width="col-sm-4", class="form-control") }}   
-          
-        </div>
-        <div class="modal-footer">
-          <div class="form-actions">
-            <div class="btn col-sm-offset-4">   
-              <button id="on-upgrade-advisor-submit" class="btn btn-primary" data-dismiss="modal">OK</button>
-              <button class="btn" data-dismiss="modal">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </form>
-  </div>
+<!-- Push the form down so the datetimepicker can be displayed unobstructed. -->
+<div class="row">
+  <h4>&nbsp;</h4>
 </div>
-    
+
 <div class="row">
   <div class="well col-sm-offset-2 col-sm-8">
     <form id="form" method="post"  class="form-horizontal">
       <legend>
-        <h4>Schedule Install / Region: {{ host.region.name }} / Host: {{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }}) </h4>
+        <h4>Schedule Install > Region: <span style="color: Gray;">{{ host.region.name }}</span> > Host: <span style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span> </h4>
             
       </legend>
       

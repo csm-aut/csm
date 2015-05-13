@@ -85,13 +85,13 @@
   <div class="row">  <!-- upper section -->
   
     <div class="container col-sm-6">
-      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-asterisk"></i> User Preferences</strong></span>
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> User Preferences</strong></span>
       <hr>
       
       <div class="panel panel-default">
         <div class="panel-heading"><h4>Filter Platforms</h4></div>
         <div class="panel-body">
-         To exclude certain platforms from displaying under the Platforms menu, check the checkbox next to the platform and release.<hr> 
+         To exclude certain platforms from displaying under the Lookup SMUs menu, check the checkbox next to the platform and release.<hr> 
          
          <table class="display table" id="platforms-and-releases-datatable" >
            <thead class="hide-header">  
@@ -118,8 +118,7 @@
     </div>
     
     <div class="container col-sm-6">
-      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-home"></i> <a href="{{ url_for('home') }}">Home</a></strong></span>
-      
+      <span>&nbsp;</span>  
       <div class="form-actions">
         <div class="btn-group pull-right">
           <button type="submit" class="btn btn-primary">Save</button>
@@ -128,12 +127,12 @@
       <hr>
       
       <div class="panel panel-default">
-        <div class="panel-heading"><h4>Cisco.com Authentication</h4></div>
+        <div class="panel-heading"><h4>CCO Authentication</h4></div>
         <div class="panel-body">
-         Authentication information is used when downloading SMUs or Service Packs from cisco.com. 
+         Authentication information is used when downloading SMUs or Service Packs from CCO. 
          <hr>      
-           {{ edit_field(form.cco_username, label_field_width="col-sm-4", field_width="col-sm-6", class="form-control") }}
-           {{ edit_field(form.cco_password, label_field_width="col-sm-4", field_width="col-sm-6", class="form-control",
+           {{ edit_field(form.cco_username, label_field_width="col-sm-4", autocomplete="off", field_width="col-sm-6", class="form-control") }}
+           {{ edit_field(form.cco_password, label_field_width="col-sm-4", autocomplete="off", field_width="col-sm-6", class="form-control",
              placeholder="Use Password on File") }}
              
            <div class="form-group ">

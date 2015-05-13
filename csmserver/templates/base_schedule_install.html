@@ -3,45 +3,73 @@
 
 {% macro common_schedule_install_gui() %}
 
-{{ edit_field(form.install_action, style="width: 100%", multiple="multiple", field_width="col-sm-6", class="form-control") }}
-
-<div id="software-packages-panel">
-    
-  <div class="form-group ">
-    <label class="col-sm-4 control-label">Select From</label>
-    <div class=col-sm-8> 
-      <div>
-        <span id="install-add-widget-panel">
-          <a id="browse-repository-button" href="javascript://">
-            <img src="/static/browse_server.png">&nbsp;Server Repository
-          </a>
-          &nbsp;&nbsp;&nbsp;&nbsp;
-          <a id="browse-cisco-button" href="javascript://">
-            <img src="/static/internet.png">&nbsp;Cisco.com
-          </a>  
-        </span> 
-      </div>
-      <div>
-        <span id="activate-widget-panel">
-          <a id="browse-inactive-software-button" href="javascript://">
-            <img src="/static/router_software.png">&nbsp;&nbsp;&nbsp;Inactive Packages
-          </a>  
-          &nbsp;&nbsp;&nbsp;&nbsp;
-          <a id="browse-install-history-button" href="javascript://">
-           <img src="/static/history.png">&nbsp;&nbsp;Install History
-          </a>    
-        </span> 
-      </div>
+  <div class="form-group ">   
+    <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
+    <div class=col-sm-6>
+      <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
+        <optgroup label="Install">
+	      <option value="{{ install_action.pre_upgrade }}">{{ install_action.pre_upgrade }}</option>
+          <option value="{{ install_action.add }}">{{ install_action.add }}</option>
+          <option value="{{ install_action.activate}}">{{ install_action.activate }}</option>
+          <option value="{{ install_action.post_upgrade }}">{{ install_action.post_upgrade }}</option>
+          <option value="{{ install_action.commit }}">{{ install_action.commit }}</option>
+          <option value="{{ install_action.all }}">{{ install_action.all }}</option>
+        </optgroup>
+        <optgroup label="Clean Up">
+          <option value="{{ install_action.remove }}">{{ install_action.remove}}</option>
+	      <option value="{{ install_action.deactivate }}">{{ install_action.deactivate }}</option>
+        </optgroup>
+      </select>
     </div>
   </div>
   
+  <div id="widget-panel" class="form-group ">
+    <label class="col-sm-4 control-label">Select From</label>  
+    <div class=col-sm-8>    
+      <span id="add-widget-panel">
+        <a id="browse-repository-button" href="javascript://">
+          <img src="/static/browse_server.png">&nbsp;Server Repository&nbsp;&nbsp;&nbsp;
+        </a>
+        <a id="browse-cisco-button" href="javascript://">
+          <img src="/static/internet.png">&nbsp;CCO&nbsp;&nbsp;&nbsp;
+        </a>  
+      </span> 
+      <span id="activate-widget-panel">
+        <a id="browse-inactive-software-button" href="javascript://">
+          <img src="/static/router_software.png">&nbsp;Inactive Pkgs&nbsp;&nbsp;&nbsp;
+        </a>  
+        <a id="browse-install-history-button" href="javascript://">
+         <img src="/static/history.png">&nbsp;Install History
+        </a>    
+      </span> 
+      <span id="remove-widget-panel">
+        <a id="browse-remove-software-button" href="javascript://">
+          <img src="/static/router_software.png">&nbsp;Inactive Pkgs&nbsp;&nbsp;&nbsp;
+        </a>   
+      </span> 
+      <span id="deactivate-widget-panel">
+        <a id="browse-deactivate-software-button" href="javascript://">
+          <img src="/static/router_software.png">&nbsp;Active Pkgs&nbsp;&nbsp;&nbsp;
+        </a>   
+      </span> 
+    </div>
+  </div>
+
+<div id="software-packages-panel">
+
   <div class="form-group ">
     <label class="col-sm-4 control-label" for="software_packages">{{ form.software_packages.label() }}</label>         
     <div class="col-sm-6">
       <textarea spellcheck="false" class="form-control" rows="5" id="software-packages" name="software_packages">{{ form.software_packages.data | none2blank }}</textarea>
     </div>
   </div>
-   
+  
+  <div class="form-group">
+    <label class="col-sm-4 control-label"></label>
+    <div id="server-repository-panel" class="col-sm-8">                  
+    </div>       
+  </div>
+         
 </div> 
   
 <div class="form-group ">
@@ -57,18 +85,6 @@
 
 <div id="dependency-panel">
   {{ edit_field(form.dependency, field_width="col-sm-6", class="form-control") }}
-</div>
-
-<div id="server-repository-panel">      
-  <div class="form-group ">
-    <div class="col-sm-offset-4 col-sm-6">
-      <div id="accordion" class="panel-group">
-        <div id="server-repository-info-panel" class="panel-collapse collapse">
-          <div id="server-repository-info" class="panel-body well"></div>
-        </div>
-      </div>
-    </div>   
-  </div>
 </div>
 
 <input id="hidden_server" name="{{ form.hidden_server.name }}" value="{{ form.hidden_server.data }}" type="hidden">
@@ -98,13 +114,25 @@
 
 <script type="text/javascript">
   $(function() { 
+    var current_filter = "";
     
-    var PRE_UPGRADE = "Pre-Upgrade";
-    var INSTALL_ADD = "Install Add";
-    var ACTIVATE = "Activate";
-    var POST_UPGRADE = "Post-Upgrade";
-    var INSTALL_COMMIT = "Install Commit";
-    var ALL = "ALL"; 
+    // Do not modify these string definitions as they have meaning on the backend.
+    var FILTER_ACTIVATE = "inactive,inactive-committed";
+    var FILTER_REMOVE = "inactive";
+    var FILTER_DEACTIVATE = "active,active-committed";   
+    
+    var TITLE_ACTIVATE = "Select Inactive Software Packages to Activate";
+    var TITLE_REMOVE = "Select Inactive Software Packages to Remove";
+    var TITLE_DEACTIVATE = "Select Active Software Packages to Deactivate";
+    
+    var PRE_UPGRADE = "{{ install_action.pre_upgrade }}"; 
+    var INSTALL_ADD = "{{ install_action.add }}";
+    var INSTALL_ACTIVATE = "{{ install_action.activate }}";
+    var POST_UPGRADE = "{{ install_action.post_upgrade }}";
+    var INSTALL_COMMIT = "{{ install_action.commit }}";
+    var ALL = "{{ install_action.all }}"; 
+    var INSTALL_REMOVE = "{{ install_action.remove }}";
+    var INSTALL_DEACTIVATE = "{{ install_action.deactivate }}";
     
     var current_region_id = -1;
     var browse_spinner = $('.browse-spinner');
@@ -113,33 +141,37 @@
     browse_spinner.hide();
     submit_spinner.hide();
     
-    $("#install_action").select2({ placeholder: 'Select Desirable Install Actions' });
-
+    $("#install_action").select2({ placeholder: 'Select Desirable Install Actions'});
+    $("#install_action").val("{{ form.install_action.data }}").trigger("change");
+    
     // Software selected from server repository
     var server_software_selector = $('#server-software-selector').DualListBox();
     
-    // Software selected from inactive packages
-    var inactive_software_selector = $('#inactive-software-selector').DualListBox();
-   
-    if ($('#hidden_server').val() != -1) {
-      display_selected_server_info($('#hidden_server_name').val(), $('#hidden_server_directory').val()); 
-    }
+    // Software selected from host packages
+    var host_software_selector = $('#host-software-selector').DualListBox();  
     
-    $('#install_action').on('change', function(e) {
-      var install_actions = $('#install_action').val();
-      if (has_one_of_these(install_actions, [ALL])) {
-        $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
-      }
-      // Use $('#install_action').val() to get the latest value
-      toggle_ui($('#install_action').val());
-
+    var datetimepicker = $(".form_datetime").datetimepicker({
+      format: "mm/dd/yyyy HH:ii P",
+      showMeridian: true,
+      autoclose: true,
+      todayBtn: true,
+      pickerPosition: "top-left",
+      todayHighlight: true
     });
-  
-  
-    $('#install_action').val(function(index, currentValue) {
-      toggle_ui($(this).val());
-      return currentValue
-    });  
+    
+    toggle_ui();
+   
+    $('#install_action').on('change', function(e) {
+      var install_actions = $(this).val();
+      if (has_one_of_these(install_actions, [ALL])) {
+        $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
+      } else if (has_one_of_these(install_actions, [INSTALL_REMOVE]) && install_actions.length > 1) {
+        $("#install_action").val([INSTALL_REMOVE]).trigger('change');
+      } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
+        $("#install_action").val([INSTALL_DEACTIVATE]).trigger('change');
+      }
+      toggle_ui();
+    });
 
     function has_one_of_these(install_actions, search_items) {
       if (install_actions != null) {
@@ -161,51 +193,75 @@
         }
         return true;
       }
-      return false;
+     return false;
     }
 
-    function toggle_ui(install_actions) {
-      $('#install-add-widget-panel').hide();
+    function toggle_ui() {
+      var install_actions = $('#install_action').val();
+      
+      should_enable_widget_panel(install_actions);
+      
+      $('#add-widget-panel').hide();
       $('#activate-widget-panel').hide();
+      $('#remove-widget-panel').hide();
+      $('#deactivate-widget-panel').hide();
       $('#software-packages-panel').hide();
-      $('#server-repository-panel').hide();
+      $('#dependency-panel').hide();
       
-      if (install_actions == null ||
-        has_one_of_these_only(install_actions, [PRE_UPGRADE, POST_UPGRADE, INSTALL_COMMIT])) {
-        $('#software-packages-panel').hide();
-      } 
+      if (has_one_of_these_only(install_actions, [INSTALL_REMOVE]) ) {
       
-      if (has_one_of_these(install_actions, [INSTALL_ADD]) &&
-          has_one_of_these(install_actions, [ACTIVATE]) ) {
-        $('#software-packages-panel').show();
-        $('#server-repository-panel').show();
-        $('#install-add-widget-panel').show();
+        $('#remove-widget-panel').show();
+        
+      } else if (has_one_of_these_only(install_actions, [INSTALL_DEACTIVATE]) ) {
+      
+        $('#deactivate-widget-panel').show();
+        
+      } else if (has_one_of_these(install_actions, [INSTALL_ADD]) &&
+                 has_one_of_these(install_actions, [INSTALL_ACTIVATE]) ) {
+              
+        $('#add-widget-panel').show();
         $('#activate-widget-panel').show();
+        
       } else if (has_one_of_these(install_actions, [INSTALL_ADD]) ) {
-        $('#software-packages-panel').show();
-        $('#server-repository-panel').show();
-        $('#install-add-widget-panel').show();
-      } else if (has_one_of_these(install_actions, [ACTIVATE])) {
-        $('#software-packages-panel').show();
+            
+        $('#add-widget-panel').show(); 
+        
+      } else if (has_one_of_these(install_actions, [INSTALL_ACTIVATE])) {
+
         $('#activate-widget-panel').show();
       }
       
-      if (install_actions != null && install_actions.length > 1) {
+      should_enable_software_packages_panel();
+      
+      if (install_actions == null || install_actions.length > 1) {
         $('#dependency').val(-1);
         $('#dependency-panel').hide();
       } else {
         $('#dependency-panel').show();
       }
+      
+      display_selected_server_info(); 
     }
-
-    $(".form_datetime").datetimepicker({
-      format: "mm/dd/yyyy HH:ii P",
-      showMeridian: true,
-      autoclose: true,
-      todayBtn: true,
-      pickerPosition: "top-left",
-      todayHighlight: true
-    });
+    
+    function should_enable_widget_panel(install_actions) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE]) ) {
+        $('#widget-panel').show();
+      } else {
+        $('#widget-panel').hide();
+      }
+    }
+    
+    function should_enable_software_packages_panel() {
+       if ($('#add-widget-panel').is(':visible') || 
+           $('#activate-widget-panel').is(':visible') ||
+           $('#remove-widget-panel').is(':visible') ||
+           $('#deactivate-widget-panel').is(':visible') ) {
+         
+         $('#software-packages-panel').show();
+       } else {
+         $('#software-packages-panel').hide();
+       }
+    }
 
     function read_server_cookie(region_id) {
       if (region_id != -1) {
@@ -214,8 +270,6 @@
         
         $('#hidden_server').val(server == null ? -1 : server);
         $('#hidden_server_directory').val(server_directory == null ? '' : server_directory);
-        
-        //alert(server + ' ' + server_directory);
       }
     }
     
@@ -226,9 +280,23 @@
       }
     }
     
+    function read_target_release_cookie(region_id) {
+      if (region_id != -1) {
+        var target_release = $.cookie('region-' + region_id + '-target-release');
+        $('#server_dialog_target_software').val(target_release == null ? '' : target_release);
+      }
+    }
+    
+    function write_target_release_cookie(region_id, target_release) {
+      if (region_id != -1) {
+        $.cookie('region-' + region_id + '-target-release', target_release, { path: '/' });  
+      }
+    }
+    
     function display_server_repository_dialog(region_id) {
       current_region_id = region_id;
       read_server_cookie(region_id);
+      read_target_release_cookie(region_id)
       
       $('#server-repository-dialog').modal({ show: true, backdrop:'static' })  
 
@@ -387,7 +455,6 @@
         $('#cisco_dialog_server_directory').val() );
     });
 
-
     function reset_server_directory(server_id, server_directory_selector, server_directory) {
       if (server_directory != '') {    
         bootbox.confirm('Reset the server directory to use the server repository base directory?', function(result) {
@@ -413,8 +480,8 @@
       $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
       
       write_server_cookie(current_region_id, $('#hidden_server').val(), $('#hidden_server_directory').val());
-                 
-      display_selected_server_info($('#hidden_server_name').val(), $('#hidden_server_directory').val());    
+      write_target_release_cookie(current_region_id, $('#server_dialog_target_software').val());
+      toggle_ui();
     });
 
     server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
@@ -463,21 +530,16 @@
 
     // Called by the $('#form').submit() function.
     function on_final_submit(current_form, hostname) {
-
-      var install_actions = $('#install_action').val();
-      var software_packages = $('#software-packages').val();
-      
-      if (has_one_of_these(install_actions, [INSTALL_ADD]) && 
-          software_packages.indexOf('.tar') == -1) {
-      
+      // If hostname is null, this method is called by Batch Installs
+      if (has_one_of_these($('#install_action').val(), [INSTALL_ADD]) ) {  
         var validate_object = {
           form: current_form,
           hostname: hostname,
           server_id: $('#hidden_server').val(),
           server_directory: $('#hidden_server_directory').val(),
-          software_packages: software_packages,
+          software_packages: $('#software-packages').val(),
           spinner: submit_spinner,
-          check_missing_file_on_server: true,
+          check_missing_file_on_server: $('#hidden_server').val() > -1,
           callback: on_finish_validate
         };
 
@@ -540,6 +602,21 @@
       }
     }
 
+    $('#smu-check-all').click(function () {    
+      toggle_check_all(smu_table, this);
+    });
+      
+    $('#sp-check-all').click(function () {    
+      toggle_check_all(sp_table, this);
+    });
+      
+    function toggle_check_all(data_table, this_instance) {
+      var filtered_rows = data_table.$('tr', {"filter": "applied"});
+      for (var i = 0; i < filtered_rows.length; i++) {
+        $(filtered_rows[i]).find('.check').prop('checked', this_instance.checked);
+      }
+    }
+      
     var smu_table = $("#smu-datatable").dataTable({
       "order": [
         [1, "desc"]
@@ -554,10 +631,11 @@
           }
         },
       "columnDefs": [{
+        "sortable": false,
         "targets": 0,
         "data": 'package_name',
         "render": function(data, type, row) {
-          return '<input type="checkbox" value="' + data + '" class="check">';
+          return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
         }
       }, {
         "targets": 1,
@@ -619,10 +697,11 @@
         }
       },
       "columnDefs": [{
+        "sortable": false,
         "targets": 0,
         "data": 'package_name',
         "render": function(data, type, row) {
-          return '<input type="checkbox" value="' + data + '" class="check">';
+          return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
         }
       }, {
         "targets": 1,
@@ -686,6 +765,8 @@
       
       create_menu();
       
+      $('#smu-check-all').prop('checked', false);
+      $('#sp-check-all').prop('checked', false);
       $('#cisco-software-dialog').modal({show:true, backdrop:'static'})
             
       var server_id = $('#hidden_server').val();
@@ -693,8 +774,7 @@
       if (server_id != -1) {
         $('#cisco_dialog_server').val(server_id);
         retrieve_file_list(server_id, $('#cisco_dialog_server_directory'), server_directory);
-      }
-      
+      }     
     }
 
     function create_menu() {
@@ -720,7 +800,6 @@
                                         platform="' + platform + '" \
                                         release="' + releases[j] + '">' + releases[j] + '</a></li>'
               }
-
               html += '</ul>' + '</li>'
             }
           });
@@ -746,7 +825,8 @@
         return false;
       }     
       
-      new_software_packages = [];
+      var new_software_packages = [];
+      
       $('.check').each(function(index) {
         if (this.checked) {
           $(this).attr('checked', false);
@@ -760,9 +840,9 @@
       $('#hidden_server').val($('#cisco_dialog_server').val());
       $('#hidden_server_name').val($('#cisco_dialog_server option:selected').text());
       $('#hidden_server_directory').val($('#cisco_dialog_server_directory').val());     
-      display_selected_server_info($('#hidden_server_name').val(), $('#hidden_server_directory').val());
       
-      write_server_cookie(current_region_id, $('#hidden_server').val(), $('#hidden_server_directory').val());
+      write_server_cookie(current_region_id, $('#hidden_server').val(), $('#hidden_server_directory').val());    
+      toggle_ui();
     });
 
     // Use delegate pattern for event
@@ -798,14 +878,21 @@
       move_forward($('#smu-details-table'), $('#smu-name-title'));
     });
     
-    function display_selected_server_info(server_name, server_directory) {  
-      var html_code = '<span style="color: Gray;"><b>Server Repository:</b></span>&nbsp;' + server_name + '</span>';
-      if (server_directory.length > 0) {
-        html_code += '<p><span style="color: Gray;"><b>Directory:</b></span>&nbsp;' + server_directory + '</span>';
+    function display_selected_server_info() {  
+      var html_code = '';
+      
+      if ($('#hidden_server').val() != -1) {
+      
+        html_code = '<table>';
+        html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + $('#hidden_server_name').val() + '</td></tr>';
+        
+        if ($('#hidden_server_directory').val().length > 0) {
+          html_code += '<tr><td><span style="color: Gray;">Server Directory:&nbsp;</span></td><td>' + $('#hidden_server_directory').val() + '</td></tr>';
+        }
+         
+        html_code += '</table>';
       }
-       
-      $('#server-repository-info').html(html_code);
-      $('#server-repository-info-panel').removeClass('collapse');
+      $('#server-repository-panel').html(html_code);
     }
     
     <!--------------------------------------------------------------------------------------------------------------->
@@ -823,10 +910,11 @@
       "pageLength": 100,
       "columnDefs": [ 
        {
+         "sortable": false,
          "targets": 0, 
          "data" : 'packages',
          "render": function ( data, type, row ) {
-           return '<input type="checkbox" value="' + data + '" class="check">';
+           return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
          }
        },
        {
@@ -885,7 +973,7 @@
     }); 
     
     $('#on-install-history-submit').click(function(e) {
-      new_software_packages = [];
+      var new_software_packages = [];
       $('.check').each(function(index) {
         if (this.checked) {
           $(this).attr('checked', false);
@@ -893,20 +981,22 @@
         }
       }); 
       
-      update_software_packages(new_software_packages);
+      update_software_packages(new_software_packages);     
+      toggle_ui();
     });
       
     <!--------------------------------------------------------------------------------------------------------------->
     
-    $('#inactive_software_dialog_host').on('change', function(e) {
-      var selected_host = $('#inactive_software_dialog_host option:selected').val();
+    $('#host_software_dialog_host').on('change', function(e) {
+      var selected_host = $('#host_software_dialog_host option:selected').val();
       if (selected_host.length > 0) {
-        refresh_inactive_software(selected_host);
+        refresh_host_software(selected_host);
       } 
     }); 
     
-    $('#on-inactive-packages-submit').click(function(e) {
-      update_software_packages(inactive_software_selector.get_selected_items());
+    $('#on-host-packages-submit').click(function(e) {
+      update_software_packages(host_software_selector.get_selected_items());     
+      toggle_ui();
     });
     
     function update_software_packages(new_software_packages) {
@@ -915,27 +1005,33 @@
       }
       
       var software_packages = get_software_package_list(); 
-
+      
+      for (i = 0; i < new_software_packages.length; i++) {
+          software_packages.push(new_software_packages[i]);
+      }
+      $('#software-packages').val(String(software_packages).replace(/,/g, '\n'));
+        
+      /*
       if (software_packages.length > 0) {    
         bootbox.dialog({
-          message: "Would you like to append to existing selected software packages?  Click 'Yes' to append or 'No' to override.",
+          message: "Overwrite existing selected software packages?  Click 'Yes' to overwrite or 'No' to append.",
           title: "Confirmation",
           buttons: {
             success: {
               label: "Yes",
               className: "btn-success",
               callback: function() {
-                for (i = 0; i < new_software_packages.length; i++) {
-                  software_packages.push(new_software_packages[i]);
-                }
-                $('#software-packages').val(String(software_packages).replace(/,/g, '\n'));
+                $('#software-packages').val(String(new_software_packages).replace(/,/g, '\n'));
               }
             },
             danger: {
               label: "No",
               className: "btn-danger",
               callback: function() {
-                $('#software-packages').val(String(new_software_packages).replace(/,/g, '\n'));
+               for (i = 0; i < new_software_packages.length; i++) {
+                  software_packages.push(new_software_packages[i]);
+                }
+                $('#software-packages').val(String(software_packages).replace(/,/g, '\n'));
               }
             }, 
           }
@@ -944,52 +1040,72 @@
       } else {
         $('#software-packages').val(String(new_software_packages).replace(/,/g, '\n'));
       }
+      */
     }
   
-    var saved_inactive_software = [];
+    var saved_host_software = [];
         
-    function initialize_inactive_software_dialog() {
-      saved_inactive_software = [];
-      $('#inactive_software_dialog_host').empty();
-      $('<option>', {value: '', text: ''}).appendTo($('#inactive_software_dialog_host')); 
-      $('#inactive_software_dialog_last_successful_inventory_elapsed_time').val('');
-      inactive_software_selector.initialize([], []);
+    function initialize_host_software_dialog() {
+      saved_host_software = [];
+      $('#host_software_dialog_host').empty();
+      $('<option>', {value: '', text: ''}).appendTo($('#host_software_dialog_host')); 
+      $('#host_software_dialog_last_successful_inventory_elapsed_time').val('');
+      host_software_selector.initialize([], []);
     }
     
-    function display_inactive_software_dialog(hostname_list) {
-      initialize_inactive_software_dialog();
+    function display_host_software_dialog(hostname_list, filter) {
+      var title = "";
       
-      $('#inactive-software-dialog').modal({show:true, backdrop:'static'})
+      // Record the filter for later usage.
+      current_filter = filter;
+      
+      if (filter == FILTER_ACTIVATE) {
+        title = TITLE_ACTIVATE;
+      } else if (filter == FILTER_REMOVE) {
+        title = TITLE_REMOVE;
+      } else if (filter == FILTER_DEACTIVATE) {
+        title = TITLE_DEACTIVATE;
+      }
+      
+      // Set the title text
+      $('#host-software-dialog-title').html(title);
+      
+      initialize_host_software_dialog();
+      
+      $('#host-software-dialog').modal({show:true, backdrop:'static'})
             
       if (hostname_list.length == 1) {
         var hostname = hostname_list[0];
         
-        $('<option>', {value: hostname, text: hostname, selected: true}).appendTo($('#inactive_software_dialog_host')); 
-        refresh_inactive_software(hostname)
+        $('<option>', {value: hostname, text: hostname, selected: true}).appendTo($('#host_software_dialog_host')); 
+        refresh_host_software(hostname)
         
       } else {
         for (i = 0; i < hostname_list.length; i++) {
-          $('<option>', {value: hostname_list[i], text: hostname_list[i]}).appendTo($('#inactive_software_dialog_host')); 
+          $('<option>', {value: hostname_list[i], text: hostname_list[i]}).appendTo($('#host_software_dialog_host')); 
         }
       }
     }
-    
-    function refresh_inactive_software(hostname) {
+     
+    function refresh_host_software(hostname) {
       // Update the last successful inventory elapsed time
       $.ajax({
         url: '/api/hosts/' + hostname + '/last_successful_inventory_elapsed_time',  
         dataType: 'json',
         success: function(data) {
           $.each(data, function(index, element) {
-            $('#inactive_software_dialog_last_successful_inventory_elapsed_time').val(element[0].last_successful_inventory_elapsed_time);
+            $('#host_software_dialog_last_successful_inventory_elapsed_time').val(element[0].last_successful_inventory_elapsed_time);
+            if (element[0].status == 'failed') {
+              $('#host_software_dialog_last_successful_inventory_elapsed_time').css({'color' : 'red'});
+            }                               
           });
         }
       });
        
-      var inactive_software = []
+      var host_software = []
         
       $.ajax({
-        url: '/api/hosts/' + hostname + '/packages/inactive',  
+        url: '/api/hosts/' + hostname + '/packages/' + current_filter,  
         dataType: 'json',
         success: function(data) {
           $.each(data, function(index, element) {
@@ -1002,51 +1118,51 @@
                 software_package = software_package.substring(n + 1);
               }
               
-              inactive_software.push({
+              host_software.push({
                 'id': software_package,
                 'name': software_package
               });
             }
           });
           
-          if (!is_same_software(inactive_software) ) {
-            inactive_software_selector.initialize(inactive_software);
-            save_inactive_software(inactive_software);
+          if (!is_same_software(host_software) ) {
+            host_software_selector.initialize(host_software);
+            save_host_software(host_software);
           }
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
-          bootbox.alert("Unable to retrieve inactive software. Error=" + errorThrown);
+          bootbox.alert("Unable to retrieve host software. Error=" + errorThrown);
         }
       });      
     }
     
-    function is_same_software(inactive_software) {
-      for (i = 0; i < inactive_software.length; i++) {
-        if ($.inArray(inactive_software[i].name, saved_inactive_software) == -1) {
+    function is_same_software(host_software) {
+      for (i = 0; i < host_software.length; i++) {
+        if ($.inArray(host_software[i].name, saved_host_software) == -1) {
           return false;
         }
       }
-      return (inactive_software.length == saved_inactive_software.length);
+      return (host_software.length == saved_host_software.length);
     }
     
-    function save_inactive_software(inactive_software) {
-      saved_inactive_software = [];
+    function save_host_software(host_software) {
+      saved_host_software = [];
       
-      for (i = 0; i < inactive_software.length; i++) {
-        saved_inactive_software.push(inactive_software[i].name);
+      for (i = 0; i < host_software.length; i++) {
+        saved_host_software.push(host_software[i].name);
       }
     }
     
     var timer = null;
     
     $('#refresh-software').on('click', function(e) {
-      var hostname = $('#inactive_software_dialog_host').val();
+      var hostname = $('#host_software_dialog_host').val();
       if (hostname != null && hostname.length > 0) {
         $.ajax({
           url: '/api/get_software/' + hostname,
           success: function(response) {
             if (response.status == 'OK') {
-              refresh_inactive_software(hostname);
+              refresh_host_software(hostname);
             } else {
               bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;A similar request may be in progress.');
             }
@@ -1112,26 +1228,24 @@
     
     }
     
-    $('#inactive-software-dialog').on('shown.bs.modal', function(e) {
+    $('#host-software-dialog').on('shown.bs.modal', function(e) {
       timer = setInterval( function () {
-        var hostname = $('#inactive_software_dialog_host').val();
+        var hostname = $('#host_software_dialog_host').val();
         if (hostname != null && hostname.length > 0) {
-          refresh_inactive_software(hostname);
+          refresh_host_software(hostname);
         }
       }, 10000 ); 
     });
     
-    $('#inactive-software-dialog').on('hidden.bs.modal', function(e) {
+    $('#host-software-dialog').on('hidden.bs.modal', function(e) {
       clearInterval(timer);
     });
-  
-      
+        
     {% block head_schedule_install %}
 
     {% endblock head_schedule_install %}
   });
 </script>
-
 
 {% endblock extra_head %}
 
@@ -1198,7 +1312,7 @@
             {% set extra_field =
               '<button id="auto-select-software" class="btn">Auto Select</button>' 
             %}       
-            {{ edit_field(form.server_dialog_target_software, field_width="col-sm-6", class="form-control", placeholder="Only for Software Upgrade (enter X.X.X format)", extra_field=extra_field) }}  
+            {{ edit_field(form.server_dialog_target_software, field_width="col-sm-6", class="form-control", placeholder="Software Upgrade Only (enter X.X.X format)", extra_field=extra_field) }}  
           </div>
         
           <div class="form-group">           
@@ -1229,7 +1343,7 @@
           <button type="button" class="close" data-dismiss="modal">x</button>
           <div class="form-group ">
             <div class="dropdown col-sm-4">
-              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Platforms
+              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Lookup SMUs
               <span class="caret"></span></button>
               <ul id="dropdown-cisco-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
             </div>
@@ -1288,7 +1402,7 @@
                   <table class="display table" id="smu-datatable">
                     <thead>
                       <tr>
-                        <th>ST</th>
+                        <th><center><input type='checkbox' id='smu-check-all'></center></th>
                         <th>Posted Date</th>
                         <th>SMU ID</th>
                         <th>DDTS</th>
@@ -1306,7 +1420,7 @@
                   <table class="display table" id="sp-datatable">
                     <thead>
                       <tr>
-                        <th>ST</th>
+                        <th><center><input type='checkbox' id='sp-check-all'></center></th>
                         <th>Posted Date</th>
                         <th>SMU ID</th>
                         <th>DDTS</th>
@@ -1352,7 +1466,7 @@
           <table class="display table" id="install-history-datatable">
             <thead>
               <tr>
-                <th>S</th>
+                <th></th>
                 <th>Packages</th>
                 <th>Installed Time</th>
                 <th>Installed By</th>
@@ -1373,29 +1487,29 @@
   </div>
 </div>
 
-<div id="inactive-software-dialog" class="modal" role="dialog">
+<div id="host-software-dialog" class="modal" role="dialog">
   <div class="modal-dialog">
     <form method="post" class="form-horizontal">
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal">x</button>
-          <h4>Select from Inactive Packages</h4>
-          {{ edit_field(form.inactive_software_dialog_host, field_width="col-sm-6", class="form-control") }}    
+          <h4><span id="host-software-dialog-title"></span></h4>
+          {{ edit_field(form.host_software_dialog_host, field_width="col-sm-6", class="form-control") }}    
           
           {% set extra_field ='<a href="javascript://" id="refresh-software">
             <img src=\"/static/refresh.png\" title="Retrieve Latest Software"></a>' %}
 
-          {{ edit_field(form.inactive_software_dialog_last_successful_inventory_elapsed_time, readonly=true, field_width="col-sm-6", class="form-control", extra_field=extra_field) }}     
+          {{ edit_field(form.host_software_dialog_last_successful_inventory_elapsed_time, readonly=true, field_width="col-sm-6", class="form-control", extra_field=extra_field) }}     
         </div>
         <div class="modal-body">
           <div class="form-group">           
-            <select id="inactive-software-selector" name="inactive-software-selector" multiple="multiple" data-title="Inactive-Packages" data-json=false></select>
+            <select id="host-software-selector" name="host-software-selector" multiple="multiple" data-title="Software-Packages" data-json=false></select>
           </div>
         </div>
         <div class="modal-footer">
           <div class="form-actions">
             <div class="btn col-sm-offset-4">   
-              <button id="on-inactive-packages-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+              <button id="on-host-packages-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
               <button class="btn" data-dismiss="modal">Cancel</button>
             </div>
           </div>

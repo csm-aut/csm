@@ -44,22 +44,30 @@
         "pageLength": 100,
         "scrollX": true,
         "scrollY": 350,
+        "fnCreatedRow": function( nRow, aData, iDataIndex ) {  
+          var date_diff = date_diff_in_days(new Date($('td:eq(2)', nRow).text()), new Date() );       
+          if (date_diff <= 7) {
+            $('td', nRow).css('background-color', '#FFFFCC');
+          }
+        },
         "columnDefs": [ 
         {
+           "sortable": false,
            "targets": 0, 
            "data" : 'package_name',
            "render": function ( data, type, row ) {
-             return '<input type="checkbox" value="' + data + '" class="check">';
+             return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
            }
          },
          {
             "targets": 1, 
+            "sortable": false,
             "data" : 'ST',
             "render": function ( data, type, row ) {
               if (data == 'True') {
-                return '<img src="/static/circle_check.png" title="Found in CSM Server Repository">';
+                return '<center><img src="/static/circle_check.png" title="Found in CSM Server Repository"></center>';
               } else {
-                return '<img src="/static/exclamation.png" title="Missing in CSM Server Repository">';
+                return '<center><img src="/static/exclamation.png" title="Missing in CSM Server Repository"></center>';
               }
             }
           },
@@ -121,22 +129,30 @@
         "pageLength": 100,
         "scrollX": true,
         "scrollY": 350,
+        "fnCreatedRow": function( nRow, aData, iDataIndex ) {  
+          var date_diff = date_diff_in_days(new Date($('td:eq(2)', nRow).text()), new Date() );         
+          if (date_diff <= 7) {
+            $('td', nRow).css('background-color', '#FFFFCC');
+          }
+        },
         "columnDefs": [ 
          {
+            "sortable": false,
             "targets": 0, 
             "data" : 'package_name',
             "render": function ( data, type, row ) {
-              return '<input type="checkbox" value="' + data + '" class="check">';
+              return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
             }
           },
           {
+            "sortable": false,
             "targets": 1, 
             "data" : 'ST',
             "render": function ( data, type, row ) {
               if (data == 'True') {
-                return '<img src="/static/circle_check.png" title="Found in server repository">';
+                return '<center><img src="/static/circle_check.png" title="Found in server repository"></center>';
               } else {
-                return '<img src="/static/exclamation.png" title="Not found in server repository">';
+                return '<center><img src="/static/exclamation.png" title="Not found in server repository"></center>';
               }
             }
           },
@@ -190,6 +206,21 @@
         $('#badge-sp-list').html(rows); 
       });
       
+      $('#smu-check-all').click(function () {    
+         toggle_check_all(smu_table, this);
+      });
+      
+      $('#sp-check-all').click(function () {    
+        toggle_check_all(sp_table, this);
+      });
+      
+      function toggle_check_all(data_table, this_instance) {
+        var filtered_rows = data_table.$('tr', {"filter": "applied"});
+        for (var i = 0; i < filtered_rows.length; i++) {
+          $(filtered_rows[i]).find('.check').prop('checked', this_instance.checked);
+        }
+      }
+       
       /*
       $('#smu-datatable tbody').on('click', 'tr', function () {
         $(this).toggleClass('selected');
@@ -234,7 +265,7 @@
         }); 
         
         if (software_packages.length > 0) {             
-          $('#select-server-dialog').modal({show:true}) 
+          $('#select-server-dialog').modal({show:true, backdrop:'static'}) 
          
           $('#dialog_server').val($.cookie('server_id') == null ? -1 : parseInt($.cookie('server_id')) );
           var preferred_server_directory = $.cookie('server_directory') == null ? "" : $.cookie('server_directory');    
@@ -281,7 +312,7 @@
           server_directory: server_directory,
           software_packages: software_packages,
           spinner: browse_spinner,
-          check_missing_file_on_server: true,
+          check_missing_file_on_server: server_id > -1,
           callback: on_finish_validate,
           pending_downloads: null
         };
@@ -493,8 +524,8 @@
           <table cellspacing="0" class="display table" id="smu-datatable">    
             <thead> 
               <tr> 
-                <th>S</th>  
-                <th>ST</th> 
+                <th><center><input type='checkbox' id='smu-check-all'></center></th>  
+                <th>Status</th> 
                 <th>Posted Date</th> 
                 <th>SMU ID</th>  
                 <th>DDTS</th>  
@@ -512,8 +543,8 @@
           <table cellspacing="0" class="display table" id="sp-datatable">    
             <thead> 
               <tr> 
-                <th>S</th> 
-                <th>ST</th>  
+                <th><center><input type='checkbox' id='sp-check-all'></center></th>
+                <th>Status</th>  
                 <th>Posted Date</th>  
                 <th>SMU ID</th>
                 <th>DDTS</th>  

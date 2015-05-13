@@ -155,7 +155,7 @@ Returns the optimize list given the SMU/SP list.
 A smu_list may contain packages, SMUs, SPs, or junk texts.
 This method is used to support the SMU Optimize feature
 """
-def get_optimize_list(smu_list):
+def get_optimize_list(smu_list, include_annotation=True):
     error_list = []
     result_list = []
     
@@ -194,13 +194,17 @@ def get_optimize_list(smu_list):
         
         missing_required_prerequisite_set = get_unique_set_from_dict(missing_required_prerequisite_dict)
         for pre_requisite_smu in missing_required_prerequisite_set:
-            result_list.append(pre_requisite_smu + '.' + file_suffix + ' (A Missing Pre-requisite)')
-            
+            if include_annotation:
+                result_list.append(pre_requisite_smu + '.' + file_suffix + ' (A Missing Pre-requisite)')
+            else:
+                result_list.append(pre_requisite_smu + '.' + file_suffix)
+                
         excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
         
         for smu_info in smu_info_list:
             if smu_info.name not in excluded_supersede_dict:
-                result_list.append(smu_info.name + '.' + file_suffix + ' (Superseded)')
+                if include_annotation:
+                    result_list.append(smu_info.name + '.' + file_suffix + ' (Superseded)')
             else:
                 result_list.append(smu_info.name + '.' + file_suffix)
                 

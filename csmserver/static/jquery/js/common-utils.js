@@ -74,11 +74,11 @@ function date_diff_in_days(a, b) {
  var validate_object = {
    form: current_form,
    hostname: hostname,
-   server_id: $('#server').val(),
+   server_id: $('#hidden_server').val(),
    server_directory: $('#hidden_server_directory').val(),
    software_packages: $('#software-packages').val(),
    spinner: submit_spinner,
-   check_missing_file_on_server: $('#install_action').val() == 'Install Add',
+   check_missing_file_on_server: true,
    callback: on_finish_validate
  };
 */
@@ -88,6 +88,8 @@ function on_validate_prerequisites_and_files_on_server(validate_object) {
       
 function check_missing_prerequisite(validate_object) {               
   validate_object.spinner.show();
+  
+  // Only '.pie' or '.tar' files should be checked
         
   $.ajax({
      url: "/api/get_missing_prerequisite_list",
@@ -103,7 +105,7 @@ function check_missing_prerequisite(validate_object) {
 
        // There is no missing pre-requisites
        if (missing_prerequisite_list.length == 0) {
-         if (validate_object.check_missing_file_on_server && validate_object.server_id > -1) {
+         if (validate_object.check_missing_file_on_server) {
            check_missing_files_on_server(validate_object);               
          } else {
            validate_object.callback(validate_object);
@@ -132,7 +134,7 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
           validate_object.software_packages = 
             trim_lines( validate_object.software_packages + '\n' + missing_prerequisite_list.replace(/<br>/g, "\n") )
 
-          if (validate_object.check_missing_file_on_server && validate_object.server_id > -1) {
+          if (validate_object.check_missing_file_on_server) {
             check_missing_files_on_server(validate_object);
           } else {
             validate_object.callback(validate_object);
@@ -143,7 +145,7 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
         label: "Ignore",
         className: "btn-success",
         callback: function() {
-          if (validate_object.check_missing_file_on_server && validate_object.server_id > -1) {
+          if (validate_object.check_missing_file_on_server) {
             check_missing_files_on_server(validate_object);
           } else {
             validate_object.callback(validate_object);
@@ -165,7 +167,9 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
       
 function check_missing_files_on_server(validate_object) {
   validate_object.spinner.show();
-     
+  
+  // Only '.pie' or '.tar' files should be checked
+  
   $.ajax({
      url: "/api/get_missing_files_on_server/" + validate_object.server_id,
      dataType: 'json',
@@ -182,10 +186,10 @@ function check_missing_files_on_server(validate_object) {
            missing_file_count = element.length;
            for (i = 0; i < element.length; i++) {               
              if (element[i].is_downloadable) {
-               missing_file_list += element[i].smu_entry + ' (needs ' + element[i].cco_filename + ')<br>';
+               missing_file_list += element[i].smu_entry + ' (Downloadable)<br>';
                downloadable_file_list += element[i].cco_filename + '\n';
              } else {
-               missing_file_list += element[i].smu_entry + ' (Unfortunately, it is not on cisco.com)<br>';
+               missing_file_list += element[i].smu_entry + ' (Not Downloadable)<br>';
              }          
            }
          });
@@ -212,7 +216,7 @@ function check_missing_files_on_server(validate_object) {
 function display_missing_files_dialog(validate_object, missing_file_list, downloadable_file_list) {
   bootbox.dialog({
     message: missing_file_list,
-    title: "Following files are missing on the server repository.  If you choose to download them, " + 
+    title: "Following files are missing on the server repository.  Those that are identified as 'Downloadable' can be downloaded from CCO.  If you choose to download them, " + 
         "the scheduled installation will not proceed until the files are successfully downloaded and copied to the server repository.",
     buttons: {
       primary: {

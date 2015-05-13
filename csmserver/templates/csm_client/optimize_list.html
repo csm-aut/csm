@@ -62,6 +62,7 @@
                  lines += smu_entry + '\n';
                  optimizedList.push(smu_entry);
                }
+
              });
              
              $('#optimized_list').html(lines);
@@ -90,14 +91,14 @@
   <div class="row">  <!-- upper section -->
     
     <div class="container col-sm-6">
-      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-asterisk"></i> Optimize List</strong></span>
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Optimize List</strong></span>
       <hr>
       
       <div class="panel panel-default">
         <div class="panel-heading">
           SMU or Service Pack List
           <span class="pull-right">
-            <a id="optimize-list" href="javascript://">
+            <a id="optimize-list" href="javascript://">Optimize
               <img title="Click to Optimize" src="{{ url_for('static', filename='right_arrow.png') }}">
             </a>
           </span>
@@ -111,20 +112,20 @@
     </div>
  
     <div class="container col-sm-6">
-      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-home"></i> <a href="{{ url_for('home') }}">Home</a></strong></span>          
+      <span>&nbsp;</span>  
       <hr>     
       <div class="panel panel-default">
         <div class="panel-heading">
           Optimized SMUs or Service Packs       
           <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">        
            <span class="pull-right">
-            <a id="toggle_list" href="javascript://">
+            <a id="toggle_list" href="javascript://">Toggle Results
               <img title="Toggle Verbosity/Superseded SMUs" src="{{ url_for('static', filename='toggle.png') }}">
             </a>
           </span>  
         </div>
         <div class="panel-body">
-          The resultant list will indicate any missing pre-requisites or superseded SMUs.
+          The resultant list contains any missing pre-requisites or superseded SMUs.
           <textarea spellcheck="false" class="form-control" rows="18" id="optimized_list" name="optimized_list"></textarea>
         </div>
       </div>
