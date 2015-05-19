@@ -130,7 +130,7 @@ class AdminConsoleForm(Form):
                   ]) 
     inventory_history_per_host = IntegerField('Software Inventory History Per Host', [validators.NumberRange(min=10, max=100)])
     install_history_per_host = IntegerField('Install History Per Host', [validators.NumberRange(min=10, max=1000)])
-    download_history_per_user = IntegerField('SMU/SP Download History Per User', [validators.NumberRange(min=100, max=100)])
+    download_history_per_user = IntegerField('SMU/SP Download History Per User', [validators.NumberRange(min=10, max=100)])
     total_system_logs = IntegerField('Total System Logs', [validators.NumberRange(min=100, max=100000)])
     enable_default_host_authentication = HiddenField("Enable Default Host Authentication")
     default_host_username = TextField('Default Host Username')

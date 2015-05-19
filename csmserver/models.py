@@ -407,7 +407,7 @@ class Region(Base):
     
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
-    servers = relationship('Server', secondary=lambda: RegionServer)
+    servers = relationship('Server', secondary=lambda: RegionServer, order_by="Server.hostname")
           
 class Server(Base):
     __tablename__ = 'server'

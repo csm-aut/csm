@@ -105,7 +105,7 @@
 
 <style>
   .modal-dialog {    
-    width: 900px;
+    width: 850px;
   }
   a:link, a:visited {
    text-decoration:none;
@@ -1006,12 +1006,6 @@
       
       var software_packages = get_software_package_list(); 
       
-      for (i = 0; i < new_software_packages.length; i++) {
-          software_packages.push(new_software_packages[i]);
-      }
-      $('#software-packages').val(String(software_packages).replace(/,/g, '\n'));
-        
-      /*
       if (software_packages.length > 0) {    
         bootbox.dialog({
           message: "Overwrite existing selected software packages?  Click 'Yes' to overwrite or 'No' to append.",
@@ -1040,7 +1034,7 @@
       } else {
         $('#software-packages').val(String(new_software_packages).replace(/,/g, '\n'));
       }
-      */
+      
     }
   
     var saved_host_software = [];

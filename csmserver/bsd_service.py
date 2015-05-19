@@ -21,6 +21,7 @@ BSD_IMAGE_SIZE = "image_size"
 BSD_DOWNLOAD_SESSION_ID = "download_session_id"
 BSD_DOWNLOAD_URL = "download_url"
 BSD_EULA_FORM = "eula_form_details"
+BSD_K9_FORM = "k9_form_details_response"
 BSD_FIELD_DETAILS = "field_details"
 BSD_FIELD_ID = "field_id"
 BSD_FIELD_VALUE = "field_value"
@@ -40,13 +41,19 @@ class BSDServiceHandler(object):
         response = requests.post(HTTP_GET_TOKEN_URL, params=payload)
         return json.loads(response.text)[BSD_ACCESS_TOKEN]
 
+    def debug_print(self, heading, data):
+        # Uncomment for debug printing
+        #print(heading, data)
+        pass
+        
     def download(self, output_file_path, callback=None):
         access_token = self.get_access_token(self.username, self.password)
          
         UDI = "PID: " + self.PID + " VID: V01 SN: FOX1316G5R5"        
         response = self.send_meta_data_request(access_token, UDI)
         if response is not None:
-            #print('response', response.text)
+            self.debug_print('response', response.text) 
+            
             json_text = response.json() 
             metadata_trans_ID = self.get_json_value(json_text, BSD_METADATA_TRANS_ID)          
             image_GUID = self.get_json_value(json_text, BSD_IMAGE_GUID)
@@ -57,7 +64,8 @@ class BSDServiceHandler(object):
                 if metadata_trans_ID is not None and image_GUID is not None:
                     response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
                     if response is not None:
-                        #print('response', response.text)
+                        self.debug_print('response', response.text)
+                        
                         json_text = response.json() 
                         download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
                         download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
@@ -66,16 +74,25 @@ class BSDServiceHandler(object):
                         # acknowledge the EULA or K9 agreement.
                         if download_url is None:
                             eula = self.get_json_value(json_text, BSD_EULA_FORM)
+                            k9 = self.get_json_value(json_text, BSD_K9_FORM)
                             if eula is not None:
                                 response = self.send_EULA_request(access_token, download_session_ID);
-                                response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
-                                if response is not None:
-                                    json_text = response.json() 
-                                    download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
-                                    download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
+                                self.debug_print('EULA response', response.text)
+                            elif k9 is not None:
+                                response = self.send_K9_request(access_token, download_session_ID);
+                                self.debug_print('K9 response', response.text)
+                                
+                            response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
+                            if response is not None:
+                                self.debug_print('After accepting EULA or K9', response.text)
+                                
+                                json_text = response.json() 
+                                download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
+                                download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
                         
-                        #print('download_url', download_url)
-                        #print('download_session', download_session_ID)  
+                        self.debug_print('download_url', download_url)
+                        self.debug_print('download_session', download_session_ID) 
+                         
                         if download_url is not None and download_session_ID is not None:
                             self.send_get_image(access_token, download_url, output_file_path, self.image_name, image_size, callback)
                         else:                      
@@ -92,7 +109,8 @@ class BSDServiceHandler(object):
         
     def send_K9_request(self, access_token, download_session_ID):
         headers = {'Authorization': 'Bearer ' + access_token}
-        return requests.post(HTTP_GET_K9_URL + "?download_session_id=" + download_session_ID , headers=headers)
+        return requests.post(HTTP_GET_K9_URL + "?download_session_id=" + download_session_ID + 
+            "&user_action=Accepted", headers=headers)
         
     def send_get_image(self, access_token, url_string, output_file_path, image_name, image_size, callback=None):
         # Segment is 1 MB.  For 40 MB files, there will be about 40 updates (i.e. database writes)

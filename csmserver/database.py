@@ -4,7 +4,7 @@ from sqlalchemy.engine.url import URL
 
 from salts import encode, decode
 from utils import import_module
-import sys
+import os 
 
 # DO NOT MODIFY THESE STRINGS.  THEY ARE USED FOR ENCRYPTION.
 STRING1 = "ABCDEF~!@#$%^&*()-_=+|[]{};:',.<>asdfghj/?GHIJKLMNOPQRSTUVWXYZ12345qwertyuiopkl67890zxcvbnm"
@@ -64,7 +64,7 @@ def get_database_settings():
         module = import_module('configparser')
         
     config = module.RawConfigParser()  
-    config.read('database.ini')
+    config.read(os.getcwd() + os.path.sep + 'database.ini')
 
     db_dict = dict(config.items('Database'))
     username = decode(ENCRYPT, db_dict['username'])
