@@ -279,7 +279,7 @@ class Connection(object):
         else:
             message = "Device is either not responding or not running IOS XR"
             _logger.debug(_c(self.hostname, message))
-            self.ctrl.disconnect()
+            self.disconnect()
             raise ConnectionError(message, self.hostname)
 
         self.adminprompt = adminprompt
@@ -345,7 +345,7 @@ class Connection(object):
         else:
             message = "Device is neither not responding nor not running IOS XR"
             _logger.debug(_c(self.hostname, message))
-            self.ctrl.disconnect()
+            self.disconnect()
             raise ConnectionError(message, self.hostname)
 
         self.prompt = prompt
