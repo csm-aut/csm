@@ -364,8 +364,8 @@ class Connection(object):
 
     def _execute_command(self, cmd, timeout, wait_for_string):
         with self.command_execution_pending:
-            self.ctrl.sendline(cmd)
             try:
+                self.ctrl.sendline(cmd)
                 self._wait_for_string(wait_for_string, 1, timeout)
             except CommandSyntaxError:
                 _logger.error(_c(
@@ -378,7 +378,10 @@ class Connection(object):
                     "Connection Error: '{}'".format(cmd)))
                 raise
             except Exception, err:
-                print Exception, err                
+                _logger.error(_c(
+                    self.hostname,
+                    "Exception: '{}'".format(err)))
+                raise ConnectionError(message=err, host=self.hostname)
 
 
     def _wait_for_string(self, wait_for_string, max_attempts=3, timeout=60):
