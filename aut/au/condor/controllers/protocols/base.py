@@ -33,7 +33,7 @@ import pexpect
 
 #INVALID_INPUT = "Invalid input detected"
 PASS = "[P|p]assword:\s*"
-XR_PROMPT = "\w+/\w+/\w+/\w+:.+#"
+XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 USERNAME = "[U|u]sername:\s?|\nlogin:\s?"
 PERMISSION_DENIED = "Permission denied"
 AUTH_FAILED = "Authentication failed|not authorized|Login incorrect"

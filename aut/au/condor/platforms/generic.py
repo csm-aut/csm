@@ -170,6 +170,7 @@ class Connection(object):
             _c(self.hostname, "Disconnecting from {}".format(self.__repr__())))
         self.ctrl.disconnect()
         self.connected = False
+        self.pending_connection = False
         _logger.info(_c(self.hostname, "Disconnected"))
 
     def send(self, cmd="", timeout=60, wait_for_string=None):
@@ -195,10 +196,10 @@ class Connection(object):
                 _c(self.hostname,
                    "Command executed successfully: '{}'".format(cmd)))
             output = self.ctrl.before
-            if output.startswith(cmd):
+            #if output.startswith(cmd):
                 # remove first line which contains the command itself
-                second_line_index = output.find('\n') + 1
-                output = output[second_line_index:]
+            #    second_line_index = output.find('\n') + 1
+            #    output = output[second_line_index:]
             output = output.replace('\r', '')
             return output
 
@@ -248,7 +249,7 @@ class Connection(object):
                 raise ConnectionError(message=err, host=self.hostname)
 
             try:
-                self.ctrl.expect('\r\n', timeout=1)
+                self.ctrl.expect('\r\n', timeout=10)
             except (pexpect.EOF, pexpect.TIMEOUT):
                 _logger.warning(
                     _c(self.hostname,
@@ -270,6 +271,10 @@ class Connection(object):
                 try:
                     last_line = buf.splitlines()[-1]
                 except IndexError:
+                    _logger.debug(
+                        _c(self.hostname,
+                            "No response received: '{}'".format(
+                                buffer)))
                     continue
 
                 _logger.debug(
@@ -287,7 +292,6 @@ class Connection(object):
 
                 if match:
                     try:
-                        #self.ctrl.sendline()
                         self.ctrl.expect_exact(
                             prompt,
                             timeout=1,
@@ -309,13 +313,13 @@ class Connection(object):
             _c(self.hostname,
                "{} prompt detected: '{}'".format(self.os_type, self.prompt))
         )
-
-        if self.os_type is 'IOSXR':
-            # Extract and store hostname from prompt
-            match = re.search(r':(.*)#$', prompt)
-            if match:
-                name = match.group(1)
-                self.hostname = name
+        if self.hostname == None:
+            if self.os_type is 'IOSXR':
+                # Extract and store hostname from prompt
+                match = re.search(r':(.*)#$', prompt)
+                if match:
+                    name = match.group(1)
+                    self.hostname = name
 
         return True
 
@@ -323,14 +327,14 @@ class Connection(object):
         with self.command_execution_pending:
 
             try:
-                self.ctrl.sendline(cmd)
-
+                self.ctrl.send(cmd)
+                self.ctrl.expect_exact(cmd)
+                self.ctrl.send("\n")
                 if wait_for_string:
                     _logger.debug(_c(
                         self.hostname,
                         "Waiting for string:'{}'".format(wait_for_string)))
                     self._wait_for_string(wait_for_string, 3, timeout)
-
                 else:
                     self._wait_for_xr_prompt(timeout)
 
@@ -359,8 +363,7 @@ class Connection(object):
         index = self.ctrl.expect(
                 [_PROMPT_IOSXR_RE, _INVALID_INPUT, _INCOMPLETE_COMMAND,
                  pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF],
-                timeout=timeout,
-                #searchwindowsize=len(expected_string)+10
+                timeout=timeout
             )
         _logger.debug(_c(self.hostname, "INDEX={}".format(index)))
 
