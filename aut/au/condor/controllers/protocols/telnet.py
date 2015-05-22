@@ -81,13 +81,13 @@ class Telnet(Protocol):
             timeout = 60
             if event == 0:  # ESCAPE_CHARACTER
                 if state == 0:
+                    state = 1
+                    timeout = 20
                     self._dbg(
                         10,
                         "{}: Waiting {} sec for initial response".format(
                             self.hostname, timeout)
                     )
-                    state = 1
-                    timeout = 20
                     continue
                 else:
                     raise ConnectionError("Unexpected session init")

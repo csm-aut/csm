@@ -33,11 +33,11 @@ import pexpect
 
 #INVALID_INPUT = "Invalid input detected"
 PASS = "[P|p]assword:\s*"
-XR_PROMPT = "\w+/\w+/\w+/\w+:.+#"
+XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 USERNAME = "[U|u]sername:\s?|\nlogin:\s?"
 PERMISSION_DENIED = "Permission denied"
 AUTH_FAILED = "Authentication failed|not authorized|Login incorrect"
-SHELL_PROMPT = re.compile(r'\$\s?$|>\s?$|#\s?$|\r\nAU_PROMPT')
+SHELL_PROMPT = "\$\s?|>\s?|#\s?|AU_PROMPT"
 CONNECTION_REFUSED = "Connection refused"
 RESET_BY_PEER = "reset by peer|closed by foreign host"
 
@@ -82,6 +82,7 @@ class Protocol(object):
                 command,
                 maxread=50000,
                 searchwindowsize=None,
+                echo=False
             )
             self.ctrl._session.logfile_read = self.logfile
 

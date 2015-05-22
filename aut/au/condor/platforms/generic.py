@@ -50,10 +50,11 @@ _INVALID_INPUT = "Invalid input detected"
 _INCOMPLETE_COMMAND = "Incomplete command."
 _CONNECTION_CLOSED = "Connection closed"
 
+_PROMPT_IOSXR_RE = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
 _DEVICE_PROMPTS = {
     'Shell': _PROMPT_SHELL,
-    'IOSXR': _PROMPT_IOSXR,
+    'IOSXR': _PROMPT_IOSXR_RE,
 }
 
 _logger = logging.getLogger(__name__)
@@ -110,7 +111,6 @@ class Connection(object):
         self.hostname = hostname
         self.debug = debug
         self.prompt = None
-        self.adminprompt = "This should be defined"
         self.os_type = 'Unknown'
 
     def __repr__(self):
@@ -145,14 +145,14 @@ class Connection(object):
             _logger.info(
                 _c(self.hostname, "Connected to {}".format(self.__repr__())))
             self._detect_prompt()
-            self._detect_adminprompt()
-            self.send('terminal exec prompt no-timestamp')
+            #self.send('terminal exec prompt no-timestamp')
             self.send('terminal len 0')
             self.send('terminal width 0')
         else:
             raise ConnectionError(
                 "Connection failed", self.hostname
             )
+
         return self.connected
 
     def disconnect(self):
@@ -170,6 +170,7 @@ class Connection(object):
             _c(self.hostname, "Disconnecting from {}".format(self.__repr__())))
         self.ctrl.disconnect()
         self.connected = False
+        self.pending_connection = False
         _logger.info(_c(self.hostname, "Disconnected"))
 
     def send(self, cmd="", timeout=60, wait_for_string=None):
@@ -195,10 +196,10 @@ class Connection(object):
                 _c(self.hostname,
                    "Command executed successfully: '{}'".format(cmd)))
             output = self.ctrl.before
-            if output.startswith(cmd):
+            #if output.startswith(cmd):
                 # remove first line which contains the command itself
-                second_line_index = output.find('\n') + 1
-                output = output[second_line_index:]
+            #    second_line_index = output.find('\n') + 1
+            #    output = output[second_line_index:]
             output = output.replace('\r', '')
             return output
 
@@ -224,78 +225,6 @@ class Connection(object):
         self.send()
         return result
 
-    def _detect_adminprompt(self):
-        """
-        Detect admin device prompt.
-
-        :rtype: bool
-        :return: True if prompt detected successfully
-        """
-        if not self.connected:
-            raise AssertionError("Session not established")
-
-        adminprompt = ""
-        counter = 0
-        max_retry = 3
-        # Try couple of iteration
-        self.ctrl.sendline('admin')
-        try:
-            self.ctrl.expect('#', timeout=5)
-        except (pexpect.EOF, pexpect.TIMEOUT):
-            pass
-
-        for retry in xrange(0, max_retry):
-            self.ctrl.sendline()
-            try:
-                self.ctrl.expect('\r\n\r', timeout=5)
-            except (pexpect.EOF, pexpect.TIMEOUT):
-                _logger.warning(
-                    _c(self.hostname,
-                       "Failed to get prompt. Retrying ({}/{})".format(
-                           retry + 1, max_retry)))
-                continue
-
-            if counter % 2:
-                lines = self.ctrl.before.strip()
-                last_line = lines.splitlines()[-1]
-                match = False
-                for os_type, pattern in _DEVICE_PROMPTS.items():
-                    match = last_line.strip()
-                    if match:
-                        adminprompt = last_line
-                        self.os_type = os_type
-                        break
-
-                if match:
-                    try:
-                        self.ctrl.expect_exact(
-                            adminprompt,
-                            timeout=1,)
-                    except (pexpect.EOF, pexpect.TIMEOUT):
-                        return False
-                    break
-
-            counter += 1
-        else:
-            message = "Device is either not responding or not running IOS XR"
-            _logger.debug(_c(self.hostname, message))
-            self.disconnect()
-            raise ConnectionError(message, self.hostname)
-
-        self.adminprompt = adminprompt
-        _logger.debug(
-            _c(self.hostname,
-               "{} adminprompt detected: '{}'".format(self.os_type, self.adminprompt))
-        )
-
-        self.ctrl.sendline('exit')
-        try:
-            self.ctrl.expect('#', timeout=5)
-        except (pexpect.EOF, pexpect.TIMEOUT):
-            pass
-
-        return True
-
     def _detect_prompt(self):
         """
         Detect device prompt.
@@ -308,12 +237,19 @@ class Connection(object):
 
         prompt = ""
         counter = 0
-        max_retry = 3
+        max_retry = 8
         # Try couple of iteration
         for retry in xrange(0, max_retry):
-            self.ctrl.sendline()
             try:
-                self.ctrl.expect('\r\n\r', timeout=5)
+                self.ctrl.sendline()
+            except Exception, err:
+                _logger.error(_c(
+                    self.hostname,
+                    "Exception: '{}'".format(err)))
+                raise ConnectionError(message=err, host=self.hostname)
+
+            try:
+                self.ctrl.expect('\r\n', timeout=10)
             except (pexpect.EOF, pexpect.TIMEOUT):
                 _logger.warning(
                     _c(self.hostname,
@@ -322,8 +258,30 @@ class Connection(object):
                 continue
 
             if counter % 2:
-                lines = self.ctrl.before.strip()
-                last_line = lines.splitlines()[-1]
+                _logger.debug(
+                    _c(self.hostname,
+                       "Detecting prompt ({}/{})".format(
+                           retry, max_retry - 1)))
+
+                buf = self.ctrl.before.strip()
+                _logger.debug(
+                    _c(self.hostname,
+                       "Buffer: {}".format(
+                           buf)))
+                try:
+                    last_line = buf.splitlines()[-1]
+                except IndexError:
+                    _logger.debug(
+                        _c(self.hostname,
+                            "No response received: '{}'".format(
+                                buffer)))
+                    continue
+
+                _logger.debug(
+                    _c(self.hostname,
+                       "Potential prompt: {}".format(
+                           last_line)))
+
                 match = False
                 for os_type, pattern in _DEVICE_PROMPTS.items():
                     match = re.search(pattern, last_line)
@@ -336,9 +294,11 @@ class Connection(object):
                     try:
                         self.ctrl.expect_exact(
                             prompt,
-                            timeout=1,)
+                            timeout=1,
+                            searchwindowsize=len(prompt)+2
+                            )
                     except (pexpect.EOF, pexpect.TIMEOUT):
-                        return False
+                        continue
                     break
 
             counter += 1
@@ -353,54 +313,102 @@ class Connection(object):
             _c(self.hostname,
                "{} prompt detected: '{}'".format(self.os_type, self.prompt))
         )
+        if self.hostname == None:
+            if self.os_type is 'IOSXR':
+                # Extract and store hostname from prompt
+                match = re.search(r':(.*)#$', prompt)
+                if match:
+                    name = match.group(1)
+                    self.hostname = name
 
-        #if self.os_type is 'IOSXR':
-        #    # Extract and store hostname from prompt
-        #    match = re.search(r':(.*)#$', prompt)
-        #    if match:
-        #        name = match.group(1)
-        #        self.name = name
         return True
 
     def _execute_command(self, cmd, timeout, wait_for_string):
         with self.command_execution_pending:
+
             try:
-                self.ctrl.sendline(cmd)
-                self._wait_for_string(wait_for_string, 1, timeout)
+                self.ctrl.send(cmd)
+                self.ctrl.expect_exact(cmd)
+                self.ctrl.send("\n")
+                if wait_for_string:
+                    _logger.debug(_c(
+                        self.hostname,
+                        "Waiting for string:'{}'".format(wait_for_string)))
+                    self._wait_for_string(wait_for_string, 3, timeout)
+                else:
+                    self._wait_for_xr_prompt(timeout)
+
             except CommandSyntaxError:
                 _logger.error(_c(
                     self.hostname,
                     "Syntax error: '{}'".format(cmd)))
                 raise
+
             except ConnectionError:
                 _logger.error(_c(
                     self.hostname,
                     "Connection Error: '{}'".format(cmd)))
                 raise
+
             except Exception, err:
                 _logger.error(_c(
                     self.hostname,
                     "Exception: '{}'".format(err)))
                 raise ConnectionError(message=err, host=self.hostname)
 
+    def _wait_for_xr_prompt(self, timeout=60):
+        _logger.debug(_c(
+                        self.hostname,
+                        "Waiting for XR prompt"))
+        index = self.ctrl.expect(
+                [_PROMPT_IOSXR_RE, _INVALID_INPUT, _INCOMPLETE_COMMAND,
+                 pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF],
+                timeout=timeout
+            )
+        _logger.debug(_c(self.hostname, "INDEX={}".format(index)))
 
-    def _wait_for_string(self, wait_for_string, max_attempts=3, timeout=60):
+        if index == 0:
+            _logger.debug(_c(self.hostname,
+                             "Received XR Prompt: {}".format(
+                                 self.ctrl.after)))
+            return
+
+        if index == 1:
+            _logger.warning(_c(self.hostname, "Invalid input detected"))
+            raise CommandSyntaxError(host=self.hostname,
+                                     message="Invalid input detected")
+
+        if index == 2:
+            _logger.warning(_c(self.hostname, "Incomplete command"))
+            raise CommandSyntaxError(host=self.hostname,
+                                     message="Incomplete command")
+
+        if index == 3:
+            _logger.warning(
+                _c(self.hostname, "Timeout waiting for prompt"))
+            raise CommandSyntaxError(host=self.hostname,
+                                     message="Incomplete command")
+
+        if index in [4, 5]:
+            raise ConnectionError(
+                "Unexpected device disconnect", self.hostname)
+
+
+
+    def _wait_for_string(self, expected_string, max_attempts=3, timeout=60):
         index = 0
         state = 0
         attempt = 0
-        expected_string = wait_for_string if wait_for_string else self.prompt
         while attempt < max_attempts + 1:
-            self.adminprompt = 'RP/0/RSP0/CPU0:ios(admin)#'
             index = self.ctrl.expect_exact(
-                [expected_string, self.adminprompt, _INVALID_INPUT, _INCOMPLETE_COMMAND,
+                [expected_string, _INVALID_INPUT, _INCOMPLETE_COMMAND,
                  pexpect.TIMEOUT,
                  _CONNECTION_CLOSED, pexpect.EOF], timeout=timeout,
-                #searchwindowsize=len(expected_string)+2
+                #searchwindowsize=len(expected_string)+10
             )
-
-            _logger.debug("{}: INDEX={}, STATE={}, ATTEMPT={}".format(
-                self.hostname, index, state, attempt
-            ))
+            _logger.debug(_c(self.hostname,
+                             "INDEX={}, STATE={}, ATTEMPT={}".format(
+                                 index, state, attempt)))
             if index == 0:
                 _logger.debug(
                     _c(self.hostname,
@@ -411,29 +419,20 @@ class Connection(object):
                     raise CommandSyntaxError(host=self.hostname)
 
             if index == 1:
-                _logger.debug(
-                    _c(self.hostname,
-                       "Received admin prompt : {}".format(self.adminprompt)))
-                if state == 0:
-                    return
-                if state == 1:
-                    raise CommandSyntaxError(host=self.hostname)
-
-            if index == 2:
                 _logger.warning(_c(self.hostname, "Invalid input detected"))
 
                 # command syntax error so wait for prompt again
                 state = 1
                 continue
 
-            if index == 3:
+            if index == 2:
                 _logger.warning(_c(self.hostname, "Incomplete command"))
 
                 # command syntax error so wait for prompt again
                 state = 1
                 continue
 
-            if index == 4:
+            if index == 3:
                 _logger.warning(
                     _c(self.hostname,
                        "Timeout waiting for '{}' ({}/{})".format(
@@ -441,7 +440,7 @@ class Connection(object):
                 # Trying to get prompt again
                 self.ctrl.sendline()
 
-            if index in [5, 6]:
+            if index in [4, 5]:
                 raise ConnectionError(
                     "Unexpected device disconnect", self.hostname)
 
