@@ -387,7 +387,7 @@ class Connection(object):
             _logger.warning(
                 _c(self.hostname, "Timeout waiting for prompt"))
             raise CommandSyntaxError(host=self.hostname,
-                                     message="Incomplete command")
+                                     message="Timeout waiting for prompt")
 
         if index in [4, 5]:
             raise ConnectionError(
