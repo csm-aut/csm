@@ -146,7 +146,7 @@ class Connection(object):
             _logger.info(
                 _c(self.hostname, "Connected to {}".format(self.__repr__())))
             self._detect_prompt()
-            #self.send('terminal exec prompt no-timestamp')
+            self.send('terminal exec prompt no-timestamp')
             self.send('terminal len 0')
             self.send('terminal width 0')
         else:
