@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
 
@@ -27,7 +28,7 @@
     <label class="col-sm-4 control-label">Select From</label>  
     <div class=col-sm-8>    
       <span id="add-widget-panel">
-        <a id="browse-repository-button" href="javascript://">
+        <a id="browse-server-button" href="javascript://">
           <img src="/static/browse_server.png">&nbsp;Server Repository&nbsp;&nbsp;&nbsp;
         </a>
         <a id="browse-cisco-button" href="javascript://">
@@ -280,10 +281,10 @@
       }
     }
     
-    function read_target_release_cookie(region_id) {
+    function read_target_release_cookie(region_id, target_software) {
       if (region_id != -1) {
         var target_release = $.cookie('region-' + region_id + '-target-release');
-        $('#server_dialog_target_software').val(target_release == null ? '' : target_release);
+        target_software.val(target_release == null ? '' : target_release);
       }
     }
     
@@ -296,7 +297,7 @@
     function display_server_repository_dialog(region_id) {
       current_region_id = region_id;
       read_server_cookie(region_id);
-      read_target_release_cookie(region_id)
+      read_target_release_cookie(region_id, $('#server_dialog_target_software'))
       
       $('#server-repository-dialog').modal({ show: true, backdrop:'static' })  
 
@@ -985,17 +986,17 @@
       toggle_ui();
     });
       
-    <!--------------------------------------------------------------------------------------------------------------->
-    
+    <!---------------------------------------------------------------------------------------------------------------> 
     $('#host_software_dialog_host').on('change', function(e) {
       var selected_host = $('#host_software_dialog_host option:selected').val();
       if (selected_host.length > 0) {
         refresh_host_software(selected_host);
       } 
     }); 
-    
-    $('#on-host-packages-submit').click(function(e) {
+     
+    $('#on-host-software-submit').click(function(e) {
       update_software_packages(host_software_selector.get_selected_items());     
+      write_target_release_cookie(current_region_id, $('#host_software_dialog_target_software').val());
       toggle_ui();
     });
     
@@ -1047,8 +1048,9 @@
       host_software_selector.initialize([], []);
     }
     
-    function display_host_software_dialog(hostname_list, filter) {
+    function display_host_software_dialog(region_id, hostname_list, filter, enable_auto_select) {
       var title = "";
+      current_region_id = region_id
       
       // Record the filter for later usage.
       current_filter = filter;
@@ -1065,6 +1067,15 @@
       $('#host-software-dialog-title').html(title);
       
       initialize_host_software_dialog();
+      
+      read_target_release_cookie(region_id, $('#host_software_dialog_target_software'))
+      
+      // Only Install Activate will have auto-select of software packages.
+      if (filter == FILTER_ACTIVATE && enable_auto_select) {
+        $('#host-software-dialog-auto-select-software-panel').show();
+      } else {
+        $('#host-software-dialog-auto-select-software-panel').hide();
+      }
       
       $('#host-software-dialog').modal({show:true, backdrop:'static'})
             
@@ -1169,8 +1180,7 @@
     
     <!--------------------------------------------------------------------------------------------------------------->
     
-    function auto_select_software(hostname) {      
-      var target_release = $('#server_dialog_target_software').val();
+    function auto_select_software(hostname, selector, target_release, match_internal_name) {     
       if (target_release.length == 0) {
         bootbox.alert('Target software release has not been specified.');
         return;
@@ -1181,6 +1191,7 @@
       $.ajax({
         url: "/api/get_software_package_upgrade_list/hosts/" + hostname + "/release/" + target_release,
         dataType: 'json',
+        data: { match_internal_name: match_internal_name} ,
         success: function(data) {
           $.each(data, function(index, element) {
             for (i = 0; i < element.length; i++) {
@@ -1189,11 +1200,11 @@
           });
         
           if (target_package_list.length > 0) {
-            server_software_selector.select_partial_match(target_package_list);
+            selector.select_partial_match(target_package_list);
           }
         
           var missing_package_list = [];
-          var selected_package_list = server_software_selector.get_selected_items();
+          var selected_package_list = selector.get_selected_items();
           
           for (i = 0; i < target_package_list.length; i++) {
             var target_package = target_package_list[i];
@@ -1217,7 +1228,7 @@
             for (i = 0; i < missing_package_list.length; i++) {
               package_list += missing_package_list[i] + '<br>';
             }
-            bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> &nbsp;Unable to locate software packages on server repository that match the followings<br><br>" + package_list);
+            bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> &nbsp;Unable to locate software packages that match the followings<br><br>" + package_list);
           }
         }
       });
@@ -1287,8 +1298,8 @@
         <div class="modal-header">
 
           <button type="button" class="close" data-dismiss="modal">x</button> 
-                   
-          <h4>Select Software Packages <span id="server-repository-dialog-title"><span></h4>
+                    
+          <h4>Select Software Packages <span id="server-dialog-title"><span></h4>
                                
           {{ edit_field(form.server_dialog_server, field_width="col-sm-7", class="form-control") }}   
           
@@ -1304,9 +1315,9 @@
         </div>
         <div class="modal-body">
         
-          <div id="toggle-auto-select-software" class="collapse">        
+          <div id="server-dialog-auto-select-software-panel">        
             {% set extra_field =
-              '<button id="auto-select-software" class="btn">Auto Select</button>' 
+              '<button id="server-dialog-auto-select-software" class="btn">Auto Select</button>' 
             %}       
             {{ edit_field(form.server_dialog_target_software, field_width="col-sm-6", class="form-control", placeholder="Software Upgrade Only (enter X.X.X format)", extra_field=extra_field) }}  
           </div>
@@ -1498,14 +1509,22 @@
           {{ edit_field(form.host_software_dialog_last_successful_inventory_elapsed_time, readonly=true, field_width="col-sm-6", class="form-control", extra_field=extra_field) }}     
         </div>
         <div class="modal-body">
+        
+          <div id="host-software-dialog-auto-select-software-panel">        
+            {% set extra_field =
+              '<button id="host-software-dialog-auto-select-software" class="btn">Auto Select</button>' 
+            %}       
+            {{ edit_field(form.host_software_dialog_target_software, field_width="col-sm-6", class="form-control", placeholder="Software Upgrade Only (enter X.X.X format)", extra_field=extra_field) }}  
+          </div>
+          
           <div class="form-group">           
-            <select id="host-software-selector" name="host-software-selector" multiple="multiple" data-title="Software-Packages" data-json=false></select>
+            <select id="host-software-selector" name="host-software-selector" multiple="multiple" data-title="Software-Pkgs" data-json=false></select>
           </div>
         </div>
         <div class="modal-footer">
           <div class="form-actions">
             <div class="btn col-sm-offset-4">   
-              <button id="on-host-packages-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+              <button id="on-host-software-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
               <button class="btn" data-dismiss="modal">Cancel</button>
             </div>
           </div>

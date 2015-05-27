@@ -90,7 +90,7 @@
         //bootbox.alert("This function has not been implemented.");
         $('#verify-reachability').removeClass("btn-danger");
         $('#verify-reachability').addClass("btn-primary");
-        bootbox.alert("<img src=\"{{ url_for('static', filename='green_check.png') }}\">CSM Server is able to reach the specified host.  However, unlike managed host reachability test, this test did not verify username and password authentication.");
+        bootbox.alert("<img src=\"{{ url_for('static', filename='green_check.png') }}\">CSM Server is able to reach the specified host.  However, unlike managed host reachability test, this test does not verify username and password authentication.");
       }
          
       function display_error() {

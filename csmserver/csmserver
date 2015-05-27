@@ -7,18 +7,26 @@ PYTHON="python"
 WORKERS=4
 TIMEOUT=60
 PORT=5000
+DEBUG=true
 
 SSLKEY="ssl.key"
 SSLCERT="ssl.cert"
 
-function start_csmserver
+function start_csmserver()
 {
     echo "starting CSM Server....."
+
     # This will force database creation for a new installation via a single entry point.
     # Otherwise, gunicorn multiple workers will create contention when they all start.
     $PYTHON initialize.py
-    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- csmserver:app > /dev/null &
-    $PYTHON csmdispatcher.py > /dev/null & 
+
+    # if not in debug mode, hide the outputs
+    if [ "$1" != true ]; then
+        exec >/dev/null
+    fi
+
+    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- csmserver:app &
+    $PYTHON csmdispatcher.py & 
 }
 
 function start_secure_csmserver
@@ -37,9 +45,16 @@ function start_secure_csmserver
     fi
 
     echo "starting Secure CSM Server"
+
     $PYTHON initialize.py
-    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- --keyfile=$SSLKEY --certfile=$SSLCERT  csmserver:app > /dev/null &
-    $PYTHON csmdispatcher.py > /dev/null &
+
+    # if not in debug mode, hide the outputs
+    if [ "$1" != true ]; then
+        exec >/dev/null
+    fi
+
+    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- --keyfile=$SSLKEY --certfile=$SSLCERT  csmserver:app &
+    $PYTHON csmdispatcher.py &
 }
 
 function stop_csmserver 
@@ -52,9 +67,21 @@ function stop_csmserver
 }
 
 if [ "$1" == "start" ] && [ "$2" == "secure" ]; then
-    start_secure_csmserver
+
+    if [ "$3" == "debug" ]; then
+        start_secure_csmserver $DEBUG 
+    else
+        start_secure_csmserver 
+    fi
+
 elif [ "$1" == "start" ]; then
-    start_csmserver
+
+    if [ "$2" == "debug" ]; then
+        start_csmserver $DEBUG 
+    else
+        start_csmserver 
+    fi
+
 elif [ "$1" == "stop" ]; then
     stop_csmserver
 else

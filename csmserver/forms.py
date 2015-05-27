@@ -75,6 +75,7 @@ class HostScheduleInstallForm(Form):
     software_packages = TextAreaField('Software Packages')
     install_history_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
     
+    host_software_dialog_target_software = TextField('Target Software Release')
     host_software_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
     host_software_dialog_last_successful_inventory_elapsed_time = TextField('Last Successful Retrieval') 
     

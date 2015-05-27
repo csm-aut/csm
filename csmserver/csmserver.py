@@ -44,6 +44,7 @@ from models import SMUMeta
 from models import SMUInfo
 from models import DownloadJob
 from models import DownloadJobHistory
+from models import CSMMessage
 from models import get_download_job_key_dict
 
 from validate import is_connection_valid
@@ -331,6 +332,61 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+@app.route('/api/acknowledge_csm_message')
+def api_acknowledge_csm_message():
+    username = request.args.get('username')
+    password = request.args.get('password')
+    
+    db_session = DBSession()
+     
+    user, authenticated = \
+        User.authenticate(db_session.query, username, password)
+            
+    if authenticated:  
+        if user.privilege == UserPrivilege.ADMIN:
+            if len(user.csm_message) == 0:
+                user.csm_message.append(CSMMessage(acknowledgment_date=datetime.date.today() ))
+            else:
+                user.csm_message[0].acknowledgment_date=datetime.date.today() 
+                
+            db_session.commit()
+        
+    return jsonify({'status':'OK'})
+    
+@app.route('/api/get_csm_message')
+def api_get_csm_message():
+    rows = [] 
+
+    username = request.args.get('username')
+    password = request.args.get('password')
+    
+    db_session = DBSession()
+     
+    user, authenticated = \
+        User.authenticate(db_session.query, username, password)
+            
+    if authenticated:  
+        if user.privilege == UserPrivilege.ADMIN: 
+            csm_messages = SMUInfoLoader.get_cco_csm_messages()
+            if len(csm_messages) > 0:
+                acknowledgment_date = datetime.datetime(2000, 1, 1) 
+                if len(user.csm_message) > 0:
+                    acknowledgment_date = user.csm_message[0].acknowledgment_date
+                
+                # csm_messages returns a dictionary with dates (YYYY/MM/DD) sorted in descending order
+                for csm_message in csm_messages:
+                    date = csm_message['date']
+                    message = csm_message['message']
+                    try:                       
+                        delta = datetime.datetime.strptime(date, "%Y/%m/%d") - acknowledgment_date
+                        print(delta.days )
+                        if delta.days > 0:
+                            rows.append({ 'date' : date, 'message': message.replace("\n", "<br>") })
+                    except:
+                        logger.exception('api_get_csm_message hit exception')
+    
+    return jsonify( **{'data':rows} )
+        
 @app.route('/hosts/')
 @login_required
 def host_list():
@@ -2439,9 +2495,10 @@ def get_software_package_upgrade_list(hostname, target_release):
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
-        
+    
+    match_internal_name =  True if request.args.get('match_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname) 
-    target_packages = get_target_software_package_list(host.platform, host_packages, target_release)
+    target_packages = get_target_software_package_list(host.platform, host_packages, target_release, match_internal_name)
     for package in target_packages:
         rows.append({'package' : package})
         

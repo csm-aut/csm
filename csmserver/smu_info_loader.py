@@ -11,6 +11,7 @@ from collections import OrderedDict
 
 import requests
 import time
+import collections
 
 CATALOG = 'catalog.dat'
 IOSXR_URL = 'http://www.cisco.com/web/Cisco_IOS_XR_Software/SMUMetaFile'
@@ -295,8 +296,44 @@ class SMUInfoLoader(object):
                         release_list.insert(0, release)
                     
         return OrderedDict(sorted(catalog.items()))
-
-
+    
+    """
+    Returns an array of dictionary items { date : message }
+    csmserver.msg file has date token like
+    @2015/5/1
+      --- message ---
+    @2015/4/1
+      --- message ---
+    """
+    @classmethod
+    def get_cco_csm_messages(cls):
+        csm_messages = []
+        message = ''
+        date_token = None
+        
+        try:
+            #r = requests.get(URLS[0] + '/csmserver.msg)
+            r = requests.get('http://wwwin-people.cisco.com/alextang/csmserver.msg')
+            lines = r.text.splitlines()            
+            for line in lines:    
+                if len(line) > 0 and line[0] == '@':
+                    if date_token is not None:
+                        csm_messages.append({ 'date' : date_token, 'message' : message })
+                    
+                    date_token = line[1:]
+                    message = ''
+                elif date_token is not None:                    
+                    message += line + "\n"
+                    
+        except:
+            pass
+        
+        if date_token is not None:
+            csm_messages.append({ 'date' : date_token, 'message' : message })
+        
+        return csm_messages
+        
 if __name__ == '__main__':
-    smu_loader = SMUInfoLoader('asr9k_px', '4.2.1')
+    #smu_loader = SMUInfoLoader('asr9k_px', '4.2.1')
+    SMUInfoLoader.get_cco_csm_messages()
 

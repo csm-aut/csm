@@ -65,6 +65,9 @@ class User(Base):
         order_by="desc(DownloadJobHistory.created_time)",
         backref="host",
         cascade="all, delete, delete-orphan")
+    
+    csm_message = relationship("CSMMessage",
+        cascade="all, delete, delete-orphan")
 
     def _get_password(self):
         return self._password
@@ -407,7 +410,7 @@ class Region(Base):
     
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
-    servers = relationship('Server', secondary=lambda: RegionServer, order_by="Server.hostname")
+    servers = relationship('Server', secondary=lambda: RegionServer)
           
 class Server(Base):
     __tablename__ = 'server'
@@ -638,7 +641,14 @@ class Log(Base):
     msg = Column(Text)
     log = Column(Text)
     created_time = Column(DateTime)
-            
+
+class CSMMessage(Base):
+    __tablename__ = 'csm_message'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    acknowledgment_date = Column(DateTime)
+    
 Base.metadata.create_all(engine)
         
 class LogHandler(logging.Handler):

@@ -119,14 +119,15 @@ function invoke_host_software_dialog(title) {
   if (selected_hosts.length == 0) {
     bootbox.alert("Host has not been specified.");
   } else { 
-    display_host_software_dialog(selected_hosts, title);
+    display_host_software_dialog($('#region option:selected').val(), selected_hosts, title, false);
   }
 }
 
-$('#browse-repository-button').on('click', function(e) {
+$('#browse-server-button').on('click', function(e) {
   if (!validate_region()) {
     return;
   }
+  $('#server-dialog-auto-select-software-panel').hide();
   display_server_repository_dialog($('#region option:selected').val());
 });
 

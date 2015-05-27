@@ -37,25 +37,28 @@
   }
      
   $('#browse-install-history-button').on('click', function (e) {
-     display_install_history_dialog(["{{ host.hostname }}"]);
+   display_install_history_dialog(["{{ host.hostname }}"]);
   });  
               
   $('#browse-inactive-software-button').on('click', function (e) {   
-      display_host_software_dialog(["{{ host.hostname }}"], FILTER_ACTIVATE);
+    invoke_host_software_dialog(FILTER_ACTIVATE);
   }); 
-   
+    
   $('#browse-remove-software-button').on('click', function (e) {   
-      display_host_software_dialog(["{{ host.hostname }}"], FILTER_REMOVE);
+    invoke_host_software_dialog(FILTER_REMOVE);
   }); 
   
   $('#browse-deactivate-software-button').on('click', function (e) {   
-      display_host_software_dialog(["{{ host.hostname }}"], FILTER_DEACTIVATE);
+    invoke_host_software_dialog(FILTER_DEACTIVATE);
   });
   
-  $('#browse-repository-button').on('click', function(e) {
-    $('#toggle-auto-select-software').removeClass("collapse");                    
-    $('#server-repository-dialog-title').html('> Host: <span style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span>');
-    
+  function invoke_host_software_dialog(title) {
+    display_host_software_dialog("{{ host.region.id }}", ["{{ host.hostname }}"], title, true);
+  }
+  
+  $('#browse-server-button').on('click', function(e) {                  
+    $('#server-dialog-title').html('> Host: <span style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span>');
+    $('#server-dialog-auto-select-software-panel').show();
     display_server_repository_dialog("{{ host.region.id }}");
   });
     
@@ -63,11 +66,16 @@
     display_cisco_software_dialog("{{ host.region.id }}");
   });
   
-  $('#auto-select-software').on('click', function(e) {
+  $('#server-dialog-auto-select-software').on('click', function(e) {
     // Cancel default behavior
     e.preventDefault(); 
-    
-    auto_select_software("{{ host.hostname }}");
+    auto_select_software("{{ host.hostname }}", server_software_selector, $('#server_dialog_target_software').val(), false);
+  });
+  
+  $('#host-software-dialog-auto-select-software').on('click', function(e) {
+    // Cancel default behavior
+    e.preventDefault(); 
+    auto_select_software("{{ host.hostname }}", host_software_selector, $('#host_software_dialog_target_software').val(), true);
   });
   
 {% endblock head_schedule_install %}
