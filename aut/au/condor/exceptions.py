@@ -58,6 +58,19 @@ class CommandSyntaxError(GeneralError):
     """Command syntax error"""
     pass
 
+class CommandTimeoutError(GeneralError):
+    """Command timeout error"""
+    def __init__(self, message=None, host=None, command=None):
+        GeneralError.__init__(self, message, host)
+        self.command = command
+
+    def __str__(self):
+        message = self.message or self.__class__.__doc__
+        message = "{}: '{}'".format(message, self.command) \
+            if self.command else message
+        message = "{}: {}".format(self.host, message) \
+            if self.host else message
+        return message
 
 class InvalidHopInfoError(GeneralError):
     """Invalid device connection parameters"""
