@@ -52,8 +52,8 @@
     invoke_host_software_dialog(FILTER_DEACTIVATE);
   });
   
-  function invoke_host_software_dialog(title) {
-    display_host_software_dialog("{{ host.region.id }}", ["{{ host.hostname }}"], title, true);
+  function invoke_host_software_dialog(filter) {
+    display_host_software_dialog("{{ host.region.id }}", ["{{ host.hostname }}"], filter, true);
   }
   
   $('#browse-server-button').on('click', function(e) {                  

@@ -122,9 +122,9 @@
     var FILTER_REMOVE = "inactive";
     var FILTER_DEACTIVATE = "active,active-committed";   
     
-    var TITLE_ACTIVATE = "Select Inactive Software Packages to Activate";
-    var TITLE_REMOVE = "Select Inactive Software Packages to Remove";
-    var TITLE_DEACTIVATE = "Select Active Software Packages to Deactivate";
+    var TITLE_ACTIVATE = "Install Action: Activate";
+    var TITLE_REMOVE = "Install Action: Remove";
+    var TITLE_DEACTIVATE = "Install Action: Deactivate";
     
     var PRE_UPGRADE = "{{ install_action.pre_upgrade }}"; 
     var INSTALL_ADD = "{{ install_action.add }}";
@@ -1050,6 +1050,7 @@
     
     function display_host_software_dialog(region_id, hostname_list, filter, enable_auto_select) {
       var title = "";
+      var selector_title = "";
       current_region_id = region_id
       
       // Record the filter for later usage.
@@ -1057,10 +1058,13 @@
       
       if (filter == FILTER_ACTIVATE) {
         title = TITLE_ACTIVATE;
+        selector_title = "Inactive-Packages";
       } else if (filter == FILTER_REMOVE) {
         title = TITLE_REMOVE;
+        selector_title = "Inactive-Packages";
       } else if (filter == FILTER_DEACTIVATE) {
         title = TITLE_DEACTIVATE;
+        selector_title = "Active-Packages";
       }
       
       // Set the title text
@@ -1077,6 +1081,7 @@
         $('#host-software-dialog-auto-select-software-panel').hide();
       }
       
+      host_software_selector.set_title(selector_title);
       $('#host-software-dialog').modal({show:true, backdrop:'static'})
             
       if (hostname_list.length == 1) {

@@ -160,7 +160,10 @@
         
             unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
             selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
-
+            
+            //unselected.update_options().scrollTop(0).sortOptions();;
+            //selected.update_options().scrollTop(0).sortOptions();;
+             
             handleMovement(options);
         });
 
@@ -174,8 +177,8 @@
             }
         });
 
-        selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
-        unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
+        //selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
+        //unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
     }
 
     /** Constructs the jQuery plugin after the elements have been retrieved. */
@@ -248,7 +251,7 @@
         $(options.parentElement + ' .unselected').find('option:selected').prop('selected', false);
         $(options.parentElement + ' .selected').find('option:selected').prop('selected', false);
 
-        $(options.parentElement + ' .filter').val('');
+        //$(options.parentElement + ' .filter').val('');
         //$(options.parentElement + ' select').find('option').each(function() { $(this).show(); });
 
         countElements(options.parentElement);
@@ -344,6 +347,24 @@
     };
     */
     
+    $.fn.update_options = function() {
+        return this.each(function() {
+            var select = this;
+            var options = [];
+            var hidden_options = $(select).data('hidden_options');
+            $(select).find('option').each(function() {
+                options.push({value: $(this).val(), text: $(this).text()});
+            });
+            
+            if (hidden_options != null) {        
+                $.each(hidden_options, function(i) {
+                    options.push({value: hidden_options[i].value, text: hidden_options[i].text});
+                }); 
+            } 
+            $(select).data('options', options);
+        });
+    }
+    
     /**
      * Filters through the select boxes and hides when an element doesn't match.
      *
@@ -362,14 +383,15 @@
             if (hidden_options != null) {        
                 $.each(hidden_options, function(i) {
                     options.push({value: hidden_options[i].value, text: hidden_options[i].text});
-                    
+                    /*
                     $('<option>', {
                         value: hidden_options[i].value,
                         text:  hidden_options[i].text,
                         selected: false
                     }).appendTo($(select)); 
+                    */
                 });
-                $(select).data('hidden_options', []);  
+                //$(select).data('hidden_options', []);  
             } 
             
             $(select).data('options', options);
@@ -426,6 +448,12 @@
       });
       
       $( ".str" ).click();
+    }
+    
+    $.fn.set_title = function(title) {
+      var options = $(this).data('options');               
+      $(options.parentElement + ' .unselected-title').text('Available ' + title);
+      $(options.parentElement + ' .selected-title').text('Selected ' + title);
     }
     
     /* array of dictionary data with value and text */
