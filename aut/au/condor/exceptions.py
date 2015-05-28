@@ -54,8 +54,28 @@ class ConnectionTimeoutError(ConnectionError):
     pass
 
 
-class CommandSyntaxError(GeneralError):
+class CommandError(GeneralError):
+    """Command execution error"""
+    def __init__(self, message=None, host=None, command=None):
+        GeneralError.__init__(self, message, host)
+        self.command = command
+
+    def __str__(self):
+        message = self.message or self.__class__.__doc__
+        message = "{}: '{}'".format(message, self.command) \
+            if self.command else message
+        message = "{}: {}".format(self.host, message) \
+            if self.host else message
+        return message
+
+
+class CommandSyntaxError(CommandError):
     """Command syntax error"""
+    pass
+
+
+class CommandTimeoutError(CommandError):
+    """Command timeout error"""
     pass
 
 

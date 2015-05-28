@@ -40,7 +40,8 @@ from ..utils import to_list
 from ..exceptions import \
     ConnectionError,\
     ConnectionTimeoutError, \
-    CommandSyntaxError
+    CommandSyntaxError, \
+    CommandTimeoutError
 
 _PROMPT_IOSXR = re.compile('\w+/\w+/\w+/\w+:.+#')
 _PROMPT_SHELL = re.compile('\$\s*|>\s*')
@@ -145,7 +146,7 @@ class Connection(object):
             _logger.info(
                 _c(self.hostname, "Connected to {}".format(self.__repr__())))
             self._detect_prompt()
-            #self.send('terminal exec prompt no-timestamp')
+            self.send('terminal exec prompt no-timestamp')
             self.send('terminal len 0')
             self.send('terminal width 0')
         else:
@@ -338,10 +339,18 @@ class Connection(object):
                 else:
                     self._wait_for_xr_prompt(timeout)
 
-            except CommandSyntaxError:
+            except CommandSyntaxError, e:
                 _logger.error(_c(
                     self.hostname,
                     "Syntax error: '{}'".format(cmd)))
+                e.command = cmd
+                raise
+
+            except CommandTimeoutError, e:
+                _logger.error(_c(
+                    self.hostname,
+                    "Command timeout: '{}'".format(cmd)))
+                e.command = cmd
                 raise
 
             except ConnectionError:
@@ -386,7 +395,7 @@ class Connection(object):
         if index == 3:
             _logger.warning(
                 _c(self.hostname, "Timeout waiting for prompt"))
-            raise CommandSyntaxError(host=self.hostname,
+            raise CommandTimeoutError(host=self.hostname,
                                      message="Timeout waiting for prompt")
 
         if index in [4, 5]:
