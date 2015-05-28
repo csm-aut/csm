@@ -79,7 +79,6 @@ class Controller(object):
 
     def connect(self):
         connected = False
-        max_hops = len(self.hosts)
         for hop, host in enumerate(self.hosts, start=1):
             if not host.is_valid():
                 raise ConnectionError("Invalid host", host)
@@ -104,8 +103,7 @@ class Controller(object):
                         )
                     )
                     try:
-                        connected = protocol.connect(
-                            target_device=True if hop == max_hops else False)
+                        connected = protocol.connect()
                     except:
                         self._dbg(
                             40,

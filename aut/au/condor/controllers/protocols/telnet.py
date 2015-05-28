@@ -58,7 +58,7 @@ class Telnet(Protocol):
 
         self._spawn_session(command)
 
-    def connect(self, target_device=False):
+    def connect(self):
         state = 0
         transition = 0
         event = 0
@@ -153,19 +153,6 @@ class Telnet(Protocol):
 
             if event == 4:  # SHELL PROMPT
                 if state in [1, 4, 5, 6]:
-                    # no Shell prompt expected
-                    if target_device:
-                        self._dbg(
-                           10,
-                            "{}: Potential Shel/Unix prompt detected on target"
-                            " device but not expected: {}{}".format(
-                                self.hostname,
-                                self.ctrl.before.strip().split()[-1],
-                                self.ctrl.after)
-                        )
-                        self.ctrl.sendline()
-                        continue
-
                     self._dbg(
                         10,
                         "{}: Received Shell/Unix prompt".format(self.hostname)

@@ -63,7 +63,7 @@ class SSH(Protocol):
             )
         return command
 
-    def connect(self, target_device=False):
+    def connect(self):
         state = 0
         transition = 0
         event = 0
@@ -129,18 +129,6 @@ class SSH(Protocol):
 
             if event == 2:  # SHELL_PROMPT
                 if state in [0, 1, 2, 3]:
-                    # no Shell prompt expected
-                    if target_device:
-                        self._dbg(
-                           10,
-                            "{}: Potential Shel/Unix prompt detected on target"
-                            " device but not expected: {}{}".format(
-                                self.hostname,
-                                self.ctrl.before.strip().split()[-1],
-                                self.ctrl.after)
-                        )
-                        continue
-
                     self._dbg(10, "{}: Received shell prompt.".format(
                         self.hostname)
                     )

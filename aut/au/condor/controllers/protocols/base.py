@@ -86,7 +86,7 @@ class Protocol(object):
             )
             self.ctrl._session.logfile_read = self.logfile
 
-    def connect(self, target_device=False):
+    def connect(self):
         raise NotImplementedError("Connection method not implemented")
 
     def _dbg(self, level, msg):
