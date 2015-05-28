@@ -48,6 +48,8 @@ from au.plugins.cfg_backup import ConfigBackupPlugin
 from au.plugins.cmd_snapshot_backup import CommandSnapshotPlugin
 from au.plugins.install_add import InstallAddPlugin
 from au.plugins.install_act import InstallActivatePlugin
+from au.plugins.install_deact import InstallDeactivatePlugin
+from au.plugins.install_remove import InstallRemovePlugin
 from au.plugins.install_commit import InstallCommitPlugin
 from au.plugins.cfg_consistency import ConfigConsistencyPlugin
 from au.plugins.err_core_check import ErrorCorePlugin
@@ -59,6 +61,8 @@ from au.plugins.device_pkg_poll import DevicePackageSatePlugin
 plugin_classes = [
     DeviceConnectPlugin,
     SoftwareVersionPlugin,
+    InstallDeactivatePlugin,
+    InstallRemovePlugin,
     ConfigBackupPlugin,
     NodeStatusPlugin,
 #    DiskSpacePlugin,
@@ -82,9 +86,8 @@ plugin_classes = [
 plugins = []
 plugin_map = defaultdict(list)
 
-plugin_types = ["ADD","UPGRADE", "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE",
+plugin_types = ["DEACTIVATE","REMOVE", "ADD","UPGRADE", "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE",
                 "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT"]
-
 phases = {
     "POLL":["POLL"],
     "ADD":["ADD"],
@@ -109,7 +112,11 @@ phases = {
         "ADD",
         "UPGRADE",
         "POST_UPGRADE",
-    ]
+    ],
+    "DEACTIVATE": ["DEACTIVATE",
+"POLL"],
+    "REMOVE": ["REMOVE",
+"POLL"]
 }
 
 
@@ -123,7 +130,7 @@ def add_plugin(cls):
     plugins.append(plugin)
     for phase in phases:
         # Connecting the device should be in all phase of operation
-        if plugin.TYPE in phases[phase] or plugin.NAME == "CONNECTION":
+        if plugin.TYPE in phases[phase] or plugin.NAME == "CONNECTION":         
             plugin_map[phase].append(plugin)
 
 def get_plugins_of_phase(phase):

@@ -96,17 +96,18 @@ class InstallAddPlugin(IPlugin):
         """
         csm_ctx = device.get_property('ctx')
         if csm_ctx :
-           if hasattr(csm_ctx, 'install_add_id'):
-              csm_ctx.install_add_id = add_id
-              if hasattr(csm_ctx, 'added_tar_file'):
-                if input_has_tar is True:
-                    csm_ctx.added_tar_file = True
+           if hasattr(csm_ctx, 'operation_id'):
+              if input_has_tar is True:
+                 csm_ctx.operation_id = add_id
+                 self.log("Update Install Add ID to CSM ctx")
+              else :
+                 csm_ctx.operation_id = None
         # for non CSM case 
-        device.store_property('install_add_id', add_id)
-        if input_has_tar is True:
-           device.store_property('added_tar_file', True)
-        else:
-           device.store_property('added_tar_file', False)
+        else :
+          if input_has_tar is True:
+             device.store_property('operation_id', add_id)
+          else:
+             device.store_property('operation_id', None)
 
 
     def install_add(self, device, kwargs):
@@ -138,15 +139,17 @@ class InstallAddPlugin(IPlugin):
                 pkg_name_list.remove(pkg)
             if pkg.find('.tar') >=0:
                 input_has_tar = True
+            else :
+              if pkg.find('.pie') ==-1:
+                 pkg_name_list.remove(pkg)
 
         packages = " ".join(pkg_name_list) 
         cmd = "admin install add source %s %s async" % (repo_str, packages)
-        success, output = device.execute_command(cmd)
+        success, output = device.execute_command(cmd,timeout=3600)
         if success and error_str not in output:
             op_id = re.search('Install operation (\d+) \'', output).group(1)
-            self.update_csm_context(op_id, device, input_has_tar)
-
             self.watch_operation(device,op_id)
+            self.update_csm_context(op_id, device, input_has_tar)
         else :
             self.error("Command :%s \n%s"%(cmd,output))
             

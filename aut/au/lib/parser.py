@@ -209,6 +209,26 @@ def parsecli():
                        default=False,
                        help='Connect to the device and get active/inactive/committed packages')
 
+    oparser.add_option('--plugin_list',
+                       type="string",
+                       dest    = "plugin_list",
+                       default = None,
+                       metavar = "FILE",
+                       help    = "File which contains the list of Plugins")
+
+    oparser.add_option('--deactivate',
+                       type="string",
+                       dest    = "deactivateset",
+                       default = None,
+                       metavar = "FILE",
+                       help    = "Package list whhich needs to be deactivated.")
+    oparser.add_option('--remove',
+                       type="string",
+                       dest    = "removeset",
+                       default = None,
+                       metavar = "FILE",
+                       help    = "Package list whhich needs to be deactivated.")
+
     oparser.add_option('--ISSU',
                        action  = "store_true",
                        dest    = "issu",
@@ -263,12 +283,17 @@ def get_repo_from_file(txtfile):
 
 def check_options(options):
     status = True
+    #options.pkg_state=True #santsha2
+    #options.removeset=True #santsha2
+    print(options) 
     if options.pkg_state :
         #this options should be just this nothing else
         assert(options.device_url or options.devices )
         assert(not options.preupgradeset)
         assert(not options.postupgradeset)
         assert(not options.upgradeset)
+        assert(not options.deactivateset)
+        assert(not options.removeset) 
         return
     if not options.device_url and not options.devices:
         print("Mandatory option '--url' or '--urls' is missing")

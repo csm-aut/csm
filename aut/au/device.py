@@ -224,11 +224,13 @@ class Device(object):
             name += "->{}".format(node)
         return name[2:]
 
-    def execute_command(self,command):
-        return self.session.connected, self.session.send(command)
+    def execute_command(self,command,timeout=60):
+        return self.session.connected, self.session.send(command,timeout)
 
     def disconnect(self):
+        import traceback
         status = self.session.disconnect()
+        print traceback.format_exc()
         return status
 
     def connect(self):

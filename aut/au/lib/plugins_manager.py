@@ -75,6 +75,10 @@ class PluginsManager(object):
             return "POST_UPGRADE"
         if options.turboboot:
             return "TURBOBOOT"
+        if options.deactivateset:
+           return "DEACTIVATE"
+        if options.removeset:
+           return "REMOVE"
         return "ALL"
 
     def start_ex(self, job):

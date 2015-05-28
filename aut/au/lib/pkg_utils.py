@@ -88,14 +88,47 @@ class NewPackage():
         # asr9k-mgbl-px.pie-5.2.2
         # asr9k-asr903-nV-px.pie-5.2.2
 
+        #self.error("package 1",pkg)
         pkg_expr_2pkg = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
+
+        pkg_expr_2pkg_eng = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
+
+        pkg_expr_2pkg_inac = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+)')
+
+        pkg_expr_2pkg_inac_eng = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
+
+        pkg_expr_2pkg_inac_noarch = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+)')
+
+        pkg_expr_2pkg_inac_noarch_eng = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
+
         pkg_expr = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
+
+        pkg_expr_eng = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+)')
+
+        pkg_expr_inact = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+)')
+
+        pkg_expr_inact_eng_noarc=re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
+
+        pkg_expr_2pkg_inac = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+)')
+
         smu_expr = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<ARCH>\w+)-(?P<VERSION>\d+\.\d+\.\d+)\.(?P<PKGNAME>\w+)\.(?P<PKGFORMAT>\w+)')
         smu_expr2 = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<ARCH>\w+)-(?P<VERSION>\d+\.\d+\.\d+)\.(?P<PKGNAME>\w+)-(?P<SMUVERSION>\d+\.\d+\.\d+)\.(?P<PKGFORMAT>\w+)')
+        smu_expr3 = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<ARCH>\w+)-(?P<VERSION>\d+\.\d+\.\d+)\.(?P<PKGNAME>\w+)-(?P<PKGFORMAT>\d+\.\d+\.\d+)')
+
         pkg_expr_2pkg_int = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+[a-zA-Z])')
         pkg_expr_int = re.compile(
@@ -104,9 +137,27 @@ class NewPackage():
             r'(?P<PLATFORM>\w+)-(?P<ARCH>\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\w*)\.(?P<PKGNAME>\w+)\.(?P<PKGFORMAT>\w+)')
         smu_expr2_int = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<ARCH>\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\w*)\.(?P<PKGNAME>\w+)-(?P<SMUVERSION>\d+\.\d+\.\d+\.\w*)\.(?P<PKGFORMAT>\w+)')
+        pkg_expr_2pkg_eng = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+\.\w+)')
+        pkg_expr_2pkg_eng_test = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+-\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+\.\w+)')
 
+        pkg_expr_2pkg_sp = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+-\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+\.\w+-\d+\.\d+\.\d+)')
+
+        pkg_expr_2pkg_sp1 = re.compile(
+            r'(?P<PLATFORM>\w+)(?P<PKGNAME>-)(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+\.\w+-\d+\.\d+\.\d+)')
+
+        pkg_arch="1"
         pkgobj = PackageClass()
         p = pkg_expr_2pkg.search(pkg)
+        if not p:
+            p = pkg_expr_2pkg_eng_test.search(pkg)
+        if not p:
+            p = pkg_expr_2pkg_sp.search(pkg)
+            print("test")
+        if not p:
+            p = pkg_expr_2pkg_eng.search(pkg)
         if not p:
             p = pkg_expr_2pkg_int.search(pkg)
         if not p:
@@ -114,15 +165,28 @@ class NewPackage():
         if not p:
             p = smu_expr2_int.search(pkg)
         if not p:
+            p = pkg_expr_2pkg_inac.search(pkg)
+        if not p:
             p = smu_expr_int.search(pkg)
         if not p:
             p = pkg_expr.search(pkg)
         if not p:
             p = smu_expr.search(pkg)
         if not p:
+            p = smu_expr3.search(pkg)
+        if not p:
             p = smu_expr2.search(pkg)
+        if not p:
+            p = pkg_expr_inact.search(pkg)
+        if not p:
+            p = pkg_expr_inact_eng_noarc.search(pkg)
+            pkg_arch="0"
+        if not p:
+            p=pkg_expr_2pkg_inac_noarch.search(pkg)
+            pkg_arch="0"
         if p:
-            if p.group("PKGFORMAT") == PIE:
+            print(p.group("PKGFORMAT"), p.group("PLATFORM"), p.group("VERSION"))
+            if p.group("PKGFORMAT") == PIE or p.group("PKGFORMAT")== "-" or  p.group("PKGFORMAT") == "1.0.0" or p.group("PKGFORMAT") == ".":
                 pkgobj.platform = p.group("PLATFORM")
                 if "SUBPKGNAME" in p.groupdict().keys():
                     if p.group("PKGNAME")[:8] == 'asr9000v':
@@ -133,10 +197,18 @@ class NewPackage():
                             "PKGNAME") + "-" + p.group("SUBPKGNAME")
                 else:
                     packagename = p.group("PKGNAME")
+                print(packagename)
                 pkgobj.pkg = packagename
-                pkgobj.arch = p.group("ARCH")
-                pkgobj.format = p.group("PKGFORMAT")
+                if pkg_arch=="0":
+                    pkgobj.arch=""
+                else:
+                    pkgobj.arch = p.group("ARCH")
+                if p.group("PKGFORMAT") == ".":
+                    pkgobj.format = p.group("PKGFORMAT")+p.group("PKGSUBFORMAT")
+                else:
+                    pkgobj.format = p.group("PKGFORMAT")
                 pkgobj.version = p.group("VERSION")
+                print(pkgobj.version, pkgobj.platform, pkgobj.pkg, pkgobj.arch)
                 return pkgobj
 
     def validate_xrrpm_pkg(self, pkg):
@@ -179,10 +251,20 @@ class OnboxPackage():
         # disk0:asr9k-mini-px-4.3.2
         # asr9k-px-4.2.3.CSCue60194-1.0.0
         # disk0:asr9k-px-5.3.1.06I.CSCub11122-1.0.0
+        #self.error("package",pkg)
         pkg_expr_2pkg = re.compile(
+            r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
+
+        pkg_expr_2pkg_eng = re.compile(
+            r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
+
+        pkg_expr_2pkg_inac = re.compile(
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
         pkg_expr = re.compile(
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
+        pkg_expr_eng = re.compile(
+            r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
+
         smu_expr = re.compile(
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+)\.(?P<PKGNAME>\w+)-(?P<SUBVERSION>\d+\.\d+\.\d+)')
         pkg_expr_int = re.compile(
@@ -193,20 +275,27 @@ class OnboxPackage():
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\w*)\.(?P<PKGNAME>\w+)-(?P<SUBVERSION>\d+\.\d+\.\d+)')
         pkg_expr_noarch = re.compile(
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
+        pkg_expr_noarch_eng = re.compile(
+            r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
 
         pkgobj = PackageClass()
-
-        p = pkg_expr_2pkg.search(pkg)
+        p = pkg_expr_2pkg_eng.search(pkg)
+        if not p:
+            p = pkg_expr_2pkg.search(pkg)
         if not p:
             p = pkg_expr_int.search(pkg)
         if not p:
             p = smu_expr_int.search(pkg)
+        if not p:
+            p = pkg_expr_eng.search(pkg)
         if not p:
             p = pkg_expr.search(pkg)
         if not p:
             p = smu_expr.search(pkg)
         if not p:
             p = smu_expr_internal.search(pkg)
+        if not p:
+            p = pkg_expr_noarch_eng.search(pkg)
         if not p:
             p = pkg_expr_noarch.search(pkg)
         if p:
@@ -269,31 +358,39 @@ def pkg_tobe_activated(added_pkgs, inactive_pkgs, active_pkgs):
     # All added packages should either be active or inactive
 
     # Get the added package which is not in inactive state
-    missing_in_inactive = missing_pkgs(added_pkgs, inactive_pkgs)
+   # missing_in_inactive = missing_pkgs(added_pkgs, inactive_pkgs)
 
     # If package to be activated is not in inactive state , see if that's
     # already active
-    if missing_in_inactive:
-        missing_in_inactive = missing_pkgs(missing_in_inactive, active_pkgs)
+   # if missing_in_inactive:
+    #    missing_in_inactive = missing_pkgs(missing_in_inactive, active_pkgs)
 
-    if not missing_in_inactive:
-        for pk1 in added_pkgs:
-            for pk2 in inactive_pkgs:
-                if pk1.pkg == pk2.pkg and pk1.version == pk2.version:
-                    if re.match(SMU_RE, pk2.pkg) or re.match(FP_RE, pk2.pkg) or \
-                            re.match(SP_RE, pk2.pkg):
+ #   if not missing_in_inactive:
+    for pk1 in added_pkgs:
+        for pk2 in inactive_pkgs:
+            if pk1.pkg == pk2.pkg and pk1.version == pk2.version:
+                if re.match(SMU_RE, pk2.pkg) or re.match(FP_RE, pk2.pkg) or \
+                       re.match(SP_RE, pk2.pkg):
                         # It's a SMU format is
                         # disk0:asr9k-px-4.3.2.CSCuj61599-1.0.0
-                        pkg = "%s:%s-%s-%s.%s-%s" % (
-                            pk2.partition, pk2.platform, pk2.arch,
-                            pk2.version, pk2.pkg, pk2.subversion
+                    pkg = "%s:%s-%s-%s.%s-%s" % (
+                        pk2.partition, pk2.platform, pk2.arch,
+                        pk2.version, pk2.pkg, pk2.subversion
+                    )
+                else:
+                    if pk1.arch == "": 
+                        pkg = "%s:%s-%s-%s" % (
+                            pk2.partition, pk2.platform, pk2.pkg, 
+                            pk2.version
                         )
                     else:
                         pkg = "%s:%s-%s-%s-%s" % (
                             pk2.partition, pk2.platform, pk2.pkg, pk2.arch,
                             pk2.version
                         )
-                    tobe_added.append(pkg)
+ 
+                    print("inside pkgutil",pk2.partition, pk2.platform, pk1.platform, pk2.pkg,pk1.pkg,pk2.arch, pk1.arch)
+                tobe_added.append(pkg)
     return tobe_added
 
 

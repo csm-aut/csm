@@ -51,7 +51,7 @@ class ConfigBackupPlugin(IPlugin):
         except:
             self.error("Failed to open %s file to write " % (fname))
         cmd = "show running"
-        success, output = device.execute_command("show running")
+        success, output = device.execute_command(cmd,timeout=300)
         if not success:
             fd_name.close()
             self.error("Configuration backup failed")

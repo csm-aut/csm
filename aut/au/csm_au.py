@@ -16,7 +16,6 @@ def execute(context,testing_csm = False):
     ctx = context
     print "Starting AU ....."
     options.device_url = ctx.host_urls[:]
-
     if hasattr(ctx,'server_repository_url'):
         options.repository_path = ctx.server_repository_url
 
@@ -35,6 +34,8 @@ def execute(context,testing_csm = False):
     options.addset = False
     options.preupgradeset = False
     options.upgradeset = False
+    options.removeset=False
+    options.deactivateset=False
     options.postupgradeset = False
     options.commitset = False
     options.pkg_state = False
@@ -54,7 +55,6 @@ def execute(context,testing_csm = False):
             parser.error(str(e))
 
     options.stdoutfile = open(os.path.join(options.logdir,'aut_output'),"w")
-
     print "="*80
     if ctx.requested_action == 'Install Add':
         options.addset = True
@@ -71,9 +71,15 @@ def execute(context,testing_csm = False):
     elif ctx.requested_action == 'Get-Package':
         options.pkg_state = True
 
-    elif ctx.requested_action == 'Install Commit':
+    elif ctx.requested_action == 'Commit':
         options.commitset = True
 
+    elif ctx.requested_action == 'Remove':
+        options.removeset= True
+
+    elif ctx.requested_action == 'Deactivate':
+        options.deactivateset = True
+    #    options.pkg_state = True
     options.ctx = ctx
     status = main.execute(options, args, oparser)
     print "AUT Execution completed with status :",status
@@ -112,6 +118,10 @@ class CsmContext(object):
             self.requested_action = 'Get-Package'
         elif options.commitset :
             self.requested_action = 'Install Commit'
+        elif options.deactivateset:
+            self.requested_action='Deactivate'
+        elif options.removeset:
+            self.requested_action = 'Remove'
         if options.repository_path :
             self.server_repository_url = options.repository_path
        

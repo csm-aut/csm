@@ -538,7 +538,6 @@ class Manager(object):
         @rtype:  object
         @return: An object representing the task.
         """
-
         # Enable logging.
         mode = self.options.overwrite_logs and 'w' or 'a'
         log_decorator = log_to_file(
@@ -551,7 +550,7 @@ class Manager(object):
         cli_cmd_decorator = cli_cmd_file(self.options.cli_file)
         if hasattr(self.options,'repository_path'):
             repository_decorator = repository(self.options.repository_path)
-
+    
         if hasattr(self.options,'pkg_file'):
             if isinstance(self.options.pkg_file, str):
                 pkg_list = pkglist.get_pkgs(self.options.pkg_file)
@@ -565,7 +564,7 @@ class Manager(object):
             issu_decorator = issu(self.options.issu)
 
         plugins_types = "ALL"
-            
+           
         if hasattr(self.options,'addset') and self.options.addset:
             plugins_types = "ADD"
         if self.options.pkg_state:
@@ -578,7 +577,10 @@ class Manager(object):
             plugins_types = "UPGRADE"
         elif self.options.postupgradeset:
             plugins_types = "POST_UPGRADE"
-
+        elif self.options.deactivateset:
+            plugins_types = "DEACTIVATE"
+        elif self.options.removeset:
+            plugins_types = "REMOVE"
         for pno, plugin in enumerate(plugin_map[plugins_types], start=1):
             msg = "{} ({:0>2}) {} {}".format(
                 HEADER, pno, plugin.DESCRIPTION, ENDC

@@ -90,9 +90,9 @@ class IPlugin(object):
         self.stdout.write("\n{}\n".format("-" * 80))
 
     def log(self, message):
-        self.stdout.write(
-            "{}: {}\n".format(self.DESCRIPTION, message))
         try :
+            self.stdout.write(
+               "{}: {}\n".format(self.DESCRIPTION, message))
             if self.csm_ctx and len('Executing: ' + self.DESCRIPTION) < 45 :
                 self.csm_ctx.post_status('Executing: ' + self.DESCRIPTION)
 

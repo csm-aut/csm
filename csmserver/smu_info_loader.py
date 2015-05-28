@@ -312,8 +312,7 @@ class SMUInfoLoader(object):
         date_token = None
         
         try:
-            #r = requests.get(URLS[0] + '/csmserver.msg)
-            r = requests.get('http://wwwin-people.cisco.com/alextang/csmserver.msg')
+            r = requests.get(URLS[0] + '/csmserver.msg')
             lines = r.text.splitlines()            
             for line in lines:    
                 if len(line) > 0 and line[0] == '@':

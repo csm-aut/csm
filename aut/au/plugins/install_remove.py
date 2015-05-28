@@ -25,6 +25,8 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+from au.lib.parser import parsecli
+
 from sys import stdout
 import time
 from au.lib.global_constants import *
@@ -33,19 +35,19 @@ import au.lib.pkg_utils as pkgutils
 from au.plugins.package_state import get_package
 
 
-class InstallActivatePlugin(IPlugin):
+class InstallRemovePlugin(IPlugin):
 
     """
-    A plugin for install activate operation
+    A plugin for install remove operation
     """
-    NAME = "INSTALL_ACTIVATE"
-    DESCRIPTION = "Install Activate Packages"
-    TYPE = "UPGRADE"
+    NAME = "INSTALL_REMOVE"
+    DESCRIPTION = "Install Remove Packages"
+    TYPE = "REMOVE"
     VERSION = "0.0.1"
 
     def _watch_operation(self, device, oper_id):
         """
-        Method to keep watch on progress of install activate operation.
+        Method to keep watch on progress of install remove operation.
         If the operation was process rseatrts , return immediately , if
         reload was needed, wait till reload completes and all nodes are
         in state or timeout.
@@ -82,25 +84,12 @@ class InstallActivatePlugin(IPlugin):
         if not success or re.search(failed_oper, output):
             self.error(output)
 
-        if success and re.search(completed_with_failure, output):
-            # Completed with failure but failure was after PONR
-            restart_type = re.search(install_method, output).group(1).strip()
-            if restart_type == reload:
-                self._wait_for_reload(device)
-                print "Install activate completed with error, going for reload"
-
-        elif success and re.search(success_oper, output):
-            # Get the Restart type , if it's reboot, hold till
-            # system is back.
-            restart_type = re.search(install_method, output).group(1).strip()
-            if restart_type == reload:
-                self._wait_for_reload(device)
 
         return True
 
     def _wait_for_reload(self, device):
         """
-         Wait for system to come up with max timeout as 25 Minutes
+         Wait for system to come up with max timeout as 10 Minutes
 
         """
         status = device.reconnect()
@@ -109,7 +98,7 @@ class InstallActivatePlugin(IPlugin):
             return status
 
         # Connection to device is stablished , now look for all nodes to xr run state
-        timeout = 1500
+        timeout = 450
         poll_time = 30
         time_waited = 0
         xr_run = "IOS XR RUN"
@@ -163,18 +152,17 @@ class InstallActivatePlugin(IPlugin):
 
         pkg_list = kwargs.get('pkg_file', None)
         added_pkgs = pkgutils.NewPackage(pkg_list)
-        print("test",pkg_list)
+
         installed_inact = self._get_inactive_pkgs(device)
         installed_act = self._get_active_pkgs(device)
-
         inactive_pkgs = pkgutils.OnboxPackage(
             installed_inact, "Inactive Packages")
         active_pkgs = pkgutils.OnboxPackage(installed_act, "Active Packages")
-        print("xyz",added_pkgs.pkg_named_list)
+
         # Skip operation if to be activated packages are already active
         package_to_activate = pkgutils.extra_pkgs(
             active_pkgs.pkg_list, added_pkgs.pkg_list)
-        print("package to activate",package_to_activate)
+
         if package_to_activate:
             # Test If there is anything added but not inactive
             pkg_to_activate = pkgutils.pkg_tobe_activated(
@@ -189,38 +177,56 @@ class InstallActivatePlugin(IPlugin):
                 self.error(
                     'To be activated package is not in inactive packages list')
             else:
-                print(pkg_to_activate)
                 return " ".join(pkg_to_activate)
 
-    def _install_act(self, device, kwargs):
+    def _install_remove(self, device, kwargs):
         """
-        Performs install activate operation
+        Performs install remove operation
         """
-        activate_with_id = False
-        id_to_activate = None
+        SMU_RE = r'CSC\D\D\d\d\d'
+        FP_RE = r'fp\d+'
+        SP_RE = r'sp\d+'
+        tobe_deactivated = []
+        pkg_list = kwargs.get('pkg_file', None)
+        deact_pkg = pkgutils.NewPackage(pkg_list)
+        print(deact_pkg.pkg_list)
+        for pk2 in deact_pkg.pkg_list:
+            pk2.partition="disk0"
+            if re.match(SMU_RE, pk2.pkg) or re.match(FP_RE, pk2.pkg) or \
+                  re.match(SP_RE, pk2.pkg):
+                if pk2.arch:
+                    print(pk2.arch,pk2.version)
+                    pkg = "%s:%s-%s-%s.%s-%s" % (
+                      pk2.partition, pk2.platform, pk2.arch,
+                      pk2.version, pk2.pkg, pk2.format
+                    )
+                else:
+                    print("test12",pk2.arch)
+                    pkg = "%s:%s-%s.%s-%s" % (
+                      pk2.partition, pk2.platform,
+                      pk2.version, pk2.pkg, pk2.format
+                    )
+
+            else:
+                if pk2.arch:
+                    pkg = "%s:%s-%s-%s-%s" % (
+                      pk2.partition, pk2.platform, pk2.pkg, pk2.arch,
+                      pk2.version
+                    )
+                else:
+                    pkg = "%s:%s-%s-%s" % (
+                      pk2.partition, pk2.platform, pk2.pkg, 
+                      pk2.version
+                    )
+
+            tobe_deactivated.append(pkg)
+        to_deactivate=" ".join( tobe_deactivated)
+        deact_list = to_deactivate
+
         op_success = "The install operation will continue asynchronously"
-        csm_ctx = device.get_property('ctx')
-        if csm_ctx :
-           if hasattr(csm_ctx, 'operation_id'):
-              id_to_activate = csm_ctx.operation_id
-              print "Got ID from CSM ctx"
-        else:
-           id_to_activate = device.get_property('operation_id')
-           print "GOT ID from device ctx"
 
-        if id_to_activate is None or id_to_activate == -1:
-           tobe_activated = self._get_tobe_activated_pkglist(device, kwargs)
-           print(tobe_activated)
-           if not tobe_activated:
-               self.log(
-                'The packages are already active, nothing to be activated.')
-               return True
-
-        if id_to_activate is not None and id_to_activate != -1:
-              cmd = 'admin install activate id {} prompt-level none async'.format(id_to_activate)
-        else:
-           cmd = 'admin install activate {} prompt-level none async'.format(
-            tobe_activated)
+        cmd = 'admin install remove {} prompt-level none async'.format(
+            deact_list)
         success, output = device.execute_command(cmd)
         if success and op_success in output:
             op_id = re.search('Install operation (\d+) \'', output).group(1)
@@ -230,44 +236,9 @@ class InstallActivatePlugin(IPlugin):
         else:
             self.error('{} \n {}'.format(cmd, output))
 
-
-    def _clear_cfg_incon(self, device, kwargs):
-        """
-        perform clear configuration inconsistency both from exec and
-        admin-exec mode
-        """
-
-        fail_flag = 0
-        cmd = 'clear configuration inconsistency'
-        adm_cmd = 'admin clear configuration inconsistency'
-
-        success, output = device.execute_command(cmd)
-        output = output.split('\n')
-
-        for line in output:
-            if not line == '':
-                if not re.search('...OK',line):
-                    fail_flag = 1
-
-        if fail_flag == 1:
-            self.error("%s command execution failed" % (cmd))
-
-        success, output = device.execute_command(adm_cmd)
-        output = output.split('\n')
-
-        for line in output:
-            if not line == '':
-                if not re.search('...OK',line):
-                    fail_flag = 1
-
-        if fail_flag ==1:
-            self.error("%s command execution failed" % (cmd))
-
     def start(self, device, *args, **kwargs):
         """
         Start the plugin
         Return False if the plugin has found an error, True otherwise.
         """
-
-        self._clear_cfg_incon(device, kwargs)
-        self._install_act(device, kwargs)
+        self._install_remove(device, kwargs)
