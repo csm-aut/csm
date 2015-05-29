@@ -226,6 +226,7 @@ class Telnet(Protocol):
                 
                 if state == 2:
                     state = 4
+                    timeout = 10
                     continue
 
                 if state == 4:
