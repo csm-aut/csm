@@ -44,20 +44,26 @@
         return currentValue
       });
       
-      $('#server_type').on("click", function() {
+      $('#server_type').on("change", function() {
         toggle_server($(this).val());
       });
        
       function toggle_server(server_type) {
+        $('#authentiation-panel').hide();
+        $('#directory-panel').show();
+        $('#verify-reachability').show();
+ 
         if (server_type == "TFTP") {
-          $('#authentiation-panel').hide();
           $('#label_server_url').text('TFTP Server Path');
           $('#label_server_directory').text('File Directory (Used by CSM Server)');
-        } else if (server_type == "FTP" ||
-                   server_type == "SFTP") {
+        } else if (server_type == "FTP" || server_type == "SFTP") {
           $('#authentiation-panel').show();
           $('#label_server_url').text(server_type + ' Server Address');
           $('#label_server_directory').text('Remote Directory');
+        } else if (server_type == "LOCAL") {
+          $('#label_server_url').text('Device Directory Path (e.g. disk0:/)');
+          $('#verify-reachability').hide();
+          $('#directory-panel').hide();
         }
       } 
       
@@ -127,9 +133,12 @@
       placeholder="Unique Name on CSM Server") }}
     {{ edit_field(form.server_type, field_width="col-sm-2", class="form-control") }}
     {{ edit_field(form.server_url, maxlength=100, class="form-control") }}
-    {{ edit_field(form.server_directory, maxlength=100, class="form-control") }}
+    
+    <div id="directory-panel">   
+      {{ edit_field(form.server_directory, maxlength=100, class="form-control") }}
+    </div>
         
-    <div id="authentiation-panel">
+     <div id="authentiation-panel">
     
       {% if isEdit %}
         {% set extra_field ='<a href="javascript://" id="modify-password">

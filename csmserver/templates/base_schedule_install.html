@@ -334,7 +334,7 @@
           browse_spinner.hide();
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
-          bootbox.alert("Unable to list files. Error=" + errorThrown);
+          bootbox.alert("Unable to list files. Server repository may not be visible by CSM Server.");
           browse_spinner.hide();
         }
       });

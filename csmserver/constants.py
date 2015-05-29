@@ -56,6 +56,7 @@ class ServerType:
     TFTP_SERVER = 'TFTP'
     FTP_SERVER = 'FTP'
     SFTP_SERVER = 'SFTP'
+    LOCAL_SERVER = 'LOCAL'
      
 class InstallAction:
     UNKNOWN = 'Unknown'

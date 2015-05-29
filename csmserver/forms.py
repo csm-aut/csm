@@ -106,7 +106,8 @@ class ServerForm(Form):
     server_type = SelectField('Server Type', coerce=str,
         choices = [(ServerType.TFTP_SERVER, ServerType.TFTP_SERVER), 
                    (ServerType.FTP_SERVER, ServerType.FTP_SERVER),
-                   (ServerType.SFTP_SERVER, ServerType.SFTP_SERVER)])
+                   (ServerType.SFTP_SERVER, ServerType.SFTP_SERVER),
+                   (ServerType.LOCAL_SERVER, ServerType.LOCAL_SERVER)])
     server_url = TextField('Server URL (for device)', [required()])
     username = TextField('Username')
     password = PasswordField('Password')

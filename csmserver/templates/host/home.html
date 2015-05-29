@@ -81,7 +81,7 @@
             });
           },
           error: function(xhr, status, error) { 
-            $('#server-time').html('<img src=\"{{ url_for('static', filename='error.png') }}\" title="Lose Connection">');
+            $('#server-time').html('<img src=\"{{ url_for('static', filename='error.png') }}\" title="Lost Connection">');
           }  
         });    
       }

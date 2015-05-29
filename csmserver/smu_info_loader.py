@@ -298,11 +298,11 @@ class SMUInfoLoader(object):
         return OrderedDict(sorted(catalog.items()))
     
     """
-    Returns an array of dictionary items { date : message }
-    csmserver.msg file has date token like
-    @2015/5/1
+    Returns an array of dictionary items { token : message }
+    csmserver.msg file has token like
+    @2015/5/1@Admin,Operator
       --- message ---
-    @2015/4/1
+    @2015/4/1@Admin
       --- message ---
     """
     @classmethod
@@ -317,7 +317,7 @@ class SMUInfoLoader(object):
             for line in lines:    
                 if len(line) > 0 and line[0] == '@':
                     if date_token is not None:
-                        csm_messages.append({ 'date' : date_token, 'message' : message })
+                        csm_messages.append({ 'token' : date_token, 'message' : message })
                     
                     date_token = line[1:]
                     message = ''
@@ -328,7 +328,7 @@ class SMUInfoLoader(object):
             pass
         
         if date_token is not None:
-            csm_messages.append({ 'date' : date_token, 'message' : message })
+            csm_messages.append({ 'token' : date_token, 'message' : message })
         
         return csm_messages
         

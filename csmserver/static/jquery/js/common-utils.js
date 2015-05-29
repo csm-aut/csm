@@ -268,8 +268,7 @@ function check_cisco_authentication(validate_object) {
 function display_server_unreachable_dialog(validate_object) {
   bootbox.dialog({
     message: "CSM Server is unable to verify the existence of the software packages on the server repository.   " +
-        "Either there is a network intermittent issue or the server repository is not reachable.  " +
-        "If it is a network issue, click Cancel, then Schedule to retry the verification or click Continue to schedule the installation without verification.",
+        "Either there is a network intermittent issue or the server repository is not reachable. Click Continue to schedule.",
     title: "Server repository is not reachable", 
     buttons: {
       primary: {

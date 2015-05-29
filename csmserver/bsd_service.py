@@ -42,9 +42,7 @@ class BSDServiceHandler(object):
         return json.loads(response.text)[BSD_ACCESS_TOKEN]
 
     def debug_print(self, heading, data):
-        # Uncomment for debug printing
-        #print(heading, data)
-        pass
+        print(heading, data)
         
     def download(self, output_file_path, callback=None):
         access_token = self.get_access_token(self.username, self.password)
@@ -101,6 +99,7 @@ class BSDServiceHandler(object):
                             
             else:
                 logger.error('bsd_service hit exception %s', exception_message)
+                raise Exception(exception_message)
     
     def send_EULA_request(self, access_token, download_session_ID):
         headers = {'Authorization': 'Bearer ' + access_token}
@@ -185,6 +184,4 @@ def get_chunks(image_size, segments):
                    
 if __name__ == '__main__':  
     pass
-    #bsd = BSDServiceHandler(username='alextang', password='xxx', image_name='asr9k-px-5.1.1.CSCup67076.tar', PID='ASR-9010-AC', MDF_ID='282414851', software_type_ID='280867577')
-    #bsd.download()
     

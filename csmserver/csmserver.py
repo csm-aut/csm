@@ -343,13 +343,12 @@ def api_acknowledge_csm_message():
         User.authenticate(db_session.query, username, password)
             
     if authenticated:  
-        if user.privilege == UserPrivilege.ADMIN:
-            if len(user.csm_message) == 0:
-                user.csm_message.append(CSMMessage(acknowledgment_date=datetime.date.today() ))
-            else:
-                user.csm_message[0].acknowledgment_date=datetime.date.today() 
+        if len(user.csm_message) == 0:
+            user.csm_message.append(CSMMessage(acknowledgment_date=datetime.date.today() ))
+        else:                
+            user.csm_message[0].acknowledgment_date=datetime.date.today() 
                 
-            db_session.commit()
+        db_session.commit()
         
     return jsonify({'status':'OK'})
     
@@ -366,20 +365,25 @@ def api_get_csm_message():
         User.authenticate(db_session.query, username, password)
             
     if authenticated:  
-        if user.privilege == UserPrivilege.ADMIN: 
-            csm_messages = SMUInfoLoader.get_cco_csm_messages()
-            if len(csm_messages) > 0:
-                acknowledgment_date = datetime.datetime(2000, 1, 1) 
-                if len(user.csm_message) > 0:
-                    acknowledgment_date = user.csm_message[0].acknowledgment_date
+        # if user.privilege == UserPrivilege.ADMIN: 
+        csm_messages = SMUInfoLoader.get_cco_csm_messages()
+        if len(csm_messages) > 0:
+            acknowledgment_date = datetime.datetime(2000, 1, 1)                 
+            if len(user.csm_message) > 0:
+                acknowledgment_date = user.csm_message[0].acknowledgment_date
                 
-                # csm_messages returns a dictionary with dates (YYYY/MM/DD) sorted in descending order
-                for csm_message in csm_messages:
-                    date = csm_message['date']
+            # csm_messages returns a dictionary keyed by a token (e.g. @12/01/01@Admin,Operator) and message
+            readers = [ UserPrivilege.ADMIN, UserPrivilege.OPERATOR, UserPrivilege.VIEWER]
+            for csm_message in csm_messages:
+                tokens = csm_message['token'].split('@')
+                date = tokens[0]
+                if len(tokens) == 2:
+                    readers = tokens[1].split(',')
+                
+                if user.privilege in readers:
                     message = csm_message['message']
                     try:                       
-                        delta = datetime.datetime.strptime(date, "%Y/%m/%d") - acknowledgment_date
-                        print(delta.days )
+                        delta = datetime.datetime.strptime(date, "%Y/%m/%d") - acknowledgment_date                       
                         if delta.days > 0:
                             rows.append({ 'date' : date, 'message': message.replace("\n", "<br>") })
                     except:
@@ -2266,13 +2270,15 @@ Returns an array of dictionaries which contain the file and directory listing
 def get_server_file_dict(server_id, server_directory):
     db_session = DBSession()
     server_file_dict = []
+    reachable = False
     
     server = db_session.query(Server).filter(Server.id == server_id).first()
     if server is not None:
         server_impl = get_server_impl(server)
-        server_file_dict = server_impl.get_file_and_directory_dict(server_directory)
-    
-    return server_file_dict
+        if server_impl is not None:
+            server_file_dict, reachable = server_impl.get_file_and_directory_dict(server_directory)
+
+    return server_file_dict, reachable
     
     
 @app.route('/api/get_last_successful_install_add_packages/hosts/<int:host_id>')
