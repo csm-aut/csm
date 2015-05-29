@@ -152,7 +152,7 @@ class Telnet(Protocol):
                     return False
 
             if event == 4:  # SHELL PROMPT
-                if state in [2, 4, 5, 6]:
+                if state in [4, 5, 6]:
                     self._dbg(
                         10,
                         "{}: Received Shell/Unix prompt".format(self.hostname)
@@ -222,6 +222,10 @@ class Telnet(Protocol):
                     self.ctrl.send("\r\n")
                     state = 2
                     timeout = 10
+                    continue
+                
+                if state == 2:
+                    state = 4
                     continue
 
                 if state == 4:
