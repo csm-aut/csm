@@ -61,18 +61,20 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     
     <script src="/static/select2-4.0.0/dist/js/select2.min.js"></script>  
+    <script src="/static/underscorejs/underscore.min.js"></script>
     <link rel="stylesheet" href="/static/select2-4.0.0/dist/css/select2.css">
-    
     <link rel="stylesheet" type="text/css" href="/static/jquery/css/base.css">
     
     <script>
       $(function() {
       
-        // Highlight the active nav link.
-        //var url = window.location.pathname;
-        //var filename = url.substr(url.lastIndexOf('/') + 1);
-        //$('.navbar a[href$="' + filename + '"]').parent().addClass("active");
-        
+        $('body').on("click mousemove keyup", _.debounce(function(){
+          // logout user here
+          {% if request.endpoint != 'login' %}
+            window.location = "{{ url_for('logout') }}";
+          {% endif %}
+        }, 3600000)) // 60 minutes inactivity
+
         $('#search-host-selector').select2({
           placeholder: "Search a host",     
           allowClear: true,  
