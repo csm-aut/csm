@@ -127,6 +127,8 @@ class InstallContext(ImageContext):
                 if len(remote_directory) > 0:
                     url = url + "/{}".format(remote_directory)
                 return url
+            elif server_type == ServerType.LOCAL_SERVER:
+                return server.server_url
         
         return None
     

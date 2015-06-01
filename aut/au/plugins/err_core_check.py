@@ -40,7 +40,7 @@ class ErrorCorePlugin(IPlugin):
     def start(self, device, *args, **kwargs):
         """
         """
-        success, output = device.execute_command("show logging")
+        success, output = device.execute_command("show logging",timeout=300)
         if not success:
             return False
         newstring = output.split("\n")

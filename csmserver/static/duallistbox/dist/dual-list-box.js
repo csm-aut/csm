@@ -1,5 +1,6 @@
 /**
  * Added code to support CSM Server
+ * Modified by: Alex Tang
  *
  * jQuery DualListBox plugin with Bootstrap styling v1.0
  * http://www.geodan.nl
@@ -177,8 +178,8 @@
             }
         });
 
-        //selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
-        //unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
+        selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
+        unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
     }
 
     /** Constructs the jQuery plugin after the elements have been retrieved. */
@@ -251,7 +252,7 @@
         $(options.parentElement + ' .unselected').find('option:selected').prop('selected', false);
         $(options.parentElement + ' .selected').find('option:selected').prop('selected', false);
 
-        //$(options.parentElement + ' .filter').val('');
+        $(options.parentElement + ' .filter').val('');
         //$(options.parentElement + ' select').find('option').each(function() { $(this).show(); });
 
         countElements(options.parentElement);
@@ -383,15 +384,15 @@
             if (hidden_options != null) {        
                 $.each(hidden_options, function(i) {
                     options.push({value: hidden_options[i].value, text: hidden_options[i].text});
-                    /*
+                    
                     $('<option>', {
                         value: hidden_options[i].value,
                         text:  hidden_options[i].text,
                         selected: false
                     }).appendTo($(select)); 
-                    */
+                   
                 });
-                //$(select).data('hidden_options', []);  
+                $(select).data('hidden_options', []);  
             } 
             
             $(select).data('options', options);
