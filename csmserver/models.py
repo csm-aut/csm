@@ -256,7 +256,8 @@ class ConnectionParam(Base):
     
     host_id = Column(Integer, ForeignKey('host.id'))
     jump_host_id = Column(Integer, ForeignKey('jump_host.id'))
-    jump_host = relationship("JumpHost", backref='connection_param', order_by=jump_host_id)
+    # jump_host = relationship("JumpHost", backref='connection_param', order_by=jump_host_id)
+    jump_host = relationship("JumpHost", foreign_keys='ConnectionParam.jump_host_id')
     
     @property
     def password(self):
@@ -410,7 +411,7 @@ class Region(Base):
     
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
-    servers = relationship('Server', secondary=lambda: RegionServer)
+    servers = relationship('Server', order_by="Server.hostname", secondary=lambda: RegionServer)
           
 class Server(Base):
     __tablename__ = 'server'

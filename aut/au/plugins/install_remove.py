@@ -65,6 +65,7 @@ class InstallRemovePlugin(IPlugin):
 
         stdout.write("\n\r")
         while 1:
+            time.sleep(5)
             success, output = device.execute_command(cmd)
             if success and no_oper in output:
                 # Operation completed
@@ -189,19 +190,16 @@ class InstallRemovePlugin(IPlugin):
         tobe_deactivated = []
         pkg_list = kwargs.get('pkg_file', None)
         deact_pkg = pkgutils.NewPackage(pkg_list)
-        print(deact_pkg.pkg_list)
         for pk2 in deact_pkg.pkg_list:
             pk2.partition="disk0"
             if re.match(SMU_RE, pk2.pkg) or re.match(FP_RE, pk2.pkg) or \
                   re.match(SP_RE, pk2.pkg):
                 if pk2.arch:
-                    print(pk2.arch,pk2.version)
                     pkg = "%s:%s-%s-%s.%s-%s" % (
                       pk2.partition, pk2.platform, pk2.arch,
                       pk2.version, pk2.pkg, pk2.format
                     )
                 else:
-                    print("test12",pk2.arch)
                     pkg = "%s:%s-%s.%s-%s" % (
                       pk2.partition, pk2.platform,
                       pk2.version, pk2.pkg, pk2.format

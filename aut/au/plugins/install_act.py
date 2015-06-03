@@ -63,6 +63,7 @@ class InstallActivatePlugin(IPlugin):
 
         stdout.write("\n\r")
         while 1:
+            time.sleep(5)
             success, output = device.execute_command(cmd)
             if success and no_oper in output:
                 # Operation completed
@@ -163,14 +164,12 @@ class InstallActivatePlugin(IPlugin):
 
         pkg_list = kwargs.get('pkg_file', None)
         added_pkgs = pkgutils.NewPackage(pkg_list)
-        print("test",pkg_list)
         installed_inact = self._get_inactive_pkgs(device)
         installed_act = self._get_active_pkgs(device)
 
         inactive_pkgs = pkgutils.OnboxPackage(
             installed_inact, "Inactive Packages")
         active_pkgs = pkgutils.OnboxPackage(installed_act, "Active Packages")
-        print("xyz",added_pkgs.pkg_named_list)
         # Skip operation if to be activated packages are already active
         package_to_activate = pkgutils.extra_pkgs(
             active_pkgs.pkg_list, added_pkgs.pkg_list)
@@ -189,7 +188,6 @@ class InstallActivatePlugin(IPlugin):
                 self.error(
                     'To be activated package is not in inactive packages list')
             else:
-                print(pkg_to_activate)
                 return " ".join(pkg_to_activate)
 
     def _install_act(self, device, kwargs):
@@ -210,7 +208,6 @@ class InstallActivatePlugin(IPlugin):
 
         if id_to_activate is None or id_to_activate == -1:
            tobe_activated = self._get_tobe_activated_pkglist(device, kwargs)
-           print(tobe_activated)
            if not tobe_activated:
                self.log(
                 'The packages are already active, nothing to be activated.')

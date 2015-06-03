@@ -1,5 +1,5 @@
 /**
- * Added code to support CSM Server
+ * Modified to support CSM Server
  * Modified by: Alex Tang
  *
  * jQuery DualListBox plugin with Bootstrap styling v1.0
@@ -57,23 +57,23 @@
                 maxAllBtn:  $(this).data('maxAllBtn')
             };
 
-            var options = $.extend({}, defaults, htmlOptions, paramOptions);
+            var plugin_options = $.extend({}, defaults, htmlOptions, paramOptions);
 
-            $.each(options, function(i, item) {
+            $.each(plugin_options, function(i, item) {
                 if (item === undefined || item === null) { throw 'DualListBox: ' + i + ' is undefined.'; }
             });
 
-            options['parent'] = 'dual-list-box-' + options.title;
-            options['parentElement'] = '#' + options.parent;
+            plugin_options['parent'] = 'dual-list-box-' + plugin_options.title;
+            plugin_options['parentElement'] = '#' + plugin_options.parent;
             selected = $.extend([{}], selected);
 
-            if (options.json) {
-                addElementsViaJSON(options, selected);
+            if (plugin_options.json) {
+                addElementsViaJSON(plugin_options, selected);
             } else {
-                construct(options);
+                construct(plugin_options);
             }
 
-            $(this).data('options', options);
+            $(this).data('options', plugin_options);
         }) 
     };
     
@@ -121,6 +121,38 @@
         });
     }
     
+    function filtering(select, textBox) {
+        var options = $(select).data('options');
+        var search = $.trim($(textBox).val());
+        var regex = new RegExp(search,'gi');
+        
+        $(select).empty();                  
+        for (var key in options) {
+            if (options[key].text.match(regex) != null)  {
+                $('<option>', {
+                    value: options[key].value,
+                    text:  options[key].text,
+                    selected: false
+                }).appendTo($(select));                          
+                
+            }
+        }    
+    }
+    
+    function handle_move(src, dst, filter_selected) {
+      var src_options = $(src).data('options');
+      var dst_options = $(dst).data('options');
+      
+      var criteria = filter_selected ? ':selected' : '';
+      src.find('option' + criteria).each(function(index) {
+          dst_options[$(this).val()] = {value: $(this).val(), text: $(this).text()};
+          delete src_options[$(this).val()];
+      });
+      
+      $(src).data('options', src_options);
+      $(dst).data('options', dst_options);        
+    }
+    
     /** Adds the event listeners to the buttons and filters. */
     function addListeners(options) {
         var unselected = $(options.parentElement + ' .unselected');
@@ -129,42 +161,31 @@
         $(options.parentElement).find('button').bind('click', function() {
             switch ($(this).data('type')) {
                 case 'str': /* Selected to the right. */
-                    unselected.find('option:selected').remove().appendTo(selected);
+                    handle_move(unselected, selected, true);            
                     $(this).prop('disabled', true);
                     break;
                 case 'atr': /* All to the right. */
                     if (unselected.find('option').length >= options.maxAllBtn && confirm(options.warning) ||
                         unselected.find('option').length < options.maxAllBtn) {
-                        unselected.find('option').each(function () {
-                            if ($(this).isVisible()) {
-                                $(this).remove().appendTo(selected);
-                            }
-                        });
+                        handle_move(unselected, selected, false); 
                     }
                     break;
                 case 'stl': /* Selected to the left. */
-                    selected.find('option:selected').remove().appendTo(unselected);
+                    handle_move(selected, unselected, true);
                     $(this).prop('disabled', true);
                     break;
                 case 'atl': /* All to the left. */
                     if (selected.find('option').length >= options.maxAllBtn && confirm(options.warning) ||
                         selected.find('option').length < options.maxAllBtn) {
-                        selected.find('option').each(function () {
-                            if ($(this).isVisible()) {
-                                $(this).remove().appendTo(unselected);
-                            }
-                        });
+                        handle_move(selected, unselected, false);
                     }
                     break;
                 default: break;
             }
         
-            unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
-            selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
-            
-            //unselected.update_options().scrollTop(0).sortOptions();;
-            //selected.update_options().scrollTop(0).sortOptions();;
-             
+            filtering(unselected, $.trim($(options.parentElement + ' .filter-unselected').val()) );
+            filtering(selected, $.trim($(options.parentElement + ' .filter-selected').val()) );
+      
             handleMovement(options);
         });
 
@@ -177,9 +198,6 @@
                 event.preventDefault();
             }
         });
-
-        selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
-        unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
     }
 
     /** Constructs the jQuery plugin after the elements have been retrieved. */
@@ -252,7 +270,7 @@
         $(options.parentElement + ' .unselected').find('option:selected').prop('selected', false);
         $(options.parentElement + ' .selected').find('option:selected').prop('selected', false);
 
-        $(options.parentElement + ' .filter').val('');
+        //$(options.parentElement + ' .filter').val('');
         //$(options.parentElement + ' select').find('option').each(function() { $(this).show(); });
 
         countElements(options.parentElement);
@@ -327,7 +345,7 @@
 
             $(select).data('options', options);
 
-            $(textBox).bind('change keyup', function() {
+            $(textBox).bind('keyup', function() {
                 delay(function() {
                     var options = $(select).data('options');
                     var search = $.trim($(textBox).val());
@@ -348,145 +366,97 @@
     };
     */
     
-    $.fn.update_options = function() {
-        return this.each(function() {
-            var select = this;
-            var options = [];
-            var hidden_options = $(select).data('hidden_options');
-            $(select).find('option').each(function() {
-                options.push({value: $(this).val(), text: $(this).text()});
-            });
-            
-            if (hidden_options != null) {        
-                $.each(hidden_options, function(i) {
-                    options.push({value: hidden_options[i].value, text: hidden_options[i].text});
-                }); 
-            } 
-            $(select).data('options', options);
-        });
-    }
     
-    /**
-     * Filters through the select boxes and hides when an element doesn't match.
-     *
-     * Original source: http://www.lessanvaezi.com/filter-select-list-options/
-     */
-    $.fn.filterByText = function(textBox, timeout, parentElement) {
-        return this.each(function() {
-            var select = this;
-            var options = [];
-            var hidden_options = $(select).data('hidden_options');
-            
-            $(select).find('option').each(function() {
-                options.push({value: $(this).val(), text: $(this).text()});
-            });
-            
-            if (hidden_options != null) {        
-                $.each(hidden_options, function(i) {
-                    options.push({value: hidden_options[i].value, text: hidden_options[i].text});
-                    
-                    $('<option>', {
-                        value: hidden_options[i].value,
-                        text:  hidden_options[i].text,
-                        selected: false
-                    }).appendTo($(select)); 
-                   
-                });
-                $(select).data('hidden_options', []);  
-            } 
-            
-            $(select).data('options', options);
-
-            $(textBox).bind('change keyup', function() {
-                delay(function() {
-                    var options = $(select).data('options');
-                    var search = $.trim($(textBox).val());
-                    var regex = new RegExp(search,'gi');
-                    hidden_options = [];
-                    
-                    $(select).empty();                  
-                    $.each(options, function(i) {
-                        if(options[i].text.match(regex) === null) {
-                            hidden_options.push({value: options[i].value, text: options[i].text});
-                        } else {
-                            $('<option>', {
-                                value: options[i].value,
-                                text:  options[i].text,
-                                selected: false
-                            }).appendTo($(select));                          
-                        }
-                    });
-
-                    $(select).data('hidden_options', hidden_options);
-                    countElements(parentElement);
-                }, timeout);
-            });
-        });
-    };
-
     $.fn.select_partial_match = function(data_list) {
       if (data_list.length == 0) {
         return;
       }
 
-      var options = $(this).data('options');           
-      var unselected = $(options.parentElement + ' .unselected');
+      var plugin_options = $(this).data('options');           
+      var unselected = $(plugin_options.parentElement + ' .unselected');
       
       // remove all selected highlights
       unselected.find('option').each(function() {
-        var available_option = $(this).val();
         var found = false;
         
         for (i = 0; i < data_list.length; i++) {
-          if (available_option.indexOf(data_list[i]) > -1) {
+          if ($(this).text().indexOf(data_list[i]) > -1) {
             found = true;
             break;
           }
-        }
-        
-        $(this).prop("selected", found);
-        
+        }       
+        $(this).prop("selected", found);       
       });
       
       $( ".str" ).click();
     }
     
     $.fn.set_title = function(title) {
-      var options = $(this).data('options');               
-      $(options.parentElement + ' .unselected-title').text('Available ' + title);
-      $(options.parentElement + ' .selected-title').text('Selected ' + title);
+      var plugin_options = $(this).data('options');               
+      $(plugin_options.parentElement + ' .unselected-title').text('Available ' + title);
+      $(plugin_options.parentElement + ' .selected-title').text('Selected ' + title);
     }
     
     /* array of dictionary data with value and text */
     $.fn.initialize = function(unselected_data, selected_data) {
-        var options = $(this).data('options');           
-        var unselected = $(options.parentElement + ' .unselected');
-        var selected = $(options.parentElement + ' .selected');
+        var plugin_options = $(this).data('options');           
+        var unselected = $(plugin_options.parentElement + ' .unselected');
+        var selected = $(plugin_options.parentElement + ' .selected');
         
-        $(options.parentElement + ' .filter').val('');
+        $(plugin_options.parentElement + ' .filter').val('');
         
-        initialize(unselected.empty(), unselected_data, options);
-        initialize(selected.empty(), selected_data, options);
-        
-        unselected.filterByText($(options.parentElement + ' .filter-unselected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
-        selected.filterByText($(options.parentElement + ' .filter-selected'), options.timeout, options.parentElement).scrollTop(0).sortOptions();
+        init(plugin_options, unselected.empty(), '.filter-unselected', unselected_data);
+        init(plugin_options, selected.empty(), '.filter-selected', selected_data);
 
-        countElements(options.parentElement);
+        countElements(plugin_options.parentElement);
     }
      
-    function initialize(select, data, options) {  
+    function init(plugin_options, select, id, data) {
+        var textbox = $(plugin_options.parentElement + ' ' + id);
+            var cached_options = [];
+         
         if (data != null) {
             $.each(data, function(i, item){
                 $('<option>', {
-                    value: item[options.value],
-                    text:  item[options.text],
+                    value: item[plugin_options.value],
+                    text:  item[plugin_options.text],
                     selected: false
                 }).appendTo(select);
+                
+                cached_options[item[plugin_options.value]] = { value: item[plugin_options.value], text: item[plugin_options.text] };
             });
         }   
-        $(select).data('hidden_options', []);    
-        return select;
+        
+        $(select).data('options', cached_options);    
+        
+        $(textbox).bind('keyup', function() {
+            delay(function() {
+             
+              var options = $(select).data('options');
+              var search = $.trim($(textbox).val());
+              
+               filtering($(select), search);
+               countElements(plugin_options.parentElement);
+            }, plugin_options.timeout);
+        });
     };
+    
+    function filtering(select, search) {
+        var regex = new RegExp(search,'gi');
+        var options = $(select).data('options');
+        
+        select.empty();       
+        for (var key in options) {
+          if(options[key].text.match(regex) != null) {
+              $('<option>', {
+                  value: options[key].value,
+                  text:  options[key].text,
+                  selected: false
+              }).appendTo($(select));   
+          }
+        }
+        $(select).scrollTop(0).sortOptions();
+    }
 
     /** Checks whether or not an element is visible. The default jQuery implementation doesn't work. */
     $.fn.isVisible = function() {

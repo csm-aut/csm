@@ -30,6 +30,7 @@
 
 import commands
 import os
+import time
 from sys import stdout
 
 import au.lib.global_constants
@@ -71,6 +72,7 @@ class InstallAddPlugin(IPlugin):
         # newline 
         stdout.write("\n\r")
         while 1:
+            time.sleep(5)
             success, output = device.execute_command(cmd)
             if success and inst_op in output :
                 downloaded = re.search('(.*)KB downloaded: Download in progress', output).group(0)
@@ -145,7 +147,7 @@ class InstallAddPlugin(IPlugin):
 
         packages = " ".join(pkg_name_list) 
         cmd = "admin install add source %s %s async" % (repo_str, packages)
-        success, output = device.execute_command(cmd,timeout=3600)
+        success, output = device.execute_command(cmd,timeout=4800)
         if success and error_str not in output:
             op_id = re.search('Install operation (\d+) \'', output).group(1)
             self.watch_operation(device,op_id)

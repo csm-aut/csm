@@ -65,6 +65,7 @@ class InstallDeactivatePlugin(IPlugin):
 
         stdout.write("\n\r")
         while 1:
+            time.sleep(5)
             success, output = device.execute_command(cmd)
             if success and no_oper in output:
                 # Operation completed
@@ -165,7 +166,6 @@ class InstallDeactivatePlugin(IPlugin):
 
         pkg_list = kwargs.get('pkg_file', None)
         added_pkgs = pkgutils.NewPackage(pkg_list)
-        print(pkg_list)
         installed_inact = self._get_inactive_pkgs(device)
         installed_act = self._get_active_pkgs(device)
         inactive_pkgs = pkgutils.OnboxPackage(
@@ -205,7 +205,6 @@ class InstallDeactivatePlugin(IPlugin):
         deact_pkg = pkgutils.NewPackage(pkg_list)
         for pk2 in deact_pkg.pkg_list:
             pk2.partition="disk0"
-            print(pk2.format)
             if re.match(SMU_RE, pk2.pkg) or re.match(FP_RE, pk2.pkg) or \
                   re.match(SP_RE, pk2.pkg):
                 pkg = "%s:%s-%s-%s.%s-%s" % (

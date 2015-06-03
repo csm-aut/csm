@@ -156,64 +156,46 @@ class NewPackage():
         p = pkg_expr_2pkg.search(pkg)
         if not p:
             p = pkg_expr_2pkg_eng_test.search(pkg)
-            print("test81")
         if not p:
             p = pkg_expr_2pkg_sp.search(pkg)
-            print("test")
         if not p:
             p = pkg_expr_2pkg_eng.search(pkg)
-            print("test1")
         if not p:
             p = pkg_expr_2pkg_int.search(pkg)
-            print("test2")
         if not p:
             p = pkg_expr_int.search(pkg)
-            print("test3")
         if not p:
             p = smu_expr2_int.search(pkg)
-            print("test4")
         if not p:
             p = pkg_expr_2pkg_inac.search(pkg)
-            print("test5")
         if not p:
             p = smu_expr_int.search(pkg)
-            print("test6")
         if not p:
             p = pkg_expr.search(pkg)
-            print("test7")
         if not p:
             p = smu_expr_eng_int.search(pkg)
-            print(pkg)
             smu_ver="1"
-            print("test71")
         if not p:
             p = smu_expr.search(pkg)
-            print("test8")
             smu_ver=0
         if not p:
             p = smu_expr3.search(pkg)
-            print("test9")
             smu_ver=0
         if not p:
             p = smu_expr2.search(pkg)
-            print("test10")
             smu_ver=0
         if not p:
             p = pkg_expr_inact.search(pkg)
-            print("test11")
             smu_ver=0
         if not p:
             p = pkg_expr_inact_eng_noarc.search(pkg)
             pkg_arch="0"
-            print("test13")
             smu_ver=0
         if not p:
             p=pkg_expr_2pkg_inac_noarch.search(pkg)
             pkg_arch="0"
-            print("test12")
             smu_ver=0
         if p:
-            #print(p.group("PKGFORMAT"), p.group("PLATFORM"), p.group("VERSION"),p.group("PKGFORMAT"),p.group("PKGNAME"),p.group("SMUVERSION"))
             if p.group("PKGFORMAT") == PIE or p.group("PKGFORMAT")== "-" or  p.group("PKGFORMAT") == "1.0.0" or p.group("PKGFORMAT") == ".":
                 pkgobj.platform = p.group("PLATFORM")
                 if "SUBPKGNAME" in p.groupdict().keys():
@@ -225,13 +207,15 @@ class NewPackage():
                             "PKGNAME") + "-" + p.group("SUBPKGNAME")
                 else:
                     packagename = p.group("PKGNAME")
-                print(packagename)
                 pkgobj.pkg = packagename
      
                 if pkg_arch=="0":
                     pkgobj.arch=""
                 else:
-                    pkgobj.arch = p.group("ARCH")
+                    if p.group("PKGFORMAT") == PIE and packagename == "services-infra":
+                        pkgobj.arch=""
+                    else:
+                        pkgobj.arch = p.group("ARCH")
                 if p.group("PKGFORMAT") == ".":
                     pkgobj.format = p.group("PKGFORMAT")+p.group("PKGSUBFORMAT")
                 else:
@@ -239,7 +223,6 @@ class NewPackage():
                 if smu_ver=="1":
                     pkgobj.format = p.group("SMUVERSION")
                 pkgobj.version = p.group("VERSION")
-                print(pkgobj.version, pkgobj.platform, pkgobj.pkg, pkgobj.arch)
                 return pkgobj
 
     def validate_xrrpm_pkg(self, pkg):
@@ -420,7 +403,6 @@ def pkg_tobe_activated(added_pkgs, inactive_pkgs, active_pkgs):
                             pk2.version
                         )
  
-                    print("inside pkgutil",pk2.partition, pk2.platform, pk1.platform, pk2.pkg,pk1.pkg,pk2.arch, pk1.arch)
                 tobe_added.append(pkg)
     return tobe_added
 

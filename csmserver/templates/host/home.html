@@ -25,6 +25,7 @@
       $(".host-delete-link").on("click", function() {
         var delete_url = $(this).attr('delete-url');
         var delete_host = $(this).attr('delete-host');
+        var host_type = $(this).attr('host-type');
 
         bootbox.confirm("You are about to delete \'" + delete_host + "\'.  OK to proceed?", function(result) {
           if (result) {
@@ -35,17 +36,31 @@
                 if (result.status == 'OK') {
                   window.location = "{{ url_for('home') }}";
                 } else {
-                   bootbox.alert('Unable to delete.');
+                   display_delete_error(delete_host, host_type);
                 }
               },
               error: function(XMLHttpRequest, textStatus, errorThrown) { 
-                 bootbox.alert("Unable to delete. Error=" + errorThrown );
+                 display_delete_error(delete_host, host_type);
               }  
            });
           }
         }); 
       });
 
+      function display_delete_error(name, host_type) {
+        var message = "Unable to delete \'" + name + "\'";
+        
+        if (host_type == 'jump_host') {
+          message = "Unable to delete jump host \'" + name + "\'.  Verify that it is not used by other hosts.";
+        } else if (host_type == 'region') {
+          message = "Unable to delete region \'" + name + "\'.  Verify that it is not used by other hosts.";
+        } else if (host_type == 'server') {
+          message = "Unable to delete server repository \'" + name + "\'.  Verify that it is not used by other regions.";
+        }
+        
+        bootbox.alert(message);
+      }
+      
       $("#managed-host-datatable").dataTable({      
         "iDisplayLength" : 10
       });
@@ -353,6 +368,7 @@
 
                   <td>           
                     <a class="host-delete-link" href="#" 
+                      host-type="jump_host"
                       delete-host="{{ jump_host.hostname }}"
                       delete-url="{{ url_for('jump_host_delete', hostname = jump_host.hostname) }}">Delete</a>                  
                   </td>
@@ -392,6 +408,7 @@
 
                   <td>           
                     <a class="host-delete-link" href="#" 
+                      host-type="region"
                       delete-host="{{ region.name }}"
                       delete-url="{{ url_for('region_delete', region_name = region.name) }}">Delete</a>              
                   </td>
@@ -442,6 +459,7 @@
 
                   <td>           
                     <a class="host-delete-link" href="#" 
+                      host-type="server"
                       delete-host="{{ server.hostname }}"
                       delete-url="{{ url_for('server_delete', hostname = server.hostname) }}">Delete</a>                
                   </td>
