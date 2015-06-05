@@ -217,7 +217,7 @@
         $(parentElement + ' .unselected-count').text(countUnselected);
         $(parentElement + ' .selected-count').text(countSelected);
 
-        toggleButtons(parentElement);
+        toggleButtons(parentElement); 
     }
 
     /** Creates a new dual list box with the right buttons and filter. */
@@ -345,7 +345,7 @@
 
             $(select).data('options', options);
 
-            $(textBox).bind('keyup', function() {
+            $(textBox).bind('change keyup', function() {
                 delay(function() {
                     var options = $(select).data('options');
                     var search = $.trim($(textBox).val());
@@ -431,12 +431,13 @@
         
         $(textbox).bind('keyup', function() {
             delay(function() {
-             
-              var options = $(select).data('options');
-              var search = $.trim($(textbox).val());
+
+                var options = $(select).data('options');
+                var search = $.trim($(textbox).val());
               
-               filtering($(select), search);
-               countElements(plugin_options.parentElement);
+                filtering($(select), search);
+                countElements(plugin_options.parentElement);
+               
             }, plugin_options.timeout);
         });
     };
@@ -450,11 +451,11 @@
           if(options[key].text.match(regex) != null) {
               $('<option>', {
                   value: options[key].value,
-                  text:  options[key].text,
-                  selected: false
+                  text:  options[key].text
               }).appendTo($(select));   
           }
         }
+     
         $(select).scrollTop(0).sortOptions();
     }
 

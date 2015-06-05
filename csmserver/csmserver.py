@@ -72,6 +72,7 @@ from utils import trim_last_slash
 from utils import is_empty
 from utils import get_tarfile_file_list
 from utils import comma_delimited_str_to_array
+from utils import get_base_url
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -112,7 +113,7 @@ login_manager = LoginManager()
 login_manager.setup_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in.'
- 
+    
 @login_manager.user_loader
 def load_user(user_id):
     """Hook for Flask-Login to load a User instance from a user ID."""
@@ -299,6 +300,14 @@ def login():
             
         if authenticated:
             login_user(user)
+            
+            # record the base URL
+            try:
+                system_option = SystemOption.get(db_session)
+                system_option.base_url = get_base_url(request.url)
+                db_session.commit()
+            except:
+                logger.exception('login hit exception')
             
             # Certain admin features (Admin Console/Create or Edit User require 
             # re-authentication. The return_url indicates which admin feature the 
@@ -1995,7 +2004,7 @@ def admin_console():
 @login_required
 def host_dashboard(hostname):
     db_session = DBSession()
-    
+
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)        
@@ -2113,6 +2122,9 @@ def delete_install_job_dependencies(db_session, install_job):
             db_session.delete(dependency)
         delete_install_job_dependencies(db_session, dependency)
 
+"""
+This route is also used by mailer.py for email notification.
+"""
 @app.route('/hosts/<hostname>/<table>/session_log/<int:id>/')
 @login_required
 def host_session_log(hostname, table, id):
@@ -2125,7 +2137,7 @@ def host_session_log(hostname, table, id):
         record = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
     elif table == 'inventory_job_history':
         record = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
-        
+    
     if record is None:
         abort(404)
        

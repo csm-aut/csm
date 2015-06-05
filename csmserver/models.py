@@ -604,6 +604,7 @@ class SystemOption(Base):
     enable_default_host_authentication = Column(Boolean, default=False)
     default_host_username = Column(String(50))
     _default_host_password = Column('default_host_password', String(100))
+    base_url = Column(String(100))
     
     @property
     def default_host_password(self):

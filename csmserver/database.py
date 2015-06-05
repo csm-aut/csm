@@ -4,7 +4,7 @@ from sqlalchemy.engine.url import URL
 
 from salts import encode, decode
 from utils import import_module
-import os 
+import os
 
 # DO NOT MODIFY THESE STRINGS.  THEY ARE USED FOR ENCRYPTION.
 STRING1 = "ABCDEF~!@#$%^&*()-_=+|[]{};:',.<>asdfghj/?GHIJKLMNOPQRSTUVWXYZ12345qwertyuiopkl67890zxcvbnm"
@@ -13,7 +13,7 @@ STRING2 = "WERTY[}{|=+-_)~abcdenojk54321ZpASstuUI09876OP/?.,<>';:]QfghiXCVBNMlmv
 PREFIX = 'encrypted'
 ENCRYPT = {'key' : 'csmserver', 'string1' : STRING1, 'string2' : STRING2}
 
-SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 1
 ENABLE_DEBUG=False
 
 """

@@ -1,4 +1,5 @@
 import smtplib
+import urllib
 
 from database import DBSession
 from constants import JobStatus
@@ -16,6 +17,9 @@ from filters import get_datetime_string
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+def get_session_log_link(host, install_job):
+    return "hosts/{}/install_job_history/session_log/{}?file_path={}".format(urllib.quote(host.hostname), install_job.id, install_job.session_log)
+                                                                 
 def send_install_status_email(install_job):
     db_session = DBSession
     username = install_job.created_by
@@ -49,8 +53,13 @@ def send_install_status_email(install_job):
     message += 'Start Time: ' + get_datetime_string(install_job.start_time) + ' (UTC)<br>'
     message += 'Install Action: ' + install_job.install_action + '<br><br>'
     
+    session_log_url = system_option.base_url + '/' + get_session_log_link(host, install_job)
+    
+    message += 'For more information, click the link below<br><br>'
+    message += session_log_url + '<br><br>'
+    
     if install_job.packages is not None and len(install_job.packages) > 0:
-        message += 'Following are the software packages: <br>' + install_job.packages.replace(',','<br>')
+        message += 'Followings are the software packages: <br><br>' + install_job.packages.replace(',','<br>')
         
     message += '</body></head></html>'
     

@@ -176,13 +176,13 @@ class InstallWorkUnit(WorkUnit):
             else:
                 archive_install_job(db_session, ctx, install_job, JobStatus.FAILED)
                 
-            db_session.commit()
+            # db_session.commit()
             
         except: 
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
                 archive_install_job(db_session, ctx, install_job, JobStatus.FAILED, trace=traceback.format_exc())
-                db_session.commit()
+                # db_session.commit()
             except:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
@@ -238,9 +238,10 @@ def archive_install_job(db_session, ctx, install_job, job_status, trace=None):
         db_session.delete(install_job)
         
     db_session.add(install_job_history)
+    db_session.commit()
     
     # Send notification error
-    send_install_status_email(install_job_history)
+    send_install_status_email(install_job_history) 
     
 if __name__ == '__main__': 
     pass

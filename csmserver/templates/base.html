@@ -61,7 +61,7 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     
     <script src="/static/select2-4.0.0/dist/js/select2.min.js"></script>  
-    <script src="/static/underscorejs/underscore.min.js"></script>
+    <script src="/static/underscorejs/underscore.min.js"></script> 
     <link rel="stylesheet" href="/static/select2-4.0.0/dist/css/select2.css">
     <link rel="stylesheet" type="text/css" href="/static/jquery/css/base.css">
     
@@ -74,7 +74,7 @@
             window.location = "{{ url_for('logout') }}";
           {% endif %}
         }, 3600000)) // 60 minutes inactivity
-
+        
         $('#search-host-selector').select2({
           placeholder: "Search a host",     
           allowClear: true,  

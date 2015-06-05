@@ -40,8 +40,7 @@ def create_directory(directory):
     # Creates the a directory if not exist
     if not os.path.exists(directory):
         try:
-            os.makedirs(directory)
-            os.chmod(directory, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)  
+            os.makedirs(directory) 
         except:
             print('ERROR: Unable to create directory' + directory)      
         
@@ -63,7 +62,7 @@ def get_datetime_string(datetime, format):
 
 def make_file_writable(file_path):
     if os.path.isfile(file_path):
-        os.chmod(file_path, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)  
+        os.chmod(file_path, stat.S_IRWXU)  
         
 def get_tarfile_file_list(tar_file_path):
     file_list = []
@@ -85,8 +84,6 @@ def untar(tar_file_path, output_directory, remove_tar_file=None):
     tar = tarfile.open(tar_file_path)
     tar_info_list = tar.getmembers()
     for tar_info in tar_info_list:
-        # Modify the permission bit of the file (especially the .txt file which is readonly)
-        make_file_writable(output_directory + os.path.sep + tar_info.name)
         file_list.append(tar_info.name)
         
     tar.extractall(output_directory)
@@ -188,6 +185,14 @@ def trim_last_slash(str):
             return str[:-1]
     return str
 
+"""
+Returns the base URL including the port numbetr
+e.g. (localhost:50000)
+"""
+def get_base_url(url):
+    url = url.replace('http://', '')
+    return 'http://' + url[:url.find('/')] 
+    
 def is_empty(obj):
     if obj is None or len(obj) == 0 or obj == 'None':
         return True
