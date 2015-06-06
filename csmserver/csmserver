@@ -1,4 +1,28 @@
 #!/bin/bash
+# =============================================================================
+# Copyright (c) 2015, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 
 # for Python interpreter
 PYTHON="python"
@@ -26,20 +50,20 @@ function start_csmserver()
     fi
 
     gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- csmserver:app &
-    $PYTHON csmdispatcher.py & 
+    $PYTHON csmdispatcher.py &
 }
 
 function start_secure_csmserver
 {
     # Check certificate
     if [ ! -f $SSLKEY ]; then
-        echo Unable to start secure CSM Server 
+        echo Unable to start secure CSM Server
         echo The Private Key file, $SSLKEY, is missing.
         return
     fi
 
     if [ ! -f $SSLCERT ]; then
-        echo Unable to start secure CSM Server 
+        echo Unable to start secure CSM Server
         echo The Certificate file, $SSLCERT, is missing.
         return
     fi
@@ -57,7 +81,7 @@ function start_secure_csmserver
     $PYTHON csmdispatcher.py &
 }
 
-function stop_csmserver 
+function stop_csmserver
 {
     pid_list=`ps -ef | grep 'csmserver:ap[p]\|csmdispatche[r]' | awk '{print $2}'`
     for pid in $pid_list; do
@@ -69,21 +93,22 @@ function stop_csmserver
 if [ "$1" == "start" ] && [ "$2" == "secure" ]; then
 
     if [ "$3" == "debug" ]; then
-        start_secure_csmserver $DEBUG 
+        start_secure_csmserver $DEBUG
     else
-        start_secure_csmserver 
+        start_secure_csmserver
     fi
 
 elif [ "$1" == "start" ]; then
 
     if [ "$2" == "debug" ]; then
-        start_csmserver $DEBUG 
+        start_csmserver $DEBUG
     else
-        start_csmserver 
+        start_csmserver
     fi
 
 elif [ "$1" == "stop" ]; then
     stop_csmserver
 else
     echo "usage: csmserver [start|start secure|stop]"
+
 fi

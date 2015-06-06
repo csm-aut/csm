@@ -1,3 +1,28 @@
+# =============================================================================
+# Copyright (c)  2015, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
+
 from flask import Flask
 from flask import render_template
 from flask import jsonify, abort, send_file
@@ -38,6 +63,7 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
+from models import SystemVersion
 from models import Package
 from models import Preferences
 from models import SMUMeta
@@ -99,6 +125,7 @@ import collections
 import shutil
 import re
 import csv
+import initialize
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -132,13 +159,13 @@ def home():
     jump_hosts = get_jump_host_list(db_session)
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
-    system_option = SystemOption.get(db_session)
+    system_version = SystemVersion.get(db_session)
     
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()))
 
     return render_template('host/home.html', form=form, hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
-        servers=servers, hosts_info_json=get_host_platform_json(hosts), system_option=system_option, current_user=current_user) 
+        servers=servers, hosts_info_json=get_host_platform_json(hosts), system_version=system_version, current_user=current_user) 
 
 def get_host_platform_json(hosts):
     host_dict = {}
@@ -3134,5 +3161,6 @@ def download_system_logs():
         
     return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
         
-if __name__ == '__main__':    
+if __name__ == '__main__':  
+    initialize.init()  
     app.run(host='0.0.0.0', use_reloader=False, threaded=True, debug=False)

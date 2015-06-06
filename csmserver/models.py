@@ -1,9 +1,33 @@
-
+# =============================================================================
+# Copyright (c) 2015, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from sqlalchemy import Column, Table, Boolean
 from sqlalchemy import String, Integer, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, synonym
+
 from utils import make_url
 from utils import is_empty
 from salts import encode, decode
@@ -583,12 +607,19 @@ class SMUInfo(Base):
     def cco_filename(self, value):
         self._cco_filename = value
         
-   
-class SystemOption(Base):
-    __tablename__ = 'system_option'   
+class SystemVersion(Base): 
+    __tablename__ = 'system_version'
     id = Column(Integer, primary_key=True)
     schema_version = Column(Integer, default=1)
     software_version = Column(String(10), default='1.0')
+    
+    @classmethod
+    def get(cls, db_session):
+        return db_session.query(SystemVersion).first()
+    
+class SystemOption(Base):
+    __tablename__ = 'system_option'   
+    id = Column(Integer, primary_key=True)
     inventory_threads = Column(Integer, default=5)
     install_threads = Column(Integer, default=10)
     download_threads = Column(Integer, default=5)
@@ -686,10 +717,18 @@ def get_download_job_key_dict():
         download_job_key = "{}{}{}{}".format(download_job.user_id,download_job.cco_filename, download_job.server_id, download_job.server_directory)
         result[download_job_key] = download_job
     return result
-    
-def init_user(db_session):
+
+def init_system_version():
+    db_session = DBSession()
+    if db_session.query(SystemVersion).count() == 0:
+        db_session.add(SystemVersion())
+        db_session.commit()
+  
+def init_user():
+    db_session = DBSession()
+
     # Setup a default cisco user if none exists
-    if db_session.query(User).first() is None:
+    if db_session.query(User).count() == 0:
         user = User(
             username='root',
             password='root',
@@ -698,33 +737,30 @@ def init_user(db_session):
             email='admin')
         user.preferences.append(Preferences())
         db_session.add(user)
+        db_session.commit()
         
-def init_system_option(db_session):
-    if SystemOption.get(db_session) is None:
+def init_system_option():
+    db_session = DBSession()
+    if db_session.query(SystemOption).count() == 0:
         db_session.add(SystemOption())
+        db_session.commit()
         
-def init_encrypt(db_session): 
+def init_encrypt(): 
     global encrypt_dict
-    if Encrypt.get(db_session) is None:     
+
+    db_session = DBSession()
+    if db_session.query(Encrypt).count() == 0:
         db_session.add(Encrypt())
         db_session.commit()
     encrypt_dict = dict(Encrypt.get(db_session).__dict__)
     
-def init():
-    db_session = DBSession()  
-    init_user(db_session)
-    init_system_option(db_session)
-    init_encrypt(db_session)       
-    db_session.commit()
+def initialize():
+    init_user()
+    init_encrypt()       
+    init_system_option()
 
-# initialization 
-init()
-    
-     
+init_system_version()
+ 
 if __name__ == '__main__':
     pass
 
-
-
-    
-    

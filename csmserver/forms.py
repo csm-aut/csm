@@ -1,15 +1,31 @@
-'''
-Created on Feb 20, 2014
-
-@author: alextang
-'''
-from wtforms import Form, BooleanField, DateTimeField, validators
+# =============================================================================
+# Copyright (c) 2015, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
+from wtforms import Form, validators
 from wtforms import TextAreaField, TextField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
-from wtforms.validators import Length, required, EqualTo
-from wtforms import widgets, fields
-from wtforms.ext.sqlalchemy.fields import QuerySelectField
-
-from constants import Platform, ConnectionType, ServerType, UserPrivilege, SMTPSecureConnection, InstallAction
+from wtforms.validators import Length, required
+from constants import Platform, ConnectionType, ServerType, UserPrivilege, SMTPSecureConnection
 
 class LoginForm(Form):
     """
@@ -71,8 +87,9 @@ class HostScheduleInstallForm(Form):
        
     scheduled_time = TextField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
-    dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])        
     software_packages = TextAreaField('Software Packages')
+    dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])        
+       
     install_history_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
     
     host_software_dialog_target_software = TextField('Target Software Release')
@@ -85,9 +102,6 @@ class HostScheduleInstallForm(Form):
     
     cisco_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
     cisco_dialog_server_directory = SelectField('Server Directory', coerce=str, choices = [('', '')])
-    
-    advisor_dialog_current_software_version = TextField('Current Software Version') 
-    advisor_dialog_new_software_version = TextField('New Software Version') 
     
     hidden_server = HiddenField('')   
     hidden_server_name = HiddenField('')   
