@@ -752,14 +752,15 @@ def init_encrypt():
     if db_session.query(Encrypt).count() == 0:
         db_session.add(Encrypt())
         db_session.commit()
+
     encrypt_dict = dict(Encrypt.get(db_session).__dict__)
     
 def initialize():
     init_user()
-    init_encrypt()       
     init_system_option()
 
 init_system_version()
+init_encrypt()
  
 if __name__ == '__main__':
     pass
