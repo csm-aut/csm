@@ -228,9 +228,7 @@ class Device(object):
         return self.session.connected, self.session.send(command,timeout)
 
     def disconnect(self):
-        import traceback
-        status = self.session.disconnect()
-        return status
+        return self.session.disconnect()
 
     def connect(self):
         status = False
