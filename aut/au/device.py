@@ -230,7 +230,6 @@ class Device(object):
     def disconnect(self):
         import traceback
         status = self.session.disconnect()
-        print traceback.format_exc()
         return status
 
     def connect(self):
