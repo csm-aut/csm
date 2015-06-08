@@ -508,8 +508,8 @@
         return false;
       }
 
-      if (has_one_of_these(install_actions, [INSTALL_ADD]) && trim_lines(software_packages).split('\n').length > 16) {
-        bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 16 software packages at a time.  To circumvent this issue, use a tar archive file instead.");
+      if (trim_lines(software_packages).split('\n').length > 16) {
+        bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 16 software packages at a time.  For Install Add, use a tar archive file instead.");
         return false;
       }
 

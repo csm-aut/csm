@@ -44,6 +44,8 @@ class InstallDeactivatePlugin(IPlugin):
     DESCRIPTION = "Install Dectivate Packages"
     TYPE = "DEACTIVATE"
     VERSION = "0.0.1"
+    tobe_activated=""
+    deact_list=""
 
     def _watch_operation(self, device, oper_id):
         """
@@ -58,6 +60,10 @@ class InstallDeactivatePlugin(IPlugin):
         success_oper = r'Install operation (\d+) completed successfully'
         completed_with_failure = 'Install operation (\d+) completed with failure'
         failed_oper = r'Install operation (\d+) failed'
+        op_success = "The install operation will continue asynchronously"
+        global tobe_activated
+        global deact_list
+        failed_incr=r'incremental.*parallel'
         # restart = r'Parallel Process Restart'
         reload = r'Parallel Reload'
         install_method = r'Install method: (.*)'
@@ -83,7 +89,15 @@ class InstallDeactivatePlugin(IPlugin):
         success, output = device.execute_command(cmd)
 
         if not success or re.search(failed_oper, output):
-            self.error(output)
+            if re.search(failed_incr,output):
+                cmd = 'admin install deactivate {} prompt-level none async parallel-re'.format(
+                       deact_list)
+                success, output = device.execute_command(cmd)
+                if success and op_success in output:
+                    op_id = re.search('Install operation (\d+) \'', output).group(1)
+                    self._watch_operation(device, op_id)
+            else:
+                self.error(output)
 
         if success and re.search(completed_with_failure, output):
             # Completed with failure but failure was after PONR
@@ -199,6 +213,8 @@ class InstallDeactivatePlugin(IPlugin):
         SMU_RE = r'CSC\D\D\d\d\d'
         FP_RE = r'fp\d+'
         SP_RE = r'sp\d+'
+        global deact_list
+        
         tobe_deactivated = []
         pkg_list = kwargs.get('pkg_file', None)
         

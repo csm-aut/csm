@@ -42,6 +42,7 @@ class InstallActivatePlugin(IPlugin):
     DESCRIPTION = "Install Activate Packages"
     TYPE = "UPGRADE"
     VERSION = "0.0.1"
+    tobe_activated=""
 
     def _watch_operation(self, device, oper_id):
         """
@@ -51,15 +52,18 @@ class InstallActivatePlugin(IPlugin):
         in state or timeout.
 
         """
+        global tobe_activated
         no_oper = r'There are no install requests in operation'
         in_oper = r'The operation is (\d+)% complete'
         success_oper = r'Install operation (\d+) completed successfully'
         completed_with_failure = 'Install operation (\d+) completed with failure'
         failed_oper = r'Install operation (\d+) failed'
+        failed_incr=r'incremental.*parallel'
         # restart = r'Parallel Process Restart'
         reload = r'Parallel Reload'
         install_method = r'Install method: (.*)'
         cmd = "admin show install request"
+        op_success = "The install operation will continue asynchronously"
 
         stdout.write("\n\r")
         while 1:
@@ -75,16 +79,23 @@ class InstallActivatePlugin(IPlugin):
                 stdout.write("%s \r" % (progress))
                 stdout.flush()
                 continue
-
         # Ensure operation success and get restart type
         cmd = "admin show install log %d detail" % int(oper_id)
         success, output = device.execute_command(cmd)
 
         if not success or re.search(failed_oper, output):
-            self.error(output)
+            if re.search(failed_incr,output):
+                cmd = 'admin install activate {} prompt-level none async parallel-re'.format(
+                        tobe_activated)
+                success, output = device.execute_command(cmd)
+                if success and op_success in output:
+                    op_id = re.search('Install operation (\d+) \'', output).group(1)
+                    self._watch_operation(device, op_id)
+            else:
+                self.error(output)
 
         if success and re.search(completed_with_failure, output):
-            # Completed with failure but failure was after PONR
+            # Completed with$ failure but failure was after PONR
             restart_type = re.search(install_method, output).group(1).strip()
             if restart_type == reload:
                 self._wait_for_reload(device)
@@ -195,6 +206,7 @@ class InstallActivatePlugin(IPlugin):
         Performs install activate operation
         """
         activate_with_id = False
+        global tobe_activated
         id_to_activate = None
         op_success = "The install operation will continue asynchronously"
         csm_ctx = device.get_property('ctx')
