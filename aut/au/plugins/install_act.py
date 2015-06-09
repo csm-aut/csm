@@ -121,7 +121,7 @@ class InstallActivatePlugin(IPlugin):
             return status
 
         # Connection to device is stablished , now look for all nodes to xr run state
-        timeout = 1500
+        timeout = 3600
         poll_time = 30
         time_waited = 0
         xr_run = "IOS XR RUN"

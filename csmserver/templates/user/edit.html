@@ -33,6 +33,24 @@
       
       $('#password').password();
       
+      $('#form').submit(function() {
+      
+        var username = $('#username').val();
+        var acceptable_string = get_acceptable_string(username);
+        
+        if (acceptable_string != username) {
+          var message = get_acceptable_string_message('User name', username, acceptable_string);
+          bootbox.confirm(message, function(result) {
+            if (result) {
+              $('#username').val(acceptable_string);
+            }
+          }); 
+        } else {
+          return true;
+        }
+        
+        return false;
+      });
     });
   </script>
 {% endblock extra_head %}
@@ -40,7 +58,7 @@
 {% block main %}
 <div class="row">
   <div class="well col-sm-offset-3 col-sm-6">
-    <form action="" method=post class="form-horizontal">
+    <form id="form" method=post class="form-horizontal">
     
     <legend>{% if isEdit %}Edit User{% else %}Create User{% endif %}</legend>
     {{ alert_duplicate(form.username.data, duplicate_error) }}

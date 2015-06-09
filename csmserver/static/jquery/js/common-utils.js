@@ -21,6 +21,14 @@ function create_html_table_row(field, value) {
  }       
 }
 
+function get_acceptable_string(input_string) {
+  return input_string.replace(/[^a-z0-9()_-\s]/gi,'').replace(/\s+/g, " "); 
+}
+
+function get_acceptable_string_message(field, old_value, new_value) {
+  return field + " '" + old_value + "' contains invalid characters.  It is recommended that it be changed to '" + new_value + "'.  Change?";
+}
+
 /*
 Trims all whitespaces from lines and returns them as separate line
 */

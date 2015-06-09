@@ -62,7 +62,22 @@
           bootbox.alert("Region has not been specified.");
           return false;
         }
-        currentForm.submit();
+       
+        var hostname = $('#hostname').val();
+        var acceptable_string = get_acceptable_string(hostname);
+        
+        if (acceptable_string != hostname) {
+          var message = get_acceptable_string_message('Hostname', hostname, acceptable_string);
+          bootbox.confirm(message, function(result) {
+            if (result) {
+              $('#hostname').val(acceptable_string);
+            }
+          }); 
+        } else {
+          return true;
+        }
+        
+        return false;
       });
       
       $('#verify-reachability').on("click", function() {

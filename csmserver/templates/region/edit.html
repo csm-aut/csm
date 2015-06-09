@@ -66,17 +66,24 @@
       });       
       
       
-      /*
       $('#form').submit(function() {
-        var server_id = $('#server').val();
-        if (server_id < 0) {
-          bootbox.alert("Server Repository has not been specified.");
-          return false;
+        
+        var region_name = $('#region_name').val();
+        var acceptable_string = get_acceptable_string(region_name);
+        
+        if (acceptable_string != region_name) {
+          var message = get_acceptable_string_message('Region name', region_name, acceptable_string);
+          bootbox.confirm(message, function(result) {
+            if (result) {
+              $('#region_name').val(acceptable_string);
+            }
+          }); 
+        } else {
+          return true;
         }
-        currentForm.submit();
-
+        
+        return false;
       });
-      */
   
     });
   </script>
