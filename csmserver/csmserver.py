@@ -98,7 +98,7 @@ from utils import trim_last_slash
 from utils import is_empty
 from utils import get_tarfile_file_list
 from utils import comma_delimited_str_to_array
-from utils import get_base_url
+from utils import get_base_url 
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -162,7 +162,7 @@ def home():
     system_version = SystemVersion.get(db_session)
     
     form = ServerDialogForm(request.form)
-    fill_servers(form.dialog_server.choices, get_server_list(DBSession()))
+    fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
     return render_template('host/home.html', form=form, hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
         servers=servers, hosts_info_json=get_host_platform_json(hosts), system_version=system_version, current_user=current_user) 
@@ -1879,7 +1879,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         
     # Fills the selections
     fill_servers(form.server_dialog_server.choices, host.region.servers)
-    fill_servers(form.cisco_dialog_server.choices, host.region.servers)
+    fill_servers(form.cisco_dialog_server.choices, host.region.servers, False)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs, (-1 if install_job is None else install_job.id))
         
     if request.method == 'POST':
@@ -2652,14 +2652,15 @@ def fill_dependencies(choices):
     choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
     choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT)) 
 
-def fill_servers(choices, servers):
+def fill_servers(choices, servers, include_local=True):
     # Remove all the existing entries
     del choices[:]
     choices.append((-1, ''))
     
     if len(servers) > 0:
         for server in servers:
-            choices.append((server.id, server.hostname))
+            if include_local or server.server_type != ServerType.LOCAL_SERVER:
+                choices.append((server.id, server.hostname))
         
 def fill_dependency_from_host_install_jobs(choices, install_jobs, current_install_job_id):
     # Remove all the existing entries
@@ -2899,7 +2900,7 @@ def get_platforms_and_releases_dict(db_session):
 @login_required
 def get_smu_list(platform, release):        
     form = ServerDialogForm(request.form)
-    fill_servers(form.dialog_server.choices, get_server_list(DBSession()))
+    fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
     
     return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release) 
 

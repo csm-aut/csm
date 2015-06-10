@@ -251,23 +251,23 @@ class InstallActivatePlugin(IPlugin):
         adm_cmd = 'admin clear configuration inconsistency'
 
         success, output = device.execute_command(cmd)
-        output = output.split('\n')
+        #output = output.split('\n')
 
-        for line in output:
-            if not line == '':
-                if not re.search('...OK',line):
-                    fail_flag = 1
+        #for line in output:
+        if not output == '':
+            if not re.search('...OK',output):
+                fail_flag = 1
 
         if fail_flag == 1:
             self.error("%s command execution failed" % (cmd))
 
         success, output = device.execute_command(adm_cmd)
-        output = output.split('\n')
+        #output = output.split('\n')
 
-        for line in output:
-            if not line == '':
-                if not re.search('...OK',line):
-                    fail_flag = 1
+        #for line in output:
+        if not output == '':
+            if not re.search('...OK',output):
+                fail_flag = 1
 
         if fail_flag ==1:
             self.error("%s command execution failed" % (cmd))
@@ -277,6 +277,7 @@ class InstallActivatePlugin(IPlugin):
         Start the plugin
         Return False if the plugin has found an error, True otherwise.
         """
+
 
         self._clear_cfg_incon(device, kwargs)
         self._install_act(device, kwargs)

@@ -185,7 +185,7 @@
             {% if current_user.is_authenticated() %}
             
               <ul class="nav navbar-nav navbar-right"> 
-                <li><a href="{{ url_for('static', filename='user_guide.pdf') }}" ><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"</img></a></li>
+                <li><a href="{{ url_for('static', filename='user_guide.pdf') }}" target="_blank"><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"</img></a></li>
                 <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"</img></a></li>
               </ul>
             

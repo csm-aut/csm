@@ -273,7 +273,7 @@ class Device(object):
                 time.sleep(poll_time)
                 print "\nRetry count :%s @ %s"%(time_waited/poll_time,time.strftime("%H:%M:%S", time.localtime()))
                 try:
-                    status = self.session.connect()
+                    status = self.session.connect(self.session_log)
                 except:
                     continue
 
