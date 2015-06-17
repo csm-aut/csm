@@ -263,6 +263,7 @@ class Device(object):
         time_waited = 0
         print "System going for reload., please wait!!"
         time.sleep(60)
+
         try :
             self.session.connect(self.session_log)
         except :
