@@ -263,7 +263,11 @@ class Device(object):
         time_waited = 0
         print "System going for reload., please wait!!"
         time.sleep(60)
-        status = self.session.connect(self.session_log)
+
+        try :
+            self.session.connect(self.session_log)
+        except :
+            pass 
 
         while 1:
             time_waited += poll_time
