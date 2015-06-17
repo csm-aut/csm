@@ -159,13 +159,13 @@ def home():
     jump_hosts = get_jump_host_list(db_session)
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
-    system_version = SystemVersion.get(db_session)
+    # system_version = SystemVersion.get(db_session)
     
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
     return render_template('host/home.html', form=form, hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
-        servers=servers, hosts_info_json=get_host_platform_json(hosts), system_version=system_version, current_user=current_user) 
+        servers=servers, hosts_info_json=get_host_platform_json(hosts), build_date=get_build_date(), current_user=current_user) 
 
 def get_host_platform_json(hosts):
     host_dict = {}
@@ -2826,13 +2826,16 @@ def stream():
 @app.route('/about')
 @login_required
 def about():    
+    return render_template('about.html', build_date=get_build_date() )
+
+def get_build_date(): 
     build_date = None
     try:
         build_date = open('build_date', 'r').read()
     except:
         pass
     
-    return render_template('about.html', build_date=build_date) 
+    return build_date
 
 @app.route('/user_preferences', methods=['GET','POST'])
 @login_required

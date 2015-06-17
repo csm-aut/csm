@@ -41,7 +41,7 @@ class InstallDeactivatePlugin(IPlugin):
     A plugin for install activate operation
     """
     NAME = "INSTALL_DEACTIVATE"
-    DESCRIPTION = "Install Dectivate Packages"
+    DESCRIPTION = "Install Deactivate Packages"
     TYPE = "DEACTIVATE"
     VERSION = "0.0.1"
     tobe_activated=""
