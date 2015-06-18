@@ -184,7 +184,7 @@ class InstallActivatePlugin(IPlugin):
         # Skip operation if to be activated packages are already active
         package_to_activate = pkgutils.extra_pkgs(
             active_pkgs.pkg_list, added_pkgs.pkg_list)
-        print("package to activate",package_to_activate)
+        print("package to activate",package_to_activate,added_pkgs.pkg_list)
         if package_to_activate:
             # Test If there is anything added but not inactive
             pkg_to_activate = pkgutils.pkg_tobe_activated(
@@ -217,7 +217,6 @@ class InstallActivatePlugin(IPlugin):
         else:
            id_to_activate = device.get_property('operation_id')
            print "GOT ID from device ctx"
-
         if id_to_activate is None or id_to_activate == -1:
            tobe_activated = self._get_tobe_activated_pkglist(device, kwargs)
            if not tobe_activated:

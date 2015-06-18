@@ -123,7 +123,9 @@ class NewPackage():
             r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+)')
 
         smu_expr_eng_int = re.compile(
-            r'(?P<PLATFORM>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+.)\.(?P<PKGNAME>CSC\w+)(?P<PKGFORMAT>-)(?P<SMUVERSION>\d+\.\d+\.\d+.*)') 
+            r'(?P<PLATFORM>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+.)\.(?P<PKGNAME>CSC\w+)(?P<PKGFORMAT>-)(?P<SMUVERSION>\d+\.\d+\.\d+.*)')
+        smu_expr_eng_int1 = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+)\.(?P<PKGNAME>CSC\w+)(?P<PKGFORMAT>-)(?P<SMUVERSION>.*)') 
         smu_expr = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<ARCH>\w+)-(?P<VERSION>\d+\.\d+\.\d+)\.(?P<PKGNAME>\w+)\.(?P<PKGFORMAT>\w+)')
         smu_expr2 = re.compile(
@@ -174,6 +176,9 @@ class NewPackage():
             p = pkg_expr.search(pkg)
         if not p:
             p = smu_expr_eng_int.search(pkg)
+            smu_ver="1"
+        if not p:
+            p = smu_expr_eng_int1.search(pkg)
             smu_ver="1"
         if not p:
             p = smu_expr.search(pkg)
