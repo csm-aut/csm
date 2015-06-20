@@ -192,7 +192,15 @@ class Connection(object):
             _logger.debug(
                 _c(self.hostname, "Sending command: '{}'".format(cmd)))
 
-            self._execute_command(cmd, timeout, wait_for_string)
+            try:
+                self._execute_command(cmd, timeout, wait_for_string)
+            except ConnectionError:
+                _logger.warn(
+                    _c(self.hostname,
+                        "Connection lost. Disconnecting."))
+                self.disconnect()
+                raise
+
             _logger.info(
                 _c(self.hostname,
                    "Command executed successfully: '{}'".format(cmd)))
