@@ -7,31 +7,11 @@
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
 
   <script>
-    
+     
     $(function() {
       
-      var record_limit = $.cookie('host-dashboard-record-limit') == null ? '10' : $.cookie('host-dashboard-record-limit');
-      $("#record-limit-selector option[value='" + record_limit + "']").attr('selected', 'selected');
-      update_record_limit_label(record_limit);
-    
-      $('#record-limit-selector').on('change', function (e) {       
-        record_limit = $(this).val();  
-        update_record_limit_label(record_limit); 
-        $.cookie('host-dashboard-record-limit', record_limit);  
-        refresh_install_job_history_table();
-        refresh_inventory_job_history_table();
-      });
-      
-      function update_record_limit_label(selected_value) {
-        if (selected_value == 'ALL') {
-          $("#record-limit-selector-label").text('Retrieve ALL the Records:');
-        } else {
-          $("#record-limit-selector-label").text('Retrieve Last ' + selected_value + ' Records:');
-        }
-      }
-      
       function insert_slider(packages, install_job_id) {
-        if (packages.length > 0) {
+        if (packages != null && packages.length > 0) {
           var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + install_job_id + '">' + 
                         '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
                      '</a>' +
@@ -249,20 +229,18 @@
           },
         ],
         "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}" + "?record_limit=" + record_limit,
+          "url": "{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}",
         }
       }).on('draw.dt', function ( e, settings, json ) {
         last_install_job_history_count = new_last_install_job_history_count;
       });
       
       function refresh_install_job_history_table() {
-        install_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}" + 
-          "?record_limit=" + record_limit).load();
+        install_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}").load();
       }
       
       function refresh_inventory_job_history_table() {
-        inventory_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}" + 
-          "?record_limit=" + record_limit).load();
+        inventory_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}").load();
       }
       
       var inventory_job_history_table = $("#inventory-job-history-datatable").dataTable({
@@ -305,7 +283,7 @@
           },
         ],
         "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}" + "?record_limit=" + record_limit,
+          "url": "{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}",
         }
       });
 
@@ -413,11 +391,13 @@
       $(".hide-header").hide();
       
       $('#install-history-button').on("click", function() {
-        window.location.href = "#install-history";
+        $('a[href="#install-job-history"]').tab('show');
+        window.location.href = "#host-tabs";
       });
       
       $('#inventory-history-button').on("click", function() {
-        window.location.href = "#inventory-history";
+        $('a[href="#software-inventory-history"]').tab('show');
+        window.location.href = "#host-tabs";
       });
 
       $('.UTCDate').val(function(index, currentValue) {
@@ -664,101 +644,64 @@
 
   </div> <!-- /upper section -->
   
-  <div id="install-history" class="row">
-    <p>
-  </div>
-
-  <!-- middle section -->
-  <div class="row">
-    
+  <div id="host-tabs" class="row">    
     <div class="col-sm-12">
       <hr>
-        <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-list-alt"></i> Install History</strong></span>
-
-        <a href="#" class="pull-right">
-          Return to Top
-        </a>
-      <hr> 
-    </div>
-
-  </div> <!-- /middle section -->
-
-  <!-- lower section -->
-  <div class="row">
-    <div class="col-sm-12">
-    
-      <div class="container">
-        <div class="form-group">  
-          <label class="DodgerBlue col-sm-3 control-label" id="record-limit-selector-label">Number of Records to Retrieve:</label>
-
-          <div class=col-sm-4>
-            <select class="form-control" id="record-limit-selector" name="record-limit-selector" style="width:200px">
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="ALL">ALL</option>
-            </select>
-          </div>
-        </div>
-      </div>
-          
-      <!-- Install Job History Table -->
-      <div class="container col-sm-12" style="margin-top: 10px">
-        <table cellspacing="0" class="display table" id="install-job-history-datatable">    
-          <thead>  
-            <tr> 
-              <th>Install Action</th>  
-              <th>Scheduled Time</th>
-              <th>Start Time</th>
-              <th>Packages</th>
-              <th>Status</th>
-              <th>Status Time</th>
-              <th>Log</th>
-              <th>Created By</th>
-            </tr>  
-          </thead>  
-          
-        </table>
-
-      </div> <!-- /Install Job History Table -->
-    </div>   
-  </div> <!-- /lower section -->
-
-  <div id="inventory-history" class="row">
-    
-    <div class="col-sm-12">
-      <hr>
-        <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-list-alt"></i> Software Inventory History</strong></span>
-
-        <a href="#" class="pull-right">
-          Return to Top
-        </a>
-      <hr> 
+      <a href="#" class="pull-right">
+        Return to Top
+      </a>
     </div>
 
   </div> <!-- /row -->
   
+  <div class="container">
   <div class="row">
-    <div class="col-sm-12">
+    <ul class="nav nav-tabs" id="host-dashboard-tab">
+      <li><a data-toggle="tab" href="#install-job-history">Install History</a></li>
+      <li><a data-toggle="tab" href="#software-inventory-history">Software Inventory History</a></li>
+    </ul>
+    
+    <div class="tab-content">
+      <div id="install-job-history" class="tab-pane fade in active">    
+        <div class="container col-sm-12" style="margin-top: 10px">
+          <table cellspacing="0" class="display table" id="install-job-history-datatable">    
+            <thead>  
+              <tr> 
+                <th>Install Action</th>  
+                <th>Scheduled Time</th>
+                <th>Start Time</th>
+                <th>Packages</th>
+                <th>Status</th>
+                <th>Status Time</th>
+                <th>Log</th>
+                <th>Created By</th>
+              </tr>  
+            </thead>   
+          </table>
+        </div>
+      </div>
+      
+      <div id="software-inventory-history" class="tab-pane fade">     
+        <div class="col-sm-12" style="margin-top: 10px">
 
-      <!-- Inventory Job History Table -->
-        <table cellspacing="0" class="display table" id="inventory-job-history-datatable">    
-          <thead>  
-            <tr> 
-              <th>Description</th>
-              <th>Status</th>
-              <th>Status Time</th>
-              <th>Elapsed Time</th>
-              <th>Log</th>
-            </tr>  
-          </thead>  
-        </table>
-
-      </div> <!-- /Inventory Job History Table -->
-     
-  </div> <!-- /lower section --> 
-  
+        <!-- Inventory Job History Table -->
+          <table cellspacing="0" class="display table" id="inventory-job-history-datatable">    
+            <thead>  
+              <tr> 
+                <th>Description</th>
+                <th>Status</th>
+                <th>Status Time</th>
+                <th>Elapsed Time</th>
+                <th>Log</th>
+              </tr>  
+            </thead>  
+          </table>
+        </div> <!-- /Inventory Job History Table -->    
+      </div>
+    </div>  
+  </div>   
+ </div> 
+          
 </div> <!-- Main -->
 
 {% endblock main %}

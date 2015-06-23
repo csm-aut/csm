@@ -345,8 +345,10 @@ class SFTPServer(ServerImpl):
                         sftp.chdir(server.server_directory)      
                 return True
             else:
+                logger.exception('Unable to import pysftp module')
                 return False
         except:
+            logger.exception('SFTPServer hit exception')
             return False
         
     def upload_file(self, source_file_path, dest_filename, sub_directory=None):
