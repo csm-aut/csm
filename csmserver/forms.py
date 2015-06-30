@@ -153,9 +153,9 @@ class AdminConsoleForm(Form):
     default_host_password = PasswordField('Default Host Password')
     
 class SMTPForm(Form):
-    server = TextField('Outgoing SMTP Server', [required()])
+    server = TextField('Outgoing SMTP Server')
     server_port = TextField('SMTP Server Port')
-    sender = TextField('Sender Email Address', [required()])
+    sender = TextField('Sender Email Address')
     use_authentication = HiddenField("Server uses Authentication")
     username = TextField('Username')
     password = PasswordField('Password')
