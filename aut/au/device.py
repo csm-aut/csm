@@ -262,7 +262,6 @@ class Device(object):
         poll_time = 30
         time_waited = 0
         print "System going for reload., please wait!!"
-        self.session.disconnect()
         time.sleep(60)
 
         try :
