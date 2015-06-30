@@ -368,10 +368,10 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/api/acknowledge_csm_message')
+@app.route('/api/acknowledge_csm_message', methods=['POST'])
 def api_acknowledge_csm_message():
-    username = request.args.get('username')
-    password = request.args.get('password')
+    username = request.form['username']      
+    password = request.form['password']
     
     db_session = DBSession()
      
@@ -388,12 +388,12 @@ def api_acknowledge_csm_message():
         
     return jsonify({'status':'OK'})
     
-@app.route('/api/get_csm_message')
+@app.route('/api/get_csm_message', methods=['POST'])
 def api_get_csm_message():
     rows = [] 
 
-    username = request.args.get('username')
-    password = request.args.get('password')
+    username = request.form['username']      
+    password = request.form['password']
     
     db_session = DBSession()
      
@@ -1985,6 +1985,8 @@ def admin_console():
         system_option.can_install = admin_console_form.can_install.data  
         system_option.enable_email_notify = admin_console_form.enable_email_notify.data 
         system_option.enable_inventory = admin_console_form.enable_inventory.data 
+        # system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
+        # system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
         system_option.inventory_hour = admin_console_form.inventory_hour.data 
         system_option.inventory_history_per_host = admin_console_form.inventory_history_per_host.data 
         system_option.download_history_per_user = admin_console_form.download_history_per_user.data
@@ -1992,7 +1994,7 @@ def admin_console():
         system_option.total_system_logs = admin_console_form.total_system_logs.data
         system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data 
         system_option.default_host_username = admin_console_form.default_host_username.data
-        if len(admin_console_form.default_host_password.data) > 0:
+        if len(admin_console_form.default_host_password.data) > 0: 
             system_option.default_host_password = admin_console_form.default_host_password.data
          
         db_session.commit()
@@ -2006,6 +2008,8 @@ def admin_console():
         admin_console_form.can_schedule.data = system_option.can_schedule
         admin_console_form.can_install.data = system_option.can_install
         admin_console_form.enable_email_notify.data = system_option.enable_email_notify
+        # admin_console_form.enable_ldap_auth.data = system_option.enable_ldap_auth
+        # admin_console_form.ldap_server_url.data = system_option.ldap_server_url
         admin_console_form.enable_inventory.data = system_option.enable_inventory
         admin_console_form.inventory_hour.data = system_option.inventory_hour 
         admin_console_form.inventory_history_per_host.data = system_option.inventory_history_per_host

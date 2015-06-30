@@ -24,6 +24,7 @@
         $.ajax({
           url: "{{ url_for('api_get_csm_message') }}",
           dataType: 'json',
+          type: "POST",
           data: { 
             username: $('#username').val(), password: $('#password').val()
           },
@@ -51,6 +52,7 @@
         $.ajax({
           url: "{{ url_for('api_acknowledge_csm_message') }}",
           dataType: 'json',
+          type: "POST",
           data: {
             username: $('#username').val(), password: $('#password').val()
           },
