@@ -8,7 +8,8 @@
 
   <script>
     $(function() {
-
+      
+      var auto_refresh = false;
       var record_limit = $.cookie('install-dashboard-record-limit') == null ? '10' : $.cookie('install-dashboard-record-limit');
       $("#record-limit-selector option[value='" + record_limit + "']").attr('selected', 'selected');
       update_record_limit_label(record_limit);
@@ -451,7 +452,7 @@
             $.each(data, function(index, element) {
               new_completed_install_job_count = element[0].last_completed_install_job_count;
 
-              if (last_completed_install_job_count != new_completed_install_job_count) {
+              if (auto_refresh && last_completed_install_job_count != new_completed_install_job_count) {
                 refresh_install_completed_table();
               }
               
@@ -467,11 +468,11 @@
       }
            
       setInterval( function () {
+        auto_refresh = true;
+        get_install_dashboard_cookie();
         install_scheduled_table.api().ajax.reload(); 
         install_in_progress_table.api().ajax.reload(); 
         install_failed_table.api().ajax.reload();       
-        get_install_dashboard_cookie();
-
       }, 10000 ); 
       
       function display_alert(can_schedule, can_install) { 

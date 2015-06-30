@@ -10,6 +10,7 @@
      
     $(function() {
       
+      var auto_refresh = false;
       function insert_slider(packages, install_job_id) {
         if (packages != null && packages.length > 0) {
           var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + install_job_id + '">' + 
@@ -453,7 +454,7 @@
               }
                             
               new_last_install_job_history_count = element[0].last_install_job_history_count;
-              if (last_install_job_history_count != new_last_install_job_history_count) {
+              if (auto_refresh && last_install_job_history_count != new_last_install_job_history_count) {
                 refresh_install_job_history_table();
               }
               
@@ -474,8 +475,9 @@
       }
       
       setInterval( function () {   
-        scheduled_install_table.api().ajax.reload();              
-        get_host_dashboard_cookie();              
+        auto_refresh = true;
+        get_host_dashboard_cookie(); 
+        scheduled_install_table.api().ajax.reload();                           
       }, 10000 ); 
       
       function display_alert(can_schedule) { 

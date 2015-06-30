@@ -177,14 +177,12 @@ class InstallActivatePlugin(IPlugin):
         added_pkgs = pkgutils.NewPackage(pkg_list)
         installed_inact = self._get_inactive_pkgs(device)
         installed_act = self._get_active_pkgs(device)
-
         inactive_pkgs = pkgutils.OnboxPackage(
             installed_inact, "Inactive Packages")
         active_pkgs = pkgutils.OnboxPackage(installed_act, "Active Packages")
         # Skip operation if to be activated packages are already active
         package_to_activate = pkgutils.extra_pkgs(
             active_pkgs.pkg_list, added_pkgs.pkg_list)
-        print("package to activate",package_to_activate,added_pkgs.pkg_list)
         if package_to_activate:
             # Test If there is anything added but not inactive
             pkg_to_activate = pkgutils.pkg_tobe_activated(

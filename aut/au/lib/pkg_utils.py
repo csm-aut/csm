@@ -92,8 +92,8 @@ class NewPackage():
         pkg_expr_2pkg = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
 
-        pkg_expr_2pkg_eng = re.compile(
-            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
+        pkg_expr_2pkg_eng1 = re.compile(
+            r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)\.(?P<PKGFORMAT>\w+)-(?P<VERSION>\d+\.\d+\.\d+\..*)\..*')
 
         pkg_expr_2pkg_inac = re.compile(
             r'(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)(?P<PKGFORMAT>-)(?P<VERSION>\d+\.\d+\.\d+)')
@@ -155,7 +155,9 @@ class NewPackage():
         pkg_arch="1"
         smu_ver="0"
         pkgobj = PackageClass()
-        p = pkg_expr_2pkg.search(pkg)
+        p = pkg_expr_2pkg_eng1.search(pkg)
+        if not p:
+            p = pkg_expr_2pkg.search(pkg)
         if not p:
             p = pkg_expr_2pkg_eng_test.search(pkg)
         if not p:
@@ -272,7 +274,7 @@ class OnboxPackage():
         # disk0:asr9k-px-5.3.1.06I.CSCub11122-1.0.0
         #self.error("package",pkg)
         pkg_expr_2pkg = re.compile(
-            r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+)')
+            r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+.*)')
 
         pkg_expr_2pkg_eng = re.compile(
             r'(?P<DISK>\w+):(?P<PLATFORM>\w+)-(?P<PKGNAME>\w+)-(?P<SUBPKGNAME>\w+)-(?P<ARCH>p\w+)-(?P<VERSION>\d+\.\d+\.\d+\.\d+\w+)')
