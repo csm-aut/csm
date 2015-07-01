@@ -63,6 +63,16 @@
         }
       });
       
+      $('#enable_ldap_auth').val(function() { 
+        if ($('#enable_ldap_auth').val() == 'True') {
+          $('#enable-ldap-auth-yes-button').addClass("btn-primary active");
+          $('#enable-ldap-auth-no-button').addClass("btn-default");
+        } else {
+          $('#enable-ldap-auth-no-button').addClass("btn-primary active");
+          $('#enable-ldap-auth-yes-button').addClass("btn-default");
+        }
+      });
+      
       $('#use_authentication').val(function() { 
         if ($('#use_authentication').val() == 'True') {
           $('#use-authentication-yes-button').addClass("btn-primary active");
@@ -88,6 +98,7 @@
         $('#can_install').val($("#can-install-yes-or-no .active").data("value"));
         $('#enable_email_notify').val($("#enable-email-notify-yes-or-no .active").data("value"));
         $('#enable_inventory').val($("#enable-inventory-yes-or-no .active").data("value"));
+        $('#enable_ldap_auth').val($("#enable-ldap-auth-yes-or-no .active").data("value"));
         $('#use_authentication').val($("#use-authentication-yes-or-no .active").data("value"));
         $('#enable_default_host_authentication').val($("#enable-default-host-authentication-yes-or-no .active").data("value"));
       });
@@ -143,6 +154,27 @@
            </div>
             
          {{ edit_field(admin_console_form.inventory_hour, label_field_width="col-sm-7", field_width="col-sm-5", class="form-control") }}
+        </div>
+      </div>
+      
+      <div class="panel panel-default">
+        <div class="panel-heading"><h4>LDAP Authentication</h4></div>
+        <div class="panel-body">
+         An example of the LDAP Server URL is ldap://ldap.cisco.com.<hr>
+         
+          <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+           <div class="form-group ">
+             <label class="col-sm-4 control-label" for="{{ admin_console_form.enable_ldap_auth.id }}">{{ admin_console_form.enable_ldap_auth.label.text }}</label>
+             <div class=col-sm-5>
+               <div class="btn-group btn-toggle" id="enable-ldap-auth-yes-or-no"> 
+                 <button type="button" id="enable-ldap-auth-yes-button" class="btn" data-value=1>Yes</button>
+                 <button type="button" id="enable-ldap-auth-no-button" class="btn" data-value=0>No</button>
+               </div>
+             </div>
+             <input class="form-control" id="{{ admin_console_form.enable_ldap_auth.id }}" name="{{ admin_console_form.enable_ldap_auth.id }}" type="hidden" value="{{ admin_console_form.enable_ldap_auth.data }}">
+           </div>
+            
+         {{ edit_field(admin_console_form.ldap_server_url, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
         </div>
       </div>
       

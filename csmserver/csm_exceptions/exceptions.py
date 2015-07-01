@@ -22,23 +22,5 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from schema.base import BaseMigrate
-from database import DBSession
-
-sql_statements = [
-    'alter table system_option add base_url VARCHAR(100)',
-    'alter table system_option add enable_ldap_auth BOOLEAN default 0',
-    'alter table system_option add ldap_server_url VARCHAR(100)'
-    ]
-
-class SchemaMigrate(BaseMigrate):
-    def __init__(self, version):
-        BaseMigrate.__init__(self, version)
-
-    def start(self):
-        db_session = DBSession()
-        for sql in sql_statements:
-            try:
-                db_session.execute(sql)
-            except:
-                pass 
+class CSMLDAPException(Exception):
+    pass

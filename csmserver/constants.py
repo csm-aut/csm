@@ -103,6 +103,7 @@ class PackageType:
         
 class UserPrivilege:
     ADMIN = 'Admin'
+    NETWORK_ADMIN = 'Network Admin'
     OPERATOR = 'Operator'
     VIEWER = 'Viewer'
     

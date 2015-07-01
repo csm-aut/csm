@@ -46,6 +46,8 @@ import traceback
 
 from werkzeug import check_password_hash
 from werkzeug import generate_password_hash 
+from ldap_utils import ldap_auth
+from csm_exceptions import CSMLDAPException
 
 # Contains information for password encryption
 encrypt_dict = None
@@ -117,6 +119,26 @@ class User(Base):
     @classmethod
     def authenticate(cls, query, username, password):
         username = username.strip().lower()
+        
+        db_session = DBSession()
+        
+        # Authenticate with LDAP Server first
+        system_option = SystemOption.get(db_session)
+        authenticated = False
+        
+        try:
+            authenticated = ldap_auth(system_option, username, password)
+        except CSMLDAPException:
+            # logger.exception("authenticate hit exception")
+            pass
+            
+        if authenticated:
+            user = query(cls).filter(cls.username==username).first()
+            if user is None:
+                # Create a LDAP user with Network Administrator privilege
+                user = create_user(db_session, username, password, UserPrivilege.NETWORK_ADMIN, username, username)
+                return user, True
+            
         user = query(cls).filter(cls.username==username).first()
         if user is None:
             return None, False
@@ -636,6 +658,8 @@ class SystemOption(Base):
     default_host_username = Column(String(50))
     _default_host_password = Column('default_host_password', String(100))
     base_url = Column(String(100))
+    enable_ldap_auth = Column(Boolean, default=False)
+    ldap_server_url = Column(String(100))
     
     @property
     def default_host_password(self):
@@ -723,21 +747,26 @@ def init_system_version():
     if db_session.query(SystemVersion).count() == 0:
         db_session.add(SystemVersion())
         db_session.commit()
-  
+
+def create_user(db_session, username, password, privilege, fullname, email):
+    user = User(
+        username=username,
+        password=password,
+        privilege=privilege,
+        fullname=fullname,
+        email=email)
+    user.preferences.append(Preferences())
+    db_session.add(user)
+    db_session.commit()
+    
+    return user
+    
 def init_user():
     db_session = DBSession()
 
     # Setup a default cisco user if none exists
     if db_session.query(User).count() == 0:
-        user = User(
-            username='root',
-            password='root',
-            privilege=UserPrivilege.ADMIN,
-            fullname='admin',
-            email='admin')
-        user.preferences.append(Preferences())
-        db_session.add(user)
-        db_session.commit()
+        create_user(db_session, 'root', 'root', UserPrivilege.ADMIN, 'admin', 'admin')
         
 def init_system_option():
     db_session = DBSession()
@@ -752,15 +781,14 @@ def init_encrypt():
     if db_session.query(Encrypt).count() == 0:
         db_session.add(Encrypt())
         db_session.commit()
-
     encrypt_dict = dict(Encrypt.get(db_session).__dict__)
     
 def initialize():
-    init_user()
+    init_user()      
     init_system_option()
 
 init_system_version()
-init_encrypt()
+init_encrypt() 
  
 if __name__ == '__main__':
     pass

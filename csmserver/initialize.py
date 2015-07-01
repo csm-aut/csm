@@ -38,7 +38,15 @@ create_directory(get_autlogs_directory())
 create_directory(get_repository_directory())
 create_directory(get_temp_directory())
 
+def check_LDAP():
+    try:
+        import ldap
+    except ImportError:
+        print('LDAP authentication is not supported because it has not been installed.')
+
 def init():
+    check_LDAP()
+
     db_session = DBSession()
     system_version = SystemVersion.get(db_session)
 

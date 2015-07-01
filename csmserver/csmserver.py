@@ -235,7 +235,7 @@ def user_create():
 
 @app.route('/users/edit' , methods=['GET','POST'])
 @login_required
-def current_user_edit():
+def current_user_edit(): 
     return user_edit(current_user.username)
 
 @app.route('/users/<username>/edit' , methods=['GET','POST'])
@@ -409,7 +409,7 @@ def api_get_csm_message():
                 acknowledgment_date = user.csm_message[0].acknowledgment_date
                 
             # csm_messages returns a dictionary keyed by a token (e.g. @12/01/01@Admin,Operator) and message
-            readers = [ UserPrivilege.ADMIN, UserPrivilege.OPERATOR, UserPrivilege.VIEWER]
+            readers = [ UserPrivilege.ADMIN, UserPrivilege.NETWORK_ADMIN, UserPrivilege.OPERATOR, UserPrivilege.VIEWER]
             for csm_message in csm_messages:
                 tokens = csm_message['token'].split('@')
                 date = tokens[0]
@@ -1313,7 +1313,8 @@ def get_files_from_csm_repository():
 @app.route('/api/image/<image_name>/delete/' , methods=['DELETE'])
 @login_required  
 def api_delete_image_from_repository(image_name):
-    if current_user.privilege != UserPrivilege.ADMIN:
+    if current_user.privilege != UserPrivilege.ADMIN or \
+        current_user.privilege != UserPrivilege.NETWORK_ADMIN:
         abort(401)
         
     tar_image_path = get_repository_directory() + image_name
@@ -1985,8 +1986,8 @@ def admin_console():
         system_option.can_install = admin_console_form.can_install.data  
         system_option.enable_email_notify = admin_console_form.enable_email_notify.data 
         system_option.enable_inventory = admin_console_form.enable_inventory.data 
-        # system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
-        # system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
+        system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
+        system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
         system_option.inventory_hour = admin_console_form.inventory_hour.data 
         system_option.inventory_history_per_host = admin_console_form.inventory_history_per_host.data 
         system_option.download_history_per_user = admin_console_form.download_history_per_user.data
@@ -2008,8 +2009,8 @@ def admin_console():
         admin_console_form.can_schedule.data = system_option.can_schedule
         admin_console_form.can_install.data = system_option.can_install
         admin_console_form.enable_email_notify.data = system_option.enable_email_notify
-        # admin_console_form.enable_ldap_auth.data = system_option.enable_ldap_auth
-        # admin_console_form.ldap_server_url.data = system_option.ldap_server_url
+        admin_console_form.enable_ldap_auth.data = system_option.enable_ldap_auth
+        admin_console_form.ldap_server_url.data = system_option.ldap_server_url
         admin_console_form.enable_inventory.data = system_option.enable_inventory
         admin_console_form.inventory_hour.data = system_option.inventory_hour 
         admin_console_form.inventory_history_per_host.data = system_option.inventory_history_per_host
@@ -2747,32 +2748,38 @@ if not app.debug:
  
 def can_check_reachability(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
+        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
         
 def can_retrieve_software(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
+        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
         
 def can_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
+        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
         
 def can_delete_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
+        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
         
 def can_edit_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
+        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
         
 def can_edit(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN
+    return can_create(current_user)
 
 def can_delete(current_user):
     return can_create(current_user)
 
 def can_create(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN
+    return current_user.privilege == UserPrivilege.ADMIN or \
+        current_user.privilege == UserPrivilege.NETWORK_ADMIN 
     
 def get_host(db_session, hostname):
     return db_session.query(Host).filter(Host.hostname == hostname).first()

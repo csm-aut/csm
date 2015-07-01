@@ -42,10 +42,12 @@ class UserForm(Form):
     """
     username = TextField('Username', [required()])
     password = PasswordField('Password', [required()])
-    privilege = SelectField('Privilege', coerce=str,
-        choices = [(UserPrivilege.VIEWER, UserPrivilege.VIEWER),  
-                   (UserPrivilege.OPERATOR, UserPrivilege.OPERATOR),  
-                   (UserPrivilege.ADMIN, UserPrivilege.ADMIN)])
+    privilege = SelectField('Privilege', [required()], coerce=str,
+        choices = [('', ''),
+                   (UserPrivilege.ADMIN, UserPrivilege.ADMIN),  
+                   (UserPrivilege.NETWORK_ADMIN, UserPrivilege.NETWORK_ADMIN), 
+                   (UserPrivilege.OPERATOR, UserPrivilege.OPERATOR), 
+                   (UserPrivilege.VIEWER, UserPrivilege.VIEWER)])
     fullname = TextField('Full Name', [required()])
     email = TextField('Email Address', [required()])    
     
@@ -151,6 +153,8 @@ class AdminConsoleForm(Form):
     enable_default_host_authentication = HiddenField("Enable Default Host Authentication")
     default_host_username = TextField('Default Host Username')
     default_host_password = PasswordField('Default Host Password')
+    enable_ldap_auth = HiddenField("Enable LDAP")
+    ldap_server_url = TextField('LDAP Server URL')
     
 class SMTPForm(Form):
     server = TextField('Outgoing SMTP Server')
