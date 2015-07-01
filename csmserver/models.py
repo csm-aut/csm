@@ -131,15 +131,15 @@ class User(Base):
         except CSMLDAPException:
             # logger.exception("authenticate hit exception")
             pass
-            
+        
+        user = query(cls).filter(cls.username==username).first()
+          
         if authenticated:
-            user = query(cls).filter(cls.username==username).first()
             if user is None:
                 # Create a LDAP user with Network Administrator privilege
                 user = create_user(db_session, username, password, UserPrivilege.NETWORK_ADMIN, username, username)
                 return user, True
             
-        user = query(cls).filter(cls.username==username).first()
         if user is None:
             return None, False
         
