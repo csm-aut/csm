@@ -99,6 +99,7 @@ from utils import is_empty
 from utils import get_tarfile_file_list
 from utils import comma_delimited_str_to_array
 from utils import get_base_url 
+from utils import is_ldap_supported
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -2030,7 +2031,8 @@ def admin_console():
             
         return render_template('admin/index.html',
             admin_console_form=admin_console_form,
-            smtp_form=smtp_form)
+            smtp_form=smtp_form,
+            is_ldap_supported=is_ldap_supported())
 
 @app.route('/hosts/<hostname>/host_dashboard/')
 @login_required

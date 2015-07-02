@@ -156,7 +156,8 @@
          {{ edit_field(admin_console_form.inventory_hour, label_field_width="col-sm-7", field_width="col-sm-5", class="form-control") }}
         </div>
       </div>
-      
+
+      {% if is_ldap_supported %}
       <div class="panel panel-default">
         <div class="panel-heading"><h4>LDAP Authentication</h4></div>
         <div class="panel-body">
@@ -177,6 +178,7 @@
          {{ edit_field(admin_console_form.ldap_server_url, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
         </div>
       </div>
+      {% endif %} 
       
       <div class="panel panel-default">
         <div class="panel-heading"><h4>Default Host Authentication</h4></div>

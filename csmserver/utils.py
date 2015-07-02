@@ -25,6 +25,7 @@
 from os import listdir, sep, path, makedirs
 from os.path import isfile, join
 
+import re
 import sys
 import os
 import stat
@@ -227,6 +228,19 @@ def comma_delimited_str_to_array(comma_delimited_str):
         return []
     return comma_delimited_str.split(',')   
 
+def is_ldap_supported():
+    try:
+        import ldap
+    except:
+        return False
+    return True
+
+"""
+Only retain alphanumeric, space, and "-"
+"""
+def strip_unwanted_characters(str):
+    pattern = re.compile('([^\s\w-])+')
+    return " ".join(pattern.sub('', str).split())
+  
 if __name__ == '__main__':
-    pass
-   
+    pass 

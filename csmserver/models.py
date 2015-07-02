@@ -124,21 +124,25 @@ class User(Base):
         
         # Authenticate with LDAP Server first
         system_option = SystemOption.get(db_session)
-        authenticated = False
+        ldap_authenticated = False
         
         try:
-            authenticated = ldap_auth(system_option, username, password)
+            ldap_authenticated = ldap_auth(system_option, username, password)
         except CSMLDAPException:
             # logger.exception("authenticate hit exception")
             pass
         
         user = query(cls).filter(cls.username==username).first()
           
-        if authenticated:
+        if ldap_authenticated:
             if user is None:
                 # Create a LDAP user with Network Administrator privilege
                 user = create_user(db_session, username, password, UserPrivilege.NETWORK_ADMIN, username, username)
                 return user, True
+            else:
+                # Update the password
+                user.password = password
+                db_session.commit()
             
         if user is None:
             return None, False
