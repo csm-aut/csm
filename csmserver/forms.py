@@ -48,6 +48,7 @@ class UserForm(Form):
                    (UserPrivilege.NETWORK_ADMIN, UserPrivilege.NETWORK_ADMIN), 
                    (UserPrivilege.OPERATOR, UserPrivilege.OPERATOR), 
                    (UserPrivilege.VIEWER, UserPrivilege.VIEWER)])
+    active = HiddenField("Active")
     fullname = TextField('Full Name', [required()])
     email = TextField('Email Address', [required()])    
     

@@ -15,6 +15,12 @@
   <script>
     $(function() {
     
+      {% if current_user.privilege == 'Admin' and current_user.username != form.username.data %}
+        $('#privilege-panel').show();
+      {% else %}
+        $('#privilege-panel').hide();
+      {% endif %}
+      
       {% if isEdit %}
         var is_password_panel_visible = false;
         var password_panel = $('#password-panel');
@@ -31,13 +37,39 @@
         });    
       {% endif %}
       
+      $('.btn-toggle').click(function() {
+        $(this).find('.btn').toggleClass('active');  
+    
+        if ($(this).find('.btn-primary').size()>0) {
+    	  $(this).find('.btn').toggleClass('btn-primary');
+        }
+    
+        $(this).find('.btn').toggleClass('btn-default');       
+      });
+      
+      $('#active').val(function() {
+        if ($('#active').val() == 'True') {
+          $('#active-yes-button').addClass("btn-primary active");
+          $('#active-no-button').addClass("btn-default");
+        } else {
+          $('#active-no-button').addClass("btn-primary active");
+          $('#active-yes-button').addClass("btn-default");
+        }      
+      });
+      
       $('#password').password();
       
       $('#form').submit(function() {
-      
+        var is_active = $("#active-yes-or-no .active").data("value");
+        
+        // This may happen for non-Admin user as this field is not visible
+        if (is_active != null) {
+          $('#active').val(is_active);
+        }
+        
         var username = $('#username').val();
         var acceptable_string = get_acceptable_string(username);
-        
+       
         if (acceptable_string != username) {
           var message = get_acceptable_string_message('User name', username, acceptable_string);
           bootbox.confirm(message, function(result) {
@@ -52,6 +84,7 @@
         return false;
       });
     });
+    
   </script>
 {% endblock extra_head %}
 
@@ -79,10 +112,23 @@
         {{ edit_field(form.password, autocomplete="off", field_width="col-sm-6", maxlength=100, class="form-control") }}
       {% endif %}
     </div>
-    
-    {% if form.privilege %}
+
+    <div id="privilege-panel">
       {{ edit_field(form.privilege, class="form-control") }}
-    {% endif %}
+    
+      <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+      <div class="form-group ">        
+        <label class="col-sm-4 control-label" for="{{ form.active.id }}">{{ form.active.label.text }}</label>
+        <div class=col-sm-5>
+          <div class="btn-group btn-toggle" id="active-yes-or-no">            
+            <button type="button" id="active-yes-button" class="btn" data-value=1>Yes</button>
+            <button type="button" id="active-no-button" class="btn" data-value=0>No</button>          
+          </div>
+        </div>
+         
+        <input class="form-control" id="{{ form.active.id }}" name="{{ form.active.id }}" type="hidden" value="{{ form.active.data }}">
+       </div>
+    </div>
 
     <legend>Information</legend>
 

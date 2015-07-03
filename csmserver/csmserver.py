@@ -205,7 +205,7 @@ def install_dashboard():
 @app.route('/users/create' , methods=['GET','POST'])
 @login_required
 def user_create():
-    if not can_create(current_user):
+    if not can_create_user(current_user):
         abort(401)
         
     form = UserForm(request.form)
@@ -232,6 +232,8 @@ def user_create():
             
         return redirect(url_for('home'))
     else:
+        # Default to Active
+        form.active.data = True
         return render_template('user/edit.html', form=form)
 
 @app.route('/users/edit' , methods=['GET','POST'])
@@ -249,25 +251,18 @@ def user_edit(username):
         abort(404)
         
     form = UserForm(request.form)
-    # If not admin user, remove the privilege UI
-    # because only admin user can change privilege.
-    if current_user.privilege != UserPrivilege.ADMIN:  
-        del form.privilege
             
     if request.method == 'POST' and form.validate():
 
         if len(form.password.data) > 0:
             user.password = form.password.data
         
-        # Only admin user can change privilege
-        if current_user.privilege == UserPrivilege.ADMIN and \
-            current_user.username != user.username:
-            user.privilege = form.privilege.data
-            
+        user.privilege = form.privilege.data
         user.fullname = form.fullname.data
         user.email = form.email.data
-            
+        user.active = form.active.data
         db_session.commit()
+        
         return redirect(url_for('home'))
     else:
         form.username.data = user.username
@@ -275,11 +270,10 @@ def user_edit(username):
         # not to provide the password.  In this case, the password on file is used.      
         remove_validator(form.password, Required) 
         
-        if form.privilege is not None:
-            form.privilege.data = user.privilege 
-            
+        form.privilege.data = user.privilege             
         form.fullname.data = user.fullname
         form.email.data = user.email
+        form.active.data = user.active
 
     return render_template('user/edit.html', form=form)
 
@@ -346,7 +340,7 @@ def login():
             else:
                 return redirect(url_for(return_url))
         else:
-            error_message = 'Incorrect username or password. Try again.'       
+            error_message = 'Your user name or password is incorrect.  Re-enter them again or contact your system administrator.'       
  
     # Fill the username if the user is still logged in.
     username = get_username(current_user)
@@ -2772,7 +2766,10 @@ def can_edit_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
+def can_create_user(current_user):
+    return current_user.privilege == UserPrivilege.ADMIN
+                
 def can_edit(current_user):
     return can_create(current_user)
 

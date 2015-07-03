@@ -7,11 +7,17 @@
   <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
   <script>
     $(function() {
-
+      var current_user = "{{ current_user.username }}";
+      
       $(".user-delete-link").on("click", function() {
         var delete_url = $(this).attr('data-delete-url');
         var delete_user = $(this).attr('delete-user');
 
+        if (current_user == delete_user) {
+          bootbox.alert("You are allowed to delete your own user record.");
+          return
+        }
+      
         bootbox.confirm("You are about to delete user \'" + delete_user + "\'.  OK to proceed?", function(result) {
           if (result) {
             $.ajax({
