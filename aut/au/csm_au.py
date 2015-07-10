@@ -24,6 +24,7 @@ def execute(context,testing_csm = False):
 
     options.logdir = context.log_directory
     options.outdir = context.log_directory
+    options.migdir = context.migration_directory
     options.devices = None
     options.session_log = True
     options.device_verbose = 5
@@ -32,6 +33,7 @@ def execute(context,testing_csm = False):
     options.overwrite_logs = False
     options.delete_logs = False
     options.addset = False
+    options.migrateset = False
     options.preupgradeset = False
     options.upgradeset = False
     options.removeset=False
@@ -51,6 +53,12 @@ def execute(context,testing_csm = False):
     if not os.path.exists(options.logdir) :
         try :
             os.makedirs(options.logdir)
+        except IOError, e:
+            parser.error(str(e))
+
+    if not os.path.exists(options.migdir) :
+        try :
+            os.makedirs(options.migdir)
         except IOError, e:
             parser.error(str(e))
 
@@ -79,7 +87,10 @@ def execute(context,testing_csm = False):
 
     elif ctx.requested_action == 'Deactivate':
         options.deactivateset = True
-    #    options.pkg_state = True
+    #   options.pkg_state = True
+    elif ctx.requested_action == 'Migrate To eXR':
+        options.migrateset = True
+
     options.ctx = ctx
     status = main.execute(options, args, oparser)
     print "AUT Execution completed with status :",status
@@ -122,6 +133,8 @@ class CsmContext(object):
             self.requested_action='Deactivate'
         elif options.removeset:
             self.requested_action = 'Remove'
+        elif options.migrateset:
+            self.requested_action = 'Migrate To eXR'
         if options.repository_path :
             self.server_repository_url = options.repository_path
        

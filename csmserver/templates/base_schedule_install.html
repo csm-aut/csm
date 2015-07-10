@@ -15,6 +15,7 @@
           <option value="{{ install_action.post_upgrade }}">{{ install_action.post_upgrade }}</option>
           <option value="{{ install_action.commit }}">{{ install_action.commit }}</option>
           <option value="{{ install_action.all }}">{{ install_action.all }}</option>
+          <option value="{{ install_action.migrate }}">{{ install_action.migrate }}</option>
         </optgroup>
         <optgroup label="Clean Up">
           <option value="{{ install_action.remove }}">{{ install_action.remove}}</option>
@@ -134,6 +135,7 @@
     var ALL = "{{ install_action.all }}"; 
     var INSTALL_REMOVE = "{{ install_action.remove }}";
     var INSTALL_DEACTIVATE = "{{ install_action.deactivate }}";
+    var MIGRATE_TO_EXR = "{{ install_action.migrate }}";
     
     var current_region_id = -1;
     var browse_spinner = $('.browse-spinner');
@@ -165,7 +167,7 @@
     $('#install_action').on('change', function(e) {
       var install_actions = $(this).val();
       if (has_one_of_these(install_actions, [ALL])) {
-        $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
+        $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT, MIGRATE_TO_EXR]).trigger('change');
       } else if (has_one_of_these(install_actions, [INSTALL_REMOVE]) && install_actions.length > 1) {
         $("#install_action").val([INSTALL_REMOVE]).trigger('change');
       } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
@@ -208,6 +210,11 @@
       $('#deactivate-widget-panel').hide();
       $('#software-packages-panel').hide();
       $('#dependency-panel').hide();
+
+      if (has_one_of_these(install_actions, [MIGRATE_TO_EXR])) {
+
+        $('#add-widget-panel').show();
+      }
       
       if (has_one_of_these_only(install_actions, [INSTALL_REMOVE]) ) {
       
@@ -245,7 +252,7 @@
     }
     
     function should_enable_widget_panel(install_actions) {
-      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE]) ) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE, MIGRATE_TO_EXR]) ) {
         $('#widget-panel').show();
       } else {
         $('#widget-panel').hide();
@@ -498,12 +505,12 @@
       var server_id = $('#hidden_server').val();
       var software_packages = $('#software-packages').val().trim();
 
-      if (has_one_of_these(install_actions, [INSTALL_ADD]) && server_id == -1) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, MIGRATE_TO_EXR]) && server_id == -1) {
         bootbox.alert("Server repository has not been specified.");
         return false;
       }
       
-      if (has_one_of_these(install_actions, [INSTALL_ADD]) && software_packages.length == 0) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, MIGRATE_TO_EXR]) && software_packages.length == 0) {
         bootbox.alert("Software packages has not been specified.");
         return false;
       }
@@ -530,7 +537,7 @@
     // Called by the $('#form').submit() function.
     function on_final_submit(current_form, hostname) {
       // If hostname is null, this method is called by Batch Installs
-      if (has_one_of_these($('#install_action').val(), [INSTALL_ADD]) ) {  
+      if (has_one_of_these($('#install_action').val(), [INSTALL_ADD, MIGRATE_TO_EXR]) ) {
         var validate_object = {
           form: current_form,
           hostname: hostname,

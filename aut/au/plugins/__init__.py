@@ -54,6 +54,7 @@ from au.plugins.install_commit import InstallCommitPlugin
 from au.plugins.cfg_consistency import ConfigConsistencyPlugin
 from au.plugins.err_core_check import ErrorCorePlugin
 from au.plugins.device_pkg_poll import DevicePackageSatePlugin
+from au.plugins.migrate_xr_to_exr import MigrateToExrPlugin
 #from au.plugins.isis_setoverload import isisSetOverloadPrePlugin
 #from au.plugins.isis_unsetoverload import isisunSetOverloadPostPlugin
 
@@ -82,12 +83,13 @@ plugin_classes = [
     ErrorCorePlugin,
     DevicePackageSatePlugin,
     InstallCommitPlugin,
+    MigrateToExrPlugin,
 ]
 plugins = []
 plugin_map = defaultdict(list)
 
 plugin_types = ["DEACTIVATE","REMOVE", "ADD","UPGRADE", "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE",
-                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT"]
+                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT", "MIGRATE"]
 phases = {
     "POLL":["POLL"],
     "ADD":["ADD"],
@@ -105,6 +107,7 @@ phases = {
         "POST_UPGRADE",
         "PRE_UPGRADE_AND_POST_UPGRADE"
     ],
+    "MIGRATE": ["MIGRATE"],
     "ALL": [
         "PRE_UPGRADE",
         "PRE_UPGRADE_AND_POST_UPGRADE",

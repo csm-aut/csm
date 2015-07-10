@@ -38,6 +38,7 @@ DIRECTORY_BASE = '../../csm_data/'
 DIRECTORY_AUT_LOGS = DIRECTORY_BASE + 'autlogs/'
 DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'
 DIRECTORY_TEMP = DIRECTORY_BASE + 'temp/'
+DIRECTORY_MIGRATION = DIRECTORY_BASE + 'migration/'
     
 def get_autlogs_directory():
     return DIRECTORY_AUT_LOGS
@@ -47,6 +48,10 @@ def get_repository_directory():
 
 def get_temp_directory():
     return DIRECTORY_TEMP
+
+
+def get_migration_directory():
+    return DIRECTORY_MIGRATION
 
 BUG_SEARCH_URL = 'https://tools.cisco.com/bugsearch/bug/'
 
@@ -90,6 +95,7 @@ class InstallAction:
     INSTALL_ACTIVATE = 'Activate'
     POST_UPGRADE = 'Post-Upgrade'
     INSTALL_COMMIT = 'Commit'
+    MIGRATE_TO_EXR = 'Migrate To eXR'
     ALL = 'ALL'
     INSTALL_REMOVE = 'Remove'
     INSTALL_DEACTIVATE = 'Deactivate'

@@ -581,6 +581,8 @@ class Manager(object):
             plugins_types = "DEACTIVATE"
         elif self.options.removeset:
             plugins_types = "REMOVE"
+        elif self.options.migrateset:
+            plugins_types = "MIGRATE"
         for pno, plugin in enumerate(plugin_map[plugins_types], start=1):
             msg = "{} ({:0>2}) {} {}".format(
                 HEADER, pno, plugin.DESCRIPTION, ENDC

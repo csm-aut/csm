@@ -28,7 +28,7 @@ from sqlalchemy import inspect
 from database import DBSession, CURRENT_SCHEMA_VERSION, engine
 
 from utils import create_directory, is_ldap_supported
-from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
+from constants import get_autlogs_directory, get_repository_directory, get_temp_directory, get_migration_directory
 from schema.loader import get_schema_migrate_class
 
 import traceback
@@ -37,6 +37,7 @@ import traceback
 create_directory(get_autlogs_directory())
 create_directory(get_repository_directory())
 create_directory(get_temp_directory())
+create_directory(get_migration_directory())
 
 def is_column_existed(table, column_name):
     inspector = inspect(engine)
