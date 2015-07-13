@@ -4,7 +4,7 @@ CSM Server is an automation and orchestration framework for IOS-XR devices.  It 
 
 # Getting the Latest Code
 
-The latest Build is 06/30/2015 which can be found on the CSM Server Home page
+The latest Build is 07/02/2015 which can be found on the CSM Server Home page
 
 Click the Download ZIP button on the right to download csm-master.zip.  
 
