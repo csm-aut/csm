@@ -45,13 +45,15 @@ from ..exceptions import \
 
 _PROMPT_IOSXR = re.compile('\w+/\w+/\w+/\w+:.+#')
 _PROMPT_SHELL = re.compile('\$\s*|>\s*')
+_PROMPT_KSH = re.compile('#')
 
 _PROMPT_XML = 'XML> '
 _INVALID_INPUT = "Invalid input detected"
 _INCOMPLETE_COMMAND = "Incomplete command."
 _CONNECTION_CLOSED = "Connection closed"
 
-_PROMPT_IOSXR_RE = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
+#_PROMPT_IOSXR_RE = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
+_PROMPT_IOSXR_RE = re.compile('\w+/\w+/\w+/\w+:.+#')
 
 _DEVICE_PROMPTS = {
     'Shell': _PROMPT_SHELL,
@@ -337,8 +339,13 @@ class Connection(object):
 
             try:
                 self.ctrl.send(cmd)
-                self.ctrl.expect_exact(cmd)
+                #print "_execute_command 0 cmd = " + cmd
+                #print "_execute_command 0  self.ctrl before = " + str(self.ctrl.before)
+                #print "_execute_command 0  self.ctrl after = " + str(self.ctrl.after)
+                #self.ctrl.expect_exact(cmd)
                 self.ctrl.send("\n")
+                #print "_execute_command 1  self.ctrl before = " + str(self.ctrl.before)
+                #print "_execute_command 1  self.ctrl after = " + str(self.ctrl.after)
                 if wait_for_string:
                     _logger.debug(_c(
                         self.hostname,
@@ -368,6 +375,7 @@ class Connection(object):
                 raise
 
             except Exception, err:
+                print "Exception: '{}'".format(err)
                 _logger.error(_c(
                     self.hostname,
                     "Exception: '{}'".format(err)))
@@ -379,9 +387,11 @@ class Connection(object):
                         "Waiting for XR prompt"))
         index = self.ctrl.expect(
                 [_PROMPT_IOSXR_RE, _INVALID_INPUT, _INCOMPLETE_COMMAND,
-                 pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF],
+                 pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF, _PROMPT_KSH],
                 timeout=timeout
             )
+        #print "wait for string   self.ctrl before = " + str(self.ctrl.before)
+        #print "wait for string   self.ctrl after = " + str(self.ctrl.after)
         _logger.debug(_c(self.hostname, "INDEX={}".format(index)))
 
         if index == 0:
@@ -407,9 +417,15 @@ class Connection(object):
                                      message="Timeout waiting for prompt")
 
         if index in [4, 5]:
-            raise ConnectionError(
+            if index == 5:
+                raise CommandSyntaxError(host=self.hostname,
+                                     message="Just comparing")
+            else:
+                raise ConnectionError(
                 "Unexpected device disconnect", self.hostname)
 
+        if index == 6:
+            return
 
 
     def _wait_for_string(self, expected_string, max_attempts=3, timeout=60):

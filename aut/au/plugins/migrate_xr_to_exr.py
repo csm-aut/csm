@@ -39,6 +39,10 @@ import requests
 NOX_URL = 'http://wwwin-people.cisco.com/alextang/'
 NOX_FILENAME_fetch = 'nox_linux_64bit_6.0.0v1.bin'
 NOX_FILENAME = 'nox'
+
+ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
+LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
+FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
 #"""
 
 import sys
@@ -55,6 +59,7 @@ from au.lib import pkg_utils as pkgutils
 from au.plugins.install_add import InstallAddPlugin
 from au.plugins.install_commit import InstallCommitPlugin
 from au.plugins.install_act import InstallActivatePlugin
+from au.condor.exceptions import CommandTimeoutError
 
 
 
@@ -67,7 +72,8 @@ from au.device import Device
 import au.lib.pkg_utils as pkgutils
 from au.plugins.install_add import InstallAddPlugin
 from au.plugins.install_commit import InstallCommitPlugin
-
+from au.plugins.install_act import InstallActivatePlugin
+from au.condor.exceptions import CommandTimeoutError
 
 """
 
@@ -94,130 +100,109 @@ class MigrateToExrPlugin(IPlugin):
 
     def _check_fpd(self, device):
         cmd = 'show hw-module fpd location all'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
+        success, fpdtable = device.execute_command(cmd)
+        print cmd, '\n', fpdtable, "<-----------------", success
 
         if not success:
             self.error("Failed to check FPD version")
             return -1
-        fpd_need_upgrade = {}
 
-        self._find_fpd_info(output, 'cbc', fpd_need_upgrade)
-        self._find_fpd_info(output, 'rommon', fpd_need_upgrade)
-        self._find_fpd_info(output, 'fpga2', fpd_need_upgrade)
-        self._find_fpd_info(output, 'fsbl', fpd_need_upgrade)
-        self._find_fpd_info(output, 'lnxfw', fpd_need_upgrade)
+        location_to_subtypes_need_upgrade = {}
+
+        self._find_all_fpds_need_upgrade(fpdtable, ROUTEPROCESSOR_RE, location_to_subtypes_need_upgrade)
+        self._find_all_fpds_need_upgrade(fpdtable, LINECARD_RE, location_to_subtypes_need_upgrade)
+
+        return location_to_subtypes_need_upgrade
 
 
-        return fpd_need_upgrade
 
-    def _find_fpd_info(self, input, fpdtype, fpd_need_upgrade):
-        match = re.search('0/RSP0/CPU0[-.A-Z0-9a-z\s]*' + fpdtype + '[-.A-Z0-9a-z\s]*?(No|Yes)', input)
+    def _find_all_fpds_need_upgrade(self, fpdtable, location, location_to_subtypes_need_upgrade):
+        for fpdtype in FPDS_CHECK_FOR_UPGRADE:
+            match = re.search(location + '[-.A-Z0-9a-z\s]*?' + fpdtype + '[-.A-Z0-9a-z\s]*?(No|Yes)', fpdtable)
 
-        if match:
-            fpd_need_upgrade[fpdtype] = True if match.group(1) == "Yes" else False
-            print "matched " + fpdtype + " to " + match.group(1)
+            if match:
+                if match.group(2) == "Yes":
+                    if not match.group(1) in location_to_subtypes_need_upgrade:
+                        location_to_subtypes_need_upgrade[match.group(1)] = []
+                    location_to_subtypes_need_upgrade[match.group(1)].append(fpdtype)
+
 
     def _ensure_updated_fpd(self, device, repo, packages):
 
         # check for the FPD version, if FPD needs upgrade,
         # enable the FPD Auto Upgrade Feature
 
-        fpd_need_upgrade = self._check_fpd(device)
+        location_to_subtypes_need_upgrade = self._check_fpd(device)
 
-        needs_upgrade = 0
+        print "location_to_subtypes_need_upgrade = " + str(location_to_subtypes_need_upgrade)
 
-        for at_least_one_needs_upgrade in fpd_need_upgrade.values():
-            if at_least_one_needs_upgrade:
-                needs_upgrade = 1
-                break
 
-        print "fpd_need_upgrade = " + str(fpd_need_upgrade)
-
+        if location_to_subtypes_need_upgrade:
+            print "need upgrade!!!"
         """
-
-        if needs_upgrade == 1:
             install_add = InstallAddPlugin()
-            success_add = install_add.start(device, repository=repo, pkg_file=packages)
+            pie_packages = []
+            for package in packages:
+                if package.find('.pie') > -1:
+                    pie_packages.append(package)
+            success_add = install_add.start(device, repository=repo, pkg_file=pie_packages)
             if success_add:
                 print "fpd upgrade - successfully added smu"
 
+                install_act = InstallActivatePlugin()
+                install_act.start(device, pkg_file=pie_packages)
+
+                #if success_act:
+                print "fpd upgrade - successfully activated the smu"
 
                 install_com = InstallCommitPlugin()
                 success_com = install_com.start(device)
                 if success_com:
+                    print "fpd upgrade - successfully committed smu addition and activation"
 
-                    print "fpd upgrade - successfully committed smu addition"
-                    install_act = InstallActivatePlugin()
-                    install_act.start(device, pkg_file=packages)
+                    success = self._upgrade_all_fpds(device, location_to_subtypes_need_upgrade)
 
-                    #if success_act:
-                    print "fpd upgrade - successfully activated the smu"
+                    if success:
 
-                    success_com2 = install_com.start(device)
-                    if success_com2:
-                        print "fpd upgrade - successfully committed smu activation"
-
-                        if fpd_need_upgrade['cbc']:
-                            success = self._upgrade_fpd(device, 'cbc')
-
-                        if fpd_need_upgrade['rommon']:
-                            success = self._upgrade_fpd(device, 'rommon')
-
-                        if fpd_need_upgrade['fpga2']:
-                            success = self._upgrade_fpd(device, 'fpga2')
-
-                        if fpd_need_upgrade['fsbl']:
-                            success = self._upgrade_fpd(device, 'fsbl')
-
-                        if fpd_need_upgrade['lnxfw']:
-                            success = self._upgrade_fpd(device, 'lnxfw')
-
-                        if success:
-
-                            print "fpd upgrade - successfully upgraded fpd"
-                            try:
-                                success_reload = self._reload_rsp(device)
-                                if success_reload:
-                                    print "fpd upgrade - successfully reloaded"
-                                    return True
-                            except:
-                                print "Unexpected error:", sys.exc_info()[0]
+                        print "fpd upgrade - successfully upgraded fpd"
+                        success_reload = self._reload_all(device)
+                        if success_reload:
+                            print "fpd upgrade - successfully reloaded"
+                            return True
+                    else:
+                        self.error("ERROR: fpd upgrade failed.")
 
 
-        return False
         """
+        return False
 
-    def _upgrade_fpd(self, device, fpdtype):
-        try:
-            print "fpd upgrade - starting to upgrade fpd " + fpdtype + "... "
-            command = 'admin upgrade hw-module fpd ' + fpdtype + ' location 0/RSP0/CPU0 \r'
-            success, output = device.execute_command(command=command, timeout=900)
-            print command, '\n', output, "<-----------------", success
+    def _upgrade_all_fpds(self, device, location_to_subtypes_need_upgrade):
 
+        for location in location_to_subtypes_need_upgrade:
 
-            print "device.session.ctrl before = " + str(device.session.ctrl.before)
-            print "device.session.ctrl after = " + str(device.session.ctrl.after)
+            for fpdtype in location_to_subtypes_need_upgrade[location]:
 
-            return success
+                print "fpd upgrade - starting to upgrade fpd subtype " + fpdtype + " in location " + location + "... "
+                command = 'admin upgrade hw-module fpd ' + fpdtype + ' location ' + location + ' \r'
+                success, output = device.execute_command(command=command, timeout=9600)
+                print command, '\n', output, "<-----------------", success
 
-        except:
-            print "Unexpected error:", sys.exc_info()[0]
-            print "going to sleep"
-            time.sleep(900)
-            print "sleep finished"
+                fpd_upgrade_success = re.search(location + location + '.*' + fpdtype + '[-.A-Z0-9a-z\s]*[Ss]uccess', output)
 
-
-
-    def _install_add(self, device, repository):
+                if not fpd_upgrade_success:
+                    print "ERROR: failed to upgrade fpd subtype " + fpdtype + " in location " + location
+                    self.error("ERROR: failed to upgrade fpd subtype " + fpdtype + " in location " + location)
 
         return True
 
 
 
     def _save_config_to_repo(self, device, repository, filename):
+        print "repository = " + repository
+        print "filename = " + filename
         cmd = 'copy running-config ' + repository + '/' + filename + ' \r \r'
-        success, output = device.execute_command(cmd)
+        #print "save_config_to_repo cmd = " + cmd
+        success, output = device.execute_command(cmd, timeout=120)
         print cmd, '\n', output, "<-----------------", success
 
     def _save_config_to_csm_data(self, device, filename, fileloc):
@@ -230,7 +215,7 @@ class MigrateToExrPlugin(IPlugin):
 
         try:
             cmd="show run"
-            success, output = device.execute_command(command="show run", timeout=10)
+            success, output = device.execute_command(command="show run", timeout=100)
             print cmd, '\n', output, "<-----------------", success
             ind = output.find('\n')
 
@@ -271,8 +256,8 @@ class MigrateToExrPlugin(IPlugin):
     '''
 
     def _copy_file_to_device(self, device, repository, filename, dest):
-        cmd = 'copy ' + repository + '/' + filename +' ' + dest +' \r'
-        success, output = device.execute_command(cmd)
+        cmd = 'copy ' + repository + '/' + filename +' ' + dest +' \r \r'
+        success, output = device.execute_command(cmd, timeout=1500)
         print cmd, '\n', output, "<-----------------", success
 
     def _apply_config(self, device, filename):
@@ -296,17 +281,36 @@ class MigrateToExrPlugin(IPlugin):
         print cmd, '\n', output, "<-----------------", success
 
     def _resize_eusb(self, device, repository):
-        self._copy_file_to_device(device, repository, 'resize_eusb', '/tmp/')
-        cmd = 'ksh /tmp/resize_eusb'
+        print "trying to resize eusb..."
+        self._copy_file_to_device(device, repository, 'resize_eusb', 'disk0:/')
+        device.execute_command('run')
+        cmd = 'ksh -x /disk0:/resize_eusb'
         success, output = device.execute_command(cmd)
         print cmd, '\n', output, "<-----------------", success
+        device.execute_command('exit')
+
+
+    def _set_emt_mode(self, device, repository):
+        print "trying to set emt mode..."
+        self._copy_file_to_device(device, repository, 'set_emt_mode', 'disk0:/')
+        device.execute_command('run')
+        cmd = 'ksh -x /disk0:/set_emt_mode'
+        success, output = device.execute_command(cmd)
+        print cmd, '\n', output, "<-----------------", success
+        device.execute_command('exit')
 
     def _reload_all(self, device):
         cmd = 'admin reload location all \r'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
-        if success:
+        try:
+            success, output = device.execute_command(cmd)
+            print cmd, '\n', output, "<-----------------", success
+            if success:
+                return self._wait_for_reload(device)
+        except CommandTimeoutError:
+            print "Reload command - expected to timeout"
             return self._wait_for_reload(device)
+
+
 
     def _reload_rsp(self, device):
         cmd = 'admin reload location 0/RSP0/CPU0 \r \r'
@@ -405,7 +409,7 @@ class MigrateToExrPlugin(IPlugin):
                 self.error("ERROR:packages not provided")
         else:
             noxloc = './'
-            packages = ['asr9k-px-5.3.2.10I.CSCuu11794.pie']
+            packages = ['asr9k-fpd-px.pie-5.3.2.10I.SIT_IMAGE', 'asr9k-px-5.3.2.10I.CSCuu11794.pie']
 
         print "device name = " + device.name
         filename = device.name.replace(".", "_")
@@ -413,16 +417,15 @@ class MigrateToExrPlugin(IPlugin):
 
 
         # checked: upgrade fpd if fpd needs upgrade
-        #self._ensure_updated_fpd(device, repo_str, packages)
-
+        self._ensure_updated_fpd(device, repo_str, packages)
 
         # repository = 'ftp://terastream:cisco@172.20.168.195/echami/'
         # checked: save the running configuration out of the box
+        """
 
+        self._save_config_to_repo(device, repo_str, filename)
 
-        #self._save_config_to_repo(device, repo_str, filename)
-
-        #self._save_config_to_csm_data(device, filename, fileloc)
+        self._save_config_to_csm_data(device, filename, fileloc)
 
         # checked: migrate config file to new config - need Eddie's tool
 
@@ -449,16 +452,7 @@ class MigrateToExrPlugin(IPlugin):
         print "chmod" + "+x" + fileloc + '/' + NOX_FILENAME
         print fileloc + '/' + NOX_FILENAME + "-f" + fileloc + '/' + filename
 
-        try:
-            commands = [subprocess.Popen(["chmod", "+x", fileloc + '/' + NOX_FILENAME]), subprocess.Popen([fileloc + '/' + NOX_FILENAME, "-f", fileloc + '/' + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
-            nox_output, nox_error = commands[1].communicate()
-
-            print nox_output
-            print nox_error
-            conversion_success = self._is_conversion_successful(nox_output)
-
-        except OSError as e:
-            print "OS error: " + str(e.errno) + "    ----     " + str(e.strerror)
+        commands = [subprocess.Popen(["chmod", "+x", fileloc + '/' + NOX_FILENAME]), subprocess.Popen([fileloc + '/' + NOX_FILENAME, "-f", fileloc + '/' + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
 
 
 
@@ -467,14 +461,15 @@ class MigrateToExrPlugin(IPlugin):
 
         # ON HOLD: resize the eUSB FAT partition to hold
         # asr9k-mini-x64.iso image
-        #self._resize_eusb(device, repo_str)
+        self._resize_eusb(device, repo_str)
 
+        self._set_emt_mode(device, repo_str)
+        """
 
-
-         # checked: copy iso, efi and cfg files to the FAT partition
+        # checked: copy iso, efi and cfg files to the FAT partition
         #self._copy_file_to_device(device, repo_str, 'asr9k-mini-x64.iso', 'harddiskb:/')
-        #self._copy_file_to_device(device, repo_str, 'grub.efi', 'harddiskb:/')
-        #self._copy_file_to_device(device, repo_str, 'grub.cfg', 'harddiskb:/')
+        #self._copy_file_to_device(device, repo_str, 'grub.efi', 'harddiskb:/efi/boot/')
+        #self._copy_file_to_device(device, repo_str, 'grub.cfg', 'harddiskb:/efi/boot/')
 
         # ON HOLD: set the EMT mode to boot from eUSB
 
@@ -486,17 +481,26 @@ class MigrateToExrPlugin(IPlugin):
 
 
         # checked: after the reboot, store new config file back to router
+
         """
+        nox_output, nox_error = commands[1].communicate()
+
+        print nox_output
+        print nox_error
+        conversion_success = self._is_conversion_successful(nox_output)
+
         if conversion_success:
 
-            self._copy_file_to_device(device, repo_str, filename, 'disk0:/')
+            print "conversion is successful"
+
+            #self._copy_file_to_device(device, repo_str, filename, 'disk0:/')
 
 
             # Yet to test: apply the config
-            self._apply_config(device, filename)
+            #self._apply_config(device, filename)
         """
 
-        return True
+        #return True
 
 
 def main():
