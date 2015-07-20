@@ -121,6 +121,10 @@
       }).on('draw.dt', function ( e, settings, json ) {
         var rows = smu_table.api().ajax.json().data.length; 
         $('#badge-smu-list').html(rows); 
+        
+        // Update the download time
+        get_retrieval_time();
+        
         spinner.hide();
       });
     
@@ -221,16 +225,18 @@
         }
       }
        
-      /*
-      $('#smu-datatable tbody').on('click', 'tr', function () {
-        $(this).toggleClass('selected');
-        //alert( smu_table.api().rows('.selected').data().length +' row(s) selected' );
-      });
-      
-      $('#sp-datatable tbody').on('click', 'tr', function () {
-        $(this).toggleClass('selected');
-      });
-      */
+      function get_retrieval_time() {
+        
+        $.ajax({
+          url: "{{ url_for('api_get_smu_meta_retrieval_time', platform=platform, release=release) }}",
+          dataType: 'json',
+          success: function(response) {
+            $.each(response, function(index, element) {
+              $('#retrieval-time').html(element[0].retrieval_time);
+            });
+          }
+        });
+      }
       
       function refresh_smu_list_table() {
         smu_table.api().ajax.url("{{ url_for('api_get_smu_list', platform=platform, release=release) }}" + 
@@ -375,6 +381,10 @@
       $("#move-forward").on("click", function() {
         move_forward($('#smu-details-table'), $('#smu-name-title'));
       });
+      
+      setInterval( function () {   
+        get_retrieval_time();                           
+      }, 10000 );
     });
   </script>
   
@@ -468,13 +478,11 @@
   <div class="row">
     <div class="col-sm-12">
           
-       <!--
-       <div class="col-sm-2">
-         Last Updated: <span id="creation-date"></span>
+       <div class="col-sm-4">
+         <span class="DodgerBlue"><strong>Last Retrieval: </strong></span><span id="retrieval-time"></span>
        </div>
-       -->
        
-       <div class="col-sm-offset-8 col-sm-2"> 
+       <div class="col-sm-offset-4 col-sm-2"> 
          <div class="input-group">
            <span id="filter-icon" title="SMU/Service Pack Filter" class="input-group-addon glyphicon glyphicon-filter"></span>
            <select class="form-control" id="filter-selector" name="filter-selector"><option value="Optimal">Optimal</option><option value="All">All</option></select>

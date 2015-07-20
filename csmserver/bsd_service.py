@@ -25,15 +25,16 @@
 from models import logger
 import requests
 import json
-import os
-
+ 
 CLIENT_ID = "bt58rttvtqj7f85qqbk752mt"
 CLIENT_SECRET = "yHgCNwx2NaXuhqyB73cJ6mcK"
-HTTP_GET_METADATA_URL = "https://api.cisco.com/software/v2.0/metadata/"
-HTTP_GET_DOWNLOAD_URL = "https://api.cisco.com/software/v2.0/downloads/urls/"
-HTTP_GET_EULA_URL = "https://api.cisco.com/software/v2.0/compliance/forms/eula"
-HTTP_GET_K9_URL = "https://api.cisco.com/software/v2.0/compliance/forms/k9"
-HTTP_GET_TOKEN_URL = "https://cloudsso.cisco.com/as/token.oauth2"
+HTTP_METADATA_URL = "https://api.cisco.com/software/v2.0/metadata/"
+HTTP_DOWNLOAD_URL = "https://api.cisco.com/software/v2.0/downloads/urls/"
+HTTP_EULA_URL = "https://api.cisco.com/software/v2.0/compliance/forms/eula"
+HTTP_K9_URL = "https://api.cisco.com/software/v2.0/compliance/forms/k9"
+HTTP_ACCESS_TOKEN_URL = "https://cloudsso.cisco.com/as/token.oauth2"
+HTTP_SN2INFO_URL = "https://api.cisco.com/product/v1.0/coverage/status/serial_numbers/"
+HTTP_DOWNLOAD_STATISTICS_URL = "https://api.cisco.com/software/841/downloads/statistics"
 
 BSD_ACCESS_TOKEN = "access_token"
 BSD_EXCEPTION_MESSAGE = "exception_message" 
@@ -60,9 +61,17 @@ class BSDServiceHandler(object):
         self.software_type_ID = software_type_ID
     
     @classmethod
+    def get_sn_2_info(cls, access_token, serial_numbers):
+        print('ACCESS TOKEN', access_token)
+        url_string = HTTP_SN2INFO_URL + serial_numbers
+        print('URL', url_string)
+        headers = {'Authorization': 'Bearer ' + access_token}
+        return requests.get(url_string, headers=headers)
+    
+    @classmethod
     def get_access_token(cls, username, password):
         payload = {'client_id': CLIENT_ID, 'client_secret': CLIENT_SECRET, 'username' : username, 'password' : password, 'grant_type' : 'password' }
-        response = requests.post(HTTP_GET_TOKEN_URL, params=payload)
+        response = requests.post(HTTP_ACCESS_TOKEN_URL, params=payload)
         return json.loads(response.text)[BSD_ACCESS_TOKEN]
 
     def debug_print(self, heading, data):
@@ -127,14 +136,22 @@ class BSDServiceHandler(object):
     
     def send_EULA_request(self, access_token, download_session_ID):
         headers = {'Authorization': 'Bearer ' + access_token}
-        return requests.post(HTTP_GET_EULA_URL + "?download_session_id=" + download_session_ID +
+        return requests.post(HTTP_EULA_URL + "?download_session_id=" + download_session_ID +
             "&user_action=Accepted", headers=headers)
         
     def send_K9_request(self, access_token, download_session_ID):
         headers = {'Authorization': 'Bearer ' + access_token}
-        return requests.post(HTTP_GET_K9_URL + "?download_session_id=" + download_session_ID + 
+        return requests.post(HTTP_K9_URL + "?download_session_id=" + download_session_ID + 
             "&user_action=Accepted", headers=headers)
         
+    def send_download_statistics(self, access_token, download_session_ID, image_guid, image_size):
+        headers = {'Authorization': 'Bearer ' + access_token}
+        return requests.post(HTTP_DOWNLOAD_STATISTICS_URL + 
+            "?download_session_id=" + download_session_ID + 
+            "&image_guid=" + image_guid + 
+            "&download_status=Success" + 
+            "&download_file_size=" + image_size, headers=headers)
+          
     def send_get_image(self, access_token, url_string, output_file_path, image_name, image_size, callback=None):
         # Segment is 1 MB.  For 40 MB files, there will be about 40 updates (i.e. database writes)
         chunk_list= get_chunks((int)(image_size), (int)(image_size) / 1048576)
@@ -159,7 +176,7 @@ class BSDServiceHandler(object):
             size_file.close()       
         
     def send_meta_data_request(self, access_token, UDI):
-        url_string = HTTP_GET_METADATA_URL + \
+        url_string = HTTP_METADATA_URL + \
             "udi/" + UDI + "/" + \
             "mdf_id/" + self.MDF_ID + "/" + \
             "software_type_id/" + self.software_type_ID + "/" + \
@@ -169,7 +186,7 @@ class BSDServiceHandler(object):
         return requests.get(url_string, headers=headers)
     
     def send_download_request(self, access_token, UDI, MDF_ID, metadata_trans_ID, image_GUID):
-        url_string = HTTP_GET_DOWNLOAD_URL + \
+        url_string = HTTP_DOWNLOAD_URL + \
             "udi/" + UDI + "/" + \
             "mdf_id/" + MDF_ID + "/" + \
             "metadata_trans_id/" + metadata_trans_ID + "/" + \
@@ -207,5 +224,5 @@ def get_chunks(image_size, segments):
 
                    
 if __name__ == '__main__':  
-    pass
+    print(BSDServiceHandler.get_sn_2_info(BSDServiceHandler.get_access_token("alextang", "xx"), "FOX1316G5R5"))
     

@@ -2921,6 +2921,8 @@ def get_smu_list(platform, release):
 @login_required
 def api_get_smu_list(platform, release):    
     smu_loader = SMUInfoLoader(platform, release)
+    if smu_loader.smu_meta is None:
+        return jsonify( **{'data':[]} )
     
     if request.args.get('filter') == 'Optimal':
         return get_smu_or_sp_list(smu_loader.get_optimal_smu_list(), smu_loader.file_suffix)
@@ -2931,6 +2933,8 @@ def api_get_smu_list(platform, release):
 @login_required
 def api_get_sp_list(platform, release):  
     smu_loader = SMUInfoLoader(platform, release)
+    if smu_loader.smu_meta is None:
+        return jsonify( **{'data':[]} )
     
     if request.args.get('filter')  == 'Optimal':
         return get_smu_or_sp_list(smu_loader.get_optimal_sp_list(), smu_loader.file_suffix)
@@ -3008,7 +3012,18 @@ def get_smu_ids(db_session, smu_name_list):
                   
     return ','.join([id for id in smu_ids])
     
+@app.route('/api/get_smu_meta_retrieval_time/platform/<platform>/release/<release>')
+@login_required
+def api_get_smu_meta_retrieval_time(platform, release):
+    smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+    
+    retrieval_time = 'Unknown'
+    if smu_meta is not None:
+        retrieval_time = time_difference_UTC(smu_meta.retrieval_time)
 
+    return jsonify( **{'data': [ {'retrieval_time': retrieval_time }] } )
+    
+    
 @app.route('/optimize_list')
 @login_required
 def optimize_list(): 
@@ -3091,6 +3106,15 @@ def is_smu_on_server_repository(server_file_dict, smu_name):
             return True
     return False
 
+@app.route('/api/refresh_all_smu_info')
+@login_required
+def api_refresh_all_smu_info():  
+    if SMUInfoLoader.refresh_all():
+        return jsonify({'status':'OK'})
+    else:
+        return jsonify({'status':'Failed'})
+    
+    
 """
 Given a SMU list, return any missing pre-requisites.  The
 SMU entries returned also have the file extension appended.

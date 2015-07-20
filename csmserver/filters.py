@@ -72,13 +72,20 @@ def beautify_platform(platform):
 def time_difference_UTC(otherdate):
     return humanize_date_difference(now = datetime.datetime.utcnow(), 
         otherdate = otherdate)
-    
+"""
+The assumption is that 'now' must be greater than otherdate.
+zero seconds will return if otherdate is greater than 'now'.
+"""
 def humanize_date_difference(now, otherdate=None, offset=None):
     if otherdate is not None:
-        dt = now - otherdate
-        offset = dt.seconds + (abs(dt.days) * 60*60*24)
+
+        dt = now - otherdate       
+        if dt.total_seconds() > 0:
+            offset = dt.seconds + (abs(dt.days) * 60*60*24)
+        else:
+            offset = 0
     else:
-        return 'None'
+        return '0s ago'
     
     if offset:
         delta_s = int(offset % 60)
@@ -90,7 +97,7 @@ def humanize_date_difference(now, otherdate=None, offset=None):
         delta_d = int(offset)
     else:
         #raise ValueError("Must supply otherdate or offset (from now)")
-        return 'None'
+        return '0s ago'
  
     elapsed_time = ''
     
