@@ -392,9 +392,9 @@ class SMUInfoLoader(object):
                 db_session.commit()
                 return True
             except:
-                logger.exception('manual_retreive hit exception')
+                logger.exception('refresh_all hit exception')
                 db_session.rollback()  
-                return False
+        return False
                 
     """
     Returns an array of dictionary items { token : message }
