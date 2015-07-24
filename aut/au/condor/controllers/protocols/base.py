@@ -40,6 +40,9 @@ AUTH_FAILED = "Authentication failed|not authorized|Login incorrect"
 SHELL_PROMPT = "\$\s?|>\s?|#\s?|AU_PROMPT"
 CONNECTION_REFUSED = "Connection refused"
 RESET_BY_PEER = "reset by peer|closed by foreign host"
+SET_USERNAME = "[Ee]nter.*username:"
+SET_PASSWORD = "Enter secret"
+PASSWORD_OK = "[Pp]assword [Oo][Kk]"
 
 # Error when the hostname can't be resolved or there is
 # network reachability timeout

@@ -144,6 +144,8 @@ class Device(object):
         self.debug = debug
         self.url_chain = url_chain
 
+        print "url_chain = " +str(url_chain)
+
         for url in iter(to_list(url_chain)):
             if "," in url:
                 # It has standby
