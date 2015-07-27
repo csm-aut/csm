@@ -1981,8 +1981,13 @@ def admin_console():
         system_option.can_install = admin_console_form.can_install.data  
         system_option.enable_email_notify = admin_console_form.enable_email_notify.data 
         system_option.enable_inventory = admin_console_form.enable_inventory.data 
-        system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
-        system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
+
+        # The LDAP UI may be hidden if it is not supported.
+        # In this case, the flag is not set.
+        if not is_empty(admin_console_form.enable_ldap_auth.data):
+            system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data
+            system_option.ldap_server_url = admin_console_form.ldap_server_url.data
+
         system_option.inventory_hour = admin_console_form.inventory_hour.data 
         system_option.inventory_history_per_host = admin_console_form.inventory_history_per_host.data 
         system_option.download_history_per_user = admin_console_form.download_history_per_user.data
