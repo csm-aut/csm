@@ -88,7 +88,7 @@
       
       function get_server_time() {
         $.ajax({
-          url: "/api/get_server_time/",
+          url: "/api/get_server_time",
           dataType: 'json',
           success: function (data) {
             $.each(data, function(index, element) {

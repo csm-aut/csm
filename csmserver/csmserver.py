@@ -108,14 +108,12 @@ from smu_utils import get_optimize_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import SP_INDICATOR
-from smu_utils import get_package_type
 
 from smu_info_loader import SMUInfoLoader
 from bsd_service import BSDServiceHandler
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 from package_utils import get_target_software_package_list
-# from restful import restful_api
+from restful import restful_api
 
 import os
 import io
@@ -131,7 +129,7 @@ import initialize
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
-# app.register_blueprint(restful_api)
+app.register_blueprint(restful_api)
 
 #hook up the filters
 filters.init(app)
@@ -1511,7 +1509,7 @@ def delete_all_downloads(status=None):
         logger.exception('delete download job hits exception')
         return jsonify({'status':'Failed: check system logs for details'})
     
-@app.route('/api/get_server_time/')
+@app.route('/api/get_server_time')
 @login_required
 def api_get_server_time():  
     dict = {}
