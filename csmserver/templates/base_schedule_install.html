@@ -1,6 +1,7 @@
 
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
+{% from 'host/common.html' import alert_cco_lookup_disabled %}
 
 {% macro common_schedule_install_gui() %}
 
@@ -679,6 +680,7 @@
       }
       
       $('#badge-smu-list').html(rows);
+      get_retrieval_elapsed_time();
       browse_spinner.hide();
     });
 
@@ -1238,6 +1240,33 @@
     
     }
     
+    function get_retrieval_elapsed_time() {
+      if (platform.length > 0 && release.length > 0) {
+        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
+        if (cco_lookup_enabled) {
+          $.ajax({
+            url: "/api/get_smu_meta_retrieval_elapsed_time/platform/" + platform + "/release/" + release,
+            dataType: 'json',
+            success: function(response) {
+              $.each(response, function(index, element) {
+                $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time);
+              });
+            }
+          });
+        }
+      }
+    }
+      
+    $('#cisco-software-dialog').on('shown.bs.modal', function(e) {
+      timer = setInterval( function () {
+        get_retrieval_elapsed_time();
+      }, 10000 ); 
+    });
+    
+    $('#cisco-software-dialog').on('hidden.bs.modal', function(e) {
+      clearInterval(timer);
+    });
+    
     $('#host-software-dialog').on('shown.bs.modal', function(e) {
       timer = setInterval( function () {
         var hostname = $('#host_software_dialog_host').val();
@@ -1352,8 +1381,13 @@
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal">x</button>
           <div class="form-group ">
+          
+            {% if not system_option.enable_cco_lookup %} 
+              {{ alert_cco_lookup_disabled() }}
+            {% endif %}
+      
             <div class="dropdown col-sm-4">
-              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Lookup SMUs
+              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">CCO Lookup
               <span class="caret"></span></button>
               <ul id="dropdown-cisco-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
             </div>

@@ -279,6 +279,18 @@ class SMUInfoLoader(object):
         else:
             return None
     
+    def get_smu_info_by_id(self, smu_id):
+        for smu in self.smus.values():
+            if smu.id == smu_id:
+                return smu
+        for smu in self.in_transit_smus.values():
+            if smu.id == smu_id:
+                return smu
+        for smu in self.service_packs.values():
+            if smu.id == smu_id:
+                return smu
+        return None
+
     @classmethod   
     def get_smu_meta_file(cls, platform, release):
         try:
@@ -394,6 +406,7 @@ class SMUInfoLoader(object):
             except:
                 logger.exception('refresh_all hit exception')
                 db_session.rollback()  
+            
         return False
                 
     """

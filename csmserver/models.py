@@ -50,6 +50,13 @@ from werkzeug import generate_password_hash
 from ldap_utils import ldap_auth
 from csm_exceptions import CSMLDAPException
 
+from flask import g, Flask
+
+from itsdangerous import (TimedJSONWebSignatureSerializer
+                          as Serializer, BadSignature, SignatureExpired)
+
+from flask.ext.httpauth import HTTPBasicAuth
+
 # Contains information for password encryption
 encrypt_dict = None
 
@@ -152,7 +159,25 @@ class User(Base):
             return user, False
         
         return user, user.check_password(password)
+    
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer('CSMSERVER')
+        db_session = DBSession()
+        try:
+            data = s.loads(token)
+        except SignatureExpired:
+            return None    # valid token, but expired
+        except BadSignature:
+            return None    # invalid token
+        user = db_session.query(User).filter_by(id = data['id']).first()
+        return user
 
+    def generate_auth_token(self, expiration=600):
+        s = Serializer('CSMSERVER', expires_in=expiration)
+        return s.dumps({'id': self.id})
+
+    
     # Hooks for Flask-Login.
     #
     # As methods, these are only valid for User instances, so the

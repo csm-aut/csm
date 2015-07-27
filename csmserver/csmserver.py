@@ -115,6 +115,7 @@ from bsd_service import BSDServiceHandler
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 from package_utils import get_target_software_package_list
+# from restful import restful_api
 
 import os
 import io
@@ -130,6 +131,7 @@ import initialize
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+# app.register_blueprint(restful_api)
 
 #hook up the filters
 filters.init(app)
@@ -1653,7 +1655,7 @@ def schedule_install():
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''
             
-        return render_template('schedule_install.html', form=form, 
+        return render_template('schedule_install.html', form=form, system_option=SystemOption.get(db_session),
             server_time=datetime.datetime.utcnow(), return_url=return_url, install_action=get_install_actions_dict())
 
 def get_first_install_action(db_session, install_action):
@@ -1935,7 +1937,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 form.scheduled_time_UTC.data = \
                 get_datetime_string(install_job.scheduled_time)
         
-    return render_template('host/schedule_install.html', form=form, \
+    return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session), \
         host=host, server_time=datetime.datetime.utcnow(), install_job=install_job, return_url=return_url, \
         install_action=get_install_actions_dict())
 
@@ -1989,7 +1991,9 @@ def admin_console():
         system_option.install_history_per_host = admin_console_form.install_history_per_host.data
         system_option.total_system_logs = admin_console_form.total_system_logs.data
         system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data 
+        system_option.enable_cco_lookup = admin_console_form.enable_cco_lookup.data
         system_option.default_host_username = admin_console_form.default_host_username.data
+        
         if len(admin_console_form.default_host_password.data) > 0: 
             system_option.default_host_password = admin_console_form.default_host_password.data
          
@@ -2014,7 +2018,9 @@ def admin_console():
         admin_console_form.total_system_logs.data = system_option.total_system_logs
         admin_console_form.enable_default_host_authentication.data = system_option.enable_default_host_authentication
         admin_console_form.default_host_username.data = system_option.default_host_username
-        
+        admin_console_form.enable_cco_lookup.data = system_option.enable_cco_lookup
+        admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
+
         if smtp_server is not None:
             smtp_form.server.data = smtp_server.server
             smtp_form.server_port.data = smtp_server.server_port
@@ -2912,10 +2918,11 @@ def get_platforms_and_releases_dict(db_session):
 @app.route('/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def get_smu_list(platform, release):        
+    system_option = SystemOption.get(DBSession())
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
     
-    return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release) 
+    return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release, system_option=system_option) 
 
 @app.route('/api/get_smu_list/platform/<platform>/release/<release>')
 @login_required
@@ -3012,16 +3019,16 @@ def get_smu_ids(db_session, smu_name_list):
                   
     return ','.join([id for id in smu_ids])
     
-@app.route('/api/get_smu_meta_retrieval_time/platform/<platform>/release/<release>')
+@app.route('/api/get_smu_meta_retrieval_elapsed_time/platform/<platform>/release/<release>')
 @login_required
-def api_get_smu_meta_retrieval_time(platform, release):
+def api_get_smu_meta_retrieval_elapsed_time(platform, release):
     smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
     
-    retrieval_time = 'Unknown'
+    retrieval_elapsed_time = 'Unknown'
     if smu_meta is not None:
-        retrieval_time = time_difference_UTC(smu_meta.retrieval_time)
+        retrieval_elapsed_time = time_difference_UTC(smu_meta.retrieval_time)
 
-    return jsonify( **{'data': [ {'retrieval_time': retrieval_time }] } )
+    return jsonify( **{'data': [ {'retrieval_elapsed_time': retrieval_elapsed_time }] } )
     
     
 @app.route('/optimize_list')
@@ -3111,6 +3118,15 @@ def is_smu_on_server_repository(server_file_dict, smu_name):
 def api_refresh_all_smu_info():  
     if SMUInfoLoader.refresh_all():
         return jsonify({'status':'OK'})
+    else:
+        return jsonify({'status':'Failed'})
+
+@app.route('/api/get_cco_lookup_time')
+@login_required
+def api_get_cco_lookup_time():  
+    system_option = SystemOption.get(DBSession())
+    if system_option.cco_lookup_time is not None:
+        return jsonify( **{'data': [ {'cco_lookup_time': get_datetime_string(system_option.cco_lookup_time) }] } )
     else:
         return jsonify({'status':'Failed'})
     

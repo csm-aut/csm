@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
+{% from 'host/common.html' import alert_cco_lookup_disabled %}
+{% from 'host/common.html' import cco_lookup_last_retrieved %}
 
 {% block extra_head %}
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
@@ -122,8 +124,8 @@
         var rows = smu_table.api().ajax.json().data.length; 
         $('#badge-smu-list').html(rows); 
         
-        // Update the download time
-        get_retrieval_time();
+        // Update the CCO retrieval time
+        get_retrieval_elapsed_time();
         
         spinner.hide();
       });
@@ -225,17 +227,19 @@
         }
       }
        
-      function get_retrieval_time() {
-        
-        $.ajax({
-          url: "{{ url_for('api_get_smu_meta_retrieval_time', platform=platform, release=release) }}",
-          dataType: 'json',
-          success: function(response) {
-            $.each(response, function(index, element) {
-              $('#retrieval-time').html(element[0].retrieval_time);
-            });
-          }
-        });
+      function get_retrieval_elapsed_time() {
+        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
+        if (cco_lookup_enabled) {
+          $.ajax({
+            url: "{{ url_for('api_get_smu_meta_retrieval_elapsed_time', platform=platform, release=release) }}",
+            dataType: 'json',
+            success: function(response) {
+              $.each(response, function(index, element) {
+                $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time);
+              });
+            }
+          });
+        }
       }
       
       function refresh_smu_list_table() {
@@ -383,7 +387,7 @@
       });
       
       setInterval( function () {   
-        get_retrieval_time();                           
+        get_retrieval_elapsed_time();                           
       }, 10000 );
     });
   </script>
@@ -477,12 +481,11 @@
 
   <div class="row">
     <div class="col-sm-12">
+      {% if not system_option.enable_cco_lookup %} 
+        {{ alert_cco_lookup_disabled() }}
+      {% endif %}
           
-       <div class="col-sm-4">
-         <span class="DodgerBlue"><strong>Last Retrieval: </strong></span><span id="retrieval-time"></span>
-       </div>
-       
-       <div class="col-sm-offset-4 col-sm-2"> 
+       <div class="col-sm-offset-8 col-sm-2"> 
          <div class="input-group">
            <span id="filter-icon" title="SMU/Service Pack Filter" class="input-group-addon glyphicon glyphicon-filter"></span>
            <select class="form-control" id="filter-selector" name="filter-selector"><option value="Optimal">Optimal</option><option value="All">All</option></select>
