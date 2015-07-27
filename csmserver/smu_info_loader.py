@@ -91,16 +91,17 @@ class SMUInfoLoader(object):
         if self.smu_meta == None:  
             self.get_smu_info_from_cco(db_session, platform + '_' + release)  
         else:
-            downloaded_date = self.smu_meta.downloaded_time.split()[0]
-            current_date = time.strftime('%m/%d/%Y')
+            if self.smu_meta.downloaded_time is not None:
+                downloaded_date = self.smu_meta.downloaded_time.split()[0]
+                current_date = time.strftime('%m/%d/%Y')
             
-            if downloaded_date != current_date:
-                db_session.delete(self.smu_meta)
-                self.get_smu_info_from_cco(db_session, platform + '_' + release)  
-            else:
-                self.smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU)
-                self.service_packs = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SERVICE_PACK)
-                self.in_transit_smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU_IN_TRANSIT)
+                if downloaded_date != current_date:
+                    db_session.delete(self.smu_meta)
+                    self.get_smu_info_from_cco(db_session, platform + '_' + release)  
+                else:
+                    self.smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU)
+                    self.service_packs = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SERVICE_PACK)
+                    self.in_transit_smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU_IN_TRANSIT)
    
     def get_smu_info_from_cco(self, db_session, platform_release):
        
@@ -204,8 +205,11 @@ class SMUInfoLoader(object):
         """               
             
     def load(self):
-        xmldoc = minidom.parseString(SMUInfoLoader.get_smu_meta_file(self.platform, self.release))
-        
+        try:
+            xmldoc = minidom.parseString(SMUInfoLoader.get_smu_meta_file(self.platform, self.release))
+        except:
+            return        
+
         # self._platform = self.getChildElementText(xmldoc, XML_TAG_PLATFORM)
         # self._release = self.getChildElementText(xmldoc, XML_TAG_RELEASE)
         self.smu_meta.downloaded_time = time.strftime('%m/%d/%Y %I:%M:%S %p')
