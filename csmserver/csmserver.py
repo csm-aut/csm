@@ -29,7 +29,7 @@ from flask import jsonify, abort, send_file
 from flask import request, Response, redirect, url_for, make_response
 from flask.ext.login import LoginManager, current_user
 from flask.ext.login import login_user, login_required, logout_user  
-from platform_matcher import get_platform, get_release
+from platform_matcher import get_platform, get_release, UNKNOWN
 
 from werkzeug.contrib.fixers import ProxyFix
 
@@ -107,6 +107,7 @@ from wtforms.validators import Required
 from smu_utils import get_optimize_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
+from smu_utils import get_platform_and_release
 from smu_utils import SP_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
@@ -3154,6 +3155,35 @@ def api_get_missing_prerequisite_list():
         # (i.e. not in the Active/Active-Committed), include them.
         if not host_packages_contains(host_packages, smu_name):
             rows.append({'smu_entry':smu_name})
+    
+    return jsonify( **{'data':rows} )
+
+"""
+Given a software package/SMU/SP list, return those
+that require router reload.
+"""
+@app.route('/api/get_reload_list')
+@login_required
+def api_get_reload_list():    
+    # The software packages/SMUs/SPs selected by the user to install
+    package_list = request.args.get('package_list').split()   
+    
+    rows = []    
+    if not is_empty(package_list):
+        # Identify the platform and release
+        platform, release = get_platform_and_release(package_list)
+        if platform != UNKNOWN and release != UNKNOWN:
+            smu_loader = SMUInfoLoader(platform, release)
+            for package_name in package_list:
+                if 'mini' in package_name:
+                    rows.append({ 'entry' : package_name})
+                else:
+                    # Strip the suffix
+                    smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
+                    if smu_info is not None:
+                        if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
+                            rows.append({ 'entry' : package_name}) 
+ 
     
     return jsonify( **{'data':rows} )
 

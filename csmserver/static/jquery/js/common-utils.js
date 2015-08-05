@@ -76,6 +76,29 @@ function date_diff_in_days(a, b) {
   return Math.floor((utc2 - utc1) / _MS_PER_DAY);
 }
 
+function has_one_of_these(items_list, search_items) {
+  if (items_list != null) {
+    for (i = 0; i < items_list.length; i++) {
+      if ($.inArray(items_list[i], search_items) > -1) {
+        return true;
+      }         
+    }
+  }
+  return false;
+}
+    
+function has_one_of_these_only(items_list, search_items) {
+  if (items_list != null) {
+    for (i = 0; i < items_list.length; i++) {
+      if ($.inArray(items_list[i], search_items) == -1) {
+        return false;
+      }         
+    }
+    return true;
+  }
+  return false;
+}
+    
 /*
  The validate_object should be initialized as below in order to use this function.
         
@@ -86,8 +109,10 @@ function date_diff_in_days(a, b) {
    server_directory: $('#hidden_server_directory').val(),
    software_packages: $('#software-packages').val(),
    spinner: submit_spinner,
+   install_actions: $('#install_action').val(),
    check_missing_file_on_server: true,
-   callback: on_finish_validate
+   callback: on_finish_validate,
+   pending_downloads: null
  };
 */
 function on_validate_prerequisites_and_files_on_server(validate_object) {      
@@ -111,15 +136,50 @@ function check_missing_prerequisite(validate_object) {
          }
        });
 
-       // There is no missing pre-requisites
        if (missing_prerequisite_list.length == 0) {
+         if (validate_object.check_missing_file_on_server) {
+           // Check the reload packages only if install actions has 'Activate' in it.
+           if (has_one_of_these(validate_object.install_actions, ['Activate']) ) {
+             check_need_reload(validate_object);   
+           } else {
+             check_missing_files_on_server(validate_object); 
+           }            
+         } else {
+           validate_object.callback(validate_object);
+         }
+       } else {
+         display_missing_prerequisite_dialog(validate_object, missing_prerequisite_list);
+       }  
+     
+     },
+     error: function(XMLHttpRequest, textStatus, errorThrown) { 
+       validate_object.spinner.hide();
+     }   
+   }); 
+ }
+
+function check_need_reload(validate_object) {                   
+  $.ajax({
+     url: "/api/get_reload_list",
+     dataType: 'json',
+     data: { package_list: trim_lines(validate_object.software_packages) },
+     success: function (data) { 
+       var reload_list = '';
+       $.each(data, function(index, element) {
+         for (i = 0; i < element.length; i++) {
+           reload_list += element[i].entry + '<br>';          
+         }
+       });
+
+       // If there is no reload packages
+       if (reload_list.length == 0) {
          if (validate_object.check_missing_file_on_server) {
            check_missing_files_on_server(validate_object);               
          } else {
            validate_object.callback(validate_object);
          }
        } else {
-         display_missing_prerequisite_dialog(validate_object, missing_prerequisite_list);
+         display_package_reload_dialog(validate_object, reload_list);
        }        
      },
      error: function(XMLHttpRequest, textStatus, errorThrown) { 
@@ -127,7 +187,36 @@ function check_missing_prerequisite(validate_object) {
      }   
    }); 
  }
-      
+ 
+ function display_package_reload_dialog(validate_object, reload_list) {
+     
+  bootbox.dialog({
+    message: reload_list,
+    title: "<span style='color:red;'>Following software packages may cause the router to reload during 'Activate'.</span>",
+    buttons: {
+      primary: {
+        label: "Continue",
+        className: "btn-primary",
+        callback: function() {
+          if (validate_object.check_missing_file_on_server) {
+            check_missing_files_on_server(validate_object);
+          } else {
+            validate_object.callback(validate_object);
+          }
+        }
+      }, 
+      main: {
+        label: "Cancel",
+        className: "btn-default",
+        callback: function() {
+          validate_object.spinner.hide();
+        }
+      }
+    }       
+  });
+
+}
+ 
 function display_missing_prerequisite_dialog(validate_object, missing_prerequisite_list) {
      
   bootbox.dialog({
@@ -143,7 +232,12 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
             trim_lines( validate_object.software_packages + '\n' + missing_prerequisite_list.replace(/<br>/g, "\n") )
 
           if (validate_object.check_missing_file_on_server) {
-            check_missing_files_on_server(validate_object);
+            // Check the reload packages only if install actions has 'Activate' in it.
+            if (has_one_of_these(validate_object.install_actions, ['Activate']) ) {
+              check_need_reload(validate_object);   
+            } else {
+              check_missing_files_on_server(validate_object); 
+            }  
           } else {
             validate_object.callback(validate_object);
           }
@@ -154,7 +248,11 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
         className: "btn-success",
         callback: function() {
           if (validate_object.check_missing_file_on_server) {
-            check_missing_files_on_server(validate_object);
+            if (has_one_of_these(validate_object.install_actions, ['Activate']) ) {
+              check_need_reload(validate_object);   
+            } else {
+              check_missing_files_on_server(validate_object); 
+            }  
           } else {
             validate_object.callback(validate_object);
           }
