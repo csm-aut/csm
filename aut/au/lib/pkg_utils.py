@@ -451,3 +451,36 @@ def validate_xr_node_state(inventory, device):
         device.store_property('inventory', inventory)
         return True
     return False
+
+
+def parse_exr_show_sdr(output):
+    inventory = {}
+    lines = output.split('\n')
+
+    for line in lines:
+        line = line.strip()
+        if len(line) > 0 and line[0].isdigit():
+            node = line[22:37].strip()
+            entry = {
+                'type': line[:22].strip(),
+                'state': line[37:52].strip(),
+                'config_state': line[52:67].strip()
+            }
+            inventory[node] = entry
+    return inventory
+
+
+def validate_exr_node_state(inventory, device):
+    valid_state = [
+        'IOS XR RUN',
+        'OPERATIONAL',
+        'OK'
+    ]
+    for key, value in inventory.items():
+        if 'CPU' in key:
+            if value['state'] not in valid_state:
+                break
+    else:
+        device.store_property('inventory', inventory)
+        return True
+    return False

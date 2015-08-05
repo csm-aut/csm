@@ -362,6 +362,7 @@ class Connection(object):
                 raise
 
             except CommandTimeoutError, e:
+                #print "command timeout error indeed excepted"
                 _logger.error(_c(
                     self.hostname,
                     "Command timeout: '{}'".format(cmd)))

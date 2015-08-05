@@ -257,15 +257,16 @@ class Device(object):
     def reconnect(self):
         """
          Wait for system to come up with max timeout as 10 Minutes
-
+        changed timeout from 900 to 1800 for the migration to eXR purpose
         """
         status = False
-        timeout = 900
+        timeout = 1800
         poll_time = 30
         time_waited = 0
         print "System going for reload., please wait!!"
-        self.session.disconnect()
         time.sleep(60)
+        self.session.disconnect()
+
 
         try :
             self.session.connect(self.session_log)

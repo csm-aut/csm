@@ -35,20 +35,22 @@ import pexpect
 import os
 import subprocess
 import requests
+import shutil
+from database import DBSession
+from models import Server
+from constants import get_migration_directory
 
-NOX_URL = 'http://wwwin-people.cisco.com/alextang/'
-NOX_FILENAME_fetch = 'nox_linux_64bit_6.0.0v1.bin'
-NOX_FILENAME = 'nox'
+
 
 ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
 LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
+MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.0'
 #"""
 
 import sys
 
-aut_path = os.path.join(os.path.dirname(__file__), '../../../aut')
-
+aut_path = os.path.join(os.path.dirname(__file__), '..' + os.sep + '..' + os.sep + '..' + os.sep + 'aut')
 
 # print aut_path
 sys.path.append(aut_path)
@@ -61,7 +63,6 @@ from au.plugins.install_commit import InstallCommitPlugin
 from au.plugins.install_act import InstallActivatePlugin
 from au.condor.exceptions import CommandTimeoutError
 from au.plugins.plugin import PluginError
-
 
 
 
@@ -91,7 +92,7 @@ class MigrateToExrPlugin(IPlugin):
         print cmd, '\n', fpdtable, "<-----------------", success
 
         if not success:
-            self.error("Failed to check FPD version")
+            self.error("Failed to check FPD version before migration")
             return -1
 
         location_to_subtypes_need_upgrade = {}
@@ -126,87 +127,85 @@ class MigrateToExrPlugin(IPlugin):
 
         if location_to_subtypes_need_upgrade:
 
-            pie_packages = []
-            for package in packages:
-                if package.find('.pie') > -1:
-                    pie_packages.append(package)
+            cmd = "show install active summary"
+            success, active_packages = device.execute_command(cmd)
+            print cmd, '\n', active_packages, "<-----------------", success
 
-            if len(pie_packages) < 2:
-                self.error("ERROR: FPD upgrade needed but at least one of fpd pie and SMU package wasn't selected on your local repository.")
+            match = re.search('fpd', active_packages)
+
+            if not match:
+                self.error("Device needs FPD upgrade but no FPD pie is active on device. Please install FPD pie to try again or upgrade your FPDs to eXR capable FPDs.")
+
+
+            cmd = "show version"
+            success, versioninfo = device.execute_command(cmd)
+            print cmd, '\n', versioninfo, "<-----------------", success
+
+            match = re.search('[Vv]ersion\s+?(\d\.\d\.\d)', versioninfo)
+
+            if not match:
+                self.error("Failed to recognize release version number. Please check session.log.")
+
+            release_version = match.group(1)
+
+
+            if release_version < MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD:
+
+
+                pie_packages = []
+                for package in packages:
+                    if package.find('.pie') > -1:
+                        pie_packages.append(package)
+
+                if len(pie_packages) != 1:
+                    self.error("Release version is below 6.0.0, please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must contain '.pie'")
+
+
+                """
+                Step 1: Install add the FPD SMU
+                """
+                self._post_status("FPD upgrade - install add the FPD SMU...")
+                install_add = InstallAddPlugin()
+                self._run_install_action_plugin(install_add, device, repo, pie_packages, "install add")
+
+
+                """
+                Step 2: Install activate the FPD SMU
+                """
+                self._post_status("FPD upgrade - install activate the FPD SMU...")
+                install_act = InstallActivatePlugin()
+                self._run_install_action_plugin(install_act, device, repo, pie_packages, "install activate")
+
+
+
+                """
+                Step 3: Install commit the FPD SMU
+                """
+                self._post_status("FPD upgrade - install commit the FPD SMU...")
+                install_com = InstallCommitPlugin()
+                self._run_install_action_plugin(install_com, device, repo, pie_packages, "install commit")
+
+
 
             """
-            Step 1: Install add fpd pie and SMU
-            Max Attempts = 2
-            """
-            install_add = InstallAddPlugin()
-            try:
-                install_add.start(device, repository=repo, pkg_file=pie_packages)
-            except PluginError as e:
-                self.log("Failed to install add in the first attempt - ({0}): {1}".format(e.errno, e.strerror))
-                status = device.reconnect()
-                if not status:
-                    self.error("ERROR: failed to reconnect to the device after failing to install add in the first attempt. Please check log for how install add failed. Resolve any issue and start over the migration process.")
-                install_add.start(device, repository=repo, pkg_file=pie_packages)
-
-            print "fpd upgrade - successfully added smu"
-
-            """
-            Step 2: Install activate fpd pie and SMU
-            Max Attempts = 2
-            """
-
-            install_act = InstallActivatePlugin()
-            try:
-                install_act.start(device, pkg_file=pie_packages)
-            except PluginError as e:
-                self.log("Failed to install activate in the first attempt - ({0}): {1}".format(e.errno, e.strerror))
-                status = device.reconnect()
-                if not status:
-                    self.error("ERROR: failed to reconnect to the device after failing to install activate in the first attempt. Please check log for how install activate failed. Resolve any issue and start over the migration process.")
-                install_act.start(device, repository=repo, pkg_file=pie_packages)
-
-            print "fpd upgrade - successfully activated the smu"
-
-
-            """
-            Step 3: Install commit fpd pie and SMU
-            Max Attempts = 2
-            """
-
-            install_com = InstallCommitPlugin()
-            try:
-                install_com.start(device)
-            except PluginError as e:
-                self.log("Failed to install commit in the first attempt - ({0}): {1}".format(e.errno, e.strerror))
-                status = device.reconnect()
-                if not status:
-                    self.error("ERROR: failed to reconnect to the device after failing to install commit in the first attempt. Please check log for how install commit failed. Resolve any issue and start over the migration process.")
-                install_com.start(device, repository=repo, pkg_file=pie_packages)
-
-
-            print "fpd upgrade - successfully committed smu addition and activation"
-
-            """
-            Step 4: Upgrade all fpds in RP and Line card that need upgrade
-            Max Attempts = 2 for each fpd upgrade
+            Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
             """
             self._upgrade_all_fpds(device, location_to_subtypes_need_upgrade)
 
-            print "fpd upgrade - successfully upgraded fpd"
-
-            success_reload = self._reload_all(device)
-            if success_reload:
-                print "fpd upgrade - successfully reloaded"
-                location_to_subtypes_need_upgrade = self._check_fpd(device)
-                if location_to_subtypes_need_upgrade:
-                    self.log("Command 'show hw-module fpd location all' shows some fpds in RP or Line card still need "
-                             "upgrade even though they have just been upgraded. Either table content is incorrect or "
-                             "fpd upgrade was unsuccessful. If it's latter, problem may arise later. \n fpds that shows not-upgraded: location : subtype(s) \n")
-                    for location in location_to_subtypes_need_upgrade:
-                        self.log(location + " : " + str(location_to_subtypes_need_upgrade[location]))
-
 
         return True
+
+    def _run_install_action_plugin(self, install_plugin, device, repo, pie_packages, install_action_name):
+        try:
+            install_plugin.start(device, repository=repo, pkg_file=pie_packages)
+        except PluginError as e:
+            self.error("Failed to " + install_action_name + " the FPD SMU - ({0}): {1}".format(e.errno, e.strerror))
+        except AttributeError:
+            device.disconnect()
+            self.log("Disconnected...")
+            raise PluginError("Failed to " + install_action_name + " the FPD SMU. Please check session.log for details of failure.")
+
+
 
     def _upgrade_all_fpds(self, device, location_to_subtypes_need_upgrade):
 
@@ -214,29 +213,29 @@ class MigrateToExrPlugin(IPlugin):
 
             for fpdtype in location_to_subtypes_need_upgrade[location]:
 
-                print "fpd upgrade - starting to upgrade fpd subtype " + fpdtype + " in location " + location + "... "
-                command = 'admin upgrade hw-module fpd ' + fpdtype + ' location ' + location + ' \r'
+                self._post_status("FPD upgrade - start to upgrade FPD subtype " + fpdtype + " in location " + location)
+
+                command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location ' + location + ' \r'
                 success, output = device.execute_command(command, timeout=9600)
                 print command, '\n', output, "<-----------------", success
-                fpd_upgrade_success = re.search(location + '.*' + fpdtype + '[-_%.A-Z0-9a-z\s]*[Ss]uccess', output)
+                #fpd_upgrade_success = re.search(location + '.*' + fpdtype + '[-_%.A-Z0-9a-z\s]*[Ss]uccess', output)
+                fpd_upgrade_success = re.search('[Ss]uccess', output)
                 if not fpd_upgrade_success:
-                    if not re.search('[Nn]o.*' + fpdtype + '.*' + location + '.*need upgrade', output):
-                        self._second_attempt_execution(device, command, 9600, [location + '.*' + fpdtype + '[-.A-Z0-9a-z\s]*[Ss]uccess', '[Nn]o.*' + fpdtype + '.*' + location + '.*need upgrade'], "failed to upgrade fpd subtype " + fpdtype + " in location " + location)
+                    self.error("Failed to force upgrade FPD subtype " + fpdtype + " in location " + location)
+
         return True
 
-    def _second_attempt_execution(self, device, cmd, timeout, keywords, error_message):
+    def _post_status(self, msg):
+        if self.csm_ctx:
+            self.csm_ctx.post_status(msg)
+
+    def _second_attempt_execution(self, device, cmd, timeout, keyword, error_message):
         success, output = device.execute_command(cmd, timeout=timeout)
         print cmd, '\n', output, "<-----------------", success
-        flag = False
-        for keyword in keywords:
-            if re.search(keyword, output):
-                flag = True
-                if not flag:
-                    self.log(output.strip())
-                    #print error_message + "\n Failed : " + cmd + " \n " + output
-                    self.error("failed command '" + cmd.rstrip())
+        if not re.search(keyword, output):
+            self.error(error_message)
 
-    def _save_config_to_repo(self, device, repository, filename):
+    def _copy_config_to_repo(self, device, repository, filename):
         """
         Back up the configuration of the device in user's selected repository
         Max attempts: 2
@@ -246,30 +245,9 @@ class MigrateToExrPlugin(IPlugin):
         success, output = device.execute_command(cmd, timeout=timeout)
         print cmd, '\n', output, "<-----------------", success
         if not re.search('OK', output):
-            self._second_attempt_execution(device, cmd, timeout, ['OK'], "failed to copy running-config to your repository.")
+            self._second_attempt_execution(device, cmd, timeout, 'OK', "failed to copy running-config to your repository.")
 
 
-
-    def _save_config_to_csm_data(self, device, filename, fileloc):
-        try:
-            cmd="show run"
-            timeout = 1000
-            success, output = device.execute_command(cmd, timeout=timeout)
-            print cmd, '\n', output, "<-----------------", success
-            ind = output.rfind('Building configuration...\n')
-
-        except CommandTimeoutError as e:
-            success, output = device.execute_command(cmd, timeout=timeout*2)
-            print cmd, '\n', output, "<-----------------", success
-
-
-        if not os.path.exists(fileloc):
-            self.error("ERROR: directory migration in csm_data not created during AUT execution")
-
-        file = open(fileloc + '/' + filename, 'w+')
-        #file = open('../../csm_data/migration/' + filename, 'w+')
-        file.write(output[(ind+1):])
-        file.close()
 
 
 
@@ -279,113 +257,63 @@ class MigrateToExrPlugin(IPlugin):
         success, output = device.execute_command(cmd, timeout=timeout)
         print cmd, '\n', output, "<-----------------", success
         if not re.search('copied\s+in', output):
-            self._second_attempt_execution(device, cmd, timeout, ['copied\s+in'], "failed to copy file to your repository.")
+            self._second_attempt_execution(device, cmd, timeout, 'copied\s+in', "failed to copy file to your repository.")
 
 
-    def _apply_config(self, device, filename):
-        cmd = 'admin config'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
 
-
-        cmd = 'load disk0:/' + filename + ' \r'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
-
-
-        # TO DO: confirm if commit replace or commit best-effort
-        cmd = 'commit'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
-
-        cmd = 'end'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
-
-    def _resize_eusb(self, device, repository):
-        print "trying to resize eusb..."
-        self._copy_file_to_device(device, repository, 'resize_eusb', 'disk0:/')
+    def _migrate_to_eXR(self, device, repository):
         device.execute_command('run')
-        cmd = 'ksh -x /disk0:/resize_eusb'
+        iso_path = 'http://172.25.146.28/issus' + '/asr9k-mini-x64.iso'
+        cmd = 'ksh /harddiskb:' + os.sep + 'migrate_to_eXR ' + iso_path
         success, output = device.execute_command(cmd)
         print cmd, '\n', output, "<-----------------", success
-        device.execute_command('exit')
+
+        """
+        check that URL_NAME and emt mode has been set correctly.
+
+        """
+        match = re.search(iso_path, output)
+        if not match:
+            self.error("Failed to assign the path to eXR image to rommon variable URL_NAME. Please check session.log")
+
+        match = re.search('memory location (0x[A-Z0-9a-z]+)', output)
+
+        if match:
+            cmd = 'mem_rd ' + match.group(1) + ' 1'
+            success, memory_read_output = device.execute_command(cmd)
+            match = re.search('00000005\s12345678', memory_read_output)
+            if not match:
+                self.error("Failed to write boot mode in memory. 'mem_wr' may have failed. Please check session.log")
 
 
-    def _set_emt_mode(self, device, repository):
-        print "trying to set emt mode..."
-        self._copy_file_to_device(device, repository, 'set_emt_mode', 'disk0:/')
-        device.execute_command('run')
-        cmd = 'ksh -x /disk0:/set_emt_mode'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
-        device.execute_command('exit')
+        success, output = device.execute_command('exit')
+        return success
 
-    def _set_URL_NAME(self, device, repository):
-        print "trying to set URL_NAME that points to flexr iso image..."
-        device.execute_command('run')
-        cmd = 'nvram_rommonvar URL_NAME ' + 'http://172.25.146.28/issus' + '/asr9k-mini-x64.iso'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
-        device.execute_command('exit')
 
     def _reload_all(self, device):
-        cmd = 'admin reload location all \r \r'
+        cmd = 'admin reload location all \r'
         try:
             success, output = device.execute_command(cmd)
             print cmd, '\n', output, "<-----------------", success
             if success:
+                device.execute_command('\r')
                 return self._wait_for_reload(device)
         except CommandTimeoutError:
             print "Reload command - expected to timeout"
             return self._wait_for_reload(device)
 
-
-
-    def _reload_rsp(self, device):
-        cmd = 'admin reload location 0/RSP0/CPU0 \r \r'
-        success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
-        if success:
-            return self._wait_for_reload(device)
-
-
-    def _get_nox_binary_publish_date(self):
-        try:
-            url = NOX_URL + 'nox.lastPublishDate'
-            r = requests.get(url)
-            return r.text
-        except:
-            return None
-
-    def _get_file_http(self, filename, destination):
-        with open(destination + '/' + filename, 'wb') as handle:
-            response = requests.get(NOX_URL + filename, stream=True)
-
-
-            if not response.ok:
-                self.error("ERROR: HTTP request to" + NOX_URL + filename + " failed.")
-
-            print "request ok"
-            for block in response.iter_content(1024):
-                handle.write(block)
-
-    def _is_conversion_successful(self, nox_output):
-        match = re.search('Filename[\sA-Za-z\n]*[-\s]*\S*\s+(\d*)\s+\d*\(\s*\d%\)\s+\d*\(\s*\d%\)\s+(\d*)', nox_output)
-
-        if match:
-            print "matched " + match.group(1) + " to " + match.group(2)
-            if match.group(1) == match.group(2):
-                return True
-
-        print "no match or matches not equal"
-        return False
-
+    def _copy_config_to_csm_data(self, filename, repo_url, dest_filename):
+        db_session = DBSession()
+        server = db_session.query(Server).filter(Server.server_url == repo_url).first()
+        if not server:
+            self.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
+        shutil.copy(server.server_directory + os.sep + filename, dest_filename)
+        db_session.close()
 
 
     def _wait_for_reload(self, device):
         """
-         Wait for system to come up with max timeout as 25 Minutes
+         Wait for system to come up with max timeout as 30 Minutes
 
         """
         print "device trying to reconnect..."
@@ -395,8 +323,6 @@ class MigrateToExrPlugin(IPlugin):
         if not status :
             return status
 
-        print "device connection successful"
-
         # Connection to device is established , now look for all nodes to xr run state
         timeout = 1500
         poll_time = 30
@@ -404,7 +330,7 @@ class MigrateToExrPlugin(IPlugin):
         xr_run = "IOS XR RUN"
 
         success = False
-        cmd = "admin show platform"
+        cmd = "show sdr"
         print "Waiting for all nodes to come up"
         time.sleep(100)
         while 1:
@@ -415,133 +341,59 @@ class MigrateToExrPlugin(IPlugin):
             time.sleep(poll_time)
             success, output = device.execute_command(cmd)
             if success and xr_run in output:
-                inventory = pkgutils.parse_xr_show_platform(output)
-                if pkgutils.validate_xr_node_state(inventory, device):
+                inventory = pkgutils.parse_exr_show_sdr(output)
+                if pkgutils.validate_exr_node_state(inventory, device):
                     return True
 
         # Some nodes did not come to run state
         return False
 
 
-
     def start(self, device, *args, **kwargs):
 
         repo_str = kwargs.get('repository', None)
         if not repo_str:
-            self.error("ERROR:repository not provided")
+            self.error("Server Repository not provided")
 
-        repo_str = 'tftp://1.75.1.1/joydai'
 
-        fileloc = kwargs.get('fileloc', None)
-        if not fileloc:
-            fileloc = '../../csm_data/migration'
-            noxloc = '../aut/au/plugins/'
-            packages = kwargs.get("pkg_file", None)
-            if not packages:
-                self.error("ERROR:packages not provided")
-        else:
-            noxloc = './'
-            packages = ['asr9k-fpd-px.pie-5.3.2.10I.SIT_IMAGE', 'asr9k-px-5.3.2.10I.CSCuu11794.pie']
+        packages = kwargs.get("pkg_file", None)
+        if not packages:
+            packages = []
+
+
+        fileloc = get_migration_directory()
 
         print "device name = " + device.name
         filename = device.name.replace(".", "_")
         filename = filename.replace(":", "_")
 
-        """
-        # checked: upgrade fpd if fpd needs upgrade
+
+
+
+        self._post_status("Checking FPD version...")
         self._ensure_updated_fpd(device, repo_str, packages)
 
-        # repository = 'ftp://terastream:cisco@172.20.168.195/echami/'
-        # checked: save the running configuration out of the box
 
+        self._post_status("Backing up configuration")
+        self._copy_config_to_repo(device, repo_str, filename)
 
-        self._save_config_to_repo(device, repo_str, filename)
-
-        self._save_config_to_csm_data(device, filename, fileloc)
-
-
-
-        # checked: migrate config file to new config - need Eddie's tool
-
-        date = self._get_nox_binary_publish_date()
-
-        need_new_nox = False
-        print "date = " + date
-        if os.path.isfile(fileloc + '/' + 'nox.lastPublishDate'):
-            with open(fileloc + '/' + 'nox.lastPublishDate', 'r') as f:
-                current_date = f.readline()
-
-            if date != current_date:
-                need_new_nox = True
-
-        else:
-            need_new_nox = True
-
-        if need_new_nox:
-            self._get_file_http(NOX_FILENAME_fetch, fileloc)
-            with open(fileloc + '/' + 'nox.lastPublishDate', 'w') as nox_publish_date_file:
-                nox_publish_date_file.write(date)
-
-
-        print "chmod" + "+x" + fileloc + '/' + NOX_FILENAME
-        print fileloc + '/' + NOX_FILENAME + "-f" + fileloc + '/' + filename
-
-        commands = [subprocess.Popen(["chmod", "+x", fileloc + '/' + NOX_FILENAME]), subprocess.Popen([fileloc + '/' + NOX_FILENAME, "-f", fileloc + '/' + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
+        self._copy_config_to_csm_data(filename, repo_str, fileloc + os.sep + filename)
 
 
 
-
-        # checked: copy iso, efi and cfg files to the FAT partition
-
+        self._post_status("Adding ipxe.efi to device")
         self._copy_file_to_device(device, repo_str, 'ipxe.efi', 'harddiskb:/efi/boot/grub.efi')
 
 
-        # set URL_NAME rommon variable as path to eXR image, set emt mode to boot eXR from eUSB
-        self._set_URL_NAME(device, repo_str)
-        self._set_emt_mode(device, repo_str)
-
+        self._post_status("Setting boot mode and image path in device")
+        success = self._migrate_to_eXR(device, repo_str)
 
         # checked: reload router, now we have flexr-capable fpd
-        #self._reload_all(device)
+        if success:
+            self._post_status("Reload device to boot eXR")
+            self._reload_all(device)
 
 
 
-        # checked: after the reboot, store new config file back to router
+        return True
 
-
-        nox_output, nox_error = commands[1].communicate()
-
-        print nox_output
-        print nox_error
-        conversion_success = self._is_conversion_successful(nox_output)
-
-        if conversion_success:
-
-            print "conversion is successful"
-
-        else:
-            self.error("configuration conversion is not successful.")
-
-            #self._copy_file_to_device(device, repo_str, filename, 'disk0:/')
-
-
-            # Yet to test: apply the config
-            #self._apply_config(device, filename)
-
-        """
-        #return True
-
-
-def main():
-    device = Device(["telnet://root:root@172.25.146.221:2005"])
-    #device = Device(["telnet://cisco:cisco@172.28.98.3"])
-    #repo = 'ftp://terastream:cisco@172.20.168.195/echami'
-    repo = 'tftp://1.75.1.1/joydai'
-
-    device.connect()
-    migration = MigrateToExrPlugin()
-    migration.start(device, repository=repo, fileloc = '../../../../csm_data/migration')
-
-
-if __name__ == "__main__":
-    main()

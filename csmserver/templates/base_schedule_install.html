@@ -510,7 +510,7 @@
         return false;
       }
       
-      if (has_one_of_these(install_actions, [INSTALL_ADD, MIGRATE_TO_EXR]) && software_packages.length == 0) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD]) && software_packages.length == 0) {
         bootbox.alert("Software packages has not been specified.");
         return false;
       }

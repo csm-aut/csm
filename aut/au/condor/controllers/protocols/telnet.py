@@ -127,15 +127,17 @@ class Telnet(Protocol):
 
 
             if event == 3:  #SET_PASSWORD
-                print "setting password  state = " + str(state)
                 if state in [0, 1]:  # if waiting for pass send pass
 
                     password = self._acquire_password()
                     if password:
                         self._dbg(
                             10,
-                            "{}: Sending password: '***'".format(self.hostname)
+                            "{}: Sending password: {}".format(self.hostname, password)
                         )
+
+                        print "setting password  = " + password
+
 
                         self.ctrl.sendline(password)
 

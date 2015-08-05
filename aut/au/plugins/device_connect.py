@@ -32,6 +32,9 @@ from au.plugins.plugin import IPlugin
 from au.device import DeviceError
 from au.plugins.package_state import get_package
 
+import re
+
+
 class DeviceConnectPlugin(IPlugin):
 
     """
@@ -55,7 +58,13 @@ class DeviceConnectPlugin(IPlugin):
             self.log(
                 "Device {} connected successfully.".format(device.name)
             )
-            get_package(device)
+            success_show_version, output = device.execute_command("show version")
+            if success_show_version:
+                match = re.search('.vm',output)
+                if not match:
+                    get_package(device, 'exr')
+                else:
+                    get_package(device, 'xr')
             return True
 
         self.error(
