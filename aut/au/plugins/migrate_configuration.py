@@ -1,5 +1,5 @@
 # =============================================================================
-# migrate_xr_to_exr.py - plugin for migrating classic XR to eXR/fleXR
+# migrate_system.py - plugin for migrating classic XR to eXR/fleXR
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.
@@ -36,9 +36,9 @@ import os
 import subprocess
 import requests
 
-NOX_URL = 'http://wwwin-people.cisco.com/alextang/'
-NOX_FILENAME_fetch = 'nox_linux_64bit_6.0.0v1.bin'
-NOX_FILENAME = 'nox'
+#NOX_URL = 'http://wwwin-people.cisco.com/alextang/'
+#NOX_FILENAME_fetch = 'nox_linux_64bit_6.0.0v1.bin'
+#NOX_FILENAME = 'nox'
 
 #"""
 
@@ -59,15 +59,16 @@ from au.plugins.install_act import InstallActivatePlugin
 from au.condor.exceptions import CommandTimeoutError
 from au.plugins.plugin import PluginError
 
+from smu_info_loader import IOSXR_URL, SMUInfoLoader
+from constants import get_migration_directory
 
 
+NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
+NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
+NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 
-# waiting long time (5 minutes)
-TIME_OUT = 60
 
-
-
-class MigrateConfigurationPlugin(IPlugin):
+class MigrateConfigurationToExrPlugin(IPlugin):
 
     """
     A plugin for migrating from XR to eXR/fleXR
@@ -78,7 +79,7 @@ class MigrateConfigurationPlugin(IPlugin):
     T.B.D.
     """
     NAME = "MIGRATE_CONFIG_TO_EXR"
-    DESCRIPTION = "MIGRATE CONFIG TO EXR"
+    DESCRIPTION = "XR TO EXR CONFIGURATION MIGRATION"
     TYPE = "MIGRATE"
     VERSION = "0.0.1"
 
@@ -86,19 +87,18 @@ class MigrateConfigurationPlugin(IPlugin):
 
     def _get_nox_binary_publish_date(self):
         try:
-            url = NOX_URL + 'nox.lastPublishDate'
+            url = IOSXR_URL + "/" + NOX_PUBLISH_DATE
             r = requests.get(url)
             return r.text
         except:
             return None
 
-    def _get_file_http(self, filename, destination):
-        with open(destination + '/' + filename, 'wb') as handle:
-            response = requests.get(NOX_URL + filename, stream=True)
-
+    def _get_file_http(self, destination):
+        with open(destination + '/' + NOX_64_BINARY, 'wb') as handle:
+            response = requests.get(IOSXR_URL + "/" + NOX_64_BINARY, stream=True)
 
             if not response.ok:
-                self.error("ERROR: HTTP request to" + NOX_URL + filename + " failed.")
+                self.error("ERROR: HTTP request to" + IOSXR_URL + "/" + NOX_64_BINARY + " failed.")
 
             print "request ok"
             for block in response.iter_content(1024):
@@ -143,33 +143,26 @@ class MigrateConfigurationPlugin(IPlugin):
         if not repo_str:
             self.error("ERROR:repository not provided")
 
-        repo_str = 'tftp://1.75.1.1/joydai'
 
-        fileloc = kwargs.get('fileloc', None)
-        if not fileloc:
-            fileloc = '../../csm_data/migration'
-            noxloc = '../aut/au/plugins/'
-            packages = kwargs.get("pkg_file", None)
-            if not packages:
-                self.error("ERROR:packages not provided")
-        else:
-            noxloc = './'
-            packages = ['asr9k-fpd-px.pie-5.3.2.10I.SIT_IMAGE', 'asr9k-px-5.3.2.10I.CSCuu11794.pie']
+        fileloc = get_migration_directory()
 
         print "device name = " + device.name
         filename = device.name.replace(".", "_")
         filename = filename.replace(":", "_")
 
 
+        self.log(self.NAME + " Plugin is running")
+
+        """
 
         # checked: migrate config file to new config - need Eddie's tool
 
         date = self._get_nox_binary_publish_date()
 
         need_new_nox = False
-        print "date = " + date
-        if os.path.isfile(fileloc + '/' + 'nox.lastPublishDate'):
-            with open(fileloc + '/' + 'nox.lastPublishDate', 'r') as f:
+
+        if os.path.isfile(fileloc + '/' + NOX_PUBLISH_DATE):
+            with open(fileloc + '/' + NOX_PUBLISH_DATE, 'r') as f:
                 current_date = f.readline()
 
             if date != current_date:
@@ -179,13 +172,13 @@ class MigrateConfigurationPlugin(IPlugin):
             need_new_nox = True
 
         if need_new_nox:
-            self._get_file_http(NOX_FILENAME_fetch, fileloc)
-            with open(fileloc + '/' + 'nox.lastPublishDate', 'w') as nox_publish_date_file:
+            self._get_file_http(fileloc)
+            with open(fileloc + '/' + NOX_PUBLISH_DATE, 'w') as nox_publish_date_file:
                 nox_publish_date_file.write(date)
 
+        """
 
-        print "chmod" + "+x" + fileloc + '/' + NOX_FILENAME
-        print fileloc + '/' + NOX_FILENAME + "-f" + fileloc + '/' + filename
+        """
 
         commands = [subprocess.Popen(["chmod", "+x", fileloc + '/' + NOX_FILENAME]), subprocess.Popen([fileloc + '/' + NOX_FILENAME, "-f", fileloc + '/' + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
 
@@ -209,7 +202,7 @@ class MigrateConfigurationPlugin(IPlugin):
 
             # Yet to test: apply the config
             #self._apply_config(device, filename)
-
+        """
 
 
 

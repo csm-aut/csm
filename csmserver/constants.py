@@ -95,11 +95,16 @@ class InstallAction:
     INSTALL_ACTIVATE = 'Activate'
     POST_UPGRADE = 'Post-Upgrade'
     INSTALL_COMMIT = 'Commit'
-    MIGRATE_TO_EXR = 'Migrate To eXR'
     ALL = 'ALL'
     INSTALL_REMOVE = 'Remove'
     INSTALL_DEACTIVATE = 'Deactivate'
     INSTALL_ROLLBACK = 'Rollback'
+    PRE_MIGRATE = 'Pre-Migrate'
+    MIGRATE_SYSTEM_TO_EXR = 'Migrate System'
+    MIGRATE_CONFIG_TO_EXR = 'Migrate Configuration'
+    POST_MIGRATE = 'Post-Migrate'
+    ALL_FOR_MIGRATE = 'ALL (for Migration)'
+
 
 class PackageType:
     SMU = 'SMU'

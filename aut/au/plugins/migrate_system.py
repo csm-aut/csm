@@ -1,5 +1,5 @@
 # =============================================================================
-# migrate_xr_to_exr.py - plugin for migrating classic XR to eXR/fleXR
+# migrate_system.py - plugin for migrating classic XR to eXR/fleXR
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.
@@ -71,7 +71,7 @@ TIME_OUT = 60
 
 
 
-class MigrateToExrPlugin(IPlugin):
+class MigrateSystemToExrPlugin(IPlugin):
 
     """
     A plugin for migrating from XR to eXR/fleXR
@@ -81,8 +81,8 @@ class MigrateToExrPlugin(IPlugin):
     Arguments:
     T.B.D.
     """
-    NAME = "MIGRATE_TO_EXR"
-    DESCRIPTION = "XR TO EXR MIGRATION"
+    NAME = "MIGRATE_SYSTEM_TO_EXR"
+    DESCRIPTION = "XR TO EXR SYSTEM MIGRATION"
     TYPE = "MIGRATE"
     VERSION = "0.0.1"
 
@@ -368,7 +368,9 @@ class MigrateToExrPlugin(IPlugin):
         filename = filename.replace(":", "_")
 
 
+        self.log(self.NAME + " Plugin is running")
 
+        """
 
         self._post_status("Checking FPD version...")
         self._ensure_updated_fpd(device, repo_str, packages)
@@ -393,7 +395,7 @@ class MigrateToExrPlugin(IPlugin):
             self._post_status("Reload device to boot eXR")
             self._reload_all(device)
 
-
+        """
 
         return True
 

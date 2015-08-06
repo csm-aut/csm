@@ -1691,7 +1691,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
     
     install_job.install_action = install_action
         
-    if (install_job.install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.MIGRATE_TO_EXR) and \
+    if (install_job.install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR or install_action == InstallAction.MIGRATE_CONFIG_TO_EXR) and \
         not is_empty(form.hidden_pending_downloads.data):
         install_job.pending_downloads = ','.join(form.hidden_pending_downloads.data.split())
     else:
@@ -1700,7 +1700,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
     install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
 
     # Only Install Add and Migrate to eXR should have server_id and server_directory
-    if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.MIGRATE_TO_EXR:
+    if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR or install_action == InstallAction.MIGRATE_CONFIG_TO_EXR:
         install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
         install_job.server_directory = form.hidden_server_directory.data
     else:
@@ -1712,7 +1712,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_action == InstallAction.INSTALL_ACTIVATE or \
         install_action == InstallAction.INSTALL_REMOVE or \
         install_action == InstallAction.INSTALL_DEACTIVATE or \
-        install_action == InstallAction.MIGRATE_TO_EXR:
+        install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR:
         
         package_list = ''
         software_packages = form.software_packages.data.split()
@@ -1862,9 +1862,21 @@ def create_install_jobs_for_all_install_actions(db_session, host_id, form):
     new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
         install_action=InstallAction.INSTALL_COMMIT, dependency=new_install_job.id)
 
-    # Create Migration
+    # Create Pre-Migrate
     new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.MIGRATE_TO_EXR, dependency=new_install_job.id)
+        install_action=InstallAction.PRE_MIGRATE, dependency=new_install_job.id)
+
+    # Create Migrate System
+    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
+        install_action=InstallAction.MIGRATE_SYSTEM_TO_EXR, dependency=new_install_job.id)
+
+    # Create Migrate Configuration
+    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
+        install_action=InstallAction.MIGRATE_CONFIG_TO_EXR, dependency=new_install_job.id)
+
+    # Create Post-Migrate
+    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
+        install_action=InstallAction.POST_MIGRATE, dependency=new_install_job.id)
 
 def handle_schedule_install_form(request, db_session, hostname, install_job=None):    
     host = get_host(db_session, hostname)
@@ -2643,7 +2655,11 @@ def get_install_actions_dict():
         "deactivate": InstallAction.INSTALL_DEACTIVATE,
         "rollback": InstallAction.INSTALL_ROLLBACK,
         "all": InstallAction.ALL,
-        "migrate": InstallAction.MIGRATE_TO_EXR
+        "premigrate": InstallAction.PRE_MIGRATE,
+        "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
+        "migrate_config": InstallAction.MIGRATE_CONFIG_TO_EXR,
+        "postmigrate": InstallAction.POST_MIGRATE,
+        "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
         
 def fill_dependencies(choices):
@@ -2658,7 +2674,10 @@ def fill_dependencies(choices):
     choices.append((InstallAction.INSTALL_ACTIVATE, InstallAction.INSTALL_ACTIVATE)) 
     choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
     choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT))
-    choices.append((InstallAction.MIGRATE_TO_EXR, InstallAction.MIGRATE_TO_EXR))
+    choices.append((InstallAction.PRE_MIGRATE, InstallAction.PRE_MIGRATE))
+    choices.append((InstallAction.MIGRATE_SYSTEM_TO_EXR, InstallAction.MIGRATE_SYSTEM_TO_EXR))
+    choices.append((InstallAction.MIGRATE_CONFIG_TO_EXR, InstallAction.MIGRATE_CONFIG_TO_EXR))
+    choices.append((InstallAction.POST_MIGRATE, InstallAction.POST_MIGRATE))
 
 
 def fill_servers(choices, servers, include_local=True):

@@ -33,7 +33,6 @@ def execute(context,testing_csm = False):
     options.overwrite_logs = False
     options.delete_logs = False
     options.addset = False
-    options.migrateset = False
     options.preupgradeset = False
     options.upgradeset = False
     options.removeset=False
@@ -44,6 +43,12 @@ def execute(context,testing_csm = False):
     options.cli_file = None
     options.turboboot = False
     options.ignore_errors = False
+    options.pre_migrateset = False
+    options.migrate_system_set = False
+    options.migrate_config_set = False
+    options.post_migrate_set = False
+    options.all_for_migrate_set = False
+
     if not os.path.exists(options.outdir) :
         try :
             os.makedirs(options.outdir)
@@ -88,8 +93,20 @@ def execute(context,testing_csm = False):
     elif ctx.requested_action == 'Deactivate':
         options.deactivateset = True
     #   options.pkg_state = True
-    elif ctx.requested_action == 'Migrate To eXR':
-        options.migrateset = True
+    elif ctx.requested_action == 'Pre-Migrate':
+        options.pre_migrateset = True
+
+    elif ctx.requested_action == 'Migrate System':
+        options.migrate_system_set = True
+
+    elif ctx.requested_action == 'Migrate Configuration':
+        options.migrate_config_set = True
+
+    elif ctx.requested_action == 'Post-Migrate':
+        options.post_migrate_set = True
+
+    elif ctx.requested_action == 'ALL (for Migration)':
+        options.all_for_migrate_set = True
 
     options.ctx = ctx
     status = main.execute(options, args, oparser)
@@ -133,8 +150,17 @@ class CsmContext(object):
             self.requested_action='Deactivate'
         elif options.removeset:
             self.requested_action = 'Remove'
-        elif options.migrateset:
-            self.requested_action = 'Migrate To eXR'
+        elif options.pre_migrateset:
+            self.requested_action = 'Pre-Migrate'
+        elif options.migrate_system_set:
+            self.requested_action = 'Migrate System'
+        elif options.migrate_config_set:
+            self.requested_action = 'Migrate Configuration'
+        elif options.post_migrate_set:
+            self.requested_action = 'Post-Migrate'
+        elif options.all_for_migrate_set:
+            self.requested_action = 'ALL (for Migration)'
+
         if options.repository_path :
             self.server_repository_url = options.repository_path
        
