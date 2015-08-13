@@ -1309,10 +1309,10 @@ def get_files_from_csm_repository():
 @app.route('/api/image/<image_name>/delete/' , methods=['DELETE'])
 @login_required  
 def api_delete_image_from_repository(image_name):
-    if current_user.privilege != UserPrivilege.ADMIN or \
+    if current_user.privilege != UserPrivilege.ADMIN and \
         current_user.privilege != UserPrivilege.NETWORK_ADMIN:
         abort(401)
-        
+    
     tar_image_path = get_repository_directory() + image_name
     file_list = get_tarfile_file_list(tar_image_path)
     for filename in file_list:

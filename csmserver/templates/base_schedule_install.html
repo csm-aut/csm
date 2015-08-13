@@ -481,7 +481,7 @@
         return false;
       }
       
-      if (has_one_of_these(install_actions, [INSTALL_ADD]) && software_packages.length == 0) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE]) && software_packages.length == 0) {
         bootbox.alert("Software packages has not been specified.");
         return false;
       }

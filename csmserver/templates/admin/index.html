@@ -27,11 +27,13 @@
     
         $(this).find('.btn').toggleClass('btn-default');       
       });
-      
+ 
       update_cco_panel_title("{{ admin_console_form.cco_lookup_time.data }}");
       
       function update_cco_panel_title(timestamp) {
-        $('#cco-panel-title').html("Last Lookup Time: " + convertToLocaleString(timestamp) );
+        if (timestamp != "None") {
+          $('#cco-panel-title').html("Last Lookup Time: " + convertToLocaleString(timestamp) );
+        }
       }
       
       $('#enable_email_notify').val(
@@ -88,22 +90,8 @@
           $('#enable_cco_lookup'),
           $('#enable-cco-lookup-yes-button'),
           $('#enable-cco-lookup-no-button'));
-
-        toggle_manual_retrieve_button($('#enable_cco_lookup').val() != 'False');
       });
 
-      $('#enable-cco-lookup-yes-button').click(function() {
-        toggle_manual_retrieve_button(true);
-      });
-      
-      $('#enable-cco-lookup-no-button').click(function() {
-        toggle_manual_retrieve_button(false);
-      });
-      
-      function toggle_manual_retrieve_button(disabled) {
-        $('#manual-retrieve-button').prop('disabled', disabled);
-      }
-      
       function render_switch(control, yes_button, no_button) {
         if (control.val() == 'True') {
           yes_button.addClass("btn-primary active");
@@ -176,7 +164,7 @@
     {% if (admin_console_form.errors) or (smtp_form.errors) %}
       <div class="alert alert-danger">
         <strong>NOTICE:&nbsp;</strong>
-           The form has validation errors.  Please fix them before proceeding to save it.
+           The form has validation errors.  Please fix them before saving.
       </div>
     {% endif %}
 
@@ -218,33 +206,7 @@
             </div>
 
             <div class="panel panel-default">
-              <div class="panel-heading"><h4>Scheduled Install Settings</h4></div>
-                <div class="panel-body">
-                {% set extra_field =
-                  '<div class="btn-group btn-toggle" id="can-schedule-yes-or-no">
-                  <button type="button" id="can-schedule-yes-button" class="btn" data-value=1>Yes</button>
-                  <button type="button" id="can-schedule-no-button" class="btn" data-value=0>No</button>
-                   </div>'
-                 %}
-                {{ edit_field(admin_console_form.can_schedule, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
-
-                {% set extra_field =
-                  '<div class="btn-group btn-toggle" id="can-install-yes-or-no">
-                  <button type="button" id="can-install-yes-button" class="btn" data-value=1>Yes</button>
-                  <button type="button" id="can-install-no-button" class="btn" data-value=0>No</button>
-                   </div>'
-                 %}
-                {{ edit_field(admin_console_form.can_install, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
-
-                </div>
-            </div>
-          </div>
-
-          <!-- Right side, general settings -->
-          <div class="container col-sm-6">
-
-            <div class="panel panel-default">
-              <div class="panel-heading"><h4>Software Inventory Settings</h4></div>
+             <div class="panel-heading"><h4>Software Inventory Settings</h4></div>
               <div class="panel-body">
                CSM Server must be restarted in order for the changes below to take place.<hr>
 
@@ -262,6 +224,33 @@
 
                {{ edit_field(admin_console_form.inventory_hour, label_field_width="col-sm-7", field_width="col-sm-5", class="form-control") }}
               </div>
+            </div>
+          </div>
+
+          <!-- Right side, general settings -->
+          <div class="container col-sm-6">
+
+            <div class="panel panel-default">
+             <div class="panel-heading"><h4>Scheduled Install Settings</h4></div>
+              <div class="panel-body">
+                {% set extra_field =
+                  '<div class="btn-group btn-toggle" id="can-schedule-yes-or-no">
+                  <button type="button" id="can-schedule-yes-button" class="btn" data-value=1>Yes</button>
+                  <button type="button" id="can-schedule-no-button" class="btn" data-value=0>No</button>
+                   </div>'
+                 %}
+                {{ edit_field(admin_console_form.can_schedule, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
+
+                {% set extra_field =
+                  '<div class="btn-group btn-toggle" id="can-install-yes-or-no">
+                  <button type="button" id="can-install-yes-button" class="btn" data-value=1>Yes</button>
+                  <button type="button" id="can-install-no-button" class="btn" data-value=0>No</button>
+                   </div>'
+                 %}
+                {{ edit_field(admin_console_form.can_install, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
+
+              </div>
+
             </div>
 
             <div class="panel panel-default">
@@ -343,7 +332,7 @@
               <div class="panel-heading"><h4><span id="cco-panel-title">CCO Lookup</span></h4></div>
               <div class="panel-body">
               When CCO Lookup is disabled, CSM Server retrieves previously saved software information from the database instead of contacting
-              CCO. This will limit CSM Server Internet connection. To refresh the database, use the Manual Retrieve All button.  This
+              CCO. To refresh the database, use the Manual Retrieve All button.  This
               will retrieve software information for all supported platforms and releases.
               <hr>
 

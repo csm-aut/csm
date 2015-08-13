@@ -8,8 +8,7 @@
   <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
   <script>
     $(function() {
-      $("#datatable").dataTable();
-
+      
       $(".host-delete-link").on("click", function() {
         var delete_url = $(this).attr('data-delete-url');
         var delete_host = $(this).attr('delete-host');
@@ -31,6 +30,7 @@
         }); 
       });
 
+      $("#datatable").dataTable();
     });
   </script>
 {% endblock extra_head %} 
