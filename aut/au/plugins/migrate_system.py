@@ -83,7 +83,7 @@ class MigrateSystemToExrPlugin(IPlugin):
     """
     NAME = "MIGRATE_SYSTEM_TO_EXR"
     DESCRIPTION = "XR TO EXR SYSTEM MIGRATION"
-    TYPE = "MIGRATE"
+    TYPE = "MIGRATE_SYSTEM"
     VERSION = "0.0.1"
 
     def _check_fpd(self, device):
@@ -235,19 +235,6 @@ class MigrateSystemToExrPlugin(IPlugin):
         if not re.search(keyword, output):
             self.error(error_message)
 
-    def _copy_config_to_repo(self, device, repository, filename):
-        """
-        Back up the configuration of the device in user's selected repository
-        Max attempts: 2
-        """
-        cmd = 'copy running-config ' + repository + '/' + filename + ' \r \r'
-        timeout = 120
-        success, output = device.execute_command(cmd, timeout=timeout)
-        print cmd, '\n', output, "<-----------------", success
-        if not re.search('OK', output):
-            self._second_attempt_execution(device, cmd, timeout, 'OK', "failed to copy running-config to your repository.")
-
-
 
 
 
@@ -256,35 +243,32 @@ class MigrateSystemToExrPlugin(IPlugin):
         cmd = 'copy ' + repository + '/' + filename +' ' + dest +' \r \r'
         success, output = device.execute_command(cmd, timeout=timeout)
         print cmd, '\n', output, "<-----------------", success
-        if not re.search('copied\s+in', output):
+        if re.search('copied\s+in', output):
             self._second_attempt_execution(device, cmd, timeout, 'copied\s+in', "failed to copy file to your repository.")
 
 
 
-    def _migrate_to_eXR(self, device, repository):
+    def _migrate_to_eXR(self, device, repository, packages):
+
+        for package in packages:
+            if package == "migrate_to_eXR":
+                self._copy_file_to_device(device, repository, package, 'harddiskb:')
+                break
+
         device.execute_command('run')
         iso_path = 'http://172.25.146.28/issus' + '/asr9k-mini-x64.iso'
         cmd = 'ksh /harddiskb:' + os.sep + 'migrate_to_eXR ' + iso_path
         success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
 
         """
         check that URL_NAME and emt mode has been set correctly.
 
         """
-        match = re.search(iso_path, output)
-        if not match:
+        if "No such file" in output:
+            self.error("No migration script is found on device. Please either download the 'migrate_to_eXR' script to the server repository and select it prior to scheduling migration, or load the 6.0.0 classic XR image with this script bundled.")
+
+        if not iso_path in output:
             self.error("Failed to assign the path to eXR image to rommon variable URL_NAME. Please check session.log")
-
-        match = re.search('memory location (0x[A-Z0-9a-z]+)', output)
-
-        if match:
-            cmd = 'mem_rd ' + match.group(1) + ' 1'
-            success, memory_read_output = device.execute_command(cmd)
-            match = re.search('00000005\s12345678', memory_read_output)
-            if not match:
-                self.error("Failed to write boot mode in memory. 'mem_wr' may have failed. Please check session.log")
-
 
         success, output = device.execute_command('exit')
         return success
@@ -302,13 +286,7 @@ class MigrateSystemToExrPlugin(IPlugin):
             print "Reload command - expected to timeout"
             return self._wait_for_reload(device)
 
-    def _copy_config_to_csm_data(self, filename, repo_url, dest_filename):
-        db_session = DBSession()
-        server = db_session.query(Server).filter(Server.server_url == repo_url).first()
-        if not server:
-            self.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
-        shutil.copy(server.server_directory + os.sep + filename, dest_filename)
-        db_session.close()
+
 
 
     def _wait_for_reload(self, device):
@@ -371,15 +349,8 @@ class MigrateSystemToExrPlugin(IPlugin):
         self.log(self.NAME + " Plugin is running")
 
         """
-
         self._post_status("Checking FPD version...")
         self._ensure_updated_fpd(device, repo_str, packages)
-
-
-        self._post_status("Backing up configuration")
-        self._copy_config_to_repo(device, repo_str, filename)
-
-        self._copy_config_to_csm_data(filename, repo_str, fileloc + os.sep + filename)
 
 
 
@@ -388,7 +359,7 @@ class MigrateSystemToExrPlugin(IPlugin):
 
 
         self._post_status("Setting boot mode and image path in device")
-        success = self._migrate_to_eXR(device, repo_str)
+        success = self._migrate_to_eXR(device, repo_str, packages)
 
         # checked: reload router, now we have flexr-capable fpd
         if success:
@@ -396,6 +367,5 @@ class MigrateSystemToExrPlugin(IPlugin):
             self._reload_all(device)
 
         """
-
         return True
 

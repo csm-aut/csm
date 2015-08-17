@@ -189,7 +189,7 @@ class Host(Base):
     can_install = Column(Boolean, default=True)
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
-    region = relationship('Region', foreign_keys='Host.region_id') 
+    region = relationship('Region', foreign_keys='Host.region_id')
     
     connection_param = relationship("ConnectionParam",
         order_by="ConnectionParam.id",

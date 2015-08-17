@@ -1700,7 +1700,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
     install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
 
     # Only Install Add and Migrate to eXR should have server_id and server_directory
-    if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR or install_action == InstallAction.MIGRATE_CONFIG_TO_EXR:
+    if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR or install_action == InstallAction.MIGRATE_CONFIG_TO_EXR:
         install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
         install_job.server_directory = form.hidden_server_directory.data
     else:
@@ -1712,6 +1712,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_action == InstallAction.INSTALL_ACTIVATE or \
         install_action == InstallAction.INSTALL_REMOVE or \
         install_action == InstallAction.INSTALL_DEACTIVATE or \
+        install_action == InstallAction.PRE_MIGRATE or \
         install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR:
         
         package_list = ''

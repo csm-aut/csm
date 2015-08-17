@@ -1,9 +1,18 @@
-def get_package(device, os):
+import re
+
+def get_package(device):
     csm_ctx = device.get_property('ctx')
     if not csm_ctx :
         return
+
+    success, output = device.execute_command("show version")
+
+    match = re.search('.vm',output)
+
+    append = " summary" if match else ""
+
     device.execute_command("admin")
-    append = " summary" if os == 'xr' else ""
+
     if hasattr(csm_ctx, 'active_cli'):
         success, output = device.execute_command("show install active" + append)
         if success:

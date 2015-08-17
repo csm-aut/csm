@@ -33,8 +33,11 @@ import time
 import pexpect
 
 import os
-import subprocess
+
 import requests
+import shutil
+from database import DBSession
+from models import Server
 
 #NOX_URL = 'http://wwwin-people.cisco.com/alextang/'
 #NOX_FILENAME_fetch = 'nox_linux_64bit_6.0.0v1.bin'
@@ -56,16 +59,14 @@ from au.lib import pkg_utils as pkgutils
 from au.plugins.install_add import InstallAddPlugin
 from au.plugins.install_commit import InstallCommitPlugin
 from au.plugins.install_act import InstallActivatePlugin
-from au.condor.exceptions import CommandTimeoutError
+from au.condor.exceptions import CommandTimeoutError,CommandSyntaxError
 from au.plugins.plugin import PluginError
 
-from smu_info_loader import IOSXR_URL, SMUInfoLoader
 from constants import get_migration_directory
+from au.condor.platforms.generic import _INVALID_INPUT
 
 
-NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
-NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
-NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
+
 
 
 class MigrateConfigurationToExrPlugin(IPlugin):
@@ -80,61 +81,102 @@ class MigrateConfigurationToExrPlugin(IPlugin):
     """
     NAME = "MIGRATE_CONFIG_TO_EXR"
     DESCRIPTION = "XR TO EXR CONFIGURATION MIGRATION"
-    TYPE = "MIGRATE"
+    TYPE = "MIGRATE_CONFIG"
     VERSION = "0.0.1"
 
 
-
-    def _get_nox_binary_publish_date(self):
-        try:
-            url = IOSXR_URL + "/" + NOX_PUBLISH_DATE
-            r = requests.get(url)
-            return r.text
-        except:
-            return None
-
-    def _get_file_http(self, destination):
-        with open(destination + '/' + NOX_64_BINARY, 'wb') as handle:
-            response = requests.get(IOSXR_URL + "/" + NOX_64_BINARY, stream=True)
-
-            if not response.ok:
-                self.error("ERROR: HTTP request to" + IOSXR_URL + "/" + NOX_64_BINARY + " failed.")
-
-            print "request ok"
-            for block in response.iter_content(1024):
-                handle.write(block)
-
-    def _is_conversion_successful(self, nox_output):
-        match = re.search('Filename[\sA-Za-z\n]*[-\s]*\S*\s+(\d*)\s+\d*\(\s*\d%\)\s+\d*\(\s*\d%\)\s+(\d*)', nox_output)
-
-        if match:
-            print "matched " + match.group(1) + " to " + match.group(2)
-            if match.group(1) == match.group(2):
-                return True
-
-        print "no match or matches not equal"
-        return False
-
-
-    def _apply_config(self, device, filename):
-        cmd = 'admin config'
+    def _copy_file_from_eusb_to_harddisk(self, device, filename):
+        cmd = 'run'
         success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
 
-
-        cmd = 'load disk0:/' + filename + ' \r'
+        cmd = 'cp /eusbb/' + filename + ' /harddisk:/' + filename
         success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
+
+        if "No such file" in output:
+            self.error(filename + " is missing in /eusbb/ on device after migration.")
+
+        cmd = 'exit'
+        success, output = device.execute_command(cmd)
+
+
+
+    def _apply_config(self, device, repository, filename):
+
+        self._copy_file_from_eusb_to_harddisk(device, filename)
+
+        cmd = 'config'
+        success, output = device.execute_command(cmd)
+
+        cmd = 'load ' + repository + '/' + filename
+        success, output = device.execute_command(cmd)
+
+        if "failed" in output:
+
+            if "show configuration failed load [detail]" in output:
+                cmd = 'show configuration failed load detail'
+                try:
+                    success, output = device.execute_command(cmd)
+                except CommandSyntaxError as e:
+                    if not _INVALID_INPUT in e:
+                        self.error("Should not come to this point.")
+                    else:
+                        cmd = 'exit \r no'
+                        device.execute_command(cmd)
+                        self.error("Errors when loading configuration. Please check session.log.")
+            if success:
+                cmd = 'exit \r no'
+                device.execute_command(cmd)
+                self.error("Errors when loading configuration. Please check session.log.")
 
 
         # TO DO: confirm if commit replace or commit best-effort
         cmd = 'commit'
         success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
 
         cmd = 'end'
         success, output = device.execute_command(cmd)
-        print cmd, '\n', output, "<-----------------", success
+
+        return True
+
+    def _wait_for_final_band(self, device):
+         # Wait for all nodes to Final Band
+        timeout = 600
+        poll_time = 20
+        time_waited = 0
+        xr_run = "IOS XR RUN"
+
+        success = False
+        cmd = "show platform vm"
+        while 1:
+            # Wait till all nodes are in XR run state
+            time_waited += poll_time
+            if time_waited >= timeout:
+                break
+            time.sleep(poll_time)
+            success, output = device.execute_command(cmd)
+            if success:
+                if self._check_sw_status(output):
+                    return True
+
+        # Some nodes did not come to FINAL Band
+        return False
+
+    def _check_sw_status(self, output):
+        lines = output.split('\n')
+
+        for line in lines:
+            line = line.strip()
+            if len(line) > 0 and line[0].isdigit():
+                sw_status = line[48:63].strip()
+                if sw_status != "FINAL Band":
+                    return False
+        return True
+
+    def _post_status(self, msg):
+        if self.csm_ctx:
+            self.csm_ctx.post_status(msg)
+
+
 
 
     def start(self, device, *args, **kwargs):
@@ -153,61 +195,37 @@ class MigrateConfigurationToExrPlugin(IPlugin):
 
         self.log(self.NAME + " Plugin is running")
 
-        """
 
-        # checked: migrate config file to new config - need Eddie's tool
 
-        date = self._get_nox_binary_publish_date()
 
-        need_new_nox = False
+        self._post_status("Waiting for all nodes to come to FINAL Band.")
+        if not self._wait_for_final_band(device):
+            self.error("Some nodes did not come to FINAL Band. Please load the configuration files at your discretion.")
 
-        if os.path.isfile(fileloc + '/' + NOX_PUBLISH_DATE):
-            with open(fileloc + '/' + NOX_PUBLISH_DATE, 'r') as f:
-                current_date = f.readline()
 
-            if date != current_date:
-                need_new_nox = True
 
+        self._post_status("Applying the migrated admin configuration first.")
+        cmd = 'admin'
+        success, output = device.execute_command(cmd)
+        if success:
+            #self._apply_config(device, repo_str, filename + "_admin")
+            cmd = 'exit'
+            device.execute_command(cmd)
         else:
-            need_new_nox = True
+            self.error("Cannot enter admin mode on device. Please check session.log.")
 
-        if need_new_nox:
-            self._get_file_http(fileloc)
-            with open(fileloc + '/' + NOX_PUBLISH_DATE, 'w') as nox_publish_date_file:
-                nox_publish_date_file.write(date)
-
-        """
-
-        """
-
-        commands = [subprocess.Popen(["chmod", "+x", fileloc + '/' + NOX_FILENAME]), subprocess.Popen([fileloc + '/' + NOX_FILENAME, "-f", fileloc + '/' + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
+        if os.path.isfile(fileloc + os.sep + filename + "_breakout"):
+            self._post_status("Applying the breakout configuration to device.")
+            self._apply_config(device, repo_str, filename + "_breakout")
 
 
-        nox_output, nox_error = commands[1].communicate()
+        self._post_status("Applying the configuration to device.")
+        self._apply_config(device, repo_str, filename)
 
-        print nox_output
-        print nox_error
-        conversion_success = self._is_conversion_successful(nox_output)
-
-        if conversion_success:
-
-            print "conversion is successful"
-            self.csm_ctx.post_status("finished converting config")
-
-        else:
-            self.error("configuration conversion is not successful.")
-
-            #self._copy_file_to_device(device, repo_str, filename, 'disk0:/')
-
-
-            # Yet to test: apply the config
-            #self._apply_config(device, filename)
-        """
 
 
 
         #return True
-
 
 def main():
     device = Device(["telnet://root:root@172.25.146.221:2005"])
@@ -216,7 +234,7 @@ def main():
     repo = 'tftp://1.75.1.1/joydai'
 
     device.connect()
-    migration = MigrateToExrPlugin()
+    migration = MigrateConfigurationToExrPlugin()
     migration.start(device, repository=repo, fileloc = '../../../../csm_data/migration')
 
 

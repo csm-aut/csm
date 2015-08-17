@@ -96,7 +96,7 @@ plugins = []
 plugin_map = defaultdict(list)
 
 plugin_types = ["DEACTIVATE","REMOVE", "ADD","UPGRADE", "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE",
-                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT", "PRE_MIGRATE", "MIGRATE", "POST_MIGRATE"]
+                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT", "PRE_MIGRATE", "MIGRATE_SYSTEM", "MIGRATE_CONFIG", "POST_MIGRATE"]
 phases = {
     "POLL":["POLL"],
     "ADD":["ADD"],
@@ -115,11 +115,13 @@ phases = {
         "PRE_UPGRADE_AND_POST_UPGRADE"
     ],
     "PRE_MIGRATE": ["PRE_MIGRATE"],
-    "MIGRATE": ["MIGRATE"],
+    "MIGRATE_SYSTEM": ["MIGRATE_SYSTEM"],
+    "MIGRATE_CONFIG": ["MIGRATE_CONFIG"],
     "POST_MIGRATE": ["POST_MIGRATE"],
     "ALL_FOR_MIGRATE": [
         "PRE_MIGRATE",
-        "MIGRATE",
+        "MIGRATE_SYSTEM",
+        "MIGRATE_CONFIG",
         "POST_MIGRATE",
     ],
     "ALL": [

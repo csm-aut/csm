@@ -28,7 +28,7 @@
 
 import os
 
-from constants import get_migration_directory
+#from constants import get_migration_directory
 
 
 

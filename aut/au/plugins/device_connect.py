@@ -58,13 +58,9 @@ class DeviceConnectPlugin(IPlugin):
             self.log(
                 "Device {} connected successfully.".format(device.name)
             )
-            success_show_version, output = device.execute_command("show version")
-            if success_show_version:
-                match = re.search('.vm',output)
-                if not match:
-                    get_package(device, 'exr')
-                else:
-                    get_package(device, 'xr')
+
+            get_package(device)
+
             return True
 
         self.error(

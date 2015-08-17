@@ -583,8 +583,10 @@ class Manager(object):
             plugins_types = "REMOVE"
         elif self.options.pre_migrateset:
             plugins_types = "PRE_MIGRATE"
-        elif self.options.migrate_system_set or self.options.migrate_config_set:
-            plugins_types = "MIGRATE"
+        elif self.options.migrate_system_set:
+            plugins_types = "MIGRATE_SYSTEM"
+        elif self.options.migrate_config_set:
+            plugins_types = "MIGRATE_CONFIG"
         elif self.options.post_migrate_set:
             plugins_types = "POST_MIGRATE"
         elif self.options.all_for_migrate_set:

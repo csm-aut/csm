@@ -223,7 +223,7 @@
       $('#software-packages-panel').hide();
       $('#dependency-panel').hide();
 
-      if (has_one_of_these(install_actions, [MIGRATE_SYSTEM_TO_EXR]) || has_one_of_these(install_actions, [MIGRATE_CONFIG_TO_EXR])) {
+      if (has_one_of_these(install_actions, [PRE_MIGRATE]) || has_one_of_these(install_actions, [MIGRATE_SYSTEM_TO_EXR]) || has_one_of_these(install_actions, [MIGRATE_CONFIG_TO_EXR])) {
 
         $('#add-widget-panel').show();
       }
@@ -264,7 +264,7 @@
     }
     
     function should_enable_widget_panel(install_actions) {
-      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE, MIGRATE_SYSTEM_TO_EXR, MIGRATE_CONFIG_TO_EXR]) ) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE, PRE_MIGRATE, MIGRATE_SYSTEM_TO_EXR, MIGRATE_CONFIG_TO_EXR]) ) {
         $('#widget-panel').show();
       } else {
         $('#widget-panel').hide();

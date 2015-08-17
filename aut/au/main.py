@@ -42,8 +42,9 @@ from au.Logfile import Logfile
 
 import os
 import sys
-
 import datetime
+
+from csmserver.models import Host, ConnectionParam
 
 
 def run():
@@ -101,6 +102,17 @@ def execute(options, args, parser, stdout=None, stderr=None):
         if not txt_devices:
             print("Warning: '{}' is empty.".format(options.devices))
         devices += txt_devices
+
+    if options.pre_migrateset or options.migrate_system_set or options.migrate_config_set:
+
+        for device in devices:
+
+            host = device.name.strip().replace('.', '_').replace(':','-')
+            directory = options.migdir + host
+
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+
 
     for device in devices:
         if options.session_log:

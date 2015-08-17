@@ -34,7 +34,7 @@ import importlib
 import tarfile
 import traceback
 
-from constants import get_autlogs_directory
+from constants import get_autlogs_directory, get_migration_directory
 
 def import_class(cl):
     d = cl.rfind(".")
@@ -59,6 +59,15 @@ def create_log_directory(host_or_ip, id):
         makedirs(directory)
             
     return host + '-' + date_string + '-' + str(id)
+
+def create_directory_in_migration(host_or_ip):
+    host = host_or_ip.strip().replace('.', '_').replace(':','-')
+    directory = get_migration_directory() + host
+
+    if not path.exists(directory):
+        makedirs(directory)
+
+    return host
 
 def create_directory(directory):
     # Creates the a directory if not exist
