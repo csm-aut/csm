@@ -37,7 +37,8 @@ STRING2 = "WERTY[}{|=+-_)~abcdenojk54321ZpASstuUI09876OP/?.,<>';:]QfghiXCVBNMlmv
 PREFIX = 'encrypted'
 ENCRYPT = {'key' : 'csmserver', 'string1' : STRING1, 'string2' : STRING2}
 
-CURRENT_SCHEMA_VERSION = 1
+# Make sure the CURRENT_SCHEMA_VERSION is an integer
+CURRENT_SCHEMA_VERSION = 2
 ENABLE_DEBUG=False
 
 """
@@ -118,6 +119,7 @@ engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600
 DBSession = scoped_session(sessionmaker(autocommit=False,
                                         autoflush=False,
                                         bind=engine))
+
 
 if __name__ == '__main__': 
     pass

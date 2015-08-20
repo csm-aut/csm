@@ -54,7 +54,7 @@ from mailer import send_install_status_email
 
 import traceback
 
-lock = threading.Lock()
+lock = threading.RLock()
 in_progress_hosts = []
 
 class SoftwareManager(threading.Thread):
@@ -89,7 +89,7 @@ class SoftwareManager(threading.Thread):
         db_session = DBSession()
         try:
             # Check if Scheduled Installs are allowed to run.
-            if not can_install(db_session):
+            if not db_session.query(SystemOption).first().can_install:
                 return
                 
             resultSet = db_session.query(InstallJob).filter(InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
@@ -99,7 +99,7 @@ class SoftwareManager(threading.Thread):
                 for install_job in resultSet:
                     if install_job.status != JobStatus.FAILED:
                         # If there is pending download, don't submit the install job
-                        if is_pending_on_download(download_job_key_dict, install_job):
+                        if self.is_pending_on_download(download_job_key_dict, install_job):
                             continue
                         
                         # This install job has a dependency, check if the expected criteria is met
@@ -126,24 +126,16 @@ class SoftwareManager(threading.Thread):
         finally:
             db_session.close()
 
-def get_download_job_key(install_job, filename):
-    return "{}{}{}{}".format(install_job.user_id, filename, install_job.server_id, install_job.server_directory)
+    def get_download_job_key(self, install_job, filename):
+        return "{}{}{}{}".format(install_job.user_id, filename, install_job.server_id, install_job.server_directory)
 
-def is_pending_on_download(download_job_key_dict, install_job):
-    pending_downloads = install_job.pending_downloads.split(',')
-    for filename in pending_downloads:
-        download_job_key = get_download_job_key(install_job, filename)
-        if download_job_key in download_job_key_dict:
-            return True
-    return False
-
-def remove_host_from_in_progress(host_id):
-    with lock:
-        if host_id is not None and host_id in in_progress_hosts: in_progress_hosts.remove(host_id)
-        
-def can_install(db_session):
-    # Check if scheduled jobs are allowed to run  
-    return SystemOption.get(db_session).can_install
+    def is_pending_on_download(self, download_job_key_dict, install_job):
+        pending_downloads = install_job.pending_downloads.split(',')
+        for filename in pending_downloads:
+            download_job_key = self.get_download_job_key(install_job, filename)
+            if download_job_key in download_job_key_dict:
+                return True
+        return False
                 
 class InstallWorkUnit(WorkUnit):
     def __init__(self, job_id, host_id):
@@ -168,8 +160,8 @@ class InstallWorkUnit(WorkUnit):
             if install_job is None:
                 # This is normal because of race condition. It means the job is already deleted (completed).
                 return
-             
-            if not can_install(db_session):
+          
+            if not db_session.query(SystemOption).first().can_install:
                 # This will halt this host that has already been queued
                 return
             
@@ -185,10 +177,11 @@ class InstallWorkUnit(WorkUnit):
             install_job.start_time = datetime.datetime.utcnow()
             install_job.set_status(JobStatus.PROCESSING)            
             install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
-            db_session.commit()
            
             ctx = InstallContext(host, db_session, install_job)
-            ctx.operation_id = get_last_operation_id(db_session, install_job)
+            ctx.operation_id = self.get_last_operation_id(db_session, install_job)
+            
+            db_session.commit()
            
             handler = handler_class()
             handler.execute(ctx)
@@ -196,76 +189,82 @@ class InstallWorkUnit(WorkUnit):
             if ctx.success:    
                 # Update the software
                 self.get_software(db_session, ctx)                
-                archive_install_job(db_session, ctx, install_job, JobStatus.COMPLETED)                
+                self.archive_install_job(db_session, ctx, install_job, JobStatus.COMPLETED)                
             else:
-                archive_install_job(db_session, ctx, install_job, JobStatus.FAILED)
+                self.archive_install_job(db_session, ctx, install_job, JobStatus.FAILED)
                 
             # db_session.commit()
             
         except: 
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
-                archive_install_job(db_session, ctx, install_job, JobStatus.FAILED, trace=traceback.format_exc())
+                self.archive_install_job(db_session, ctx, install_job, JobStatus.FAILED, trace=traceback.format_exc())
                 # db_session.commit()
             except:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
             # Must remove the host from the in progress list
-            remove_host_from_in_progress(self.host_id)
+            self.remove_host_from_in_progress(self.host_id)
             db_session.close()     
 
-def get_last_operation_id(db_session, install_activate_job, trace=None):
-    operation_id = -1
-    if install_activate_job.install_action == InstallAction.INSTALL_ACTIVATE:
-        install_add_job = get_last_successful_install_job(db_session, install_activate_job.host_id)
-        if install_add_job is not None:
-            # Check if Last Install Add and Activate have the same packages.
-            # If they have, then return the operation id.
-            install_add_packages = install_add_job.packages.split(',') if not is_empty(install_add_job.packages) else []
-            install_activate_packages = install_activate_job.packages.split(',') if not is_empty(install_activate_job.packages) else []
-            if len(install_add_packages) == len(install_activate_packages):
-                for install_activate_package in install_activate_packages:
-                    if install_activate_package not in install_add_packages:
-                        return operation_id
-                return install_add_job.operation_id
+    def remove_host_from_in_progress(self, host_id):
+        with lock:
+            if host_id is not None and host_id in in_progress_hosts: in_progress_hosts.remove(host_id)
+        
+    def get_last_operation_id(self, db_session, install_activate_job, trace=None):
+        
+        if install_activate_job.install_action == InstallAction.INSTALL_ACTIVATE:
+            install_add_job = self.get_last_successful_install_job(db_session, install_activate_job.host_id)
+            if install_add_job is not None:
+                # Check if Last Install Add and Activate have the same packages.
+                # If they have, then return the operation id.
+                install_add_packages = install_add_job.packages.split(',') if not is_empty(install_add_job.packages) else []
+                install_activate_packages = install_activate_job.packages.split(',') if not is_empty(install_activate_job.packages) else []
+                if len(install_add_packages) == len(install_activate_packages):
+                    for install_activate_package in install_activate_packages:
+                        if install_activate_package not in install_add_packages:
+                            return -1
+                    return install_add_job.operation_id
             
-    return operation_id
+        return -1
 
-def get_last_successful_install_job(db_session, host_id):
-    return db_session.query(InstallJobHistory). \
-        filter((InstallJobHistory.host_id == host_id), and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
-        order_by(InstallJobHistory.status_time.desc()).first()
+    def get_last_successful_install_job(self, db_session, host_id):
+        return db_session.query(InstallJobHistory). \
+            filter((InstallJobHistory.host_id == host_id), and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
+            order_by(InstallJobHistory.status_time.desc()).first()
     
-def archive_install_job(db_session, ctx, install_job, job_status, trace=None):
-    install_job.set_status(job_status)
-    if trace is not None:
-        install_job.trace = trace
-        
-    install_job_history = InstallJobHistory()
-    install_job_history.install_job_id = install_job.id
-    install_job_history.host_id = install_job.host_id
-    install_job_history.install_action = install_job.install_action
-    install_job_history.packages = install_job.packages
-    install_job_history.scheduled_time = install_job.scheduled_time
-    install_job_history.start_time = install_job.start_time
-    install_job_history.set_status(job_status)
-    install_job_history.session_log = install_job.session_log
-    install_job_history.created_by = install_job.created_by
-    install_job_history.trace = install_job.trace
+    def archive_install_job(self, db_session, ctx, install_job, job_status, trace=None):
     
-    if ctx is not None:
-        install_job_history.operation_id = ctx.operation_id
+        install_job_history = InstallJobHistory()
+        install_job_history.install_job_id = install_job.id
+        install_job_history.host_id = install_job.host_id
+        install_job_history.install_action = install_job.install_action
+        install_job_history.packages = install_job.packages
+        install_job_history.scheduled_time = install_job.scheduled_time
+        install_job_history.start_time = install_job.start_time
+        install_job_history.set_status(job_status)
+        install_job_history.session_log = install_job.session_log
+        install_job_history.created_by = install_job.created_by
+        install_job_history.trace = trace
+    
+        if ctx is not None:
+            install_job_history.operation_id = ctx.operation_id
 
-    # Only delete the install job if it is completed successfully. 
-    # Failed job should still be retained in the InstallJob table.
-    if job_status == JobStatus.COMPLETED:
-        db_session.delete(install_job)
+        # Only delete the install job if it is completed successfully. 
+        # Failed job should still be retained in the InstallJob table.
+        if job_status == JobStatus.COMPLETED:
+            db_session.delete(install_job)
+        else:
+            install_job.set_status(job_status)
+            if trace is not None:
+                install_job.trace = trace
         
-    db_session.add(install_job_history)
-    db_session.commit()
+        
+        db_session.add(install_job_history)
+        db_session.commit()
     
-    # Send notification error
-    send_install_status_email(install_job_history) 
+        # Send notification error
+        send_install_status_email(install_job_history) 
     
 if __name__ == '__main__': 
     pass

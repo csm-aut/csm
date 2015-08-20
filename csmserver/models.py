@@ -35,6 +35,7 @@ from salts import encode, decode
 from database import engine
 from database import DBSession 
 from database import STRING1, STRING2
+from database import CURRENT_SCHEMA_VERSION
 
 from constants import JobStatus
 from constants import UserPrivilege
@@ -48,6 +49,13 @@ from werkzeug import check_password_hash
 from werkzeug import generate_password_hash 
 from ldap_utils import ldap_auth
 from csm_exceptions import CSMLDAPException
+
+from flask import g, Flask
+
+from itsdangerous import (TimedJSONWebSignatureSerializer
+                          as Serializer, BadSignature, SignatureExpired)
+
+from flask.ext.httpauth import HTTPBasicAuth
 
 # Contains information for password encryption
 encrypt_dict = None
@@ -151,7 +159,25 @@ class User(Base):
             return user, False
         
         return user, user.check_password(password)
+    
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer('CSMSERVER')
+        db_session = DBSession()
+        try:
+            data = s.loads(token)
+        except SignatureExpired:
+            return None    # valid token, but expired
+        except BadSignature:
+            return None    # invalid token
+        user = db_session.query(User).filter_by(id = data['id']).first()
+        return user
 
+    def generate_auth_token(self, expiration=600):
+        s = Serializer('CSMSERVER', expires_in=expiration)
+        return s.dumps({'id': self.id})
+
+    
     # Hooks for Flask-Login.
     #
     # As methods, these are only valid for User instances, so the
@@ -475,6 +501,8 @@ class Server(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     
+    regions = relationship('Region', order_by="Region.name", secondary=lambda: RegionServer)
+    
     @property
     def password(self):
         global encrypt_dict
@@ -506,10 +534,12 @@ class SMTPServer(Base):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
 
+
 RegionServer = Table('region_server', Base.metadata,
     Column('region_id', Integer, ForeignKey("region.id"), primary_key=True),
     Column('server_id', Integer, ForeignKey("server.id"), primary_key=True)
 )
+
 
 class Preferences(Base):
     __tablename__ = 'preferences'
@@ -581,18 +611,24 @@ class DownloadJobHistory(Base):
         self.status = status        
         self.status_time = datetime.datetime.utcnow()
 
+class CCOCatalog(Base):
+    __tablename__ = 'cco_catalog'
+    
+    platform = Column(String(40), primary_key=True)
+    release = Column(String(40), primary_key=True)
+    
 class SMUMeta(Base):
     __tablename__ = 'smu_meta'
     # name is like asr9k_px_4.2.3
     platform_release = Column(String(40), primary_key=True)
     created_time = Column(String(30)) # Use string instead of timestamp
-    downloaded_time = Column(String(30))
     smu_software_type_id = Column(String(20))
     sp_software_type_id = Column(String(20))
     file_suffix = Column(String(10))
     pid = Column(String(200))
     mdf_id = Column(String(200))
-     
+    retrieval_time = Column(DateTime)
+    
     smu_info = relationship("SMUInfo",
         backref="smu_meta",
         cascade="all, delete, delete-orphan")
@@ -636,7 +672,7 @@ class SMUInfo(Base):
 class SystemVersion(Base): 
     __tablename__ = 'system_version'
     id = Column(Integer, primary_key=True)
-    schema_version = Column(Integer, default=1)
+    schema_version = Column(Integer, default=CURRENT_SCHEMA_VERSION)
     software_version = Column(String(10), default='1.0')
     
     @classmethod
@@ -664,6 +700,8 @@ class SystemOption(Base):
     base_url = Column(String(100))
     enable_ldap_auth = Column(Boolean, default=False)
     ldap_server_url = Column(String(100))
+    enable_cco_lookup = Column(Boolean, default=True)
+    cco_lookup_time = Column(DateTime)
     
     @property
     def default_host_password(self):
@@ -696,11 +734,9 @@ class Log(Base):
     __tablename__ = 'log'
     
     id = Column(Integer, primary_key=True)
-    host_id = Column(Integer)
     level = Column(String(20))
     trace = Column(Text)
     msg = Column(Text)
-    log = Column(Text)
     created_time = Column(DateTime)
 
 class CSMMessage(Base):

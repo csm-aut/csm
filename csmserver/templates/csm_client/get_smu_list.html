@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
+{% from 'host/common.html' import alert_cco_lookup_disabled %}
+{% from 'host/common.html' import cco_lookup_last_retrieved %}
 
 {% block extra_head %}
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
@@ -121,6 +123,10 @@
       }).on('draw.dt', function ( e, settings, json ) {
         var rows = smu_table.api().ajax.json().data.length; 
         $('#badge-smu-list').html(rows); 
+        
+        // Update the CCO retrieval time
+        get_retrieval_elapsed_time();
+        
         spinner.hide();
       });
     
@@ -221,16 +227,20 @@
         }
       }
        
-      /*
-      $('#smu-datatable tbody').on('click', 'tr', function () {
-        $(this).toggleClass('selected');
-        //alert( smu_table.api().rows('.selected').data().length +' row(s) selected' );
-      });
-      
-      $('#sp-datatable tbody').on('click', 'tr', function () {
-        $(this).toggleClass('selected');
-      });
-      */
+      function get_retrieval_elapsed_time() {
+        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
+        if (cco_lookup_enabled) {
+          $.ajax({
+            url: "{{ url_for('api_get_smu_meta_retrieval_elapsed_time', platform=platform, release=release) }}",
+            dataType: 'json',
+            success: function(response) {
+              $.each(response, function(index, element) {
+                $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time);
+              });
+            }
+          });
+        }
+      }
       
       function refresh_smu_list_table() {
         smu_table.api().ajax.url("{{ url_for('api_get_smu_list', platform=platform, release=release) }}" + 
@@ -272,7 +282,7 @@
 
           retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), preferred_server_directory, null)
         } else {
-          bootbox.alert("No SMU or Service Pack was selected.");
+          bootbox.alert("No files was selected.");
         }
       });
       
@@ -296,29 +306,41 @@
         if ($('#dialog_server').val() == -1) {
           bootbox.alert("Server Repository has not been specified.");
           return false;
-        } 
-        
-        server_id = $('#dialog_server').val();
-        server_directory = $('#dialog_server_directory').val();  
-        
-        // Remember the selections
-        $.cookie('server_id', server_id);
-        $.cookie('server_directory', server_directory);      
-        
-        var validate_object = {
-          form: null,
-          hostname: null,
-          server_id: server_id,
-          server_directory: server_directory,
-          software_packages: software_packages,
-          spinner: browse_spinner,
-          check_missing_file_on_server: server_id > -1,
-          callback: on_finish_validate,
-          pending_downloads: null
-        };
-           
-        on_validate_prerequisites_and_files_on_server(validate_object);           
+        }      
+        check_server_reachability_before_proceeding($('#dialog_server').val(), $('#dialog_server_directory').val());         
       });
+      
+      function check_server_reachability_before_proceeding(server_id, server_directory) {
+        $.ajax({
+          url: "/api/get_server_file_dict/" + server_id,
+          dataType: 'json',
+          data: { server_directory: server_directory} ,
+          success: function (response) {          
+            if (response.status == 'Failed') {    
+              bootbox.alert("Unable to proceed.  Either the server repository is not reachable or server directory does not exist.");
+            } else {
+              // Remember the selections
+              $.cookie('server_id', server_id);
+              $.cookie('server_directory', server_directory);      
+        
+              var validate_object = {
+                form: null,
+                hostname: null,
+                server_id: server_id,
+                server_directory: server_directory,
+                software_packages: software_packages,
+                spinner: browse_spinner,
+                install_actions: null,
+                check_missing_file_on_server: server_id > -1,
+                callback: on_finish_validate,
+                pending_downloads: null
+              };
+           
+              on_validate_prerequisites_and_files_on_server(validate_object);   
+            }            
+          }
+        });      
+      }
       
       function on_finish_validate(validate_object) {
         if (validate_object.pending_downloads == null) {
@@ -375,6 +397,10 @@
       $("#move-forward").on("click", function() {
         move_forward($('#smu-details-table'), $('#smu-name-title'));
       });
+      
+      setInterval( function () {   
+        get_retrieval_elapsed_time();                           
+      }, 10000 );
     });
   </script>
   
@@ -467,13 +493,10 @@
 
   <div class="row">
     <div class="col-sm-12">
+      {% if not system_option.enable_cco_lookup %} 
+        {{ alert_cco_lookup_disabled() }}
+      {% endif %}
           
-       <!--
-       <div class="col-sm-2">
-         Last Updated: <span id="creation-date"></span>
-       </div>
-       -->
-       
        <div class="col-sm-offset-8 col-sm-2"> 
          <div class="input-group">
            <span id="filter-icon" title="SMU/Service Pack Filter" class="input-group-addon glyphicon glyphicon-filter"></span>
@@ -489,7 +512,7 @@
              <span class="caret"></span>
            </button>
            <ul class="dropdown-menu">
-             <li id="download-software"><a href="javascript://">Download SMU/Service Pack</a></li>
+             <li id="download-software"><a href="javascript://">Download Selected Files</a></li>
            </ul>
         </div>          
       </div>

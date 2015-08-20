@@ -44,7 +44,7 @@ from utils import create_log_directory
 
 import traceback
     
-lock = threading.Lock()
+lock = threading.RLock()
 in_progress_jobs = {}
 
 class InventoryManager(threading.Thread):
@@ -84,7 +84,8 @@ class InventoryManager(threading.Thread):
             if job_id in in_progress_jobs:
                 return False
             
-        in_progress_jobs[job_id] = job_id
+            in_progress_jobs[job_id] = job_id
+            
         self.pool.submit(InventoryWorkUnit(job_id))
 
         return True
@@ -127,11 +128,11 @@ class InventoryWorkUnit(WorkUnit):
             handler.execute(ctx)
             
             if ctx.success:
-                archive_inventory_job(db_session, inventory_job, JobStatus.COMPLETED)
+                self.archive_inventory_job(db_session, inventory_job, JobStatus.COMPLETED)
             else:
                 # removes the host object as host.packages may have been modified.
                 db_session.expunge(host)
-                archive_inventory_job(db_session, inventory_job, JobStatus.FAILED)
+                self.archive_inventory_job(db_session, inventory_job, JobStatus.FAILED)
             
             # Reset the pending retrieval flag
             inventory_job.pending_submit = False
@@ -140,7 +141,7 @@ class InventoryWorkUnit(WorkUnit):
         except:
             try:
                 logger.exception('InventoryManager hit exception - inventory job = %s', self.job_id)
-                archive_inventory_job(db_session, inventory_job, JobStatus.FAILED, trace=sys.exc_info)
+                self.archive_inventory_job(db_session, inventory_job, JobStatus.FAILED, trace=sys.exc_info)
                 # Reset the pending retrieval flag
                 inventory_job.pending_submit = False
                 db_session.commit()
@@ -151,18 +152,18 @@ class InventoryWorkUnit(WorkUnit):
                 if self.job_id is not None and self.job_id in in_progress_jobs: del in_progress_jobs[self.job_id]
             db_session.close()       
 
-def archive_inventory_job(db_session, inventory_job, job_status, trace=None):
-    inventory_job.set_status(job_status)
+    def archive_inventory_job(self, db_session, inventory_job, job_status, trace=None):
+        inventory_job.set_status(job_status)
     
-    hist = InventoryJobHistory()
-    hist.host_id = inventory_job.host_id
-    hist.set_status(job_status)
-    hist.session_log = inventory_job.session_log
+        hist = InventoryJobHistory()
+        hist.host_id = inventory_job.host_id
+        hist.set_status(job_status)
+        hist.session_log = inventory_job.session_log
         
-    if trace is not None:
-        hist.trace = traceback.format_exc()
+        if trace is not None:
+            hist.trace = traceback.format_exc()
     
-    db_session.add(hist)
+        db_session.add(hist)
 
 if __name__ == '__main__':
     pass

@@ -28,6 +28,9 @@ from sqlalchemy.exc import IntegrityError
 from database import DBSession
 from models import SMUMeta
 from models import SMUInfo
+from models import CCOCatalog
+from models import logger
+from models import SystemOption
 from constants import PackageType
 
 from smu_advisor import get_smus_exclude_supersedes_include_prerequisites
@@ -35,7 +38,7 @@ from collections import OrderedDict
 
 import requests
 import time
-import collections
+import datetime
 
 CATALOG = 'catalog.dat'
 IOSXR_URL = 'http://www.cisco.com/web/Cisco_IOS_XR_Software/SMUMetaFile'
@@ -78,7 +81,7 @@ class SMUInfoLoader(object):
     """
     Example: platform = asr9k_px, release = 4.2.1
     """
-    def __init__(self, platform, release):
+    def __init__(self, platform, release, refresh=False):
         self.platform = platform
         self.release = release
         self.smu_meta = None
@@ -86,38 +89,49 @@ class SMUInfoLoader(object):
         self.service_packs = {}
         self.in_transit_smus = {}
         
-        db_session = DBSession()
-        self.smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
-        if self.smu_meta == None:  
-            self.get_smu_info_from_cco(db_session, platform + '_' + release)  
+        if SystemOption.get(DBSession()).enable_cco_lookup or refresh:
+            self.get_smu_info_from_cco(platform, release)
         else:
-            if self.smu_meta.downloaded_time is not None:
-                downloaded_date = self.smu_meta.downloaded_time.split()[0]
-                current_date = time.strftime('%m/%d/%Y')
-            
-                if downloaded_date != current_date:
-                    db_session.delete(self.smu_meta)
-                    self.get_smu_info_from_cco(db_session, platform + '_' + release)  
-                else:
-                    self.smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU)
-                    self.service_packs = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SERVICE_PACK)
-                    self.in_transit_smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU_IN_TRANSIT)
-   
-    def get_smu_info_from_cco(self, db_session, platform_release):
-       
+            self.get_smu_info_from_db(platform, release)           
+    
+    def get_smu_info_from_db(self, platform, release):
+        self.smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+        if not self.smu_meta is None:
+            self.smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU)
+            self.service_packs = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SERVICE_PACK)                
+            self.in_transit_smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU_IN_TRANSIT)
+        
+    def get_smu_info_from_cco(self, platform, release):
+        same_as_db = False
+        db_session = DBSession()
+        platform_release = platform + '_' + release
         try:
             self.smu_meta = SMUMeta(platform_release=platform_release)
-            # Load the data
+            # Load data from the SMU XML file
             self.load()
             
-            db_session.add(self.smu_meta)
+            db_smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+            if db_smu_meta is not None:               
+                if db_smu_meta.created_time == self.smu_meta.created_time:
+                    same_as_db = True
+                else:
+                    # Delete the existing smu_meta and smu_info for this platform and release
+                    db_session.delete(db_smu_meta)
+            
+            if not same_as_db:    
+                db_session.add(self.smu_meta)
+            else:
+                db_smu_meta.retrieval_time = datetime.datetime.utcnow()
+            
             # Use Flush to detect concurrent saving condition.  It is
             # possible that another process may perform the same save.
             # If this happens, Duplicate Key may result.
             db_session.flush()
             db_session.commit()
+
         except IntegrityError:
             db_session.rollback()
+    
         
     def get_smus_by_package_type(self, smu_list, package_type):
         result_dict = {}
@@ -208,11 +222,12 @@ class SMUInfoLoader(object):
         try:
             xmldoc = minidom.parseString(SMUInfoLoader.get_smu_meta_file(self.platform, self.release))
         except:
-            return        
+            self.get_smu_info_from_db(self.platform, self.release)
+            return
 
         # self._platform = self.getChildElementText(xmldoc, XML_TAG_PLATFORM)
         # self._release = self.getChildElementText(xmldoc, XML_TAG_RELEASE)
-        self.smu_meta.downloaded_time = time.strftime('%m/%d/%Y %I:%M:%S %p')
+        self.smu_meta.retrieval_time = datetime.datetime.utcnow()
         self.smu_meta.created_time = self.getChildElementText(xmldoc, XML_TAG_CREATION_DATE)
         self.smu_meta.file_suffix = self.getChildElementText(xmldoc, XML_TAG_SMU_SUFFIX)
         self.smu_meta.smu_software_type_id = self.getChildElementText(xmldoc, XML_TAG_SMU_SOFTWARE_TYPE_ID)
@@ -264,6 +279,18 @@ class SMUInfoLoader(object):
         else:
             return None
     
+    def get_smu_info_by_id(self, smu_id):
+        for smu in self.smus.values():
+            if smu.id == smu_id:
+                return smu
+        for smu in self.in_transit_smus.values():
+            if smu.id == smu_id:
+                return smu
+        for smu in self.service_packs.values():
+            if smu.id == smu_id:
+                return smu
+        return None
+
     @classmethod   
     def get_smu_meta_file(cls, platform, release):
         try:
@@ -282,6 +309,30 @@ class SMUInfoLoader(object):
         except:
             return None
     
+    @classmethod
+    def get_catalog(cls):
+        db_session = DBSession()        
+        system_option = SystemOption.get(db_session)
+        
+        if system_option.enable_cco_lookup:
+            return SMUInfoLoader.get_catalog_from_cco()
+        else:
+            catalog = {}
+            # Retrieve from the database
+            db_catalog = db_session.query(CCOCatalog).all()
+            if len(db_catalog) > 0:
+                for entry in db_catalog:
+                    if entry.platform in catalog:
+                        release_list = catalog[entry.platform]
+                    else:
+                        release_list = []
+                        catalog[entry.platform] = release_list
+                    
+                    # Inserts release in reverse order (latest release first)
+                    release_list.insert(0, entry.release)
+                    
+            return OrderedDict(sorted(catalog.items()))           
+    
     """
     Returns a sorted dictionary representing the catalog.dat file.
         asr9k_px
@@ -294,7 +345,7 @@ class SMUInfoLoader(object):
             5.0.1, 5.0.0
     """
     @classmethod
-    def get_catalog(cls):
+    def get_catalog_from_cco(cls):
         lines = []
         catalog = {}
     
@@ -325,6 +376,39 @@ class SMUInfoLoader(object):
                     
         return OrderedDict(sorted(catalog.items()))
     
+    
+    """
+    Retrieves all the catalog data and SMU XML file data and updates the database.
+    """
+    @classmethod
+    def refresh_all(cls):
+        db_session = DBSession()
+        
+        catalog = SMUInfoLoader.get_catalog_from_cco()
+        if len(catalog) > 0:
+            system_option = SystemOption.get(db_session)
+            try:
+                # Remove all rows first
+                db_session.query(CCOCatalog).delete()
+            
+                for platform in catalog:
+                    releases = catalog[platform]
+                    for release in releases:
+                        cco_catalog = CCOCatalog(platform=platform,release=release)
+                        db_session.add(cco_catalog)
+                        
+                        # Now, retrieve from SMU XML file
+                        SMUInfoLoader(platform, release, refresh=True)
+                
+                system_option.cco_lookup_time = datetime.datetime.utcnow()
+                db_session.commit()
+                return True
+            except:
+                logger.exception('refresh_all hit exception')
+                db_session.rollback()  
+            
+        return False
+                
     """
     Returns an array of dictionary items { token : message }
     csmserver.msg file has token like
@@ -359,8 +443,10 @@ class SMUInfoLoader(object):
             csm_messages.append({ 'token' : date_token, 'message' : message })
         
         return csm_messages
-        
+    
 if __name__ == '__main__':
     #smu_loader = SMUInfoLoader('asr9k_px', '4.2.1')
-    SMUInfoLoader.get_cco_csm_messages()
+    # SMUInfoLoader.get_cco_csm_messages()
+    # print(SMUInfoLoader.get_smu_meta_file_timestamp('asr9k_px', '5.3.0'))
+    SMUInfoLoader.refresh_all()
 

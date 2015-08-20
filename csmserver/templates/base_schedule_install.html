@@ -1,6 +1,7 @@
 
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
+{% from 'host/common.html' import alert_cco_lookup_disabled %}
 
 {% macro common_schedule_install_gui() %}
 
@@ -173,29 +174,6 @@
       }
       toggle_ui();
     });
-
-    function has_one_of_these(install_actions, search_items) {
-      if (install_actions != null) {
-        for (i = 0; i < install_actions.length; i++) {
-           if ($.inArray(install_actions[i], search_items) > -1) {
-             return true;
-           }         
-        }
-      }
-      return false;
-    }
-    
-    function has_one_of_these_only(install_actions, search_items) {
-      if (install_actions != null) {
-        for (i = 0; i < install_actions.length; i++) {
-           if ($.inArray(install_actions[i], search_items) == -1) {
-             return false;
-           }         
-        }
-        return true;
-      }
-     return false;
-    }
 
     function toggle_ui() {
       var install_actions = $('#install_action').val();
@@ -503,7 +481,7 @@
         return false;
       }
       
-      if (has_one_of_these(install_actions, [INSTALL_ADD]) && software_packages.length == 0) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE]) && software_packages.length == 0) {
         bootbox.alert("Software packages has not been specified.");
         return false;
       }
@@ -529,20 +507,29 @@
 
     // Called by the $('#form').submit() function.
     function on_final_submit(current_form, hostname) {
+      var validate_object = {
+        form: current_form,
+        hostname: hostname,
+        server_id: $('#hidden_server').val(),
+        server_directory: $('#hidden_server_directory').val(),
+        software_packages: $('#software-packages').val(),
+        spinner: submit_spinner,
+        install_actions: $('#install_action').val(),
+        check_missing_file_on_server: $('#hidden_server').val() > -1,
+        callback: on_finish_validate,
+        pending_downloads: null
+      };
+        
       // If hostname is null, this method is called by Batch Installs
       if (has_one_of_these($('#install_action').val(), [INSTALL_ADD]) ) {  
-        var validate_object = {
-          form: current_form,
-          hostname: hostname,
-          server_id: $('#hidden_server').val(),
-          server_directory: $('#hidden_server_directory').val(),
-          software_packages: $('#software-packages').val(),
-          spinner: submit_spinner,
-          check_missing_file_on_server: $('#hidden_server').val() > -1,
-          callback: on_finish_validate
-        };
-
-        on_validate_prerequisites_and_files_on_server(validate_object);
+        on_validate_prerequisites_and_files_on_server(validate_object);      
+      } else if (has_one_of_these($('#install_action').val(), [INSTALL_ACTIVATE]) ) { 
+      
+        // Check for packages that may cause router to reload during Activate.
+        // Turn off check_missing_file_on_server as it is only used for
+        // Install Add.
+        validate_object.check_missing_file_on_server = false;
+        check_need_reload(validate_object);
         
       } else {
         current_form.submit();
@@ -679,6 +666,7 @@
       }
       
       $('#badge-smu-list').html(rows);
+      get_retrieval_elapsed_time();
       browse_spinner.hide();
     });
 
@@ -1238,6 +1226,33 @@
     
     }
     
+    function get_retrieval_elapsed_time() {
+      if (platform.length > 0 && release.length > 0) {
+        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
+        if (cco_lookup_enabled) {
+          $.ajax({
+            url: "/api/get_smu_meta_retrieval_elapsed_time/platform/" + platform + "/release/" + release,
+            dataType: 'json',
+            success: function(response) {
+              $.each(response, function(index, element) {
+                $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time);
+              });
+            }
+          });
+        }
+      }
+    }
+      
+    $('#cisco-software-dialog').on('shown.bs.modal', function(e) {
+      timer = setInterval( function () {
+        get_retrieval_elapsed_time();
+      }, 10000 ); 
+    });
+    
+    $('#cisco-software-dialog').on('hidden.bs.modal', function(e) {
+      clearInterval(timer);
+    });
+    
     $('#host-software-dialog').on('shown.bs.modal', function(e) {
       timer = setInterval( function () {
         var hostname = $('#host_software_dialog_host').val();
@@ -1352,8 +1367,13 @@
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal">x</button>
           <div class="form-group ">
+          
+            {% if not system_option.enable_cco_lookup %} 
+              {{ alert_cco_lookup_disabled() }}
+            {% endif %}
+      
             <div class="dropdown col-sm-4">
-              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Lookup SMUs
+              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">CCO Lookup
               <span class="caret"></span></button>
               <ul id="dropdown-cisco-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
             </div>
