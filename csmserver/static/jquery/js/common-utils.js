@@ -322,8 +322,8 @@ function check_missing_files_on_server(validate_object) {
 function display_missing_files_dialog(validate_object, missing_file_list, downloadable_file_list) {
   bootbox.dialog({
     message: missing_file_list,
-    title: "Following files are missing on the server repository.  Those that are identified as 'Downloadable' can be downloaded from CCO.  If you choose to download them, " + 
-        "the scheduled installation will not proceed until the files are successfully downloaded and copied to the server repository.",
+    title: "Following files are missing on the server repository.  Those that are identified as 'Downloadable' can be downloaded from CCO.  If there is an scheduled installation that depends on these files, " + 
+        "it will not proceed until the files are successfully downloaded and copied to the server repository.",
     buttons: {
       primary: {
         label: "Download",
@@ -374,7 +374,7 @@ function check_cisco_authentication(validate_object) {
 function display_server_unreachable_dialog(validate_object) {
   bootbox.dialog({
     message: "CSM Server is unable to verify the existence of the software packages on the server repository.   " +
-        "Either there is a network intermittent issue or the server repository is not reachable. Click Continue to schedule.",
+        "Either there is a network intermittent issue or the server repository is not reachable. Click Continue.",
     title: "Server repository is not reachable", 
     buttons: {
       primary: {

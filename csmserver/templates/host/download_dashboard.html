@@ -349,7 +349,7 @@
       });
       
       var server_repository_table = $("#server-repository-datatable").dataTable({
-        "order": [[ 0, "asc" ]],
+        "order": [[ 2, "desc" ]],
          "columnDefs": [ 
           {
             "targets": 0, 
@@ -360,7 +360,11 @@
             "data" : 'image_size'
           },
           {
-            "targets": 2,
+            "targets": 2, 
+            "data" : 'downloaded_time'
+          },
+          {
+            "targets": 3,
             "data" : 'image_name',
             "render": function ( data, type, row ) {
               return '<a class="image-delete-link" href="javascript://"  \
@@ -562,6 +566,7 @@
           <tr>  
             <th>Image Name</th>  
             <th>Size (Bytes)</th>  
+            <th>Downloaded Time</th>
             <th>Action</th>
           </tr>  
         </thead>  

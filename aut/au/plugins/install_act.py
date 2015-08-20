@@ -43,8 +43,9 @@ class InstallActivatePlugin(IPlugin):
     TYPE = "UPGRADE"
     VERSION = "0.0.1"
     tobe_activated=""
+    install_cmd=""
 
-    def _watch_operation(self, device, oper_id):
+    def _watch_operation(self, device, oper_id, install_cmd):
         """
         Method to keep watch on progress of install activate operation.
         If the operation was process rseatrts , return immediately , if
@@ -85,12 +86,13 @@ class InstallActivatePlugin(IPlugin):
 
         if not success or re.search(failed_oper, output):
             if re.search(failed_incr,output):
-                cmd = 'admin install activate {} prompt-level none async parallel-re'.format(
-                        tobe_activated)
+                cmd=install_cmd+' parallel-reload'
+                #cmd = 'admin install activate {} prompt-level none async parallel-re'.format(
+                 #       tobe_activated)
                 success, output = device.execute_command(cmd)
                 if success and op_success in output:
                     op_id = re.search('Install operation (\d+) \'', output).group(1)
-                    self._watch_operation(device, op_id)
+                    self._watch_operation(device, op_id, install_cmd)
             else:
                 self.error(output)
 
@@ -224,13 +226,15 @@ class InstallActivatePlugin(IPlugin):
 
         if id_to_activate is not None and id_to_activate != -1:
               cmd = 'admin install activate id {} prompt-level none async'.format(id_to_activate)
+              install_cmd=cmd
         else:
            cmd = 'admin install activate {} prompt-level none async'.format(
             tobe_activated)
+           install_cmd=cmd
         success, output = device.execute_command(cmd)
         if success and op_success in output:
             op_id = re.search('Install operation (\d+) \'', output).group(1)
-            self._watch_operation(device, op_id)
+            self._watch_operation(device, op_id, install_cmd)
             get_package(device)
             return True
         else:

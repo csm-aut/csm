@@ -501,6 +501,8 @@ class Server(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     
+    regions = relationship('Region', order_by="Region.name", secondary=lambda: RegionServer)
+    
     @property
     def password(self):
         global encrypt_dict
@@ -532,10 +534,12 @@ class SMTPServer(Base):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
 
+
 RegionServer = Table('region_server', Base.metadata,
     Column('region_id', Integer, ForeignKey("region.id"), primary_key=True),
     Column('server_id', Integer, ForeignKey("server.id"), primary_key=True)
 )
+
 
 class Preferences(Base):
     __tablename__ = 'preferences'
@@ -730,11 +734,9 @@ class Log(Base):
     __tablename__ = 'log'
     
     id = Column(Integer, primary_key=True)
-    host_id = Column(Integer)
     level = Column(String(20))
     trace = Column(Text)
     msg = Column(Text)
-    log = Column(Text)
     created_time = Column(DateTime)
 
 class CSMMessage(Base):

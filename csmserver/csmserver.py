@@ -71,6 +71,7 @@ from models import SMUInfo
 from models import DownloadJob
 from models import DownloadJobHistory
 from models import CSMMessage
+from models import RegionServer
 from models import get_download_job_key_dict
 
 from validate import is_connection_valid
@@ -873,11 +874,14 @@ def server_delete(hostname):
     server = get_server(db_session, hostname)
     if server is None:
         abort(404)
-     
-    db_session.delete(server)
-    db_session.commit()
+    
+    if len(server.regions) == 0:
+        db_session.delete(server)
+        db_session.commit()
         
-    return jsonify({'status':'OK'})
+        return jsonify({'status':'OK'})
+    else:
+        return jsonify({'status':'Failed'})
 
 @app.route('/regions/create/', methods=['GET', 'POST'])
 @login_required
@@ -959,10 +963,18 @@ def region_delete(region_name):
     if region is None:
         abort(404)
      
-    db_session.delete(region)
-    db_session.commit()
+    # Older version of db does not perform check on
+    # foreign key constrain, so do it programmatically here.
+    count = db_session.query(Host).filter(
+        Host.region_id == region.id).count()
+
+    if count < 0:
+        db_session.delete(region)
+        db_session.commit()
         
-    return jsonify({'status':'OK'})
+        return jsonify({'status':'OK'})
+    else:
+        return jsonify({'status':'Failed'})
 
 def add_validator(field, validator_class):
     validators = field.validators
@@ -1287,21 +1299,16 @@ def get_install_job_json_dict(install_jobs):
 @app.route('/api/get_files_from_csm_repository/')
 @login_required
 def get_files_from_csm_repository():
-    result_list = {}
+    rows = []
     file_list = get_file_list(get_repository_directory())
     
     for filename in file_list:
-        if '.size' in filename:
-            recorded_size = open(get_repository_directory() + filename, 'r').read()
-            # Pick out the tar files that have been download completely
-            result_list[filename.replace('.size','')] = recorded_size
-    
-    rows = []  
-    for filename in file_list:
-        if filename in result_list:
+        if filename.endswith('.tar'):
+            statinfo = os.stat(get_repository_directory() + filename)
             row = {}
             row['image_name'] = filename
-            row['image_size'] = result_list[filename] + ' bytes'
+            row['image_size'] = '{} bytes'.format(statinfo.st_size)
+            row['downloaded_time'] = datetime.datetime.fromtimestamp(statinfo.st_mtime).strftime("%m/%d/%Y %I:%M %p")
             rows.append(row)
     
     return jsonify( **{'data':rows} )
@@ -2186,27 +2193,15 @@ def host_session_log(hostname, table, id):
         abort(404)
 
     file_entries = []
-    log_content = '\n'
+    log_content = ''
     if os.path.isdir(autlogs_file_path):
         # Returns all files under the requested directory
         file_list = get_file_list(autlogs_file_path)
-        for file in file_list:
-            file_entries.append(file_path + os.sep + file)
-    else:
-        # Returns the contents of the requested file
-        fo = None
-        try:
-            fo = io.open(autlogs_file_path, "r", encoding = 'utf-8')
-            lines = fo.readlines()
-
-            for line in lines:
-                # Trim UNIX ^M characters
-                line = line.replace("\r","").replace("\n","")
-                if len(line) > 0:
-                    log_content += line + '\n'
-
-        finally:
-            fo.close()
+        for filename in file_list:
+            file_entries.append(file_path + os.sep + filename)
+    else:        
+        with io.open(autlogs_file_path, "rt", encoding='latin-1') as fo:
+            log_content = fo.read()
 
     return render_template('host/session_log.html', hostname=hostname, table=table, table_id=id, file_entries=file_entries, log_content=log_content, is_file=os.path.isfile(autlogs_file_path))
 
@@ -2239,9 +2234,10 @@ Displays the system related logs.
 @app.route('/logs/')
 @login_required
 def logs():
-    db_session = DBSession()           
-    logs = db_session.query(Log) \
-        .order_by(Log.created_time.desc())
+    db_session = DBSession()          
+    
+    # Only shows the ERROR 
+    logs = db_session.query(Log).filter(Log.level == 'ERROR').order_by(Log.created_time.desc())
 
     return render_template('log.html', logs=logs)          
 
@@ -3238,7 +3234,8 @@ def download_system_logs():
     for log in logs:
         contents += get_datetime_string(log.created_time) + '\n'
         contents += log.level + ':' + log.msg + '\n'
-        contents += log.trace + '\n'
+        if log.trace is not None:
+            contents += log.trace + '\n'
         contents += '-' * 70 + '\n'
         
     # Create a file which contains the size of the image file.

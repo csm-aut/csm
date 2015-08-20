@@ -111,8 +111,10 @@
           success: function(response) {
             if (response.status == 'Failed') {
               bootbox.alert("Unable to retrieve CCO information.");
-            } 
-            update_cco_lookup_time();
+            } else if (response.status == 'OK') {
+              update_cco_lookup_time();
+              bootbox.alert("Software information has been successfully retrieved and saved to the database.");
+            }
             browse_spinner.hide();
           },
           error: function(XMLHttpRequest, textStatus, errorThrown) {
