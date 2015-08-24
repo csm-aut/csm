@@ -1044,7 +1044,7 @@ def region_delete(region_name):
     count = db_session.query(Host).filter(
         Host.region_id == region.id).count()
 
-    if count < 0:
+    if count == 0:
         db_session.delete(region)
         db_session.commit()
         
