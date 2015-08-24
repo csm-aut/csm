@@ -434,8 +434,41 @@ def get_managed_hosts(region_id):
                 row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
                 row['inventory_status'] =  inventory_job.status
             else:
-                row['last_successful_retrieval'] = 'None'
-                row['inventory_status'] = 'None'
+                row['last_successful_retrieval'] = ''
+                row['inventory_status'] = ''
+            
+            rows.append(row)
+    
+    return jsonify( **{'data':rows} )
+
+@app.route('/api/get_managed_host_details/region/<int:region_id>')
+@login_required
+def get_managed_host_details(region_id):
+    rows = []   
+    db_session = DBSession()
+
+    if region_id == 0:
+        hosts = db_session.query(Host)
+    else:
+        hosts = db_session.query(Host).filter(Host.region_id == region_id)
+    
+    if hosts is not None:
+        for host in hosts:
+            row = {} 
+            row['hostname'] = host.hostname
+            row['platform'] = host.platform
+            
+            connection_param = host.connection_param[0]
+            row['connection'] = connection_param.connection_type
+            row['host_or_ip'] = connection_param.host_or_ip
+            row['port_number'] = 'Default' if is_empty(connection_param.port_number) else connection_param.port_number
+            
+            if not is_empty(connection_param.jump_host):
+                row['jump_host'] = connection_param.jump_host.hostname
+            else:
+                row['jump_host'] = ''
+                          
+            row['username'] = connection_param.username
             
             rows.append(row)
     

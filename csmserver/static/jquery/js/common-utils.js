@@ -53,6 +53,10 @@ function beautify_platform(platform) {
   return platform.toUpperCase().replace('_','-');
 }
 
+function comma2br(s) {
+  return s.replace(/,/g, "<br>")
+}
+
 function get_parent_folder(directory) {
   if (directory != null) {
     var pos = directory.lastIndexOf('/');

@@ -35,6 +35,7 @@ import tarfile
 import traceback
 
 from constants import get_autlogs_directory
+from __builtin__ import True
 
 def import_class(cl):
     d = cl.rfind(".")
@@ -218,7 +219,9 @@ def get_base_url(url):
     return 'http://' + url[:url.find('/')] 
     
 def is_empty(obj):
-    if obj is None or len(obj) == 0 or obj == 'None':
+    if obj is None or obj == 'None':
+        return True
+    elif isinstance(obj, list) and len(obj) == 0:
         return True
     else:
         return False
@@ -234,6 +237,7 @@ def is_ldap_supported():
     except:
         return False
     return True
+    
 
 """
 Only retain alphanumeric, space, and "-"

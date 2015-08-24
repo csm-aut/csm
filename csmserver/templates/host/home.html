@@ -123,7 +123,7 @@
           "targets": 2,
           "data": 'host_or_ip',
           "render": function(data, type, row) {
-            return '<a href="/hosts/' + row['hostname'] + '/edit/">' + data + '</a>';
+            return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
           }
         }, {
           "targets": 3,
@@ -150,10 +150,6 @@
         },],
       }).on('draw.dt', function ( e, settings, json ) {
         $('#region_hosts_count').html(host_table.api().page.info().recordsTotal);
-      });
-      
-      $('#managed-host-datatable').on( 'length.dt', function ( e, settings, len ) {
-        //alert('change' + len);
       });
 
       var selected_region_id = $.cookie('main-selected-region') == null ? 0 : $.cookie('main-selected-region');
@@ -338,7 +334,7 @@
   <!-- upper section -->
   <div class="row">
 
-    <div class="container col-sm-3">
+    <div class="col-sm-3">
       <span class="DodgerBlue"><strong>Region:&nbsp;</strong><span id='selected-region'></span></span>
       <hr>
 
@@ -382,7 +378,7 @@
       </div>
     </div>      
 
-    <div class="container col-sm-9">
+    <div class="col-sm-9">
       <!-- left -->
       <div>
         <span>
