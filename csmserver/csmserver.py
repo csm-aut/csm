@@ -155,9 +155,8 @@ def load_user(user_id):
 def home():
     db_session = DBSession()
 
-    hosts = get_host_list(db_session)
-    if hosts is None:
-        abort(404)
+    total_host_count = db_session.query(Host).count()
+    total_region_count = db_session.query(Region).count()
     
     jump_hosts = get_jump_host_list(db_session)
     regions = get_region_list(db_session)
@@ -167,31 +166,44 @@ def home():
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
-    return render_template('host/home.html', form=form, hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
-        servers=servers, hosts_info_json=get_host_platform_json(hosts), build_date=get_build_date(), current_user=current_user) 
+    return render_template('host/home.html', form=form, total_host_count=total_host_count, 
+        total_region_count=total_region_count, jump_hosts=jump_hosts, regions=regions, 
+        servers=servers, build_date=get_build_date(), current_user=current_user) 
 
-def get_host_platform_json(hosts):
-    host_dict = {}
-    for host in hosts:
-        key = '{}={}'.format(host.software_version, host.software_platform)
-        if key in host_dict:
-            host_dict[key] += 1
-        else:
-            host_dict[key] = 1
+@app.route('/api/get_host_platform_version/region/<int:region_id>')
+@login_required
+def get_host_platform_version(region_id):
+    db_session = DBSession()
     
-    sorted_dict = collections.OrderedDict(sorted(host_dict.items()))
+    if region_id == 0:
+        hosts = db_session.query(Host)
+    else:
+        hosts = db_session.query(Host).filter(Host.region_id == region_id)
+    
+    host_dict = {}
+    if hosts is not None:
+        for host in hosts:
+            platform = 'Unknown' if host.software_platform is None else host.software_platform
+            software = 'Unknown' if host.software_version is None else host.software_version
+              
+            key = '{}={}'.format(platform, software)
+            if key in host_dict:
+                host_dict[key] += 1
+            else:
+                host_dict[key] = 1
+                
     
     rows = []
     # key is a tuple ('4.2.3-asr9k', 1)
-    for key in sorted_dict.items():
+    for key in host_dict.items():
         row = {}
         info_array = key[0].split('=')
-        row['software'] = info_array[0]
-        row['platform'] = info_array[1]
-        row['count'] = key[1]
+        row['platform'] = info_array[0]
+        row['software'] = info_array[1]
+        row['host_count'] = key[1]
         rows.append(row)
-    
-    return json.dumps(rows)
+        
+    return jsonify( **{'data':rows} )
     
 @app.route('/install_dashboard')
 @login_required
@@ -364,6 +376,70 @@ def get_username(current_user):
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+
+@app.route('/api/get_region_host_count/region/<int:region_id>')
+@login_required
+def get_region_host_count(region_id):
+    db_session = DBSession()
+    
+    if region_id == 0:
+        count = db_session.query(Host).count()
+    else:
+        count = db_session.query(Host).filter(Host.region_id == region_id).count()
+        
+    return jsonify( **{'data': [ { 'region_host_count': count } ] } )
+    
+
+@app.route('/api/get_region_name/region/<int:region_id>')
+@login_required
+def get_region_name(region_id):
+    region_name = 'ALL'
+    db_session = DBSession()
+    
+    if region_id > 0:
+        region = get_region_by_id(db_session, region_id)
+        if region is not None:
+            region_name = region.name
+        
+    return jsonify( **{'data': [ { 'region_name': region_name } ] } )
+        
+    
+@app.route('/api/get_managed_hosts/region/<int:region_id>')
+@login_required
+def get_managed_hosts(region_id):
+    rows = []   
+    db_session = DBSession()
+
+    if region_id == 0:
+        hosts = db_session.query(Host)
+    else:
+        hosts = db_session.query(Host).filter(Host.region_id == region_id)
+    
+    if hosts is not None:
+        for host in hosts:
+            row = {} 
+            row['hostname'] = host.hostname
+            row['region'] = '' if host.region is None else host.region.name
+            row['host_or_ip'] = host.connection_param[0].host_or_ip
+            row['platform'] = host.platform
+            
+            if host.software_version is not None:
+                row['software'] = host.software_version + '<br>' + host.software_platform
+            else:
+                row['software'] = 'Unknown'
+            
+            inventory_job = host.inventory_job[0]
+            if inventory_job is not None and inventory_job.last_successful_time is not None:
+                row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
+                row['inventory_status'] =  inventory_job.status
+            else:
+                row['last_successful_retrieval'] = 'None'
+                row['inventory_status'] = 'None'
+            
+            rows.append(row)
+    
+    return jsonify( **{'data':rows} )
 
 @app.route('/api/acknowledge_csm_message', methods=['POST'])
 def api_acknowledge_csm_message():
@@ -1546,6 +1622,28 @@ def api_get_hostnames():
             row['id'] = host.hostname
             row['text'] = host.hostname
             rows.append(row)
+  
+    return jsonify( **{'data':rows} )
+
+"""
+This method is called by ajax attached to Select2 (Search a host).
+The returned JSON contains the predefined tags.
+"""
+@app.route('/api/get_regions/')
+@login_required
+def api_get_regions():  
+    db_session = DBSession()
+    
+    rows = []   
+    criteria='%'
+    if len(request.args) > 0:
+        criteria += request.args.get('q') + '%'
+ 
+    regions = db_session.query(Region).filter(Region.name.like(criteria)).order_by(Region.name.asc()).all()   
+    if len(regions) > 0:
+        rows.append({ 'id': 0, 'text': 'ALL' })
+        for region in regions:
+            rows.append({ 'id': region.id, 'text': region.name })
   
     return jsonify( **{'data':rows} )
 
