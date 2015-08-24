@@ -4,12 +4,12 @@ CSM Server is an automation and orchestration framework for IOS-XR devices.  It 
 
 # Getting the Latest Code
 
-Click the releases link and select the latest release and download the Source code zip file.
-The file is called csm-x.x.zip wehre x.x is the release number.
+Click the releases link and select the latest release and download the source code zip file.
+The file is called csm-x.x.zip where x.x is the release number.
 
 # New Installation
 
-Consult the Installation Guide to install CSM Server.
+For new installation, consult the Install Guide to install CSM Server.  The Install Guide, install_guide.pdf, can be found in the csm directory after you unzip the zip file.
 
 # Upgrade to the Latest Code
 
