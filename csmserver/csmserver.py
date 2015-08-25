@@ -116,6 +116,7 @@ from bsd_service import BSDServiceHandler
 
 from package_utils import get_target_software_package_list
 from restful import restful_api
+from views.exr_migrate import exr_migrate
 
 import os
 import io
@@ -131,7 +132,9 @@ import initialize
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+
 app.register_blueprint(restful_api)
+app.register_blueprint(exr_migrate)
 
 #hook up the filters
 filters.init(app)
