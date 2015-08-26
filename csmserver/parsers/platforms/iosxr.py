@@ -73,12 +73,21 @@ class BaseCLIPackageParser(object):
     def set_platform_and_release(self, host, packages):
         if packages is not None:
             for package in packages.values():
-                if 'mini' in package.name:
+
+                if 'sysadmin' in package.name:
+                    tokens = package.name.split('-')
+                    tokens_based_on_version = package.name.split('version=')
+                    version_nums = tokens_based_on_version[1].split(' ')
+                    host.software_version = version_nums[0]
+                    host.software_platform = tokens[0] + '-x'
+
+                elif 'mini' in package.name:
                     tokens = package.name.split('-')
                     # ['asr9k', 'mini', 'px', '4.3.1']
                     if len(tokens) == 4:
                         host.software_platform = tokens[0] + '-' + tokens[2]
                         host.software_version = tokens[3]
+
         
     def parseContents(self, lines, package_state):
         packages_dict = {}

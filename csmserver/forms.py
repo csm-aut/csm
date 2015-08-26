@@ -84,6 +84,13 @@ class JumpHostForm(Form):
         choices = [(ConnectionType.TELNET, ConnectionType.TELNET), 
                    (ConnectionType.SSH, ConnectionType.SSH)])
     port_number = TextField('Port Number')
+
+class ScheduleMigrationForm(Form):
+    install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
+
+    scheduled_time = TextField('Scheduled Time', [required()])
+    scheduled_time_UTC = HiddenField('Scheduled Time')
+    dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])
      
 class HostScheduleInstallForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])

@@ -44,7 +44,6 @@ import os
 import sys
 import datetime
 
-from csmserver.models import Host, ConnectionParam
 
 
 def run():
@@ -136,6 +135,7 @@ def execute(options, args, parser, stdout=None, stderr=None):
                       max_threads=options.max_threads
                       )
     manager.run()
+
     failed = manager.failed
     device.disconnect()
     manager.destroy()

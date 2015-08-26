@@ -25,6 +25,7 @@
 from base import BaseHandler
 from parsers.loader import get_package_parser_class 
 from utils import import_module
+import re
 
 try:
     import condor 
@@ -70,9 +71,14 @@ class BaseInventoryHandler(BaseHandler):
             try:
                 conn = condor.make_connection_from_context(ctx)
                 conn.connect()
-                ctx.inactive_cli = conn.send('sh install inactive summary')
-                ctx.active_cli = conn.send('sh install active summary')
-                ctx.committed_cli = conn.send('sh install committed summary')       
+                output = conn.send('show version')
+                match = re.search('.vm',output)
+
+                append = ' summary' if match else ''
+
+                ctx.inactive_cli = conn.send('sh install inactive' + append)
+                ctx.active_cli = conn.send('sh install active' + append)
+                ctx.committed_cli = conn.send('sh install committed' + append)
                 conn.disconnect()
  
                 self.get_software(ctx.host,

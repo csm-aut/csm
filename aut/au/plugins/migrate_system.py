@@ -42,10 +42,6 @@ from constants import get_migration_directory
 
 
 
-ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
-LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
-FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
-MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.0'
 #"""
 
 import sys
@@ -58,12 +54,14 @@ sys.path.append(aut_path)
 from au.plugins.plugin import IPlugin
 from au.device import Device
 from au.lib import pkg_utils as pkgutils
-from au.plugins.install_add import InstallAddPlugin
-from au.plugins.install_commit import InstallCommitPlugin
-from au.plugins.install_act import InstallActivatePlugin
+
 from au.condor.exceptions import CommandTimeoutError
 from au.plugins.plugin import PluginError
+from au.plugins.device_connect import DeviceConnectPlugin
 
+
+from parsers.platforms.iosxr import BaseCLIPackageParser
+from au.plugins.package_state import get_package
 
 
 # waiting long time (5 minutes)
@@ -86,144 +84,7 @@ class MigrateSystemToExrPlugin(IPlugin):
     TYPE = "MIGRATE_SYSTEM"
     VERSION = "0.0.1"
 
-    def _check_fpd(self, device):
-        cmd = 'show hw-module fpd location all'
-        success, fpdtable = device.execute_command(cmd)
-        print cmd, '\n', fpdtable, "<-----------------", success
 
-        if not success:
-            self.error("Failed to check FPD version before migration")
-            return -1
-
-        location_to_subtypes_need_upgrade = {}
-
-        self._find_all_fpds_need_upgrade(fpdtable, ROUTEPROCESSOR_RE, location_to_subtypes_need_upgrade)
-        self._find_all_fpds_need_upgrade(fpdtable, LINECARD_RE, location_to_subtypes_need_upgrade)
-
-        return location_to_subtypes_need_upgrade
-
-
-
-    def _find_all_fpds_need_upgrade(self, fpdtable, location, location_to_subtypes_need_upgrade):
-        for fpdtype in FPDS_CHECK_FOR_UPGRADE:
-            match = re.search(location + '[-.A-Z0-9a-z\s]*?' + fpdtype + '[-.A-Z0-9a-z\s]*?(No|Yes)', fpdtable)
-
-            if match:
-                if match.group(2) == "Yes":
-                    if not match.group(1) in location_to_subtypes_need_upgrade:
-                        location_to_subtypes_need_upgrade[match.group(1)] = []
-                    location_to_subtypes_need_upgrade[match.group(1)].append(fpdtype)
-
-
-    def _ensure_updated_fpd(self, device, repo, packages):
-
-        # check for the FPD version, if FPD needs upgrade,
-        # enable the FPD Auto Upgrade Feature
-
-        location_to_subtypes_need_upgrade = self._check_fpd(device)
-
-        print "location_to_subtypes_need_upgrade = " + str(location_to_subtypes_need_upgrade)
-
-
-        if location_to_subtypes_need_upgrade:
-
-            cmd = "show install active summary"
-            success, active_packages = device.execute_command(cmd)
-            print cmd, '\n', active_packages, "<-----------------", success
-
-            match = re.search('fpd', active_packages)
-
-            if not match:
-                self.error("Device needs FPD upgrade but no FPD pie is active on device. Please install FPD pie to try again or upgrade your FPDs to eXR capable FPDs.")
-
-
-            cmd = "show version"
-            success, versioninfo = device.execute_command(cmd)
-            print cmd, '\n', versioninfo, "<-----------------", success
-
-            match = re.search('[Vv]ersion\s+?(\d\.\d\.\d)', versioninfo)
-
-            if not match:
-                self.error("Failed to recognize release version number. Please check session.log.")
-
-            release_version = match.group(1)
-
-
-            if release_version < MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD:
-
-
-                pie_packages = []
-                for package in packages:
-                    if package.find('.pie') > -1:
-                        pie_packages.append(package)
-
-                if len(pie_packages) != 1:
-                    self.error("Release version is below 6.0.0, please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must contain '.pie'")
-
-
-                """
-                Step 1: Install add the FPD SMU
-                """
-                self._post_status("FPD upgrade - install add the FPD SMU...")
-                install_add = InstallAddPlugin()
-                self._run_install_action_plugin(install_add, device, repo, pie_packages, "install add")
-
-
-                """
-                Step 2: Install activate the FPD SMU
-                """
-                self._post_status("FPD upgrade - install activate the FPD SMU...")
-                install_act = InstallActivatePlugin()
-                self._run_install_action_plugin(install_act, device, repo, pie_packages, "install activate")
-
-
-
-                """
-                Step 3: Install commit the FPD SMU
-                """
-                self._post_status("FPD upgrade - install commit the FPD SMU...")
-                install_com = InstallCommitPlugin()
-                self._run_install_action_plugin(install_com, device, repo, pie_packages, "install commit")
-
-
-
-            """
-            Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
-            """
-            self._upgrade_all_fpds(device, location_to_subtypes_need_upgrade)
-
-
-        return True
-
-    def _run_install_action_plugin(self, install_plugin, device, repo, pie_packages, install_action_name):
-        try:
-            install_plugin.start(device, repository=repo, pkg_file=pie_packages)
-        except PluginError as e:
-            self.error("Failed to " + install_action_name + " the FPD SMU - ({0}): {1}".format(e.errno, e.strerror))
-        except AttributeError:
-            device.disconnect()
-            self.log("Disconnected...")
-            raise PluginError("Failed to " + install_action_name + " the FPD SMU. Please check session.log for details of failure.")
-
-
-
-    def _upgrade_all_fpds(self, device, location_to_subtypes_need_upgrade):
-
-        for location in location_to_subtypes_need_upgrade:
-
-            for fpdtype in location_to_subtypes_need_upgrade[location]:
-
-                self._post_status("FPD upgrade - start to upgrade FPD subtype " + fpdtype + " in location " + location)
-
-                command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location ' + location + ' \r'
-                success, output = device.execute_command(command, timeout=9600)
-                print command, '\n', output, "<-----------------", success
-                #fpd_upgrade_success = re.search(location + '.*' + fpdtype + '[-_%.A-Z0-9a-z\s]*[Ss]uccess', output)
-                fpd_upgrade_success = re.search('[Ss]uccess', output)
-                if not fpd_upgrade_success:
-                    self.error("Failed to force upgrade FPD subtype " + fpdtype + " in location " + location)
-
-        return True
 
     def _post_status(self, msg):
         if self.csm_ctx:
@@ -240,9 +101,13 @@ class MigrateSystemToExrPlugin(IPlugin):
 
     def _copy_file_to_device(self, device, repository, filename, dest):
         timeout = 1500
-        cmd = 'copy ' + repository + '/' + filename +' ' + dest +' \r \r'
+        success, output = device.execute_command('dir ' + dest + '/' + filename)
+        cmd = 'copy ' + repository + '/' + filename + ' ' + dest +' \r'
+        if "No such file" not in output:
+            cmd += ' \r'
+
         success, output = device.execute_command(cmd, timeout=timeout)
-        print cmd, '\n', output, "<-----------------", success
+
         if re.search('copied\s+in', output):
             self._second_attempt_execution(device, cmd, timeout, 'copied\s+in', "failed to copy file to your repository.")
 
@@ -348,14 +213,9 @@ class MigrateSystemToExrPlugin(IPlugin):
 
         self.log(self.NAME + " Plugin is running")
 
-        """
-        self._post_status("Checking FPD version...")
-        self._ensure_updated_fpd(device, repo_str, packages)
 
-
-
-        self._post_status("Adding ipxe.efi to device")
-        self._copy_file_to_device(device, repo_str, 'ipxe.efi', 'harddiskb:/efi/boot/grub.efi')
+        #self._post_status("Adding ipxe.efi to device")
+        #self._copy_file_to_device(device, repo_str, 'ipxe.efi', 'harddiskb:/efi/boot/grub.efi')
 
 
         self._post_status("Setting boot mode and image path in device")
@@ -366,6 +226,23 @@ class MigrateSystemToExrPlugin(IPlugin):
             self._post_status("Reload device to boot eXR")
             self._reload_all(device)
 
-        """
+
+
+
+        success, output = device.execute_command("show version")
+        match = re.search('Version\s(.*)\s', output)
+        if match:
+            if self.csm_ctx and self.csm_ctx.host:
+                self.csm_ctx.host.software_version = match.group(1)
+                self.csm_ctx.host.software_platform = 'asr9k-x'
+
+
+
+        get_package(device)
+
+        parser = BaseCLIPackageParser()
+        if self.csm_ctx and self.csm_ctx.host:
+            parser.get_packages_from_cli(self.csm_ctx.host, install_inactive_cli=self.csm_ctx.inactive_cli, install_active_cli=self.csm_ctx.active_cli, install_committed_cli=self.csm_ctx.committed_cli)
+
         return True
 

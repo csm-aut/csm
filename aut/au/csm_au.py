@@ -177,6 +177,7 @@ class CsmContext(object):
         if options.pkg_file :
             self.software_packages = pkglist.get_pkgs(options.pkg_file)
         self.log_directory = options.logdir
+        self.migration_directory = options.migdir
         self.active_cli = None
         self.inactive_cli = None
         self.committed_cli = None

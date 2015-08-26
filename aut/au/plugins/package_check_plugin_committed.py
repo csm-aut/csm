@@ -49,14 +49,19 @@ class CommittedPackagesPlugin(IPlugin):
 
     def start(self, device, *args, **kwargs):
         if device:
-            success, output = device.execute_command(
-                "admin show install commit summary")
+            success, output = device.execute_command("admin")
             if success:
-                self.csm_ctx = device.get_property('ctx')
-                if self.csm_ctx and hasattr(self.csm_ctx, 'committed_cli'):
-                    self.csm_ctx.committed_cli = output
-                self.log("Committed packages retrieved")
-                device.store_property('install_commit', output)
+                success, output = device.execute_command("show install commit summary")
+
+                if success:
+                    self.csm_ctx = device.get_property('ctx')
+                    if self.csm_ctx and hasattr(self.csm_ctx, 'committed_cli'):
+                        self.csm_ctx.committed_cli = output
+                    self.log("Committed packages retrieved")
+                    device.store_property('install_commit', output)
+
+            success, output = device.execute_command("exit")
+            if success:
                 return
 
         self.error("Can not get list of committed packages.")

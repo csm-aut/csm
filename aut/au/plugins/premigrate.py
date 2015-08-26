@@ -31,6 +31,7 @@ import subprocess
 import re
 import requests
 import shutil
+import csv
 from database import DBSession
 from models import Server
 from smu_info_loader import IOSXR_URL, SMUInfoLoader
@@ -40,7 +41,11 @@ from constants import get_migration_directory
 from utils import create_directory_in_migration
 
 
-from au.plugins.plugin import IPlugin
+from au.plugins.plugin import PluginError, IPlugin
+from au.plugins.node_status import NodeStatusPlugin
+from au.plugins.install_add import InstallAddPlugin
+from au.plugins.install_commit import InstallCommitPlugin
+from au.plugins.install_act import InstallActivatePlugin
 
 NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
 NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
@@ -49,7 +54,18 @@ NOX_FOR_MAC = "nox"
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.2"
 ACTIVE_PACKAGES_IN_CLASSIC = "active_packages_in_xr_snapshot.txt"
 
+TIMEOUT_FOR_COPY_CONFIG = 1000
 
+TIMEOUT_FOR_COPY_ISO = 1000
+ISO_IMAGE_NAME = "asr9k-mini-x64.iso"
+
+ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
+LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
+FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
+MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.0'
+
+SUPPORTED_CONFIG_LOG = "supported_admin_configurations_log"
+UNSUPPORTED_CONFIG_LOG = "unsupported_admin_configurations_log"
 
 
 class PreMigratePlugin(IPlugin):
@@ -92,30 +108,33 @@ class PreMigratePlugin(IPlugin):
         if not re.search('OK', output):
             self.error("failed to copy running-config to your repository. Please check session.log for error and fix the issue.")
 
-    def _upload_files_to_tftp(self, device, filenames, sourcefilepaths, repo_url):
+    def _upload_files_to_tftp(self, device, sourcefiles, repo_url, destfilenames):
         db_session = DBSession()
         server = db_session.query(Server).filter(Server.server_url == repo_url).first()
         if not server:
             self.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
-        try:
-            for x in range(0, len(sourcefilepaths)):
-                shutil.copy(sourcefilepaths[x], server.server_directory + os.sep + filenames[x])
-        except:
-            db_session.close()
-            self._disconnect_and_raise_error(device, "Exception was thrown while copying file from csm_data/migration/ to server repository directory")
+
+        for x in range(0, len(sourcefiles)):
+            try:
+                shutil.copy(sourcefiles[x], server.server_directory + os.sep + destfilenames[x])
+            except:
+                db_session.close()
+                self._disconnect_and_raise_error(device, "Exception was thrown while copying file " + sourcefiles[x] + " to " + server.server_directory + os.sep + destfilenames[x])
         db_session.close()
         return True
 
 
-    def _copy_files_to_device(self, device, repository, filenames, destpath):
+    def _copy_files_to_device(self, device, repository, source_filenames, dest_files, timeout):
 
-        for filename in filenames:
-            cmd = 'copy ' + repository + '/' + filename + ' ' + destpath + '/' + filename + ' \r \r'
-            timeout = 120
+        for x in range(0, len(source_filenames)):
+            success, output = device.execute_command('dir ' + dest_files[x])
+            cmd = 'copy ' + repository + '/' + source_filenames[x] + ' ' + dest_files[x] + ' \r'
+            if "No such file" not in output:
+                cmd += ' \r'
             success, output = device.execute_command(cmd, timeout=timeout)
-            print cmd, '\n', output, "<-----------------", success
+
             if re.search('[Ee]rror', output):
-                self.error("Failed to copy configuration file from tftp server repository " + repository + '/' + filename + " to " + destpath + " on device.")
+                self.error("Failed to copy file " + repository + '/' + source_filenames[x] + " to " + dest_files[x] + " to device. Please check session.log.")
 
     def _disconnect_and_raise_error(self, device, msg):
         device.disconnect()
@@ -129,8 +148,12 @@ class PreMigratePlugin(IPlugin):
             if not r.ok:
                 self.error("HTTP request to get " + IOSXR_URL + "/" + NOX_PUBLISH_DATE + " failed.")
             return r.text
+        except PluginError:
+            raise
         except:
             self._disconnect_and_raise_error(device, "Exception was thrown during HTTP request to get " + IOSXR_URL + "/" + NOX_PUBLISH_DATE + ". Disconnecting...")
+
+
 
     def _get_file_http(self, device, filename, destination):
         try:
@@ -140,12 +163,13 @@ class PreMigratePlugin(IPlugin):
                 if not response.ok:
                     self.error("HTTP request to get " + IOSXR_URL + "/" + filename + " failed.")
 
-                print "request ok"
                 for block in response.iter_content(1024):
                     handle.write(block)
             handle.close()
-        except:
+        except PluginError:
             handle.close()
+            raise
+        except:
             self._disconnect_and_raise_error(device, "Exception was thrown during HTTP request to get " + IOSXR_URL + "/" + filename + " and writing it to csm_data/migration/. Disconnecting...")
 
 
@@ -165,7 +189,6 @@ class PreMigratePlugin(IPlugin):
                     need_new_nox = True
                 f.close()
             except:
-                f.close()
                 self._disconnect_and_raise_error(device, "Exception was thrown when reading file " + fileloc + "/" + NOX_PUBLISH_DATE + ". Disconnecting...")
 
         else:
@@ -188,44 +211,53 @@ class PreMigratePlugin(IPlugin):
                     nox_publish_date_file.write(date)
                 nox_publish_date_file.close()
             except:
-                nox_publish_date_file.close()
                 self._disconnect_and_raise_error(device, "Exception was thrown when writing file " + fileloc + "/" + NOX_PUBLISH_DATE + ". Disconnecting...")
 
 
-    def _take_out_breakout_config(self, filepath):
+    def _take_out_breakout_config(self, device, xr_config_file, breakout_file):
         breakout_config_empty = True
-        if not os.path.isfile(filepath):
+        if not os.path.isfile(xr_config_file):
             self.error("The configuration file we backed up during Pre-Migrate - " + filepath + " - is not found.")
-        classic_config = open(filepath, "r+")
-        with open(filepath+"_breakout", 'w') as breakout_config:
-            lines = classic_config.readlines()
-            classic_config.seek(0)
-            for line in lines:
-                if "breakout" in line and "hw-module" in line:
-                    breakout_config.write(line)
-                    breakout_config_empty = False
-                else:
-                    classic_config.write(line)
+        try:
+            classic_config = open(xr_config_file, "r+")
+        except:
+            self._disconnect_and_raise_error(device, "Exception was thrown when opening file " + xr_config_file + ". Disconnecting...")
 
-            classic_config.truncate()
+        try:
+            with open(breakout_file, 'w') as breakout_config:
+                lines = classic_config.readlines()
+                classic_config.seek(0)
+                for line in lines:
+                    if "breakout" in line and "hw-module" in line:
+                        breakout_config.write(line)
+                        breakout_config_empty = False
+                    else:
+                        classic_config.write(line)
+
+                classic_config.truncate()
             classic_config.close()
             breakout_config.close()
+        except:
+            self._disconnect_and_raise_error(device, "Exception was thrown when writing file " + breakout_file + ". Disconnecting...")
+
         if breakout_config_empty:
-            os.remove(filepath+"_breakout")
+            os.remove(breakout_file)
         return breakout_config_empty
 
 
-    def _copy_files_to_csm_data(self, device, filenames, repo_url, dest_filenames):
+    def _copy_files_to_csm_data(self, device, repo_url, source_filenames, dest_files):
         db_session = DBSession()
         server = db_session.query(Server).filter(Server.server_url == repo_url).first()
         if not server:
             self.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
 
-        try:
-            for x in range(0, len(filenames)):
-                shutil.copy(server.server_directory + os.sep + filenames[x], dest_filenames[x])
-        except:
-            self._disconnect_and_raise_error(device, "Exception was thrown while copying file from server repository directory to device")
+
+        for x in range(0, len(source_filenames)):
+            try:
+                shutil.copy(server.server_directory + os.sep + source_filenames[x], dest_files[x])
+            except:
+                db_session.close()
+                self._disconnect_and_raise_error(device, "Exception was thrown while copying file " + server.server_directory + os.sep + source_filenames[x] + " to " + dest_files[x])
 
         db_session.close()
 
@@ -233,7 +265,7 @@ class PreMigratePlugin(IPlugin):
         if self.csm_ctx:
             self.csm_ctx.post_status(msg)
 
-    def _run_migration_on_config(self, fileloc, filename, nox_to_use):
+    def _run_migration_on_config(self, device, fileloc, filename, nox_to_use):
         commands = [subprocess.Popen(["chmod", "+x", fileloc + os.sep + nox_to_use]), subprocess.Popen([fileloc + os.sep + nox_to_use, "-f", fileloc + os.sep + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
 
         nox_output, nox_error = commands[1].communicate()
@@ -245,10 +277,14 @@ class PreMigratePlugin(IPlugin):
 
         if conversion_success:
 
-            self.csm_ctx.post_status("Finished migrating the admin configuration.")
+            self._post_status("Finished migrating the admin configuration.")
 
         else:
-            self.error("The migration of admin configuration is not successful. There may be lines not recognized by the configuration migration tool. If you still wish to migrate the system, you will need to manually load the correct configurations on eXR after system migration.")
+            self._create_config_logs(device, fileloc + os.sep + filename.split('.')[0] + ".csv")
+
+            self.error("The admin configuration file contains configurations that are unknown or unsupported to the NoX configuration conversion tool. Please look into " + UNSUPPORTED_CONFIG_LOG + " for configurations that are unprocessed by the conversion tool. The known or supported configurations are in " + SUPPORTED_CONFIG_LOG + ". If you still wish to migrate the system, all configurations have been backed up in both your server repository and locally in " + fileloc + ", however, you will need to schedule System Migrate separately and manually load the correct configurations on eXR after system migration.")
+
+
 
     def _check_release_version(self, device):
 
@@ -265,28 +301,7 @@ class PreMigratePlugin(IPlugin):
         if release_version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
             self.error("The minimal release version required for migration is 5.3.2. Please upgrade to at lease R5.3.2 before migration.")
 
-    def _check_network_configuration(self, device, repo_str):
-
-        device.execute_command("run")
-        success, output = device.execute_command("nvram_rommonvar IP_ADDRESS")
-        match = re.search('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', output)
-
-        if not match:
-            self.error("Please define rommon variable IP_ADDRESS. It's required for booting eXR.")
-
-        success, output = device.execute_command("nvram_rommonvar DEFAULT_GATEWAY")
-        match = re.search('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', output)
-
-        if not match:
-            self.error("Please define rommon variable DEFAULT_GATEWAY. It's required for booting eXR.")
-
-        success, output = device.execute_command("nvram_rommonvar IP_SUBNET_MASK")
-        match = re.search('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', output)
-
-        if not match:
-            self.error("Please define rommon variable IP_SUBNET_MASK. It's required for booting eXR.")
-
-        device.execute_command("exit")
+    def _ping_repo_check(self, device, repo_str):
 
         repo_ip = re.search('.*/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/.*', repo_str)
 
@@ -297,28 +312,235 @@ class PreMigratePlugin(IPlugin):
         if "100 percent" not in output:
             self.error("Cannot ping server repository " + repo_ip.group(1) + " on device. Please check session.log.")
 
+    def _resize_eusb(self, device, repository):
+        self._copy_files_to_device(device, repository, ['resize_eusb'], ['disk0:/resize_eusb'], 100)
+        device.execute_command('run')
+        cmd = 'ksh /disk0:/resize_eusb'
+        success, output = device.execute_command(cmd)
+        device.execute_command('exit')
+        if not "eUSB partition completed." in output:
+            self.error("eUSB partition failed. Please check session.log.")
 
-    def _snapshot_active_packages(self, device, fileloc):
 
+    def _check_fpd(self, device):
+        cmd = 'show hw-module fpd location all'
+        success, fpdtable = device.execute_command(cmd)
+
+        if not success:
+            self.error("Failed to check FPD version before migration")
+
+
+        location_to_subtypes_need_upgrade = {}
+
+        self._find_all_fpds_need_upgrade(fpdtable, ROUTEPROCESSOR_RE, location_to_subtypes_need_upgrade)
+        self._find_all_fpds_need_upgrade(fpdtable, LINECARD_RE, location_to_subtypes_need_upgrade)
+
+
+        return location_to_subtypes_need_upgrade
+
+
+
+    def _find_all_fpds_need_upgrade(self, fpdtable, location, location_to_subtypes_need_upgrade):
+        for fpdtype in FPDS_CHECK_FOR_UPGRADE:
+            match = re.search(location + '[-.A-Z0-9a-z\s]*?' + fpdtype + '[-.A-Z0-9a-z\s]*?(No|Yes)', fpdtable)
+
+            if match:
+                if match.group(2) == "Yes":
+                    if not match.group(1) in location_to_subtypes_need_upgrade:
+                        location_to_subtypes_need_upgrade[match.group(1)] = []
+                    location_to_subtypes_need_upgrade[match.group(1)].append(fpdtype)
+
+
+    def _ensure_updated_fpd(self, device, repo, packages):
+
+        # check for the FPD version, if FPD needs upgrade,
+        # enable the FPD Auto Upgrade Feature
+
+        location_to_subtypes_need_upgrade = self._check_fpd(device)
+
+
+        if location_to_subtypes_need_upgrade:
+
+            cmd = "show install active summary"
+            success, active_packages = device.execute_command(cmd)
+            print cmd, '\n', active_packages, "<-----------------", success
+
+            match = re.search('fpd', active_packages)
+
+            if not match:
+                self.error("Device needs FPD upgrade but no FPD pie is active on device. Please install FPD pie to try again or upgrade your FPDs to eXR capable FPDs.")
+
+
+            cmd = "show version"
+            success, versioninfo = device.execute_command(cmd)
+            print cmd, '\n', versioninfo, "<-----------------", success
+
+            match = re.search('[Vv]ersion\s+?(\d\.\d\.\d)', versioninfo)
+
+            if not match:
+                self.error("Failed to recognize release version number. Please check session.log.")
+
+            release_version = match.group(1)
+
+
+            if release_version < MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD:
+
+
+                pie_packages = []
+                for package in packages:
+                    if package.find('.pie') > -1:
+                        pie_packages.append(package)
+
+                if len(pie_packages) != 1:
+                    self.error("Release version is below 6.0.0, please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must contain '.pie'")
+
+
+                """
+                Step 1: Install add the FPD SMU
+                """
+                self._post_status("FPD upgrade - install add the FPD SMU...")
+                install_add = InstallAddPlugin()
+                self._run_install_action_plugin(install_add, device, repo, pie_packages, "install add")
+
+
+                """
+                Step 2: Install activate the FPD SMU
+                """
+                self._post_status("FPD upgrade - install activate the FPD SMU...")
+                install_act = InstallActivatePlugin()
+                self._run_install_action_plugin(install_act, device, repo, pie_packages, "install activate")
+
+
+
+                """
+                Step 3: Install commit the FPD SMU
+                """
+                self._post_status("FPD upgrade - install commit the FPD SMU...")
+                install_com = InstallCommitPlugin()
+                self._run_install_action_plugin(install_com, device, repo, pie_packages, "install commit")
+
+
+
+            """
+            Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
+            """
+            self._upgrade_all_fpds(device, location_to_subtypes_need_upgrade)
+
+
+        return True
+
+    def _run_install_action_plugin(self, install_plugin, device, repo, pie_packages, install_action_name):
         try:
-            with open(fileloc + '/' + ACTIVE_PACKAGES_IN_CLASSIC, 'w') as active_packages_snapshot:
+            install_plugin.start(device, repository=repo, pkg_file=pie_packages)
+        except PluginError as e:
+            self.error("Failed to " + install_action_name + " the FPD SMU - ({0}): {1}".format(e.errno, e.strerror))
+        except AttributeError:
+            device.disconnect()
+            self.log("Disconnected...")
+            raise PluginError("Failed to " + install_action_name + " the FPD SMU. Please check session.log for details of failure.")
 
-                success, output = device.execute_command('show install active summary')
 
-                lines = output.split('\n')
 
-                x = 0
-                while "Active Packages:" not in lines[x]:
-                    x += 1
+    def _upgrade_all_fpds(self, device, location_to_subtypes_need_upgrade):
 
-                for i in range(x+1, len(lines)):
-                    line = lines[i].strip()
-                    active_packages_snapshot.write(line.split(":")[-1] + "\n")
+        for location in location_to_subtypes_need_upgrade:
 
-            active_packages_snapshot.close()
+            for fpdtype in location_to_subtypes_need_upgrade[location]:
+
+                self._post_status("FPD upgrade - start to upgrade FPD subtype " + fpdtype + " in location " + location)
+
+                command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location ' + location + ' \r'
+                success, output = device.execute_command(command, timeout=9600)
+                #fpd_upgrade_success = re.search(location + '.*' + fpdtype + '[-_%.A-Z0-9a-z\s]*[Ss]uccess', output)
+                fpd_upgrade_success = re.search('[Ss]uccess', output)
+                if not fpd_upgrade_success:
+                    self.error("Failed to force upgrade FPD subtype " + fpdtype + " in location " + location)
+
+        return True
+
+
+    def _create_config_logs(self, device, csvfile):
+        if not self.csm_ctx or not self.csm_ctx.log_directory:
+            self.error("Cannot fetch the log directory in csm_ctx from plugin.")
+
+        supported_config_log = self.csm_ctx.log_directory + os.sep + SUPPORTED_CONFIG_LOG
+        unsupported_config_log = self.csm_ctx.log_directory + os.sep + UNSUPPORTED_CONFIG_LOG
+        try:
+            with open(supported_config_log, 'w') as supp_log:
+                with open(unsupported_config_log, 'w') as unsupp_log:
+                    supp_log.write('Configurations Known or Supported to the NoX Conversion Tool \n \n')
+                    unsupp_log.write('Configurations Unprocessed by the NoX Conversion Tool (Comments, Markers, or Unknown/Unsupported Configurations) \n \n')
+                    supp_log.write('{0[0]:<8} {0[1]:^20}'.format(("Line No.", "Configuration")) + '\n')
+                    unsupp_log.write('{0[0]:<8} {0[1]:^20}'.format(("Line No.", "Configuration")) + '\n')
+                    with open(csvfile, 'rb') as csvfile:
+                        reader = csv.reader(csvfile)
+                        for row in reader:
+                            if len(row) >= 3 and row[1].strip() == "KNOWN_SUPPORTED":
+                                supp_log.write('{0[0]:<8} {0[1]:<}'.format((row[0], row[2])) + '\n')
+                            elif len(row) >= 3:
+                                unsupp_log.write('{0[0]:<8} {0[1]:<}'.format((row[0], row[2])) + '\n')
+                    csvfile.close()
+                unsupp_log.close()
+            supp_log.close()
         except:
-            active_packages_snapshot.close()
-            self._disconnect_and_raise_error(device, "Exception was thrown when writing file " + fileloc + "/" + ACTIVE_PACKAGES_IN_CLASSIC + ". Disconnecting...")
+            self._disconnect_and_raise_error(device, "Exception was thrown when writing diagnostic files - " + supported_config_log + " and " + unsupported_config_log + " after converting admin configuration using the NoX tool. . Disconnecting...")
+
+    def _handle_configs(self, device, host_ip, repo_str, fileloc, nox_to_use):
+
+        xr_config_name_in_repo = host_ip + "_xr.cfg"
+        xr_config_name_in_csm = "xr.cfg"
+        breakout_config_name_in_csm = "breakout.cfg"
+        admin_config_name_in_repo = host_ip + "_admin.cfg"
+        admin_config_name_in_csm = "admin.cfg"
+
+
+        self._post_status("Saving current configuration files on device into server repository and csm_data")
+        self._copy_config_to_repo(device, repo_str, xr_config_name_in_repo)
+
+
+        success, output = device.execute_command('admin')
+        if success:
+            self._copy_config_to_repo(device, repo_str, admin_config_name_in_repo)
+            device.execute_command('exit')
+
+
+        self._copy_files_to_csm_data(device, repo_str, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + xr_config_name_in_csm, fileloc + os.sep + admin_config_name_in_csm])
+
+
+
+        self._post_status("Converting admin configuration file with configuration migration tool")
+        self._run_migration_on_config(device, fileloc, admin_config_name_in_csm, NOX_FOR_MAC)
+        #self._run_migration_on_config(device, fileloc, "system.tech", NOX_FOR_MAC)
+
+
+        config_files = [xr_config_name_in_csm, "admin.iox"]
+
+        if not self._take_out_breakout_config(device, fileloc + os.sep + xr_config_name_in_csm, fileloc + os.sep + breakout_config_name_in_csm):
+            config_files.append(breakout_config_name_in_csm)
+
+
+        self._post_status("Uploading the migrated configuration files to server repository and device.")
+
+        config_names_in_repo = [host_ip + "_" + config_name for config_name in config_files]
+
+        if self._upload_files_to_tftp(device, [fileloc + os.sep + config_name for config_name in config_files], repo_str, config_names_in_repo):
+
+            self._copy_files_to_device(device, repo_str, config_names_in_repo, ["harddiskb:/" + config_name for config_name in config_files], TIMEOUT_FOR_COPY_CONFIG)
+
+    def _copy_iso_to_device(self, device, packages, repo_str):
+        found_iso = False
+        for package in packages:
+            if ".iso" in package:
+                if package == ISO_IMAGE_NAME:
+                    found_iso = True
+                    self._copy_files_to_device(device, repo_str, [package], ['harddiskb:/'+ package], TIMEOUT_FOR_COPY_ISO)
+                    break
+                else:
+                    self.error("Please make sure that the only ISO image you select on your server repository is asr9k-full-x64.iso. This is the only ISO image supported so far.")
+
+        if not found_iso:
+            self.error("Please make sure that you select asr9k-full-x64.iso on your server repository. This ISO image is required for migration.")
+
 
 
 
@@ -331,61 +553,40 @@ class PreMigratePlugin(IPlugin):
         if not packages:
             packages = []
 
-        host_directory = device.name.strip().replace('.', '_').replace(':','-')
+        host_directory_name = device.name.strip().replace('.', '_').replace(':','-')
 
-        fileloc = get_migration_directory() + host_directory
+        fileloc = get_migration_directory() + host_directory_name
 
         self.log(self.NAME + " Plugin is running")
 
+        node_status = NodeStatusPlugin()
+        try:
+            node_status.start(device)
+        except PluginError:
+            raise PluginError("Not all nodes are in valid IOS-XR final states. Pre-Migrate fails. Please check session.log to trouble-shoot.")
 
 
-        """
         self._post_status("Checking if migration requirements are met.")
         self._check_release_version(device)
-        self._check_network_configuration(device, repo_str)
+        self._ping_repo_check(device, repo_str)
+
+        self._post_status("Resizing eUSB partition.")
+        self._resize_eusb(device, repo_str)
 
 
         self._post_status("Downloading latest configuration migration tool from CCO.")
         nox_to_use = self._get_latest_config_migration_tool(device, fileloc)
 
 
-
-        self._post_status("Saving current configuration files on device into server repository and csm_data")
-        self._copy_config_to_repo(device, repo_str, filename)
+        self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use)
 
 
-        success, output = device.execute_command('admin')
-        if success:
-            self._copy_config_to_repo(device, repo_str, filename + "_admin")
-            device.execute_command('exit')
+        self._post_status("Copying the eXR ISO image from server repository to device.")
+        self._copy_iso_to_device(device, packages, repo_str)
 
 
-        self._copy_files_to_csm_data(device, [filename, filename + "_admin"], repo_str, [fileloc + os.sep + filename, fileloc + os.sep + filename + "_admin"])
-
-
-
-        self._post_status("Converting admin configuration file with configuration migration tool")
-        self._run_migration_on_config(fileloc, filename + "_admin", NOX_FOR_MAC)
-
-        config_files = [filename, filename + "_admin.iox"]
-
-        if not self._take_out_breakout_config(fileloc + os.sep + filename):
-            config_files.append(filename + "_breakout")
-
-
-        self._post_status("Uploading the migrated configuration files to server repository and device.")
-
-        if self._upload_files_to_tftp(device, config_files, [fileloc + os.sep + config_name for config_name in config_files], repo_str):
-
-            self._copy_files_to_device(device, repo_str, config_files, 'harddiskb:')
-
-
-
-
-        self._snapshot_active_packages(device, fileloc)
-
-        """
-
+        self._post_status("Checking FPD version...")
+        self._ensure_updated_fpd(device, repo_str, packages)
 
         return True
 

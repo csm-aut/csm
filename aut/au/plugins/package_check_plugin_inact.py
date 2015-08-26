@@ -49,14 +49,19 @@ class InactivePackagesPlugin(IPlugin):
 
     def start(self, device, *args, **kwargs):
         if device:
-            success, output = device.execute_command(
-                "admin show install inactive summary")
+            success, output = device.execute_command("admin")
             if success:
-                self.csm_ctx = device.get_property('ctx')
-                if self.csm_ctx and hasattr(self.csm_ctx, 'inactive_cli'):
-                    self.csm_ctx.inactive_cli = output
-                self.log("Inactive packages retrieved")
-                device.store_property('install_inactive', output)
+                success, output = device.execute_command("show install inactive summary")
+                if success:
+
+                    self.csm_ctx = device.get_property('ctx')
+                    if self.csm_ctx and hasattr(self.csm_ctx, 'inactive_cli'):
+                        self.csm_ctx.inactive_cli = output
+                    self.log("Inactive packages retrieved")
+                    device.store_property('install_inactive', output)
+
+            success, output = device.execute_command("exit")
+            if success:
                 return
 
         self.error("Can not get list of inactive packages.")

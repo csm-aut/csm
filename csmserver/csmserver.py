@@ -49,6 +49,7 @@ from forms import SMTPForm
 from forms import PreferencesForm
 from forms import HostImportForm
 from forms import ServerDialogForm
+from forms import ScheduleMigrationForm
 
 from models import Host
 from models import JumpHost
@@ -1691,7 +1692,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
     
     install_job.install_action = install_action
         
-    if (install_job.install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR or install_action == InstallAction.MIGRATE_CONFIG_TO_EXR) and \
+    if (install_job.install_action == InstallAction.INSTALL_ADD or install_job.install_action == InstallAction.PRE_MIGRATE) and \
         not is_empty(form.hidden_pending_downloads.data):
         install_job.pending_downloads = ','.join(form.hidden_pending_downloads.data.split())
     else:
@@ -1699,8 +1700,8 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
 
     install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
 
-    # Only Install Add and Migrate to eXR should have server_id and server_directory
-    if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR or install_action == InstallAction.MIGRATE_CONFIG_TO_EXR:
+    # Only Install Add and Pre-Migrate should have server_id and server_directory
+    if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE:
         install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
         install_job.server_directory = form.hidden_server_directory.data
     else:
@@ -1712,8 +1713,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_action == InstallAction.INSTALL_ACTIVATE or \
         install_action == InstallAction.INSTALL_REMOVE or \
         install_action == InstallAction.INSTALL_DEACTIVATE or \
-        install_action == InstallAction.PRE_MIGRATE or \
-        install_action == InstallAction.MIGRATE_SYSTEM_TO_EXR:
+        install_action == InstallAction.PRE_MIGRATE:
         
         package_list = ''
         software_packages = form.software_packages.data.split()
@@ -2194,7 +2194,7 @@ def host_session_log(hostname, table, id):
         abort(404)
 
     file_entries = []
-    log_content = '\n'
+    log_content = ''
     if os.path.isdir(autlogs_file_path):
         # Returns all files under the requested directory
         file_list = get_file_list(autlogs_file_path)
@@ -2202,19 +2202,8 @@ def host_session_log(hostname, table, id):
             file_entries.append(file_path + os.sep + file)
     else:
         # Returns the contents of the requested file
-        fo = None
-        try:
-            fo = io.open(autlogs_file_path, "r", encoding = 'utf-8')
-            lines = fo.readlines()
-
-            for line in lines:
-                # Trim UNIX ^M characters
-                line = line.replace("\r","").replace("\n","")
-                if len(line) > 0:
-                    log_content += line + '\n'
-
-        finally:
-            fo.close()
+        with io.open(autlogs_file_path, "rt", encoding='latin-1') as fo:
+            log_content = fo.read()
 
     return render_template('host/session_log.html', hostname=hostname, table=table, table_id=id, file_entries=file_entries, log_content=log_content, is_file=os.path.isfile(autlogs_file_path))
 
@@ -2658,11 +2647,21 @@ def get_install_actions_dict():
         "all": InstallAction.ALL,
         "premigrate": InstallAction.PRE_MIGRATE,
         "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
-        "migrate_config": InstallAction.MIGRATE_CONFIG_TO_EXR,
         "postmigrate": InstallAction.POST_MIGRATE,
         "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
-        
+
+def get_install_migrations_dict():
+    return {
+        "premigrate": InstallAction.PRE_MIGRATE,
+        "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
+        "postmigrate": InstallAction.POST_MIGRATE,
+        "allformigrate": InstallAction.ALL_FOR_MIGRATE
+    }
+
+
+
+
 def fill_dependencies(choices):
     # Remove all the existing entries
     del choices[:] 
@@ -2903,7 +2902,11 @@ def user_preferences():
         preferences = user.preferences[0]
         form.cco_username.data = preferences.cco_username
        
-    return render_template('csm_client/preferences.html', form=form, platforms_and_releases=get_platforms_and_releases_dict(db_session)) 
+    return render_template('csm_client/preferences.html', form=form, platforms_and_releases=get_platforms_and_releases_dict(db_session))
+
+
+
+
 
 def get_platforms_and_releases_dict(db_session):
     excluded_platform_list = []
@@ -2936,7 +2939,12 @@ def get_platforms_and_releases_dict(db_session):
                 rows.append(row)
             
     return rows
-    
+
+
+
+
+
+
 @app.route('/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def get_smu_list(platform, release):        
@@ -3202,7 +3210,18 @@ def download_system_logs():
     log_file.close()  
         
     return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
+
+
+
+
+
         
 if __name__ == '__main__':  
     initialize.init()  
     app.run(host='0.0.0.0', use_reloader=False, threaded=True, debug=False)
+
+
+
+
+
+
