@@ -40,6 +40,9 @@ DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'
 DIRECTORY_TEMP = DIRECTORY_BASE + 'temp/'
 DIRECTORY_MIGRATION = DIRECTORY_BASE + 'migration/'
     
+def get_csm_data_directory():
+    return DIRECTORY_BASE
+
 def get_autlogs_directory():
     return DIRECTORY_AUT_LOGS
 

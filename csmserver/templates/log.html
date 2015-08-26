@@ -34,7 +34,7 @@
         <th>No.</th> 
         <th>Severity</th>  
         <th>Message</th>  
-        <th>Create Time</th>  
+        <th>Created Time</th>  
         <th>Trace</th>  
       </tr>  
     </thead>  
@@ -50,9 +50,9 @@
           <td class="utcDate">{{ log.created_time | datetime_string }}</td>  
  
           {% if log.trace == None %}
-            <td>None</td>
+            <td>&nbsp;</td>
           {% else %}
-            <td><a href="{{ url_for('log_trace', log_id = log.id) }}">View</a></td>
+            <td><a href="{{ url_for('log_trace', log_id = log.id) }}"><center><img title='Trace Log' src="{{ url_for('static', filename='file.png') }}"></center></a></td>
           {% endif %}   
 
         </tr>  

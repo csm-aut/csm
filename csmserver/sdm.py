@@ -50,7 +50,7 @@ import traceback
     
 from constants import get_repository_directory
 
-lock = threading.Lock()
+lock = threading.RLock()
 in_progress_downloads = {}
 
 class DownloadManager(threading.Thread):
@@ -83,7 +83,8 @@ class DownloadManager(threading.Thread):
                         if download_job.cco_filename in in_progress_downloads:
                             continue
 
-                    in_progress_downloads[download_job.cco_filename] = download_job.cco_filename
+                        in_progress_downloads[download_job.cco_filename] = download_job.cco_filename
+                        
                     self.pool.submit(DownloadWorkUnit(download_job.id))
         except:
             logger.exception('Unable to dispatch download job')  
@@ -116,7 +117,7 @@ class DownloadWorkUnit(WorkUnit):
       
             # Only download if the image (tar file) is not in the downloads directory.
             # And, the image is a good one.
-            if not is_tar_file_valid(output_file_path):
+            if not self.is_tar_file_valid(output_file_path):
                
                 user_id = download_job.user_id
                 user = db_session.query(User).filter(User.id == user_id).first()
@@ -153,13 +154,13 @@ class DownloadWorkUnit(WorkUnit):
                 for filename in tarfile_file_list:
                     server_impl.upload_file(get_repository_directory() + filename, filename, sub_directory=download_job.server_directory)       
             
-            archive_download_job(db_session, download_job, JobStatus.COMPLETED) 
+            self.archive_download_job(db_session, download_job, JobStatus.COMPLETED) 
             db_session.commit()
 
         except:
             try:
                 logger.exception('DownloadManager hit exception - download job = %s', self.job_id)   
-                archive_download_job(db_session, download_job, JobStatus.FAILED, traceback.format_exc())
+                self.archive_download_job(db_session, download_job, JobStatus.FAILED, traceback.format_exc())
                 db_session.commit()                
             except:
                 logger.exception('DownloadManager hit exception - download job = %s', self.job_id)
@@ -169,42 +170,42 @@ class DownloadWorkUnit(WorkUnit):
                     download_job.cco_filename in in_progress_downloads: del in_progress_downloads[download_job.cco_filename]
             db_session.close()       
 
-"""
-The tar file is considered valid if its corresponding .size file content
-equals to the size of the tar file.  It will be nice if we can have MD5 support.
-"""
-def is_tar_file_valid(tarfile_path):
-    try: 
-        tarfile_size = os.path.getsize(tarfile_path)
-        recorded_size = open(tarfile_path + '.size', 'r').read()
-        if tarfile_size == int(recorded_size):
-            return True
-    except:
-        return False
+    """
+    The tar file is considered valid if its corresponding .size file content
+    equals to the size of the tar file.  It will be nice if we can have MD5 support.
+    """
+    def is_tar_file_valid(self, tarfile_path):
+        try: 
+            tarfile_size = os.path.getsize(tarfile_path)
+            recorded_size = open(tarfile_path + '.size', 'r').read()
+            if tarfile_size == int(recorded_size):
+                return True
+        except:
+            return False
         
-def archive_download_job(db_session, download_job, job_status, trace=None):
-    download_job.set_status(job_status)
-    if trace is not None:
-        download_job.trace = traceback.format_exc()
+    def archive_download_job(self, db_session, download_job, job_status, trace=None):
+        download_job.set_status(job_status)
+        if trace is not None:
+            download_job.trace = traceback.format_exc()
     
-    download_job_history = DownloadJobHistory()
-    download_job_history.cco_filename = download_job.cco_filename
-    download_job_history.pid = download_job.pid
-    download_job_history.mdf_id = download_job.mdf_id
-    download_job_history.software_type_id = download_job.software_type_id
-    download_job_history.set_status(job_status) 
-    download_job_history.scheduled_time = download_job.scheduled_time
-    download_job_history.server_id = download_job.server_id
-    download_job_history.server_directory = download_job.server_directory
-    download_job_history.created_by = download_job.created_by
-    download_job_history.trace = download_job.trace
+        download_job_history = DownloadJobHistory()
+        download_job_history.cco_filename = download_job.cco_filename
+        download_job_history.pid = download_job.pid
+        download_job_history.mdf_id = download_job.mdf_id
+        download_job_history.software_type_id = download_job.software_type_id
+        download_job_history.set_status(job_status) 
+        download_job_history.scheduled_time = download_job.scheduled_time
+        download_job_history.server_id = download_job.server_id
+        download_job_history.server_directory = download_job.server_directory
+        download_job_history.created_by = download_job.created_by
+        download_job_history.trace = download_job.trace
         
-    # Only delete the download job if it is completed successfully. 
-    # Failed job should still be retained in the DownloadJob table.
-    if job_status == JobStatus.COMPLETED:
-        db_session.delete(download_job)
+        # Only delete the download job if it is completed successfully. 
+        # Failed job should still be retained in the DownloadJob table.
+        if job_status == JobStatus.COMPLETED:
+            db_session.delete(download_job)
         
-    db_session.add(download_job_history)
+        db_session.add(download_job_history)
 
 if __name__ == '__main__':
     download_manager = DownloadManager('Download Manager')

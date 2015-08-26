@@ -137,7 +137,10 @@ def execute(options, args, parser, stdout=None, stderr=None):
     manager.run()
 
     failed = manager.failed
-    device.disconnect()
+    try:
+        device.disconnect()
+    except:
+        pass
     manager.destroy()
 
     return failed

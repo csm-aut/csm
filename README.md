@@ -4,21 +4,21 @@ CSM Server is an automation and orchestration framework for IOS-XR devices.  It 
 
 # Getting the Latest Code
 
-The latest Build is 07/02/2015 which can be found on the CSM Server Home page
 
-Click the Download ZIP button on the right to download csm-master.zip.  
+Click the <a href="https://github.com/csm-aut/csm/releases">releases</a> link and select the latest release and download the source code zip file.
+The file is called csm-x.x.zip where x.x is the release number.
 
 # New Installation
 
-Consult the Installation Guide to install CSM Server.
+For new installation, consult the Install Guide to install CSM Server.  The Install Guide, install_guide.pdf, can be found in the csm directory after you unzip the zip file.
 
 # Upgrade to the Latest Code
 
-This section assumes that CSM Server has been installed on /usr/local/csm and you wanted to upgrade to the latest code.  Copy csm-master.zip to /usr/local and unzip its contents.
+This section assumes that CSM Server has been installed on /usr/local/csm and you wanted to upgrade to the latest code.  Copy csm-x.x.zip to /usr/local and unzip its contents.
 
 ```shell
 $ cd /usr/local
-$ unzip csm-master.zip
+$ unzip csm-x.x.zip
 ```
 
 ## Shut down CSM Server
@@ -44,7 +44,7 @@ Rename the current CSM Server directory to csm_old and the csm-master to csm.
 ```shell
 $ cd /usr/local
 $ mv csm csm_old              
-$ mv csm-master csm
+$ mv csm-x.x csm
 ```
 
 ### Restart CSM Server

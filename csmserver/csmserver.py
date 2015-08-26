@@ -29,7 +29,7 @@ from flask import jsonify, abort, send_file
 from flask import request, Response, redirect, url_for, make_response
 from flask.ext.login import LoginManager, current_user
 from flask.ext.login import login_user, login_required, logout_user  
-from platform_matcher import get_platform, get_release
+from platform_matcher import get_platform, get_release, UNKNOWN
 
 from werkzeug.contrib.fixers import ProxyFix
 
@@ -72,6 +72,7 @@ from models import SMUInfo
 from models import DownloadJob
 from models import DownloadJobHistory
 from models import CSMMessage
+from models import RegionServer
 from models import get_download_job_key_dict
 
 from validate import is_connection_valid
@@ -108,14 +109,15 @@ from wtforms.validators import Required
 from smu_utils import get_optimize_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
+from smu_utils import get_platform_and_release
 from smu_utils import SP_INDICATOR
-from smu_utils import get_package_type
 
 from smu_info_loader import SMUInfoLoader
 from bsd_service import BSDServiceHandler
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 from package_utils import get_target_software_package_list
+from restful import restful_api
+from views.exr_migrate import exr_migrate
 
 import os
 import io
@@ -131,6 +133,9 @@ import initialize
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+
+app.register_blueprint(restful_api)
+app.register_blueprint(exr_migrate)
 
 #hook up the filters
 filters.init(app)
@@ -154,9 +159,8 @@ def load_user(user_id):
 def home():
     db_session = DBSession()
 
-    hosts = get_host_list(db_session)
-    if hosts is None:
-        abort(404)
+    total_host_count = db_session.query(Host).count()
+    total_region_count = db_session.query(Region).count()
     
     jump_hosts = get_jump_host_list(db_session)
     regions = get_region_list(db_session)
@@ -166,31 +170,44 @@ def home():
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
-    return render_template('host/home.html', form=form, hosts=hosts, jump_hosts=jump_hosts, regions=regions, 
-        servers=servers, hosts_info_json=get_host_platform_json(hosts), build_date=get_build_date(), current_user=current_user) 
+    return render_template('host/home.html', form=form, total_host_count=total_host_count, 
+        total_region_count=total_region_count, jump_hosts=jump_hosts, regions=regions, 
+        servers=servers, build_date=get_build_date(), current_user=current_user) 
 
-def get_host_platform_json(hosts):
-    host_dict = {}
-    for host in hosts:
-        key = '{}={}'.format(host.software_version, host.software_platform)
-        if key in host_dict:
-            host_dict[key] += 1
-        else:
-            host_dict[key] = 1
+@app.route('/api/get_host_platform_version/region/<int:region_id>')
+@login_required
+def get_host_platform_version(region_id):
+    db_session = DBSession()
     
-    sorted_dict = collections.OrderedDict(sorted(host_dict.items()))
+    if region_id == 0:
+        hosts = db_session.query(Host)
+    else:
+        hosts = db_session.query(Host).filter(Host.region_id == region_id)
+    
+    host_dict = {}
+    if hosts is not None:
+        for host in hosts:
+            platform = 'Unknown' if host.software_platform is None else host.software_platform
+            software = 'Unknown' if host.software_version is None else host.software_version
+              
+            key = '{}={}'.format(platform, software)
+            if key in host_dict:
+                host_dict[key] += 1
+            else:
+                host_dict[key] = 1
+                
     
     rows = []
     # key is a tuple ('4.2.3-asr9k', 1)
-    for key in sorted_dict.items():
+    for key in host_dict.items():
         row = {}
         info_array = key[0].split('=')
-        row['software'] = info_array[0]
-        row['platform'] = info_array[1]
-        row['count'] = key[1]
+        row['platform'] = info_array[0]
+        row['software'] = info_array[1]
+        row['host_count'] = key[1]
         rows.append(row)
-    
-    return json.dumps(rows)
+        
+    return jsonify( **{'data':rows} )
     
 @app.route('/install_dashboard')
 @login_required
@@ -363,6 +380,103 @@ def get_username(current_user):
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+
+@app.route('/api/get_region_host_count/region/<int:region_id>')
+@login_required
+def get_region_host_count(region_id):
+    db_session = DBSession()
+    
+    if region_id == 0:
+        count = db_session.query(Host).count()
+    else:
+        count = db_session.query(Host).filter(Host.region_id == region_id).count()
+        
+    return jsonify( **{'data': [ { 'region_host_count': count } ] } )
+    
+
+@app.route('/api/get_region_name/region/<int:region_id>')
+@login_required
+def get_region_name(region_id):
+    region_name = 'ALL'
+    db_session = DBSession()
+    
+    if region_id > 0:
+        region = get_region_by_id(db_session, region_id)
+        if region is not None:
+            region_name = region.name
+        
+    return jsonify( **{'data': [ { 'region_name': region_name } ] } )
+        
+    
+@app.route('/api/get_managed_hosts/region/<int:region_id>')
+@login_required
+def get_managed_hosts(region_id):
+    rows = []   
+    db_session = DBSession()
+
+    if region_id == 0:
+        hosts = db_session.query(Host)
+    else:
+        hosts = db_session.query(Host).filter(Host.region_id == region_id)
+    
+    if hosts is not None:
+        for host in hosts:
+            row = {} 
+            row['hostname'] = host.hostname
+            row['region'] = '' if host.region is None else host.region.name
+            row['host_or_ip'] = host.connection_param[0].host_or_ip
+            row['platform'] = host.platform
+            
+            if host.software_version is not None:
+                row['software'] = host.software_version + '<br>' + host.software_platform
+            else:
+                row['software'] = 'Unknown'
+            
+            inventory_job = host.inventory_job[0]
+            if inventory_job is not None and inventory_job.last_successful_time is not None:
+                row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
+                row['inventory_status'] =  inventory_job.status
+            else:
+                row['last_successful_retrieval'] = ''
+                row['inventory_status'] = ''
+            
+            rows.append(row)
+    
+    return jsonify( **{'data':rows} )
+
+@app.route('/api/get_managed_host_details/region/<int:region_id>')
+@login_required
+def get_managed_host_details(region_id):
+    rows = []   
+    db_session = DBSession()
+
+    if region_id == 0:
+        hosts = db_session.query(Host)
+    else:
+        hosts = db_session.query(Host).filter(Host.region_id == region_id)
+    
+    if hosts is not None:
+        for host in hosts:
+            row = {} 
+            row['hostname'] = host.hostname
+            row['platform'] = host.platform
+            
+            connection_param = host.connection_param[0]
+            row['connection'] = connection_param.connection_type
+            row['host_or_ip'] = connection_param.host_or_ip
+            row['port_number'] = 'Default' if is_empty(connection_param.port_number) else connection_param.port_number
+            
+            if not is_empty(connection_param.jump_host):
+                row['jump_host'] = connection_param.jump_host.hostname
+            else:
+                row['jump_host'] = ''
+                          
+            row['username'] = connection_param.username
+            
+            rows.append(row)
+    
+    return jsonify( **{'data':rows} )
 
 @app.route('/api/acknowledge_csm_message', methods=['POST'])
 def api_acknowledge_csm_message():
@@ -873,11 +987,14 @@ def server_delete(hostname):
     server = get_server(db_session, hostname)
     if server is None:
         abort(404)
-     
-    db_session.delete(server)
-    db_session.commit()
+    
+    if len(server.regions) == 0:
+        db_session.delete(server)
+        db_session.commit()
         
-    return jsonify({'status':'OK'})
+        return jsonify({'status':'OK'})
+    else:
+        return jsonify({'status':'Failed'})
 
 @app.route('/regions/create/', methods=['GET', 'POST'])
 @login_required
@@ -959,10 +1076,18 @@ def region_delete(region_name):
     if region is None:
         abort(404)
      
-    db_session.delete(region)
-    db_session.commit()
+    # Older version of db does not perform check on
+    # foreign key constrain, so do it programmatically here.
+    count = db_session.query(Host).filter(
+        Host.region_id == region.id).count()
+
+    if count == 0:
+        db_session.delete(region)
+        db_session.commit()
         
-    return jsonify({'status':'OK'})
+        return jsonify({'status':'OK'})
+    else:
+        return jsonify({'status':'Failed'})
 
 def add_validator(field, validator_class):
     validators = field.validators
@@ -1287,21 +1412,16 @@ def get_install_job_json_dict(install_jobs):
 @app.route('/api/get_files_from_csm_repository/')
 @login_required
 def get_files_from_csm_repository():
-    result_list = {}
+    rows = []
     file_list = get_file_list(get_repository_directory())
     
     for filename in file_list:
-        if '.size' in filename:
-            recorded_size = open(get_repository_directory() + filename, 'r').read()
-            # Pick out the tar files that have been download completely
-            result_list[filename.replace('.size','')] = recorded_size
-    
-    rows = []  
-    for filename in file_list:
-        if filename in result_list:
+        if filename.endswith('.tar'):
+            statinfo = os.stat(get_repository_directory() + filename)
             row = {}
             row['image_name'] = filename
-            row['image_size'] = result_list[filename] + ' bytes'
+            row['image_size'] = '{} bytes'.format(statinfo.st_size)
+            row['downloaded_time'] = datetime.datetime.fromtimestamp(statinfo.st_mtime).strftime("%m/%d/%Y %I:%M %p")
             rows.append(row)
     
     return jsonify( **{'data':rows} )
@@ -1309,10 +1429,10 @@ def get_files_from_csm_repository():
 @app.route('/api/image/<image_name>/delete/' , methods=['DELETE'])
 @login_required  
 def api_delete_image_from_repository(image_name):
-    if current_user.privilege != UserPrivilege.ADMIN or \
+    if current_user.privilege != UserPrivilege.ADMIN and \
         current_user.privilege != UserPrivilege.NETWORK_ADMIN:
         abort(401)
-        
+    
     tar_image_path = get_repository_directory() + image_name
     file_list = get_tarfile_file_list(tar_image_path)
     for filename in file_list:
@@ -1510,7 +1630,7 @@ def delete_all_downloads(status=None):
         logger.exception('delete download job hits exception')
         return jsonify({'status':'Failed: check system logs for details'})
     
-@app.route('/api/get_server_time/')
+@app.route('/api/get_server_time')
 @login_required
 def api_get_server_time():  
     dict = {}
@@ -1539,6 +1659,28 @@ def api_get_hostnames():
             row['id'] = host.hostname
             row['text'] = host.hostname
             rows.append(row)
+  
+    return jsonify( **{'data':rows} )
+
+"""
+This method is called by ajax attached to Select2 (Search a host).
+The returned JSON contains the predefined tags.
+"""
+@app.route('/api/get_regions/')
+@login_required
+def api_get_regions():  
+    db_session = DBSession()
+    
+    rows = []   
+    criteria='%'
+    if len(request.args) > 0:
+        criteria += request.args.get('q') + '%'
+ 
+    regions = db_session.query(Region).filter(Region.name.like(criteria)).order_by(Region.name.asc()).all()   
+    if len(regions) > 0:
+        rows.append({ 'id': 0, 'text': 'ALL' })
+        for region in regions:
+            rows.append({ 'id': region.id, 'text': region.name })
   
     return jsonify( **{'data':rows} )
 
@@ -1654,7 +1796,7 @@ def schedule_install():
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''
             
-        return render_template('schedule_install.html', form=form, 
+        return render_template('schedule_install.html', form=form, system_option=SystemOption.get(db_session),
             server_time=datetime.datetime.utcnow(), return_url=return_url, install_action=get_install_actions_dict())
 
 def get_first_install_action(db_session, install_action):
@@ -1953,7 +2095,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 form.scheduled_time_UTC.data = \
                 get_datetime_string(install_job.scheduled_time)
         
-    return render_template('host/schedule_install.html', form=form, \
+    return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session), \
         host=host, server_time=datetime.datetime.utcnow(), install_job=install_job, return_url=return_url, \
         install_action=get_install_actions_dict())
 
@@ -1999,15 +2141,22 @@ def admin_console():
         system_option.can_install = admin_console_form.can_install.data  
         system_option.enable_email_notify = admin_console_form.enable_email_notify.data 
         system_option.enable_inventory = admin_console_form.enable_inventory.data 
-        system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
-        system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
+        
+        # The LDAP UI may be hidden if it is not supported.
+        # In this case, the flag is not set.
+        if not is_empty(admin_console_form.enable_ldap_auth.data):
+            system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
+            system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
+        
         system_option.inventory_hour = admin_console_form.inventory_hour.data 
         system_option.inventory_history_per_host = admin_console_form.inventory_history_per_host.data 
         system_option.download_history_per_user = admin_console_form.download_history_per_user.data
         system_option.install_history_per_host = admin_console_form.install_history_per_host.data
         system_option.total_system_logs = admin_console_form.total_system_logs.data
         system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data 
+        system_option.enable_cco_lookup = admin_console_form.enable_cco_lookup.data
         system_option.default_host_username = admin_console_form.default_host_username.data
+        
         if len(admin_console_form.default_host_password.data) > 0: 
             system_option.default_host_password = admin_console_form.default_host_password.data
          
@@ -2032,7 +2181,9 @@ def admin_console():
         admin_console_form.total_system_logs.data = system_option.total_system_logs
         admin_console_form.enable_default_host_authentication.data = system_option.enable_default_host_authentication
         admin_console_form.default_host_username.data = system_option.default_host_username
-        
+        admin_console_form.enable_cco_lookup.data = system_option.enable_cco_lookup
+        admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
+
         if smtp_server is not None:
             smtp_form.server.data = smtp_server.server
             smtp_form.server_port.data = smtp_server.server_port
@@ -2198,10 +2349,10 @@ def host_session_log(hostname, table, id):
     if os.path.isdir(autlogs_file_path):
         # Returns all files under the requested directory
         file_list = get_file_list(autlogs_file_path)
-        for file in file_list:
-            file_entries.append(file_path + os.sep + file)
-    else:
-        # Returns the contents of the requested file
+
+        for filename in file_list:
+            file_entries.append(file_path + os.sep + filename)
+    else:        
         with io.open(autlogs_file_path, "rt", encoding='latin-1') as fo:
             log_content = fo.read()
 
@@ -2236,9 +2387,10 @@ Displays the system related logs.
 @app.route('/logs/')
 @login_required
 def logs():
-    db_session = DBSession()           
-    logs = db_session.query(Log) \
-        .order_by(Log.created_time.desc())
+    db_session = DBSession()          
+    
+    # Only shows the ERROR 
+    logs = db_session.query(Log).filter(Log.level == 'ERROR').order_by(Log.created_time.desc())
 
     return render_template('log.html', logs=logs)          
 
@@ -2948,15 +3100,18 @@ def get_platforms_and_releases_dict(db_session):
 @app.route('/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def get_smu_list(platform, release):        
+    system_option = SystemOption.get(DBSession())
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
     
-    return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release) 
+    return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release, system_option=system_option) 
 
 @app.route('/api/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def api_get_smu_list(platform, release):    
     smu_loader = SMUInfoLoader(platform, release)
+    if smu_loader.smu_meta is None:
+        return jsonify( **{'data':[]} )
     
     if request.args.get('filter') == 'Optimal':
         return get_smu_or_sp_list(smu_loader.get_optimal_smu_list(), smu_loader.file_suffix)
@@ -2967,6 +3122,8 @@ def api_get_smu_list(platform, release):
 @login_required
 def api_get_sp_list(platform, release):  
     smu_loader = SMUInfoLoader(platform, release)
+    if smu_loader.smu_meta is None:
+        return jsonify( **{'data':[]} )
     
     if request.args.get('filter')  == 'Optimal':
         return get_smu_or_sp_list(smu_loader.get_optimal_sp_list(), smu_loader.file_suffix)
@@ -3044,7 +3201,18 @@ def get_smu_ids(db_session, smu_name_list):
                   
     return ','.join([id for id in smu_ids])
     
+@app.route('/api/get_smu_meta_retrieval_elapsed_time/platform/<platform>/release/<release>')
+@login_required
+def api_get_smu_meta_retrieval_elapsed_time(platform, release):
+    smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+    
+    retrieval_elapsed_time = 'Unknown'
+    if smu_meta is not None:
+        retrieval_elapsed_time = time_difference_UTC(smu_meta.retrieval_time)
 
+    return jsonify( **{'data': [ {'retrieval_elapsed_time': retrieval_elapsed_time }] } )
+    
+    
 @app.route('/optimize_list')
 @login_required
 def optimize_list(): 
@@ -3127,6 +3295,24 @@ def is_smu_on_server_repository(server_file_dict, smu_name):
             return True
     return False
 
+@app.route('/api/refresh_all_smu_info')
+@login_required
+def api_refresh_all_smu_info():  
+    if SMUInfoLoader.refresh_all():
+        return jsonify({'status':'OK'})
+    else:
+        return jsonify({'status':'Failed'})
+
+@app.route('/api/get_cco_lookup_time')
+@login_required
+def api_get_cco_lookup_time():  
+    system_option = SystemOption.get(DBSession())
+    if system_option.cco_lookup_time is not None:
+        return jsonify( **{'data': [ {'cco_lookup_time': get_datetime_string(system_option.cco_lookup_time) }] } )
+    else:
+        return jsonify({'status':'Failed'})
+    
+    
 """
 Given a SMU list, return any missing pre-requisites.  The
 SMU entries returned also have the file extension appended.
@@ -3147,6 +3333,35 @@ def api_get_missing_prerequisite_list():
         # (i.e. not in the Active/Active-Committed), include them.
         if not host_packages_contains(host_packages, smu_name):
             rows.append({'smu_entry':smu_name})
+    
+    return jsonify( **{'data':rows} )
+
+"""
+Given a software package/SMU/SP list, return those
+that require router reload.
+"""
+@app.route('/api/get_reload_list')
+@login_required
+def api_get_reload_list():    
+    # The software packages/SMUs/SPs selected by the user to install
+    package_list = request.args.get('package_list').split()   
+    
+    rows = []    
+    if not is_empty(package_list):
+        # Identify the platform and release
+        platform, release = get_platform_and_release(package_list)
+        if platform != UNKNOWN and release != UNKNOWN:
+            smu_loader = SMUInfoLoader(platform, release)
+            for package_name in package_list:
+                if 'mini' in package_name:
+                    rows.append({ 'entry' : package_name})
+                else:
+                    # Strip the suffix
+                    smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
+                    if smu_info is not None:
+                        if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
+                            rows.append({ 'entry' : package_name}) 
+ 
     
     return jsonify( **{'data':rows} )
 
@@ -3201,7 +3416,8 @@ def download_system_logs():
     for log in logs:
         contents += get_datetime_string(log.created_time) + '\n'
         contents += log.level + ':' + log.msg + '\n'
-        contents += log.trace + '\n'
+        if log.trace is not None:
+            contents += log.trace + '\n'
         contents += '-' * 70 + '\n'
         
     # Create a file which contains the size of the image file.
