@@ -498,6 +498,7 @@ class Server(Base):
     username = Column(String(100))
     _password = Column('password', String(100))
     server_directory = Column(String(100))
+    vrf = Column(String(100))
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     

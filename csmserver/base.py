@@ -25,7 +25,7 @@
 
 from constants import ServerType
 from models import Server
-from utils import concatenate_dirs
+from utils import concatenate_dirs, is_empty
 from constants import get_temp_directory, get_autlogs_directory
 
 class Context(object):
@@ -126,6 +126,8 @@ class InstallContext(ImageContext):
     
     """
     Return the server repository URL (TFTP/FTP) where the packages can be found.
+    tftp://223.255.254.254/auto/tftp-gud/sit;VRF
+    ftp://username:password@10.55.7.21/remote/directory;VRF
     """
     @property 
     def server_repository_url(self):
@@ -136,11 +138,15 @@ class InstallContext(ImageContext):
             server_type = server.server_type
 
             if server_type == ServerType.TFTP_SERVER:
-                url = server.server_url
+                url = 'tftp://{}'.format(server.server_url.replace('tftp://',''))
                 server_sub_directory = self.install_job.server_directory
                 
                 if server_sub_directory is not None and len(server_sub_directory) > 0:
-                    url += '/' + server_sub_directory                       
+                    url += '/' + server_sub_directory  
+                
+                if not is_empty(server.vrf):
+                    url = url + ";{}".format(server.vrf)
+                                     
                 return url
             
             elif server_type == ServerType.FTP_SERVER or server_type == ServerType.SFTP_SERVER:                              
@@ -150,6 +156,10 @@ class InstallContext(ImageContext):
                 remote_directory = concatenate_dirs(server.server_directory, self.install_job.server_directory)              
                 if len(remote_directory) > 0:
                     url = url + "/{}".format(remote_directory)
+                
+                if not is_empty(server.vrf):
+                    url = url + ";{}".format(server.vrf)
+
                 return url
             elif server_type == ServerType.LOCAL_SERVER:
                 return server.server_url

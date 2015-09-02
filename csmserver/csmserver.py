@@ -924,6 +924,7 @@ def server_create():
             server_url=trim_last_slash(form.server_url.data), 
             username=form.username.data,
             password=form.password.data,
+            vrf=form.vrf.data,
             server_directory=trim_last_slash(form.server_directory.data),
             created_by=current_user.username)
             
@@ -956,6 +957,7 @@ def server_edit(hostname):
         server.hostname = form.hostname.data
         server.server_type = form.server_type.data
         server.server_url = trim_last_slash(form.server_url.data)
+        server.vrf = form.vrf.data
         server.username = form.username.data
         if len(form.password.data) > 0:
             server.password = form.password.data
@@ -969,6 +971,7 @@ def server_edit(hostname):
         form.server_type.data = server.server_type
         form.server_url.data = server.server_url
         form.username.data = server.username
+        form.vrf.data = server.vrf
         # In Edit mode, make the password field not required
         form.server_directory.data = server.server_directory
         

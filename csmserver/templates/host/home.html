@@ -536,6 +536,11 @@
                   <td>{{ server.server_type }}</td>  
                   <td>
                     <span style="color: Gray;"><b>URL:</b></span> {{ server.server_url }}<br/>
+                    
+                    {% if server.vrf %}
+                      <span style="color: Gray;"><b>VRF:</b></span> {{ server.vrf }}<br/>
+                    {% endif %}
+                    
                     {% if server.server_directory %}
                     
                       <span style="color: Gray;">
