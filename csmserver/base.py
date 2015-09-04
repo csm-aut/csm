@@ -144,7 +144,7 @@ class InstallContext(ImageContext):
                 if server_sub_directory is not None and len(server_sub_directory) > 0:
                     url += '/' + server_sub_directory  
                 
-                if not is_empty(server.vrf):
+                if len(server.vrf) > 0:
                     url = url + ";{}".format(server.vrf)
                                      
                 return url
@@ -157,7 +157,7 @@ class InstallContext(ImageContext):
                 if len(remote_directory) > 0:
                     url = url + "/{}".format(remote_directory)
                 
-                if not is_empty(server.vrf):
+                if len(server.vrf) > 0:
                     url = url + ";{}".format(server.vrf)
 
                 return url
