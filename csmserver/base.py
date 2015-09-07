@@ -127,7 +127,7 @@ class InstallContext(ImageContext):
     """
     Return the server repository URL (TFTP/FTP) where the packages can be found.
     tftp://223.255.254.254/auto/tftp-gud/sit;VRF
-    ftp://username:password@10.55.7.21/remote/directory;VRF
+    ftp://username:password@10.55.7.21;VRF/remote/directory
     """
     @property 
     def server_repository_url(self):
@@ -139,26 +139,27 @@ class InstallContext(ImageContext):
 
             if server_type == ServerType.TFTP_SERVER:
                 url = 'tftp://{}'.format(server.server_url.replace('tftp://',''))
+
+                if not is_empty(server.vrf):
+                    url = url + ";{}".format(server.vrf)
+
                 server_sub_directory = self.install_job.server_directory
                 
-                if server_sub_directory is not None and len(server_sub_directory) > 0:
+                if server_sub_directory is not None and not is_empty(server_sub_directory):
                     url += '/' + server_sub_directory  
                 
-                if len(server.vrf) > 0:
-                    url = url + ";{}".format(server.vrf)
-                                     
                 return url
             
             elif server_type == ServerType.FTP_SERVER or server_type == ServerType.SFTP_SERVER:                              
                 protocol = 'ftp' if server_type == ServerType.FTP_SERVER else 'sftp'
                 url = protocol + "://{}:{}@{}".format(server.username, server.password, server.server_url) 
                 
-                remote_directory = concatenate_dirs(server.server_directory, self.install_job.server_directory)              
-                if len(remote_directory) > 0:
-                    url = url + "/{}".format(remote_directory)
-                
-                if len(server.vrf) > 0:
+                if not is_empty(server.vrf):
                     url = url + ";{}".format(server.vrf)
+
+                remote_directory = concatenate_dirs(server.server_directory, self.install_job.server_directory)              
+                if not is_empty(remote_directory):
+                    url = url + "/{}".format(remote_directory)
 
                 return url
             elif server_type == ServerType.LOCAL_SERVER:
