@@ -122,7 +122,7 @@ class Connection(object):
             name += "->{}".format(host)
         return name[2:]
 
-    def connect(self, logfile=None):
+    def connect(self, logfile=None, connect_with_reconfiguration=False):
         """
         Connection initialization method.
         If logfile is None then the common logfile from
@@ -142,7 +142,7 @@ class Connection(object):
 
             _logger.info(
                 _c(self.hostname, "Connecting to {}".format(self.__repr__())))
-            self.connected = self.ctrl.connect()
+            self.connected = self.ctrl.connect(connect_with_reconfiguration=connect_with_reconfiguration)
 
         if self.connected:
             _logger.info(
@@ -171,6 +171,7 @@ class Connection(object):
         """
         _logger.info(
             _c(self.hostname, "Disconnecting from {}".format(self.__repr__())))
+        print("calling disconnect from generic.py - calling the disconnect function directly")
         self.ctrl.disconnect()
         self.connected = False
         self.pending_connection = False
@@ -200,6 +201,7 @@ class Connection(object):
                 _logger.warn(
                     _c(self.hostname,
                         "Connection lost. Disconnecting."))
+                print("calling disconnect from generic.py except - ConnectionError Connection lost. Disconnecting.")
                 self.disconnect()
                 raise
 
@@ -316,6 +318,7 @@ class Connection(object):
         else:
             message = "Device is neither not responding nor not running IOS XR"
             _logger.debug(_c(self.hostname, message))
+            print("calling disconnect from generic.py - in detect prompt else statement")
             self.disconnect()
             raise ConnectionError(message, self.hostname)
 

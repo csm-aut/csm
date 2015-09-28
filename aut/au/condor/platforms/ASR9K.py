@@ -40,8 +40,8 @@ class Connection(generic.Connection):
     """
     platform = 'ASR9K'
 
-    def connect(self, logfile=None):
-        return super(Connection, self).connect(logfile)
+    def connect(self, logfile=None, connect_with_reconfiguration=False):
+        return super(Connection, self).connect(logfile, connect_with_reconfiguration)
         # Optimize the tty connection to the router
 
 

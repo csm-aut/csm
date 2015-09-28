@@ -22,6 +22,9 @@ def execute(context,testing_csm = False):
     if hasattr(ctx,'software_packages'):
         options.pkg_file = ctx.software_packages
 
+    if hasattr(ctx,'post_migrate_config_handling_option'):
+        options.best_effort_config = ctx.post_migrate_config_handling_option
+
     options.logdir = context.log_directory
     options.outdir = context.log_directory
     options.migdir = context.migration_directory

@@ -138,6 +138,7 @@ def execute(options, args, parser, stdout=None, stderr=None):
 
     failed = manager.failed
     try:
+        print("calling disconnect from main.py - device.disconnect")
         device.disconnect()
     except:
         pass

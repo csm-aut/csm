@@ -1,3 +1,9 @@
+{% macro dummy() %}
+  <legend>
+    <h4>Select Hosts</h4>
+  </legend>
+{% endmacro %}
+
 {% macro edit_field(field, field_width="col-sm-6", label_field_width="col-sm-4", catch_kwargs=true, extra_field="None") %}
   <div class="form-group {% if field.errors %} has-error {% endif %}">
     

@@ -79,6 +79,7 @@ class IPlugin(object):
         raise NotImplementedError
 
     def error(self, message):
+        print("calling disconnect from plugin.py - error, device.disconnect()")
         self.device.disconnect()
         self.log("Disconnected...")
         raise PluginError(message)

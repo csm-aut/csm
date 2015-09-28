@@ -49,7 +49,6 @@ from au.plugins.install_act import InstallActivatePlugin
 
 NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
 NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
-NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 NOX_FOR_MAC = "nox"
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.2"
 ACTIVE_PACKAGES_IN_CLASSIC = "active_packages_in_xr_snapshot.txt"
@@ -57,7 +56,9 @@ ACTIVE_PACKAGES_IN_CLASSIC = "active_packages_in_xr_snapshot.txt"
 TIMEOUT_FOR_COPY_CONFIG = 1000
 
 TIMEOUT_FOR_COPY_ISO = 1000
-ISO_IMAGE_NAME = "asr9k-mini-x64.iso"
+ISO_IMAGE_NAME = "asr9k-full-x64.iso"
+GRUB_EFI_NAME = "grub.efi"
+GRUB_CFG_NAME = "grub.cfg"
 
 ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
 LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
@@ -141,83 +142,13 @@ class PreMigratePlugin(IPlugin):
         self.log(msg)
         raise
 
-    def _get_nox_binary_publish_date(self, device):
-        try:
-            url = IOSXR_URL + "/" + NOX_PUBLISH_DATE
-            r = requests.get(url)
-            if not r.ok:
-                self.error("HTTP request to get " + IOSXR_URL + "/" + NOX_PUBLISH_DATE + " failed.")
-            return r.text
-        except PluginError:
-            raise
-        except:
-            self._disconnect_and_raise_error(device, "Exception was thrown during HTTP request to get " + IOSXR_URL + "/" + NOX_PUBLISH_DATE + ". Disconnecting...")
 
-
-
-    def _get_file_http(self, device, filename, destination):
-        try:
-            with open(destination + '/' + filename, 'wb') as handle:
-                response = requests.get(IOSXR_URL + "/" + filename, stream=True)
-
-                if not response.ok:
-                    self.error("HTTP request to get " + IOSXR_URL + "/" + filename + " failed.")
-
-                for block in response.iter_content(1024):
-                    handle.write(block)
-            handle.close()
-        except PluginError:
-            handle.close()
-            raise
-        except:
-            self._disconnect_and_raise_error(device, "Exception was thrown during HTTP request to get " + IOSXR_URL + "/" + filename + " and writing it to csm_data/migration/. Disconnecting...")
-
-
-
-    def _get_latest_config_migration_tool(self, device, fileloc):
-
-        date = self._get_nox_binary_publish_date(device)
-
-        need_new_nox = False
-
-        if os.path.isfile(fileloc + '/' + NOX_PUBLISH_DATE):
-            try:
-                with open(fileloc + '/' + NOX_PUBLISH_DATE, 'r') as f:
-                    current_date = f.readline()
-
-                if date != current_date:
-                    need_new_nox = True
-                f.close()
-            except:
-                self._disconnect_and_raise_error(device, "Exception was thrown when reading file " + fileloc + "/" + NOX_PUBLISH_DATE + ". Disconnecting...")
-
-        else:
-            need_new_nox = True
-
-        if need_new_nox:
-            check_32_or_64_system = subprocess.Popen(['uname', '-a'], stdout=subprocess.PIPE)
-            out, err = check_32_or_64_system.communicate()
-            if err:
-                self.error("Cannot determine whether the linux system that you are hosting CSM on is 32 bit or 64 bit. Please follow document to download the tools, convert the configurations and load them manually.")
-
-            if "x86_64" in out:
-                nox_to_use = NOX_64_BINARY
-            else:
-                nox_to_use = NOX_32_BINARY
-
-            self._get_file_http(device, nox_to_use, fileloc)
-            try:
-                with open(fileloc + '/' + NOX_PUBLISH_DATE, 'w') as nox_publish_date_file:
-                    nox_publish_date_file.write(date)
-                nox_publish_date_file.close()
-            except:
-                self._disconnect_and_raise_error(device, "Exception was thrown when writing file " + fileloc + "/" + NOX_PUBLISH_DATE + ". Disconnecting...")
 
 
     def _take_out_breakout_config(self, device, xr_config_file, breakout_file):
         breakout_config_empty = True
         if not os.path.isfile(xr_config_file):
-            self.error("The configuration file we backed up during Pre-Migrate - " + filepath + " - is not found.")
+            self.error("The configuration file we backed up during Pre-Migrate - " + xr_config_file + " - is not found.")
         try:
             classic_config = open(xr_config_file, "r+")
         except:
@@ -266,7 +197,7 @@ class PreMigratePlugin(IPlugin):
             self.csm_ctx.post_status(msg)
 
     def _run_migration_on_config(self, device, fileloc, filename, nox_to_use):
-        commands = [subprocess.Popen(["chmod", "+x", fileloc + os.sep + nox_to_use]), subprocess.Popen([fileloc + os.sep + nox_to_use, "-f", fileloc + os.sep + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
+        commands = [subprocess.Popen(["chmod", "+x", nox_to_use]), subprocess.Popen([nox_to_use, "-f", fileloc + os.sep + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
 
         nox_output, nox_error = commands[1].communicate()
 
@@ -312,7 +243,9 @@ class PreMigratePlugin(IPlugin):
         if "100 percent" not in output:
             self.error("Cannot ping server repository " + repo_ip.group(1) + " on device. Please check session.log.")
 
-    def _resize_eusb(self, device, repository):
+    def _resize_eusb(self, device, repository, packages):
+        #for package in packages:
+        #    if package == "resize_eusb":
         self._copy_files_to_device(device, repository, ['resize_eusb'], ['disk0:/resize_eusb'], 100)
         device.execute_command('run')
         cmd = 'ksh /disk0:/resize_eusb'
@@ -320,6 +253,10 @@ class PreMigratePlugin(IPlugin):
         device.execute_command('exit')
         if not "eUSB partition completed." in output:
             self.error("eUSB partition failed. Please check session.log.")
+
+        #    elif package == "migrate_to_eXR":
+        self._copy_files_to_device(device, repository, ['migrate_to_eXR'], ['harddiskb:/migrate_to_eXR'], 100)
+
 
 
     def _check_fpd(self, device):
@@ -509,7 +446,7 @@ class PreMigratePlugin(IPlugin):
 
 
         self._post_status("Converting admin configuration file with configuration migration tool")
-        self._run_migration_on_config(device, fileloc, admin_config_name_in_csm, NOX_FOR_MAC)
+        self._run_migration_on_config(device, fileloc, admin_config_name_in_csm, nox_to_use)
         #self._run_migration_on_config(device, fileloc, "system.tech", NOX_FOR_MAC)
 
 
@@ -534,9 +471,20 @@ class PreMigratePlugin(IPlugin):
                 if package == ISO_IMAGE_NAME:
                     found_iso = True
                     self._copy_files_to_device(device, repo_str, [package], ['harddiskb:/'+ package], TIMEOUT_FOR_COPY_ISO)
-                    break
                 else:
                     self.error("Please make sure that the only ISO image you select on your server repository is asr9k-full-x64.iso. This is the only ISO image supported so far.")
+
+            if ".efi" in package:
+                if package == GRUB_EFI_NAME:
+                    self._copy_files_to_device(device, repo_str, ['grub.efi'], ['harddiskb:/efi/boot/grub.efi'], TIMEOUT_FOR_COPY_ISO)
+                else:
+                    self.error("Please make sure that the only .efi binary you select on your server repository is grub.efi.")
+
+            if ".cfg" in package:
+                if package == GRUB_CFG_NAME:
+                    self._copy_files_to_device(device, repo_str, ['grub.cfg'], ['harddiskb:/efi/boot/grub.cfg'], TIMEOUT_FOR_COPY_ISO)
+                else:
+                    self.error("Please make sure that the only .cfg file you select on your server repository is grub.cfg.")
 
         if not found_iso:
             self.error("Please make sure that you select asr9k-full-x64.iso on your server repository. This ISO image is required for migration.")
@@ -571,13 +519,12 @@ class PreMigratePlugin(IPlugin):
         self._ping_repo_check(device, repo_str)
 
         self._post_status("Resizing eUSB partition.")
-        self._resize_eusb(device, repo_str)
+        self._resize_eusb(device, repo_str, packages)
 
 
-        self._post_status("Downloading latest configuration migration tool from CCO.")
-        nox_to_use = self._get_latest_config_migration_tool(device, fileloc)
-
-
+        nox_to_use = get_migration_directory() + NOX_FOR_MAC
+        if not os.path.isfile(nox_to_use):
+            self.error("The configuration conversion tool " + nox_to_use + " is missing. CSM should have downloaded it when this migration action was scheduled.")
         self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use)
 
 

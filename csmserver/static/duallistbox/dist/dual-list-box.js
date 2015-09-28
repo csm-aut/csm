@@ -87,6 +87,17 @@
               
         return selected_options;
     }
+    $.fn.get_unselected_items = function() {
+        var options = $(this).data('options');
+
+        var selected_options = [];
+
+        $(options.parentElement + ' .unselected').find('option').each(function() {
+          selected_options.push($(this).val());
+        });
+
+        return selected_options;
+    }
 
     /** Retrieves all the option elements through a JSON request. */
     function addElementsViaJSON(options, selected) {
@@ -388,6 +399,30 @@
         $(this).prop("selected", found);       
       });
       
+      $( ".str" ).click();
+    }
+
+    $.fn.select_exact_match = function(data_list) {
+      if (data_list.length == 0) {
+        return;
+      }
+
+      var plugin_options = $(this).data('options');
+      var unselected = $(plugin_options.parentElement + ' .unselected');
+
+      // remove all selected highlights
+      unselected.find('option').each(function() {
+        var found = false;
+
+        for (i = 0; i < data_list.length; i++) {
+          if ($(this).text() == data_list[i]) {
+            found = true;
+            break;
+          }
+        }
+        $(this).prop("selected", found);
+      });
+
       $( ".str" ).click();
     }
     

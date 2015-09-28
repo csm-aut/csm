@@ -230,6 +230,7 @@ class Device(object):
         return self.session.connected, self.session.send(command,timeout)
 
     def disconnect(self):
+        print("calling disconnect from device.py - session.disconnect - should go to generic disconnect")
         return self.session.disconnect()
 
     def connect(self):
@@ -254,7 +255,7 @@ class Device(object):
                     print "Failed to connect to : ",node
         return status
 
-    def reconnect(self):
+    def reconnect(self, connect_with_reconfiguration=False):
         """
          Wait for system to come up with max timeout as 10 Minutes
         changed timeout from 900 to 1800 for the migration to eXR purpose
@@ -265,11 +266,12 @@ class Device(object):
         time_waited = 0
         print "System going for reload., please wait!!"
         time.sleep(60)
+        print("calling disconnect from device.py - reconnect, session.disconnect()")
         self.session.disconnect()
 
 
         try :
-            self.session.connect(self.session_log)
+            self.session.connect(self.session_log, connect_with_reconfiguration=connect_with_reconfiguration)
         except :
             pass 
 
@@ -281,7 +283,7 @@ class Device(object):
                 time.sleep(poll_time)
                 print "\nRetry count :%s @ %s"%(time_waited/poll_time,time.strftime("%H:%M:%S", time.localtime()))
                 try:
-                    status = self.session.connect(self.session_log)
+                    status = self.session.connect(self.session_log, connect_with_reconfiguration=connect_with_reconfiguration)
                 except:
                     continue
 

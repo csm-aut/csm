@@ -83,3 +83,9 @@ def issu(flag):
         func = add_label(function, 'issu', issu=flag)
         return func
     return decorator
+
+def best_effort_config(integer):
+    def decorator(function):
+        func = add_label(function, 'best_effort_config', best_effort_config=integer)
+        return func
+    return decorator

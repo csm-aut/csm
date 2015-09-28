@@ -113,16 +113,12 @@ class MigrateSystemToExrPlugin(IPlugin):
 
 
 
-    def _migrate_to_eXR(self, device, repository, packages):
+    def _migrate_to_eXR(self, device):
 
-        for package in packages:
-            if package == "migrate_to_eXR":
-                self._copy_file_to_device(device, repository, package, 'harddiskb:')
-                break
 
         device.execute_command('run')
-        iso_path = 'http://172.25.146.28/issus' + '/asr9k-mini-x64.iso'
-        cmd = 'ksh /harddiskb:' + os.sep + 'migrate_to_eXR ' + iso_path
+        #iso_path = 'http://172.25.146.28/issus' + '/asr9k-mini-x64.iso'
+        cmd = 'ksh /harddiskb:/migrate_to_eXR '
         success, output = device.execute_command(cmd)
 
         """
@@ -130,10 +126,10 @@ class MigrateSystemToExrPlugin(IPlugin):
 
         """
         if "No such file" in output:
-            self.error("No migration script is found on device. Please either download the 'migrate_to_eXR' script to the server repository and select it prior to scheduling migration, or load the 6.0.0 classic XR image with this script bundled.")
+            self.error("No migration script is found on device. Please download the 'migrate_to_eXR' script to the server repository and select it prior to scheduling migration.")
 
-        if not iso_path in output:
-            self.error("Failed to assign the path to eXR image to rommon variable URL_NAME. Please check session.log")
+        #if not iso_path in output:
+        #    self.error("Failed to assign the path to eXR image to rommon variable URL_NAME. Please check session.log")
 
         success, output = device.execute_command('exit')
         return success
@@ -146,10 +142,10 @@ class MigrateSystemToExrPlugin(IPlugin):
             print cmd, '\n', output, "<-----------------", success
             if success:
                 device.execute_command('\r')
-                return self._wait_for_reload(device)
         except CommandTimeoutError:
             print "Reload command - expected to timeout"
-            return self._wait_for_reload(device)
+
+        return self._wait_for_reload(device)
 
 
 
@@ -160,7 +156,7 @@ class MigrateSystemToExrPlugin(IPlugin):
 
         """
         print "device trying to reconnect..."
-        status = device.reconnect()
+        status = device.reconnect(connect_with_reconfiguration=True)
         print "device finished reconnecting..."
         # Connection to device failed
         if not status :
@@ -194,10 +190,6 @@ class MigrateSystemToExrPlugin(IPlugin):
 
     def start(self, device, *args, **kwargs):
 
-        repo_str = kwargs.get('repository', None)
-        if not repo_str:
-            self.error("Server Repository not provided")
-
 
         packages = kwargs.get("pkg_file", None)
         if not packages:
@@ -219,7 +211,7 @@ class MigrateSystemToExrPlugin(IPlugin):
 
 
         self._post_status("Setting boot mode and image path in device")
-        success = self._migrate_to_eXR(device, repo_str, packages)
+        success = self._migrate_to_eXR(device)
 
         # checked: reload router, now we have flexr-capable fpd
         if success:

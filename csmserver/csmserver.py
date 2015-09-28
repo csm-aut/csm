@@ -412,7 +412,8 @@ def get_region_name(region_id):
 @app.route('/api/get_managed_hosts/region/<int:region_id>')
 @login_required
 def get_managed_hosts(region_id):
-    rows = []   
+
+    rows = []
     db_session = DBSession()
 
     if region_id == 0:
@@ -422,7 +423,7 @@ def get_managed_hosts(region_id):
     
     if hosts is not None:
         for host in hosts:
-            row = {} 
+            row = {}
             row['hostname'] = host.hostname
             row['region'] = '' if host.region is None else host.region.name
             row['host_or_ip'] = host.connection_param[0].host_or_ip
@@ -1799,6 +1800,8 @@ def schedule_install():
         return render_template('schedule_install.html', form=form, system_option=SystemOption.get(db_session),
             server_time=datetime.datetime.utcnow(), return_url=return_url, install_action=get_install_actions_dict())
 
+
+
 def get_first_install_action(db_session, install_action):
     return db_session.query(InstallJob).filter(InstallJob.install_action == install_action). \
         order_by(InstallJob.scheduled_time.asc()).first()
@@ -1830,6 +1833,7 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
     if install_job is None:
         install_job = InstallJob()
         install_job.host_id = host_id
+
         db_session.add(install_job)
     
     install_job.install_action = install_action
@@ -1858,7 +1862,11 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_action == InstallAction.PRE_MIGRATE:
         
         package_list = ''
-        software_packages = form.software_packages.data.split()
+        # ################################################ There is a change here on original code
+        if install_action == InstallAction.PRE_MIGRATE:
+            software_packages = form.hidden_software_packages.data.split(',')
+        else:
+            software_packages = form.software_packages.data.split()
         for software_package in software_packages:
             if install_action == InstallAction.INSTALL_ADD:
                 # Install Add only accepts external package names with the following suffix
@@ -1878,13 +1886,18 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
     install_job.dependency = dependency if dependency > 0 else None
     install_job.created_by = current_user.username
     install_job.user_id = current_user.id
-         
+
     #Resets the following fields
     install_job.status = None
     install_job.status_time = None
     install_job.session_log = None
     install_job.trace = None
-       
+
+    # ################################################ There is a change here on original code
+    install_job.best_effort_config_applying = '0'
+    if install_action == InstallAction.POST_MIGRATE:
+       install_job.best_effort_config_applying = form.hidden_best_effort_config.data
+
     if install_job.install_action != InstallAction.UNKNOWN:
         db_session.commit()
     
@@ -1958,7 +1971,7 @@ Pending downloads is an array of TAR files.
 """
 def create_download_jobs(db_session, platform, release, pending_downloads, server_id, server_directory):
     smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
-    if smu_meta is not None:  
+    if smu_meta is not None:
         for cco_filename in pending_downloads:
             # If the requested download_file is not in the download table, include it
             if not is_pending_on_download(db_session, cco_filename, server_id, server_directory):
@@ -2013,9 +2026,6 @@ def create_install_jobs_for_all_install_actions(db_session, host_id, form):
     new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
         install_action=InstallAction.MIGRATE_SYSTEM_TO_EXR, dependency=new_install_job.id)
 
-    # Create Migrate Configuration
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.MIGRATE_CONFIG_TO_EXR, dependency=new_install_job.id)
 
     # Create Post-Migrate
     new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
@@ -2025,8 +2035,14 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
-         
-    return_url = get_return_url(request, 'host_dashboard')       
+
+
+    if install_job is not None:
+
+        print(str(install_job.install_action))
+
+    return_url = get_return_url(request, 'host_dashboard')
+
     form = HostScheduleInstallForm(request.form)
     
     # Retrieves all the install jobs for this host.  This will allow
@@ -2071,10 +2087,12 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''
         form.hidden_edit.data = install_job is not None
-        
+
+
         # In Edit mode
         if install_job is not None:   
             form.install_action.data = install_job.install_action
+
             if install_job.server_id is not None:
                 form.hidden_server.data = install_job.server_id
                 server = get_server_by_id(db_session, install_job.server_id)
@@ -2087,6 +2105,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
             # Form a line separated list for the textarea
             if install_job.packages is not None:
+
                 form.software_packages.data = '\n'.join(install_job.packages.split(','))
                 
             form.dependency.data = str(install_job.dependency)
@@ -2094,11 +2113,32 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             if install_job.scheduled_time is not None:
                 form.scheduled_time_UTC.data = \
                 get_datetime_string(install_job.scheduled_time)
-        
+
+
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session), \
         host=host, server_time=datetime.datetime.utcnow(), install_job=install_job, return_url=return_url, \
         install_action=get_install_actions_dict())
 
+
+def get_install_migrations_dict():
+    return {
+        "premigrate": InstallAction.PRE_MIGRATE,
+        "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
+        "postmigrate": InstallAction.POST_MIGRATE,
+        "allformigrate": InstallAction.ALL_FOR_MIGRATE
+    }
+
+def fill_default_region(choices, region):
+    # Remove all the existing entries
+    del choices[:]
+
+    # do not close session as the caller will do it
+    db_session = DBSession()
+    try:
+        if region is not None:
+            choices.append((region.id, region.name))
+    except:
+        logger.exception('fill_default_region() hits exception')
 
 def get_host_schedule_install_form(request, host):
     return HostScheduleInstallForm(request.form)
@@ -2803,13 +2843,6 @@ def get_install_actions_dict():
         "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
 
-def get_install_migrations_dict():
-    return {
-        "premigrate": InstallAction.PRE_MIGRATE,
-        "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
-        "postmigrate": InstallAction.POST_MIGRATE,
-        "allformigrate": InstallAction.ALL_FOR_MIGRATE
-    }
 
 
 

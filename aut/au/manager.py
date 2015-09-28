@@ -54,6 +54,7 @@ from au.utils.decorators import repository
 from au.utils.decorators import pkg_file
 from au.utils.decorators import turbo_boot
 from au.utils.decorators import issu
+from au.utils.decorators import best_effort_config
 from au.utils import pkglist
 
 from au.workqueue.WorkQueue import WorkQueue
@@ -87,6 +88,7 @@ def _prepare_plugin(func):
         pkg_file = get_label(func, 'pkg_file')
         turbo_boot = get_label(func, 'turbo_boot')
         issu = get_label(func, 'issu')
+        best_effort_config = get_label(func, 'best_effort_config')
         log_options = get_label(func, 'log_to')
         pre_upgrade = get_label(func, 'pre_upgrade')
         upgrade = get_label(func, 'upgrade')
@@ -102,7 +104,8 @@ def _prepare_plugin(func):
             kwargs.update(pkg_file)
         if issu :
             kwargs.update(issu)
-
+        if best_effort_config:
+            kwargs.update(best_effort_config)
         kwargs.update(turbo_boot)
 
         if log_options is not None:
@@ -563,6 +566,9 @@ class Manager(object):
         if hasattr(self.options,'issu'):
             issu_decorator = issu(self.options.issu)
 
+        if hasattr(self.options,'best_effort_config'):
+            best_effort_config_decorator = best_effort_config(self.options.best_effort_config)
+
         plugins_types = "ALL"
            
         if hasattr(self.options,'addset') and self.options.addset:
@@ -585,8 +591,6 @@ class Manager(object):
             plugins_types = "PRE_MIGRATE"
         elif self.options.migrate_system_set:
             plugins_types = "MIGRATE_SYSTEM"
-        elif self.options.migrate_config_set:
-            plugins_types = "MIGRATE_CONFIG"
         elif self.options.post_migrate_set:
             plugins_types = "POST_MIGRATE"
         elif self.options.all_for_migrate_set:
@@ -611,6 +615,8 @@ class Manager(object):
             function = turbo_boot_decorator(function)
             if hasattr(self.options,'issu'):
                 function = issu_decorator(function)
+            if hasattr(self.options,'best_effort_config'):
+                function = best_effort_config_decorator(function)
 
             self._run(
                 plugin,

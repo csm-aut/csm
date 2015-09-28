@@ -167,12 +167,17 @@ class InstallContext(ImageContext):
                 return server.server_url
         
         return None
+
+    @property
+    def post_migrate_config_handling_option(self):
+        return self.install_job.best_effort_config_applying
     
     def post_status(self, message):
         if self.db_session is not None and \
             self.install_job is not None:
             self.install_job.set_status(message)
-            self.db_session.commit()              
+            self.db_session.commit()
+
                 
 class BaseHandler(object):
     def execute(self, ctx):
