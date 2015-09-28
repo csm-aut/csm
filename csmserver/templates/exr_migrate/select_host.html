@@ -1,0 +1,12 @@
+{% from 'host/common.html' import edit_field %}
+<legend>
+    <h4>Please select the host(s) you want to migrate from classic XR to eXR</h4>
+</legend>
+{{ edit_field(form.region, field_width="col-sm-5", class="form-control") }}
+{{ edit_field(form.role, field_width="col-sm-5", class="form-control") }}
+{{ edit_field(form.software, field_width="col-sm-5", class="form-control") }}
+<div class="col-sm-12">
+    <div class="form-group row">
+        <select id="host-selector" name="host-selector" multiple="multiple" data-title="Hosts" data-json=false></select>
+    </div>
+</div>
