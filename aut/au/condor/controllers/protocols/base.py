@@ -40,6 +40,7 @@ AUTH_FAILED = "Authentication failed|not authorized|Login incorrect"
 SHELL_PROMPT = "\$\s?|>\s?|#\s?|AU_PROMPT"
 CONNECTION_REFUSED = "Connection refused"
 RESET_BY_PEER = "reset by peer|closed by foreign host"
+RECONFIGURE_USERNAME_PROMPT = "[Nn][Oo] root-system username is configured"
 SET_USERNAME = "[Ee]nter.*username:"
 SET_PASSWORD = "Enter secret"
 PASSWORD_OK = "[Pp]assword [Oo][Kk]"
@@ -89,7 +90,7 @@ class Protocol(object):
             )
             self.ctrl._session.logfile_read = self.logfile
 
-    def connect(self):
+    def connect(self, connect_with_reconfiguration=False):
         raise NotImplementedError("Connection method not implemented")
 
     def _dbg(self, level, msg):

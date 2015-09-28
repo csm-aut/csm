@@ -63,7 +63,7 @@ class SSH(Protocol):
             )
         return command
 
-    def connect(self):
+    def connect(self, connect_with_reconfiguration=False):
         state = 0
         transition = 0
         event = 0
