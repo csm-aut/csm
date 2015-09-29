@@ -52,7 +52,7 @@ _INVALID_INPUT = "Invalid input detected"
 _INCOMPLETE_COMMAND = "Incomplete command."
 _CONNECTION_CLOSED = "Connection closed"
 
-#_PROMPT_IOSXR_RE = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
+_PROMPT_IOSXR_RE = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 _PROMPT_IOSXR_RE = re.compile('\w+/\w+/\w+/\w+:.+#')
 
 _DEVICE_PROMPTS = {
@@ -171,7 +171,6 @@ class Connection(object):
         """
         _logger.info(
             _c(self.hostname, "Disconnecting from {}".format(self.__repr__())))
-        print("calling disconnect from generic.py - calling the disconnect function directly")
         self.ctrl.disconnect()
         self.connected = False
         self.pending_connection = False
@@ -201,7 +200,6 @@ class Connection(object):
                 _logger.warn(
                     _c(self.hostname,
                         "Connection lost. Disconnecting."))
-                print("calling disconnect from generic.py except - ConnectionError Connection lost. Disconnecting.")
                 self.disconnect()
                 raise
 
@@ -318,7 +316,6 @@ class Connection(object):
         else:
             message = "Device is neither not responding nor not running IOS XR"
             _logger.debug(_c(self.hostname, message))
-            print("calling disconnect from generic.py - in detect prompt else statement")
             self.disconnect()
             raise ConnectionError(message, self.hostname)
 
@@ -342,13 +339,8 @@ class Connection(object):
 
             try:
                 self.ctrl.send(cmd)
-                #print "_execute_command 0 cmd = " + cmd
-                #print "_execute_command 0  self.ctrl before = " + str(self.ctrl.before)
-                #print "_execute_command 0  self.ctrl after = " + str(self.ctrl.after)
                 #self.ctrl.expect_exact(cmd)
                 self.ctrl.send("\n")
-                #print "_execute_command 1  self.ctrl before = " + str(self.ctrl.before)
-                #print "_execute_command 1  self.ctrl after = " + str(self.ctrl.after)
                 if wait_for_string:
                     _logger.debug(_c(
                         self.hostname,
@@ -365,7 +357,6 @@ class Connection(object):
                 raise
 
             except CommandTimeoutError, e:
-                #print "command timeout error indeed excepted"
                 _logger.error(_c(
                     self.hostname,
                     "Command timeout: '{}'".format(cmd)))
@@ -379,7 +370,6 @@ class Connection(object):
                 raise
 
             except Exception, err:
-                print "Exception: '{}'".format(err)
                 _logger.error(_c(
                     self.hostname,
                     "Exception: '{}'".format(err)))
@@ -394,8 +384,7 @@ class Connection(object):
                  pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF, _PROMPT_KSH],
                 timeout=timeout
             )
-        #print "wait for string   self.ctrl before = " + str(self.ctrl.before)
-        #print "wait for string   self.ctrl after = " + str(self.ctrl.after)
+
         _logger.debug(_c(self.hostname, "INDEX={}".format(index)))
 
         if index == 0:
@@ -421,11 +410,7 @@ class Connection(object):
                                      message="Timeout waiting for prompt")
 
         if index in [4, 5]:
-            if index == 5:
-                raise CommandSyntaxError(host=self.hostname,
-                                     message="Just comparing")
-            else:
-                raise ConnectionError(
+            raise ConnectionError(
                 "Unexpected device disconnect", self.hostname)
 
         if index == 6:

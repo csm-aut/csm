@@ -112,7 +112,6 @@ class Controller(object):
                         self._dbg(
                             40,
                             "Error during connecting to target device")
-                        print("calling disconnect from pexpect_ctrl except - protocol.connect()")
                         self.disconnect()
                         raise
 
@@ -129,7 +128,6 @@ class Controller(object):
                         hop, host.hostname
                     )
                 )
-                print("calling disconnect from pexpect_ctrl - max attempts reached")
                 self.disconnect()
                 raise ConnectionError(host=self.hostname)
 
@@ -150,28 +148,22 @@ class Controller(object):
         """
         Gracefully disconnect from all the nodes
         """
-        print("disconnect is called")
         self._dbg(10, "Initializing the disconnection process")
-
         if self._session and self.isalive():
             self._dbg(10, "Disconnecting the sessions")
             index = 0
             hop = 0
             while index != 1 and hop < 10:
-                print("sending an exit")
                 self.sendline('exit')
                 index = self.expect(
                     [pexpect.TIMEOUT, pexpect.EOF, "con.*is now available"],
                     timeout=2
                 )
-                if index == 0:
-                    print("index expected = TIMEOUT")
+
                 if index == 1:
-                    print("index expected = EOF")
                     break
 
                 if index == 2:  # console connected through TS
-                    print("index expected = con.*is now available")
                     self._dbg(10, "Console connection detected")
                     self.sendline('\x03')
                     self.sendcontrol(']')

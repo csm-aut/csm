@@ -56,7 +56,7 @@ ACTIVE_PACKAGES_IN_CLASSIC = "active_packages_in_xr_snapshot.txt"
 TIMEOUT_FOR_COPY_CONFIG = 1000
 
 TIMEOUT_FOR_COPY_ISO = 1000
-ISO_IMAGE_NAME = "asr9k-full-x64.iso"
+ISO_IMAGE_NAME = "asr9k-mini-x64.iso"
 GRUB_EFI_NAME = "grub.efi"
 GRUB_CFG_NAME = "grub.cfg"
 

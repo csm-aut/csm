@@ -59,7 +59,10 @@ class DeviceConnectPlugin(IPlugin):
                 "Device {} connected successfully.".format(device.name)
             )
 
-            get_package(device)
+            err_msg = get_package(device)
+
+            if err_msg:
+                self.error(err_msg)
 
             return True
 

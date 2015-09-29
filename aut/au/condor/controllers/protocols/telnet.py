@@ -58,13 +58,7 @@ class Telnet(Protocol):
 
         self._spawn_session(command)
 
-
-
-
     def connect(self, connect_with_reconfiguration=False):
-
-        if connect_with_reconfiguration:
-            print("We are using the special telnet connect tunnel")
         state = 0
         transition = 0
         event = 0
@@ -74,7 +68,6 @@ class Telnet(Protocol):
 
         while not failed and transition < max_transitions + 1:
             transition += 1
-
             event = self.ctrl.expect(
                 [ESCAPE_CHAR, PASSWORD_OK, RECONFIGURE_USERNAME_PROMPT, SET_USERNAME, SET_PASSWORD, USERNAME, PASS,
                  XR_PROMPT, SHELL_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
@@ -82,25 +75,11 @@ class Telnet(Protocol):
                  AUTH_FAILED, pexpect.TIMEOUT, pexpect.EOF],
                 timeout=timeout, searchwindowsize=80
             )
-            try:
-                print "transition " + str(transition) + " event =  " + str(event)
-                print "transition " + str(transition) + " state =  " + str(state)
-
-                print "transition " + str(transition) + " ctrl.before" + self.ctrl.before
-                print(type(self.ctrl.after).__name__)
-                print "transition " + str(transition) + " ctrl.after" + self.ctrl.after
-            except Exception as inst:
-                print("Oops here is an error occurred~~~~")
-
-                print(type(inst))
-                print(inst.args)
-                print(inst)
 
             self._dbg(10, "{}: EVENT={}, STATE={}, TRANSITION={}".format(
                 self.hostname, event, state, transition
             ))
             timeout = 60
-            #print "event = " + str(event)
             if event == 0:  # ESCAPE_CHARACTER
                 if state == 0:
                     state = 1
@@ -112,7 +91,6 @@ class Telnet(Protocol):
                     )
                     continue
                 else:
-                    print("event 0 ConnectionError Unexpected session init ")
                     raise ConnectionError("Unexpected session init")
 
             if event == 1:  # PASSWORD_OK
@@ -138,7 +116,6 @@ class Telnet(Protocol):
 
 
             if event == 3: # SET_USERNAME
-                print "setting username"
                 if state in [0, 1, 2]:
 
                     index = 2
@@ -148,13 +125,6 @@ class Telnet(Protocol):
                             [pexpect.TIMEOUT, pexpect.EOF, SET_USERNAME],
                             timeout=5
                         )
-                        if index == 0:
-                            print("inside event 3 - index expected = TIMEOUT")
-                        if index == 1:
-                            print("inside event 3 - index expected = EOF")
-
-                        if index == 2:  # console connected through TS
-                            print("inside event 3 - index expected = SET_USERNAME")
 
                     print "setting username = " + self.username
                     self._dbg(
@@ -168,9 +138,7 @@ class Telnet(Protocol):
                     timeout = 10
                     continue
                 else:
-                    print("calling self.disconnect from telnet.py - SET_USERNAME state != 0, 1, or 2")
                     self.disconnect()
-                    print("event 2 ConnectionAuthenticationError(host=self.hostname) ")
                     raise ConnectionAuthenticationError(host=self.hostname)
 
 
@@ -185,13 +153,6 @@ class Telnet(Protocol):
                             [pexpect.TIMEOUT, pexpect.EOF, SET_PASSWORD],
                             timeout=5
                         )
-                        if index == 0:
-                            print("inside event 4 - index expected = TIMEOUT")
-                        if index == 1:
-                            print("inside event 4 - index expected = EOF")
-
-                        if index == 2:  # console connected through TS
-                            print("inside event 4 - index expected = SET_PASSWORD")
 
                     password = self._acquire_password()
                     if password:
@@ -202,7 +163,6 @@ class Telnet(Protocol):
 
                         print "setting password  = " + password
 
-
                         self.ctrl.sendline(password)
                         state += 1
                         timeout = 10
@@ -210,19 +170,13 @@ class Telnet(Protocol):
                         continue
 
                     else:
-                        print("calling self.disconnect from telnet.py - SET_PASSWORD _acquire_password returns null")
                         self.disconnect()
-                        print("event 3 ConnectionAuthenticationError(Password not provided, self.hostname) ")
                         raise ConnectionAuthenticationError("Password not provided", self.hostname)
-
-
 
                     # state = 1 -> move to wait for password confirmation - will enter password a second time
                     # state = 0 -> just configured username, need to configure password again twice
                 else:
-                    print("calling self.disconnect from telnet.py - SET_PASSWORD state != 0 or 1")
                     self.disconnect()
-                    print("event 3 ConnectionAuthenticationError(host=self.hostname)")
                     raise ConnectionAuthenticationError(host=self.hostname)
 
 
@@ -250,9 +204,7 @@ class Telnet(Protocol):
                         "{}: Expected prompt but username request "
                         "received ".format(self.hostname)
                     )
-                    print("calling self.disconnect from telnet.py - USERNAME state =4")
                     self.disconnect()
-                    print("event 4 ConnectionAuthenticationError(host=self.hostname)")
                     raise ConnectionAuthenticationError(host=self.hostname)
 
             if event == 6:  # PASS
@@ -265,9 +217,7 @@ class Telnet(Protocol):
                         )
                         self.ctrl.sendline(password)
                     else:
-                        print("calling self.disconnect from telnet.py - PASS _acquire_password returns null")
                         self.disconnect()
-                        print("event 5 ConnectionAuthenticationError")
                         raise ConnectionAuthenticationError(
                             "Password not provided", self.hostname)
 
@@ -331,11 +281,9 @@ class Telnet(Protocol):
                     continue
 
             if event == 11:  # CONNECTION REFUSED
-                print("event 10 ConnectionError")
                 raise ConnectionError("Connection refused", self.hostname)
 
             if event == 12:  # RESET_BY_PEER
-                print("event 11 ConnectionError")
                 raise ConnectionError(
                     "Connection reset by peer", self.hostname)
 
@@ -344,15 +292,12 @@ class Telnet(Protocol):
                     30,
                     "{}: Permission denied.".format(self.hostname)
                 )
-                print("event 12 ConnectionAuthenticationError")
                 raise ConnectionAuthenticationError(
                     "Permission denied", self.hostname)
 
             if event == 14:  # AUTH_FAILED
                 if state == 4:
-                    print("calling self.disconnect from telnet.py - AUTH_FAILED state = 4")
                     self.disconnect()
-                    print("event 13 ConnectionAuthenticationError")
                     raise ConnectionAuthenticationError(
                         "Authentication failed", self.hostname)
 
@@ -379,7 +324,6 @@ class Telnet(Protocol):
                     )
 
                     self.disconnect()
-                    print("event 15 ConnectionError(Timeout)")
                     raise ConnectionError("Timeout")
 
                 else:
@@ -422,11 +366,9 @@ class Telnet(Protocol):
                         continue
 
                     if state == 6:
-                        print("event 14 ConnectionError Unable to get shell prompt")
                         raise ConnectionError("Unable to get shell prompt")
 
                     self._dbg(30, "{}: Connection timed out".format(self.hostname))
-                    print("event 14 ConnectionError Timeout")
                     raise ConnectionError("Timeout")
 
             if event == 16:  # EOF
@@ -435,7 +377,6 @@ class Telnet(Protocol):
                         10, "{}: First session closed".format(self.hostname)
                     )
                     return False
-                print("event 15 ConnectionError")
                 raise ConnectionError(
                     "Session closed unexpectedly", self.hostname)
 

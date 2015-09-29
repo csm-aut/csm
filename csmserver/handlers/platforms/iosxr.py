@@ -56,47 +56,109 @@ class BaseConnectionHandler(BaseHandler):
         
 class BaseInventoryHandler(BaseHandler):           
     def execute(self, ctx):
+
+        print("executed iosxr BaseInventoryHandler execute")
         global AUT_PATH
         
         csm_au_module = import_module('au.csm_au', AUT_PATH)
         if csm_au_module is not None:
             status = csm_au_module.execute(ctx)
             if status == 0 :
-                self.get_software(ctx.host,
+                self.get_software(ctx,
                     install_inactive_cli=ctx.inactive_cli, 
                     install_active_cli=ctx.active_cli, 
                     install_committed_cli=ctx.committed_cli)
                 ctx.success = True
         else:
             try:
+                asr9k_exr = self.check_if_ASR9K_eXR()
+
+                append = ' summary' if not asr9k_exr else ''
+
                 conn = condor.make_connection_from_context(ctx)
                 conn.connect()
-                output = conn.send('show version')
-                match = re.search('.vm',output)
-
-                append = ' summary' if match else ''
 
                 ctx.inactive_cli = conn.send('sh install inactive' + append)
                 ctx.active_cli = conn.send('sh install active' + append)
                 ctx.committed_cli = conn.send('sh install committed' + append)
+
                 conn.disconnect()
  
-                self.get_software(ctx.host,
+                self.get_software(ctx,
                     install_inactive_cli=ctx.inactive_cli, 
                     install_active_cli=ctx.active_cli, 
-                    install_committed_cli=ctx.committed_cli)
+                    install_committed_cli=ctx.committed_cli, asr9k_exr=asr9k_exr)
                 ctx.success = True
             except:
                 pass
 
-    def get_software(self, host, install_inactive_cli, install_active_cli, install_committed_cli):
-        package_parser_class = get_package_parser_class(host.platform)
-        package_parser = package_parser_class()
-        
-        return package_parser.get_packages_from_cli(host,
-            install_inactive_cli=install_inactive_cli, 
-            install_active_cli=install_active_cli, 
-            install_committed_cli=install_committed_cli)       
+    def get_software(self, ctx, install_inactive_cli, install_active_cli, install_committed_cli, asr9k_exr=None):
+        print("executed iosxr BaseInventoryHandler get_software")
+        try:
+            if asr9k_exr is None:
+                print "asr9k is none "
+                asr9k_exr = self.check_if_ASR9K_eXR(ctx)
+
+            if asr9k_exr:
+                package_parser_class = get_package_parser_class('ASR9K_X')
+            else:
+                package_parser_class = get_package_parser_class(ctx.host.platform)
+
+            package_parser = package_parser_class()
+
+            return package_parser.get_packages_from_cli(ctx.host,
+                install_inactive_cli=install_inactive_cli,
+                install_active_cli=install_active_cli,
+                install_committed_cli=install_committed_cli)
+        except:
+            raise
+
+    def check_if_ASR9K_eXR(self, ctx):
+
+        print "check_if_ASR9K_eXR"
+
+        global AUT_PATH
+
+        import_module('au.condor.__init__', AUT_PATH)
+
+        print "0"
+
+        conn = condor.make_connection_from_context(ctx)
+        conn.connect()
+
+        print "1"
+
+        asr9k_exr = False
+
+        conn.send('admin')
+
+        output = conn.send('show install active')
+
+        module = None
+
+        print "2"
+
+        lines = output.splitlines()
+
+        for line in lines:
+            line = line.strip()
+            if len(line) == 0:
+                continue
+            m = re.match('Node.*', line)
+            if m:
+                # Node 0/RP1/CPU0 [RP]
+                module = line.split()[1]
+            else:
+                if module is not None:
+                    match = re.search('asr9k-sysadmin', line)
+                    if match:
+                        asr9k_exr = True
+                        break
+        print "3"
+        conn.send('exit')
+        conn.disconnect()
+        print "check_if_ASR9K_eXR returns " + str(asr9k_exr)
+        return asr9k_exr
        
 class BaseInstallHandler(BaseHandler):                         
     def execute(self, ctx):

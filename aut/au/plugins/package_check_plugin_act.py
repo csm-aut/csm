@@ -50,18 +50,14 @@ class ActivePackagesPlugin(IPlugin):
 
     def start(self, device, *args, **kwargs):
         if device:
-            success, output = device.execute_command("admin")
+            success, output = device.execute_command(
+                "admin show install active summary")
             if success:
-                success, output = device.execute_command("show install active summary")
-                if success:
-                    self.csm_ctx = device.get_property('ctx')
-                    if self.csm_ctx and hasattr(self.csm_ctx, 'active_cli'):
-                        self.csm_ctx.active_cli = output
-                    self.log("Active packages retrieved")
-                    device.packages.init_from_show_install(output)
-
-            success, output = device.execute_command("exit")
-            if success:
+                self.csm_ctx = device.get_property('ctx')
+                if self.csm_ctx and hasattr(self.csm_ctx, 'active_cli'):
+                    self.csm_ctx.active_cli = output
+                self.log("Active packages retrieved")
+                device.packages.init_from_show_install(output)
                 return
 
         self.error("Can not get list of active packages.")

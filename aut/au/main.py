@@ -42,8 +42,8 @@ from au.Logfile import Logfile
 
 import os
 import sys
-import datetime
 
+import datetime
 
 
 def run():
@@ -135,10 +135,8 @@ def execute(options, args, parser, stdout=None, stderr=None):
                       max_threads=options.max_threads
                       )
     manager.run()
-
     failed = manager.failed
     try:
-        print("calling disconnect from main.py - device.disconnect")
         device.disconnect()
     except:
         pass

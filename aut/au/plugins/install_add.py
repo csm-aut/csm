@@ -147,7 +147,6 @@ class InstallAddPlugin(IPlugin):
 
         packages = " ".join(pkg_name_list) 
         cmd = "admin install add source %s %s async" % (repo_str, packages)
-
         success, output = device.execute_command(cmd,timeout=7200)
         if success and error_str not in output:
             op_id = re.search('Install operation (\d+) \'', output).group(1)

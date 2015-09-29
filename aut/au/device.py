@@ -144,8 +144,6 @@ class Device(object):
         self.debug = debug
         self.url_chain = url_chain
 
-        print "url_chain = " +str(url_chain)
-
         for url in iter(to_list(url_chain)):
             if "," in url:
                 # It has standby
@@ -230,7 +228,6 @@ class Device(object):
         return self.session.connected, self.session.send(command,timeout)
 
     def disconnect(self):
-        print("calling disconnect from device.py - session.disconnect - should go to generic disconnect")
         return self.session.disconnect()
 
     def connect(self):
@@ -265,10 +262,8 @@ class Device(object):
         poll_time = 30
         time_waited = 0
         print "System going for reload., please wait!!"
-        time.sleep(60)
-        print("calling disconnect from device.py - reconnect, session.disconnect()")
         self.session.disconnect()
-
+        time.sleep(60)
 
         try :
             self.session.connect(self.session_log, connect_with_reconfiguration=connect_with_reconfiguration)

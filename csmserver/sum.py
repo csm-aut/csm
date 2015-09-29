@@ -148,7 +148,7 @@ class InstallWorkUnit(WorkUnit):
             logger.error('SoftwareManager: Unable to get handler for %s', ctx.host.platform)
 
         handler = handler_class()
-        if handler.get_software(ctx.host, ctx.inactive_cli, ctx.active_cli, ctx.committed_cli):  
+        if handler.get_software(ctx, ctx.inactive_cli, ctx.active_cli, ctx.committed_cli):
             # Update the time stamp
             ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
             
