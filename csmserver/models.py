@@ -499,6 +499,7 @@ class Server(Base):
     hostname = Column(String(100), index=True)
     server_type = Column(String(20))
     server_url = Column(String(100))
+    vrf = Column(String(100))
     username = Column(String(100))
     _password = Column('password', String(100))
     server_directory = Column(String(100))
