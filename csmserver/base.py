@@ -25,13 +25,8 @@
 
 from constants import ServerType
 from models import Server
-<<<<<<< HEAD
-from utils import concatenate_dirs
-from constants import get_temp_directory, get_autlogs_directory, get_migration_directory
-=======
 from utils import concatenate_dirs, is_empty
-from constants import get_temp_directory, get_autlogs_directory
->>>>>>> origin/v3.2
+from constants import get_temp_directory, get_autlogs_directory, get_migration_directory
 
 class Context(object):
     def __init__(self):
