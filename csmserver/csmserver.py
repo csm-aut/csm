@@ -49,7 +49,6 @@ from forms import SMTPForm
 from forms import PreferencesForm
 from forms import HostImportForm
 from forms import ServerDialogForm
-from forms import ScheduleMigrationForm
 
 from models import Host
 from models import JumpHost
@@ -88,6 +87,8 @@ from constants import ConnectionType
 from constants import BUG_SEARCH_URL
 from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
 from constants import PackageType
+
+from common import *
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -1117,16 +1118,7 @@ def api_get_last_successful_inventory_elapsed_time(hostname):
          'status': host.inventory_job[0].status}
     ] } )
 
-def get_last_successful_inventory_elapsed_time(host):
-    if host is not None:
-        # Last inventory successful time
-        inventory_job = host.inventory_job[0]
-        if inventory_job.pending_submit:
-            return 'Pending Retrieval'
-        else:
-            return  time_difference_UTC(inventory_job.last_successful_time)
-        
-    return ''
+
     
 @app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
 @login_required
@@ -1802,9 +1794,6 @@ def schedule_install():
 
 
 
-def get_first_install_action(db_session, install_action):
-    return db_session.query(InstallJob).filter(InstallJob.install_action == install_action). \
-        order_by(InstallJob.scheduled_time.asc()).first()
                                                        
 @app.route('/hosts/<hostname>/schedule_install/', methods=['GET', 'POST'])
 @login_required
@@ -1828,96 +1817,7 @@ def host_schedule_install_edit(hostname, id):
     
     return handle_schedule_install_form(request=request, db_session=db_session, hostname=hostname, install_job=install_job)
 
-def create_or_update_install_job(db_session, host_id, form, install_action, dependency=0, install_job=None):
-    # This is a new install_job
-    if install_job is None:
-        install_job = InstallJob()
-        install_job.host_id = host_id
 
-        db_session.add(install_job)
-    
-    install_job.install_action = install_action
-        
-    if (install_job.install_action == InstallAction.INSTALL_ADD or install_job.install_action == InstallAction.PRE_MIGRATE) and \
-        not is_empty(form.hidden_pending_downloads.data):
-        install_job.pending_downloads = ','.join(form.hidden_pending_downloads.data.split())
-    else:
-        install_job.pending_downloads = ''
-
-    install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
-
-    # Only Install Add and Pre-Migrate should have server_id and server_directory
-    if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE:
-        install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
-        install_job.server_directory = form.hidden_server_directory.data
-    else:
-        install_job.server_id = None
-        install_job.server_directory = ''
-        
-    # Only the following install actions should have software packages
-    if install_action == InstallAction.INSTALL_ADD or \
-        install_action == InstallAction.INSTALL_ACTIVATE or \
-        install_action == InstallAction.INSTALL_REMOVE or \
-        install_action == InstallAction.INSTALL_DEACTIVATE or \
-        install_action == InstallAction.PRE_MIGRATE:
-        
-        package_list = ''
-        # ################################################ There is a change here on original code
-        if install_action == InstallAction.PRE_MIGRATE:
-            software_packages = form.hidden_software_packages.data.split(',')
-        else:
-            software_packages = form.software_packages.data.split()
-        for software_package in software_packages:
-            if install_action == InstallAction.INSTALL_ADD:
-                # Install Add only accepts external package names with the following suffix
-                if '.pie' in software_package or \
-                    '.tar' in software_package or \
-                    '.rpm' in software_package:
-                    package_list += software_package + ','
-            else:
-                # Install Activate can have external or internal package names
-                package_list += software_package + ','
-                
-        # remove trailing ',' if any
-        install_job.packages = package_list.rstrip(',')
-    else:
-        install_job.packages = ''
-        
-    install_job.dependency = dependency if dependency > 0 else None
-    install_job.created_by = current_user.username
-    install_job.user_id = current_user.id
-
-    #Resets the following fields
-    install_job.status = None
-    install_job.status_time = None
-    install_job.session_log = None
-    install_job.trace = None
-
-    # ################################################ There is a change here on original code
-    install_job.best_effort_config_applying = '0'
-    if install_action == InstallAction.POST_MIGRATE:
-       install_job.best_effort_config_applying = form.hidden_best_effort_config.data
-
-    if install_job.install_action != InstallAction.UNKNOWN:
-        db_session.commit()
-    
-    # Creates download jobs if needed
-    if install_job.install_action == InstallAction.INSTALL_ADD and \
-        len(install_job.packages) > 0 and \
-        len(install_job.pending_downloads) > 0:
-        
-        # Use the SMU name to derive the platform and release strings
-        smu_list = install_job.packages.split(',')
-        pending_downloads = install_job.pending_downloads.split(',')
-        
-        # Derives the platform and release using the first SMU name.
-        platform = get_platform(smu_list[0])
-        release = get_release(smu_list[0])
-    
-        create_download_jobs(db_session, platform, release, pending_downloads, 
-            install_job.server_id, install_job.server_directory)
-        
-    return install_job
 
 @app.route('/hosts/download_dashboard/', methods=['GET', 'POST'])
 @login_required
@@ -1927,23 +1827,6 @@ def download_dashboard():
         
     return render_template('host/download_dashboard.html')
 
-def get_download_job_key(user_id, filename, server_id, server_directory):
-    return "{}{}{}{}".format(user_id, filename, server_id, server_directory)
-
-def is_pending_on_download(db_session, filename, server_id, server_directory):
-    download_job_key_dict = get_download_job_key_dict()
-    download_job_key = get_download_job_key(current_user.id, filename, server_id, server_directory)
-    
-    if download_job_key in download_job_key_dict:
-        download_job = download_job_key_dict[download_job_key]
-        # Resurrect the download job
-        if download_job is not None and download_job.status == JobStatus.FAILED:
-            download_job.status = None
-            download_job.status_time = None        
-            db_session.commit()
-        return True
-    
-    return False
 
 @app.route('/api/create_download_jobs')
 @login_required
@@ -1966,36 +1849,7 @@ def api_create_download_jobs():
     finally:
         return jsonify({'status':'OK'})
     
-"""
-Pending downloads is an array of TAR files.
-"""
-def create_download_jobs(db_session, platform, release, pending_downloads, server_id, server_directory):
-    smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
-    if smu_meta is not None:
-        for cco_filename in pending_downloads:
-            # If the requested download_file is not in the download table, include it
-            if not is_pending_on_download(db_session, cco_filename, server_id, server_directory):
-                # Unfortunately, the cco_filename may not conform to the SMU format (i.e. CSC).
-                # For example, for CRS, it is possible to have hfr-px-5.1.2.CRS-X-2.tar which contains
-                # multiple pie file. Thus, we check if it has a "sp" substring.
-                if SP_INDICATOR in cco_filename:
-                    software_type_id = smu_meta.sp_software_type_id
-                else:
-                    software_type_id = smu_meta.smu_software_type_id
-            
-                download_job = DownloadJob(
-                    cco_filename = cco_filename,
-                    pid = smu_meta.pid,
-                    mdf_id = smu_meta.mdf_id,
-                    software_type_id = software_type_id,
-                    server_id = server_id,
-                    server_directory = server_directory,
-                    user_id = current_user.id,
-                    created_by = current_user.username)
-                
-                db_session.add(download_job)
 
-            db_session.commit()
     
 def create_install_jobs_for_all_install_actions(db_session, host_id, form):                
     # Create Pre-Upgrade
@@ -2018,28 +1872,11 @@ def create_install_jobs_for_all_install_actions(db_session, host_id, form):
     new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
         install_action=InstallAction.INSTALL_COMMIT, dependency=new_install_job.id)
 
-    # Create Pre-Migrate
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.PRE_MIGRATE, dependency=new_install_job.id)
-
-    # Create Migrate System
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.MIGRATE_SYSTEM_TO_EXR, dependency=new_install_job.id)
-
-
-    # Create Post-Migrate
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.POST_MIGRATE, dependency=new_install_job.id)
 
 def handle_schedule_install_form(request, db_session, hostname, install_job=None):    
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
-
-
-    if install_job is not None:
-
-        print(str(install_job.install_action))
 
     return_url = get_return_url(request, 'host_dashboard')
 
@@ -2119,26 +1956,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         host=host, server_time=datetime.datetime.utcnow(), install_job=install_job, return_url=return_url, \
         install_action=get_install_actions_dict())
 
-
-def get_install_migrations_dict():
-    return {
-        "premigrate": InstallAction.PRE_MIGRATE,
-        "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
-        "postmigrate": InstallAction.POST_MIGRATE,
-        "allformigrate": InstallAction.ALL_FOR_MIGRATE
-    }
-
-def fill_default_region(choices, region):
-    # Remove all the existing entries
-    del choices[:]
-
-    # do not close session as the caller will do it
-    db_session = DBSession()
-    try:
-        if region is not None:
-            choices.append((region.id, region.name))
-    except:
-        logger.exception('fill_default_region() hits exception')
 
 def get_host_schedule_install_form(request, host):
     return HostScheduleInstallForm(request.form)
@@ -2837,91 +2654,16 @@ def get_install_actions_dict():
         "deactivate": InstallAction.INSTALL_DEACTIVATE,
         "rollback": InstallAction.INSTALL_ROLLBACK,
         "all": InstallAction.ALL,
-        "premigrate": InstallAction.PRE_MIGRATE,
-        "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
-        "postmigrate": InstallAction.POST_MIGRATE,
-        "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
 
 
 
 
 
-def fill_dependencies(choices):
-    # Remove all the existing entries
-    del choices[:] 
-    choices.append((-1, 'None'))  
-     
-    # The install action is listed in implicit ordering.  This ordering
-    # is used to formulate the dependency.
-    choices.append((InstallAction.PRE_UPGRADE, InstallAction.PRE_UPGRADE))
-    choices.append((InstallAction.INSTALL_ADD, InstallAction.INSTALL_ADD))
-    choices.append((InstallAction.INSTALL_ACTIVATE, InstallAction.INSTALL_ACTIVATE)) 
-    choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
-    choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT))
-    choices.append((InstallAction.PRE_MIGRATE, InstallAction.PRE_MIGRATE))
-    choices.append((InstallAction.MIGRATE_SYSTEM_TO_EXR, InstallAction.MIGRATE_SYSTEM_TO_EXR))
-    choices.append((InstallAction.MIGRATE_CONFIG_TO_EXR, InstallAction.MIGRATE_CONFIG_TO_EXR))
-    choices.append((InstallAction.POST_MIGRATE, InstallAction.POST_MIGRATE))
-
-
-def fill_servers(choices, servers, include_local=True):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, ''))
-    
-    if len(servers) > 0:
-        for server in servers:
-            if include_local or server.server_type != ServerType.LOCAL_SERVER:
-                choices.append((server.id, server.hostname))
-        
-def fill_dependency_from_host_install_jobs(choices, install_jobs, current_install_job_id):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, 'None'))
-    
-    for install_job in install_jobs:
-        if install_job.id != current_install_job_id:
-            choices.append((install_job.id, '%s - %s' % (install_job.install_action, get_datetime_string(install_job.scheduled_time)) ))
-        
-def fill_jump_hosts(choices):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, 'None'))
-    
-    # do not close session as the caller will do it
-    db_session = DBSession()
-    try:
-        hosts = get_jump_host_list(db_session)
-        if hosts is not None:
-            for host in hosts:
-                choices.append((host.id, host.hostname))
-    except:
-        logger.exception('fill_jump_hosts() hits exception')
-
-def fill_regions(choices):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, ''))
-    
-    # do not close session as the caller will do it
-    db_session = DBSession()
-    try:
-        regions = get_region_list(db_session)
-        if regions is not None:
-            for region in regions:
-                choices.append((region.id, region.name))
-    except:
-        logger.exception('fill_regions() hits exception')
-    
 """
 Returns the return_url encoded in the parameters
 """
-def get_return_url(request, default_url=None):
-    url = request.args.get('return_url')
-    if url is None:
-        url = default_url
-    return url
+
 
 @app.errorhandler(401)
 def error_not_authorized(error):
@@ -2953,89 +2695,7 @@ def shutdown_session(exception=None):
 if not app.debug:
     app.logger.addHandler(logging.StreamHandler()) # Log to stderr.
     app.logger.setLevel(logging.INFO)
- 
-def can_check_reachability(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_retrieve_software(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_install(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_delete_install(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_edit_install(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
 
-def can_create_user(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN
-                
-def can_edit(current_user):
-    return can_create(current_user)
-
-def can_delete(current_user):
-    return can_create(current_user)
-
-def can_create(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN 
-    
-def get_host(db_session, hostname):
-    return db_session.query(Host).filter(Host.hostname == hostname).first()
-
-def get_host_list(db_session):
-    return db_session.query(Host).order_by(Host.hostname.asc()).all()
-
-def get_jump_host_by_id(db_session, id):
-    return db_session.query(JumpHost).filter(JumpHost.id == id).first()
-
-def get_jump_host(db_session, hostname):
-    return db_session.query(JumpHost).filter(JumpHost.hostname == hostname).first()
-
-def get_jump_host_list(db_session):
-    return db_session.query(JumpHost).order_by(JumpHost.hostname.asc()).all()
-
-def get_server(db_session, hostname):
-    return db_session.query(Server).filter(Server.hostname == hostname).first()
-
-def get_server_by_id(db_session, id):
-    return db_session.query(Server).filter(Server.id == id).first()
-
-def get_server_list(db_session):
-    return db_session.query(Server).order_by(Server.hostname.asc()).all()
-
-def get_region(db_session, region_name):
-    return db_session.query(Region).filter(Region.name == region_name).first()
-
-def get_region_by_id(db_session, region_id):
-    return db_session.query(Region).filter(Region.id == region_id).first()
-
-def get_region_list(db_session):
-    return db_session.query(Region).order_by(Region.name.asc()).all()
-
-def get_user(db_session, username):
-    return db_session.query(User).filter(User.username == username).first()
-
-def get_user_by_id(db_session, user_id):
-    return db_session.query(User).filter(User.id == user_id).first()
-
-def get_user_list(db_session):
-    return db_session.query(User).order_by(User.fullname.asc()).all()
-
-def get_smtp_server(db_session):
-    return db_session.query(SMTPServer).first()
 
 def event_stream():
     return 'data: testing\n\n'

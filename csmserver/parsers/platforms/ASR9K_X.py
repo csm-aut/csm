@@ -31,7 +31,6 @@ import re
 
 class CLIPackageParser(BaseCLIPackageParser):
     def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):        
-        print("executed ASR9K_X CLIPackageParser")
         inactive_packages = {}
         active_packages = {}
         committed_packages = {}
@@ -75,17 +74,17 @@ class CLIPackageParser(BaseCLIPackageParser):
         return False
 
     """
-    Looks for asr9k-sysadmin-6.0.0.12I (6.0.0.12I is an example version number) to determine the platform and version
+    Looks for asr9k-xr-6.0.0.12I (6.0.0.12I is an example version number) to determine the platform and version
     """
     def set_platform_and_release(self, host, packages):
         if packages is not None:
             for package in packages.values():
                 # The Package object
-                if 'asr9k-sysadmin-' in package.name:
+                if 'asr9k-xr-' in package.name:
                     tokens = package.name.split('-')
                     # ['asr9k', 'sysadmin', '6.0.0.12I']
                     if len(tokens) == 3:
-                        host.software_platform = tokens[0]
+                        host.software_platform = tokens[0] + '-x'
                         host.software_version = tokens[2]
         
     """

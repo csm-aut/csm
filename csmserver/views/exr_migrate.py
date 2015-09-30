@@ -1,14 +1,5 @@
-from flask import Blueprint
-from flask import jsonify, render_template, redirect, url_for, abort, request
-from flask.ext.login import login_required
-from database import DBSession
-from forms import ScheduleMigrationForm
+from constants import Platform, ConnectionType, ServerType, UserPrivilege, SMTPSecureConnection
 from constants import InstallAction, get_migration_directory, UserPrivilege
-
-
-import datetime
-from models import Host, InstallJob, SystemOption
-from flask.ext.login import current_user
 
 from common import fill_servers
 from common import fill_dependency_from_host_install_jobs
@@ -22,7 +13,22 @@ from common import get_host
 from common import get_host_list
 from common import can_install
 
+from database import DBSession
+import datetime
+
 from filters import get_datetime_string
+
+from flask import Blueprint
+from flask import jsonify, render_template, redirect, url_for, abort, request
+from flask.ext.login import login_required
+
+from flask.ext.login import current_user
+
+from models import Host, InstallJob, SystemOption
+
+from wtforms import Form
+from wtforms import TextField, SelectField, HiddenField, SelectMultipleField
+from wtforms.validators import required
 
 import os
 import subprocess
@@ -341,7 +347,7 @@ def get_file_http(filename, destination):
 def get_install_migrations_dict():
     return {
         "premigrate": InstallAction.PRE_MIGRATE,
-        "migrate_system": InstallAction.MIGRATE_SYSTEM_TO_EXR,
+        "migrate": InstallAction.MIGRATE_SYSTEM_TO_EXR,
         "postmigrate": InstallAction.POST_MIGRATE,
         "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
@@ -358,3 +364,30 @@ def fill_dependencies_for_migration(choices):
     choices.append((InstallAction.MIGRATE_SYSTEM_TO_EXR, InstallAction.MIGRATE_SYSTEM_TO_EXR))
     choices.append((InstallAction.POST_MIGRATE, InstallAction.POST_MIGRATE))
 
+class ScheduleMigrationForm(Form):
+    install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
+
+    scheduled_time = TextField('Scheduled Time', [required()])
+    scheduled_time_UTC = HiddenField('Scheduled Time')
+    dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])
+
+    region = SelectField('Region', coerce=int, choices = [(-1, '')])
+    role = SelectField('Role', coerce=str, choices = [('Any', 'Any')])
+    software = SelectField('Software Version', coerce=str, choices = [('Any', 'Any')])
+
+    server_dialog_target_software = TextField('Target Software Release')
+    server_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])
+    server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices = [('', '')])
+
+    hidden_region = HiddenField('')
+    hidden_hosts = HiddenField('')
+
+    hidden_server = HiddenField('')
+    hidden_server_name = HiddenField('')
+    hidden_server_directory = HiddenField('')
+    hidden_pending_downloads = HiddenField('Pending Downloads')
+    hidden_software_packages = HiddenField('')
+
+    hidden_best_effort_config = HiddenField('')
+
+    hidden_edit = HiddenField('Edit')

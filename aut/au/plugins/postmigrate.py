@@ -182,9 +182,9 @@ class PostMigratePlugin(IPlugin):
     def start(self, device, *args, **kwargs):
 
 
-        repo_str = kwargs.get('repository', None)
-        if not repo_str:
-            self.error("ERROR:repository not provided")
+        #repo_str = kwargs.get('repository', None)
+        #if not repo_str:
+            #self.error("ERROR:repository not provided")
 
 
         fileloc = get_migration_directory()
@@ -198,7 +198,9 @@ class PostMigratePlugin(IPlugin):
 
         self.log(self.NAME + " Plugin is running")
 
+        self.log('best_effort_config = ' + str(best_effort_config))
 
+        """
 
 
         self._post_status("Waiting for all nodes to come to FINAL Band.")
@@ -224,3 +226,4 @@ class PostMigratePlugin(IPlugin):
 
         self._post_status("Applying the configuration to device.")
         self._apply_config(device, repo_str, filename, best_effort_config)
+        """

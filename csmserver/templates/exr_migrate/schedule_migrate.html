@@ -11,7 +11,7 @@
             <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
                 <optgroup label="Migrate from IOS-XR to eXR">
                     <option value="{{ install_action.premigrate }}">{{ install_action.premigrate }}</option>
-                    <option value="{{ install_action.migrate_system }}">{{ install_action.migrate_system }}</option>
+                    <option value="{{ install_action.migrate }}">{{ install_action.migrate }}</option>
                     <option value="{{ install_action.postmigrate }}">{{ install_action.postmigrate }}</option>
                     <option value="{{ install_action.allformigrate }}">ALL</option>
                 </optgroup>
@@ -125,12 +125,10 @@
                         });
                     }
 
-                    console.log("browse spinner hide 1");
                     browse_spinner.hide();
                 },
                 error: function (XMLHttpRequest, textStatus, errorThrown) {
                     bootbox.alert("Unable to list files. Server repository may not be visible by CSM Server.");
-                    console.log("browse spinner hide 2");
                     browse_spinner.hide();
                 }
             });
@@ -173,12 +171,11 @@
             var submit_spinner = $('#submit-spinner');
             browse_spinner = $('.browse-spinner')
 
-            console.log("browse spinner hide 3")
             browse_spinner.hide();
             submit_spinner.hide();
 
             var PRE_MIGRATE = "{{ install_action.premigrate }}";
-            var MIGRATE_SYSTEM_TO_EXR = "{{ install_action.migrate_system }}";
+            var MIGRATE_SYSTEM_TO_EXR = "{{ install_action.migrate }}";
             var POST_MIGRATE = "{{ install_action.postmigrate }}";
             var ALL_FOR_MIGRATE = "{{ install_action.allformigrate }}";
 
@@ -440,7 +437,7 @@
             $('#on-submit').click(function (e) {
 
                 if (has_one_of_these($('#install_action').val(), [POST_MIGRATE])) {
-                    if (!document.getElementsByName('config-handling')[0].checked && !document.getElementsByName('config-handling')[1].checked) {
+                    if (!$('[name="config-handling"]')[0].checked && !$('[name="config-handling"]')[1].checked) {
                         bootbox.alert("Please select one option.");
                         return false;
                     }
@@ -461,16 +458,14 @@
                 $('#hidden_server_name').val($('#server_dialog_server option:selected').text());
                 $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
 
-                if (document.getElementsByName('config-handling')[0].checked) {
-                    $('#hidden_best_effort_config').val(document.getElementsByName('config-handling')[0].value);
-                    console.log("set to " + document.getElementsByName('config-handling')[0].value)
+                if ($('[name="config-handling"]')[0].checked) {
+                    $('#hidden_best_effort_config').val($('[name="config-handling"]')[0].value);
+                    console.log("set to " + $('[name="config-handling"]')[0].value)
                 } else {
-                    $('#hidden_best_effort_config').val(document.getElementsByName('config-handling')[1].value);
-                    console.log("set to " + document.getElementsByName('config-handling')[1].value)
+                    $('#hidden_best_effort_config').val($('[name="config-handling"]')[1].value);
+                    console.log("set to " + $('[name="config-handling"]')[1].value)
                 }
 
-                //document.getElementById('hidden_best_effort_config').value = document.getElementById('config-handling').value;
-                //bootbox.alert("we are submitting by clicking submit");
 
                 submit_form_on_successfully_download_config_conversion_tool();
             }
@@ -528,12 +523,10 @@
 
 
                         }
-                        console.log("browse spinner hide 4")
                         browse_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
                         bootbox.alert("Unable to get the latest NoX tool for migrating configurations from CCO to CSM. Error=" + errorThrown);
-                        console.log("browse spinner hide 5")
                         browse_spinner.hide();
                     }
                 });
@@ -544,11 +537,9 @@
             if ($('#hidden_edit').val() == 'True') {
                 $("#install_action").prop("disabled", true);
 
-                document.getElementById('region').value = $('#hidden_region').val();
-
-                document.getElementById('server_dialog_server').value = $('#hidden_server').val();
-
-                document.getElementById('server_dialog_server_directory').value = $('#hidden_server_directory').val();
+                $('#region').val($('#hidden_region').val());
+                $('#server_dialog_server').val($('#hidden_server').val());
+                $('#server_dialog_server_directory').val($('#hidden_server_directory').val());
 
                 if (has_one_of_these($("#install_action").val(), [PRE_MIGRATE])) {
                     retrieve_file_list(
@@ -560,9 +551,9 @@
                 console.log("hidden = " + $('#hidden_best_effort_config').val())
 
                 if ($('#hidden_best_effort_config').val() == '-1') {
-                    document.getElementsByName('config-handling')[0].checked = true;
+                    $('[name="config-handling"]')[0].checked = true;
                 } else if ($('#hidden_best_effort_config').val() == '1') {
-                    document.getElementsByName('config-handling')[1].checked = true;
+                    $('[name="config-handling"]')[1].checked = true;
                 }
 
 
@@ -685,7 +676,7 @@
 
                                         <div class="wizard-header">
                                             <h3>
-                                                <b>Migration</b> Wizard <br>
+                                                <b>Migration Wizard</b><br>
                                                 <small>Follow the step(s) to schedule the migration.</small>
                                             </h3>
                                         </div>

@@ -21,13 +21,6 @@
           <option value="{{ install_action.remove }}">{{ install_action.remove}}</option>
 	      <option value="{{ install_action.deactivate }}">{{ install_action.deactivate }}</option>
         </optgroup>
-        <optgroup label="Migrate to eXR">
-          <option value="{{ install_action.premigrate }}">{{ install_action.premigrate}}</option>
-          <option value="{{ install_action.migrate_system }}">{{ install_action.migrate_system}}</option>
-          <option value="{{ install_action.migrate_config }}">{{ install_action.migrate_config}}</option>
-          <option value="{{ install_action.postmigrate }}">{{ install_action.postmigrate}}</option>
-          <option value="{{ install_action.allformigrate }}">ALL</option>
-        </optgroup>
       </select>
     </div>
   </div>
@@ -142,11 +135,6 @@
     var ALL = "{{ install_action.all }}"; 
     var INSTALL_REMOVE = "{{ install_action.remove }}";
     var INSTALL_DEACTIVATE = "{{ install_action.deactivate }}";
-    var PRE_MIGRATE = "{{ install_action.premigrate }}";
-    var MIGRATE_SYSTEM_TO_EXR = "{{ install_action.migrate_system }}";
-    var MIGRATE_CONFIG_TO_EXR = "{{ install_action.migrate_config }}";
-    var POST_MIGRATE = "{{ install_action.postmigrate }}";
-    var ALL_FOR_MIGRATE = "{{ install_action.allformigrate }}";
     
     var current_region_id = -1;
     var browse_spinner = $('.browse-spinner');
@@ -183,8 +171,6 @@
         $("#install_action").val([INSTALL_REMOVE]).trigger('change');
       } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
         $("#install_action").val([INSTALL_DEACTIVATE]).trigger('change');
-      } else if (has_one_of_these(install_actions, [ALL_FOR_MIGRATE])) {
-        $("#install_action").val([PRE_MIGRATE, MIGRATE_SYSTEM_TO_EXR, MIGRATE_CONFIG_TO_EXR, POST_MIGRATE]).trigger('change');
       }
       toggle_ui();
     });
@@ -201,10 +187,6 @@
       $('#software-packages-panel').hide();
       $('#dependency-panel').hide();
 
-      if (has_one_of_these(install_actions, [PRE_MIGRATE]) || has_one_of_these(install_actions, [MIGRATE_SYSTEM_TO_EXR]) || has_one_of_these(install_actions, [MIGRATE_CONFIG_TO_EXR])) {
-
-        $('#add-widget-panel').show();
-      }
       
       if (has_one_of_these_only(install_actions, [INSTALL_REMOVE]) ) {
       
@@ -242,7 +224,7 @@
     }
     
     function should_enable_widget_panel(install_actions) {
-      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE, PRE_MIGRATE, MIGRATE_SYSTEM_TO_EXR, MIGRATE_CONFIG_TO_EXR]) ) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE, INSTALL_REMOVE, INSTALL_DEACTIVATE]) ) {
         $('#widget-panel').show();
       } else {
         $('#widget-panel').hide();
@@ -495,7 +477,7 @@
       var server_id = $('#hidden_server').val();
       var software_packages = $('#software-packages').val().trim();
 
-      if (has_one_of_these(install_actions, [INSTALL_ADD, MIGRATE_SYSTEM_TO_EXR, MIGRATE_CONFIG_TO_EXR]) && server_id == -1) {
+      if (has_one_of_these(install_actions, [INSTALL_ADD]) && server_id == -1) {
         bootbox.alert("Server repository has not been specified.");
         return false;
       }

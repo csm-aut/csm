@@ -55,7 +55,6 @@ from au.plugins.cfg_consistency import ConfigConsistencyPlugin
 from au.plugins.err_core_check import ErrorCorePlugin
 from au.plugins.device_pkg_poll import DevicePackageSatePlugin
 from au.plugins.migrate_system import MigrateSystemToExrPlugin
-from au.plugins.migrate_configuration import MigrateConfigurationToExrPlugin
 from au.plugins.premigrate import PreMigratePlugin
 from au.plugins.postmigrate import PostMigratePlugin
 
@@ -89,14 +88,13 @@ plugin_classes = [
     InstallCommitPlugin,
     PreMigratePlugin,
     MigrateSystemToExrPlugin,
-    MigrateConfigurationToExrPlugin,
     PostMigratePlugin,
 ]
 plugins = []
 plugin_map = defaultdict(list)
 
 plugin_types = ["DEACTIVATE","REMOVE", "ADD","UPGRADE", "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE",
-                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT", "PRE_MIGRATE", "MIGRATE_SYSTEM", "MIGRATE_CONFIG", "POST_MIGRATE"]
+                "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT", "PRE_MIGRATE", "MIGRATE_SYSTEM", "POST_MIGRATE"]
 phases = {
     "POLL":["POLL"],
     "ADD":["ADD"],
@@ -116,12 +114,10 @@ phases = {
     ],
     "PRE_MIGRATE": ["PRE_MIGRATE"],
     "MIGRATE_SYSTEM": ["MIGRATE_SYSTEM"],
-    "MIGRATE_CONFIG": ["MIGRATE_CONFIG"],
     "POST_MIGRATE": ["POST_MIGRATE"],
     "ALL_FOR_MIGRATE": [
         "PRE_MIGRATE",
         "MIGRATE_SYSTEM",
-        "MIGRATE_CONFIG",
         "POST_MIGRATE",
     ],
     "ALL": [

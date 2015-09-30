@@ -103,8 +103,7 @@ class InstallAction:
     INSTALL_DEACTIVATE = 'Deactivate'
     INSTALL_ROLLBACK = 'Rollback'
     PRE_MIGRATE = 'Pre-Migrate'
-    MIGRATE_SYSTEM_TO_EXR = 'Migrate System'
-    MIGRATE_CONFIG_TO_EXR = 'Migrate Configuration'
+    MIGRATE_SYSTEM_TO_EXR = 'Migrate'
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
 

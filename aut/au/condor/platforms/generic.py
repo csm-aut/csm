@@ -53,7 +53,6 @@ _INCOMPLETE_COMMAND = "Incomplete command."
 _CONNECTION_CLOSED = "Connection closed"
 
 _PROMPT_IOSXR_RE = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
-_PROMPT_IOSXR_RE = re.compile('\w+/\w+/\w+/\w+:.+#')
 
 _DEVICE_PROMPTS = {
     'Shell': _PROMPT_SHELL,

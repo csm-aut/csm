@@ -102,7 +102,7 @@ def execute(options, args, parser, stdout=None, stderr=None):
             print("Warning: '{}' is empty.".format(options.devices))
         devices += txt_devices
 
-    if options.pre_migrateset or options.migrate_system_set or options.migrate_config_set:
+    if options.pre_migrateset or options.migrate_system_set or options.post_migrate_set or options.all_for_migrate_set:
 
         for device in devices:
 

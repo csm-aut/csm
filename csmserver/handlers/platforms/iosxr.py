@@ -28,7 +28,7 @@ from utils import import_module
 import re
 
 try:
-    import condor 
+    import condor
 except ImportError:
     pass
 
@@ -57,7 +57,6 @@ class BaseConnectionHandler(BaseHandler):
 class BaseInventoryHandler(BaseHandler):           
     def execute(self, ctx):
 
-        print("executed iosxr BaseInventoryHandler execute")
         global AUT_PATH
         
         csm_au_module = import_module('au.csm_au', AUT_PATH)
@@ -74,6 +73,8 @@ class BaseInventoryHandler(BaseHandler):
                 asr9k_exr = self.check_if_ASR9K_eXR()
 
                 append = ' summary' if not asr9k_exr else ''
+
+                condor = import_module('au.condor', AUT_PATH)
 
                 conn = condor.make_connection_from_context(ctx)
                 conn.connect()
@@ -93,10 +94,8 @@ class BaseInventoryHandler(BaseHandler):
                 pass
 
     def get_software(self, ctx, install_inactive_cli, install_active_cli, install_committed_cli, asr9k_exr=None):
-        print("executed iosxr BaseInventoryHandler get_software")
         try:
             if asr9k_exr is None:
-                print "asr9k is none "
                 asr9k_exr = self.check_if_ASR9K_eXR(ctx)
 
             if asr9k_exr:
@@ -115,18 +114,12 @@ class BaseInventoryHandler(BaseHandler):
 
     def check_if_ASR9K_eXR(self, ctx):
 
-        print "check_if_ASR9K_eXR"
-
         global AUT_PATH
 
-        import_module('au.condor.__init__', AUT_PATH)
-
-        print "0"
+        condor = import_module('au.condor', AUT_PATH)
 
         conn = condor.make_connection_from_context(ctx)
         conn.connect()
-
-        print "1"
 
         asr9k_exr = False
 
@@ -135,8 +128,6 @@ class BaseInventoryHandler(BaseHandler):
         output = conn.send('show install active')
 
         module = None
-
-        print "2"
 
         lines = output.splitlines()
 
@@ -154,10 +145,8 @@ class BaseInventoryHandler(BaseHandler):
                     if match:
                         asr9k_exr = True
                         break
-        print "3"
         conn.send('exit')
         conn.disconnect()
-        print "check_if_ASR9K_eXR returns " + str(asr9k_exr)
         return asr9k_exr
        
 class BaseInstallHandler(BaseHandler):                         

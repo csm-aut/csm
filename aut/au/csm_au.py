@@ -99,11 +99,8 @@ def execute(context,testing_csm = False):
     elif ctx.requested_action == 'Pre-Migrate':
         options.pre_migrateset = True
 
-    elif ctx.requested_action == 'Migrate System':
+    elif ctx.requested_action == 'Migrate':
         options.migrate_system_set = True
-
-    elif ctx.requested_action == 'Migrate Configuration':
-        options.migrate_config_set = True
 
     elif ctx.requested_action == 'Post-Migrate':
         options.post_migrate_set = True
@@ -156,9 +153,7 @@ class CsmContext(object):
         elif options.pre_migrateset:
             self.requested_action = 'Pre-Migrate'
         elif options.migrate_system_set:
-            self.requested_action = 'Migrate System'
-        elif options.migrate_config_set:
-            self.requested_action = 'Migrate Configuration'
+            self.requested_action = 'Migrate'
         elif options.post_migrate_set:
             self.requested_action = 'Post-Migrate'
         elif options.all_for_migrate_set:

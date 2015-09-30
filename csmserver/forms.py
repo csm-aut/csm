@@ -85,34 +85,6 @@ class JumpHostForm(Form):
                    (ConnectionType.SSH, ConnectionType.SSH)])
     port_number = TextField('Port Number')
 
-class ScheduleMigrationForm(Form):
-    install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
-
-    scheduled_time = TextField('Scheduled Time', [required()])
-    scheduled_time_UTC = HiddenField('Scheduled Time')
-    dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])
-
-    region = SelectField('Region', coerce=int, choices = [(-1, '')])
-    role = SelectField('Role', coerce=str, choices = [('Any', 'Any')])
-    software = SelectField('Software Version', coerce=str, choices = [('Any', 'Any')])
-
-    server_dialog_target_software = TextField('Target Software Release')
-    server_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])
-    server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices = [('', '')])
-
-    hidden_region = HiddenField('')
-    hidden_hosts = HiddenField('')
-
-    hidden_server = HiddenField('')
-    hidden_server_name = HiddenField('')
-    hidden_server_directory = HiddenField('')
-    hidden_pending_downloads = HiddenField('Pending Downloads')
-    hidden_software_packages = HiddenField('')
-
-    hidden_best_effort_config = HiddenField('')
-
-    hidden_edit = HiddenField('Edit')
-
      
 class HostScheduleInstallForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])

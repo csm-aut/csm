@@ -60,7 +60,7 @@ from au.plugins.plugin import PluginError
 from au.plugins.device_connect import DeviceConnectPlugin
 
 
-from parsers.platforms.iosxr import BaseCLIPackageParser
+from parsers.platforms.ASR9K_X import CLIPackageParser
 from au.plugins.package_state import get_package
 
 
@@ -221,18 +221,9 @@ class MigrateSystemToExrPlugin(IPlugin):
 
 
 
-        success, output = device.execute_command("show version")
-        match = re.search('Version\s(.*)\s', output)
-        if match:
-            if self.csm_ctx and self.csm_ctx.host:
-                self.csm_ctx.host.software_version = match.group(1)
-                self.csm_ctx.host.software_platform = 'asr9k-x'
-
-
-
         get_package(device)
 
-        parser = BaseCLIPackageParser()
+        parser = CLIPackageParser()
         if self.csm_ctx and self.csm_ctx.host:
             parser.get_packages_from_cli(self.csm_ctx.host, install_inactive_cli=self.csm_ctx.inactive_cli, install_active_cli=self.csm_ctx.active_cli, install_committed_cli=self.csm_ctx.committed_cli)
 

@@ -66,15 +66,17 @@ def make_connection_from_context(ctx):
     :returns: driver class
     """
 
-    module_str = 'condor.platforms.%s' % (ctx.host.platform)
-    __import__(module_str)
+    module_str = 'au.condor.platforms.%s' % (ctx.host.platform)
+    try:
+        __import__(module_str)
+    except Exception as e:
+        print e
+        print 'import threw error'
     module = sys.modules[module_str]
-
     driver_class = getattr(module, 'Connection')
     nodes = []
     for url in ctx.host.urls:
         nodes.append(make_hop_info_from_url(url))
-
     return driver_class(
         ctx.host.hostname,
         nodes,
