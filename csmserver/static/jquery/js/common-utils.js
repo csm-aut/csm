@@ -22,7 +22,7 @@ function create_html_table_row(field, value) {
 }
 
 function get_acceptable_string(input_string) {
-  return input_string.replace(/[^a-z0-9()_-\s]/gi,'').replace(/\s+/g, " "); 
+  return input_string.replace(/[^a-z0-9()._-\s]/gi,'').replace(/\s+/g, " "); 
 }
 
 function get_acceptable_string_message(field, old_value, new_value) {
@@ -30,8 +30,8 @@ function get_acceptable_string_message(field, old_value, new_value) {
 }
 
 /*
-Trims all whitespaces from lines and returns them as separate line
-*/
+ * Trims all whitespaces from lines and returns them as separate line
+ */
 function trim_lines(lines) {
   var result = '';
   // Use a regex to split the String literal by all whitespace (i.e. spaces/newlines/tabs). 
@@ -53,6 +53,9 @@ function beautify_platform(platform) {
   return platform.toUpperCase().replace('_','-');
 }
 
+/**
+ * Converts comma delimited string to HTML line break delimited.
+ */
 function comma2br(s) {
   return s.replace(/,/g, "<br>")
 }
@@ -102,6 +105,42 @@ function has_one_of_these_only(items_list, search_items) {
   }
   return false;
 }
+
+/**
+ * Converts the lines which are separated by a newline character
+ * into a list.  Each line will be trimmed and if the line is
+ * empty,  it will be removed.
+ */
+function convert_lines_to_list(lines) {
+  var result_list = new Array();
+        
+  lines = lines.split('\n');
+  
+  $.each(lines, function() {
+    var line = this.trim();
+    if (line.length > 0) {
+      result_list.push(line);
+    }
+  });
+  
+  return result_list;
+}
+
+/**
+ * Converts a list of string into lines separated by a '\n' character.
+ */
+function convert_list_to_lines(list) {
+    var lines = '';
+    
+    for (i = 0; i < list.length; i++) {
+      if (list[i].trim().length > 0) {
+        lines += list[i].trim() + '\n';
+      }
+    }
+    
+    return lines;
+}
+    
     
 /*
  The validate_object should be initialized as below in order to use this function.

@@ -16,3 +16,4 @@ requests==2.5.1
 paramiko==1.15.1
 pycrypto==2.6.1
 pysftp==0.2.8
+xlutils==1.7.1

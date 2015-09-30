@@ -26,11 +26,7 @@ from schema.base import BaseMigrate
 from database import DBSession
 
 sql_statements = [
-    'alter table system_option add enable_cco_lookup BOOLEAN default 1',
-    'alter table system_option add cco_lookup_time DATETIME',
-    'alter table smu_meta drop column downloaded_time',
-    'alter table server add vrf VARCHAR(100)',
-    'alter table smu_meta add retrieval_time DATETIME'
+
     ]
 
 class SchemaMigrate(BaseMigrate):

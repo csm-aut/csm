@@ -130,6 +130,7 @@ class ServerForm(Form):
     username = TextField('Username')
     password = PasswordField('Password')
     server_directory = TextField('File Directory')
+    vrf = TextField('VRF')
     
 class RegionForm(Form):
     region_name = TextField('Region Name', [required()])

@@ -63,7 +63,6 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
-from models import SystemVersion
 from models import Package
 from models import Preferences
 from models import SMUMeta
@@ -71,13 +70,11 @@ from models import SMUInfo
 from models import DownloadJob
 from models import DownloadJobHistory
 from models import CSMMessage
-from models import RegionServer
 from models import get_download_job_key_dict
 
 from validate import is_connection_valid
 from validate import is_reachable
 
-from constants import Platform
 from constants import InstallAction
 from constants import JobStatus
 from constants import PackageState
@@ -86,7 +83,38 @@ from constants import UserPrivilege
 from constants import ConnectionType
 from constants import BUG_SEARCH_URL
 from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
-from constants import PackageType
+
+from common import get_last_successful_inventory_elapsed_time 
+from common import get_host_active_packages 
+from common import fill_servers
+from common import fill_dependencies
+from common import fill_dependency_from_host_install_jobs
+from common import fill_regions    
+from common import fill_jump_hosts
+from common import get_host
+from common import get_host_list
+from common import get_jump_host_by_id
+from common import get_jump_host
+from common import get_jump_host_list
+from common import get_server
+from common import get_server_by_id
+from common import get_server_list
+from common import get_region
+from common import get_region_by_id
+from common import get_region_list
+from common import get_user
+from common import get_user_by_id
+from common import get_user_list
+from common import get_smtp_server
+from common import can_check_reachability
+from common import can_retrieve_software
+from common import can_install
+from common import can_delete_install
+from common import can_edit_install
+from common import can_create_user
+from common import can_edit
+from common import can_delete
+from common import can_create
 
 from common import *
 
@@ -118,7 +146,9 @@ from bsd_service import BSDServiceHandler
 
 from package_utils import get_target_software_package_list
 from restful import restful_api
+
 from views.exr_migrate import exr_migrate
+from views.conformance import conformance
 
 import os
 import io
@@ -137,6 +167,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 
 app.register_blueprint(restful_api)
 app.register_blueprint(exr_migrate)
+app.register_blueprint(conformance)
 
 #hook up the filters
 filters.init(app)
@@ -166,7 +197,6 @@ def home():
     jump_hosts = get_jump_host_list(db_session)
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
-    # system_version = SystemVersion.get(db_session)
     
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
@@ -335,7 +365,7 @@ def login():
         password = form.password.data.strip()
         
         db_session = DBSession()
-     
+
         user, authenticated = \
             User.authenticate(db_session.query, username, password)
             
@@ -927,6 +957,7 @@ def server_create():
             server_url=trim_last_slash(form.server_url.data), 
             username=form.username.data,
             password=form.password.data,
+            vrf=form.vrf.data,
             server_directory=trim_last_slash(form.server_directory.data),
             created_by=current_user.username)
             
@@ -959,6 +990,7 @@ def server_edit(hostname):
         server.hostname = form.hostname.data
         server.server_type = form.server_type.data
         server.server_url = trim_last_slash(form.server_url.data)
+        server.vrf = form.vrf.data
         server.username = form.username.data
         if len(form.password.data) > 0:
             server.password = form.password.data
@@ -972,6 +1004,7 @@ def server_edit(hostname):
         form.server_type.data = server.server_type
         form.server_url.data = server.server_url
         form.username.data = server.username
+        form.vrf.data = server.vrf
         # In Edit mode, make the password field not required
         form.server_directory.data = server.server_directory
         
@@ -1119,7 +1152,7 @@ def api_get_last_successful_inventory_elapsed_time(hostname):
     ] } )
 
 
-    
+
 @app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
 @login_required
 def api_get_host_dashboard_packages(hostname, package_state):
@@ -2657,9 +2690,6 @@ def get_install_actions_dict():
     }
 
 
-
-
-
 """
 Returns the return_url encoded in the parameters
 """
@@ -2703,7 +2733,7 @@ def event_stream():
 @app.route('/stream')
 def stream():
     return Response(event_stream(),
-                          mimetype="text/event-stream")
+        mimetype="text/event-stream")
 
 @app.route('/about')
 @login_required
@@ -2711,13 +2741,12 @@ def about():
     return render_template('about.html', build_date=get_build_date() )
 
 def get_build_date(): 
-    build_date = None
     try:
-        build_date = open('build_date', 'r').read()
+        return open('build_date', 'r').read()
     except:
         pass
     
-    return build_date
+    return None
 
 @app.route('/user_preferences', methods=['GET','POST'])
 @login_required
@@ -3065,32 +3094,11 @@ def host_packages_contains(host_packages, smu_name):
             return True
     return False
 
-"""
-Returns a list of active/active-committed packages.  The list includes SMU/SP/Packages.
-"""
-def get_host_active_packages(hostname):
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-    
-    result_list = []       
-    if host is not None:
-        packages = db_session.query(Package).filter(and_(Package.host_id == host.id, or_(Package.state == PackageState.ACTIVE, Package.state == PackageState.ACTIVE_COMMITTED) )).all()      
-        for package in packages:
-            result_list.append(package.name)
-    
-    return result_list
-
 @app.route('/api/optimize_list')
 @login_required
 def api_optimize_list():
     smu_list = request.args.get('smu_list').split()
-    resultant_list, error_list = get_optimize_list(smu_list)
- 
-    rows = []
-    for smu_name in resultant_list:
-        rows.append({'smu_entry':smu_name})
-    
-    return jsonify( **{'data':rows} )
+    return  jsonify( **{'data': get_optimize_list(smu_list)} )
 
 # This route will prompt a file download
 @app.route('/download_session_log')

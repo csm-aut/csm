@@ -1,10 +1,12 @@
 from flask.ext.login import current_user
 from platform_matcher import get_platform, get_release
+from sqlalchemy import or_, and_
 
 from constants import ServerType
 from constants import UserPrivilege
 from constants import InstallAction
 from constants import JobStatus
+from constants import PackageState
 
 from models import Server
 from models import Host
@@ -20,6 +22,7 @@ from models import get_download_job_key_dict
 
 from smu_utils import SP_INDICATOR
 from utils import is_empty, get_datetime
+from models import Package
 
 from database import DBSession
 
@@ -49,7 +52,7 @@ def fill_dependencies(choices):
     choices.append((InstallAction.INSTALL_ACTIVATE, InstallAction.INSTALL_ACTIVATE)) 
     choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
     choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT)) 
-        
+
 def fill_dependency_from_host_install_jobs(choices, install_jobs, current_install_job_id):
     # Remove all the existing entries
     del choices[:]
@@ -59,7 +62,7 @@ def fill_dependency_from_host_install_jobs(choices, install_jobs, current_instal
         if install_job.id != current_install_job_id:
             choices.append((install_job.id, '%s - %s' % (install_job.install_action, 
                 get_datetime_string(install_job.scheduled_time)) ))
-        
+
 def fill_jump_hosts(choices):
     # Remove all the existing entries
     del choices[:]
@@ -101,6 +104,7 @@ def fill_default_region(choices, region):
             choices.append((region.id, region.name))
     except:
         logger.exception('fill_default_region() hits exception')
+
     
 def get_last_successful_inventory_elapsed_time(host):
     if host is not None:
@@ -112,8 +116,39 @@ def get_last_successful_inventory_elapsed_time(host):
             return  time_difference_UTC(inventory_job.last_successful_time)
         
     return ''
+
+"""
+Returns a list of active/active-committed packages.  The list includes SMU/SP/Packages.
+"""
+def get_host_active_packages(hostname):
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
     
-                  
+    result_list = []       
+    if host is not None:
+        packages = db_session.query(Package).filter(
+            and_(Package.host_id == host.id, or_(Package.state == PackageState.ACTIVE, Package.state == PackageState.ACTIVE_COMMITTED) )).all()      
+        for package in packages:
+            result_list.append(package.name)
+    
+    return result_list
+
+"""
+Returns a list of inactive packages.  The list includes SMU/SP/Packages.
+"""
+def get_host_inactive_packages(hostname):
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
+    
+    result_list = []       
+    if host is not None:
+        packages = db_session.query(Package).filter(
+            and_(Package.host_id == host.id, Package.state == PackageState.INACTIVE) ).all()      
+        for package in packages:
+            result_list.append(package.name)
+    
+    return result_list
+
 def get_server_list(db_session):
     return db_session.query(Server).order_by(Server.hostname.asc()).all()
 
@@ -163,22 +198,22 @@ def can_check_reachability(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
 def can_retrieve_software(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
 def can_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
 def can_delete_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
 def can_edit_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
@@ -186,7 +221,7 @@ def can_edit_install(current_user):
 
 def can_create_user(current_user):
     return current_user.privilege == UserPrivilege.ADMIN
-                
+
 def can_edit(current_user):
     return can_create(current_user)
 
@@ -196,7 +231,6 @@ def can_delete(current_user):
 def can_create(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN 
-    
 
 
 
@@ -360,8 +394,3 @@ def is_pending_on_download(db_session, filename, server_id, server_directory):
 
 def get_download_job_key(user_id, filename, server_id, server_directory):
     return "{}{}{}{}".format(user_id, filename, server_id, server_directory)
-
-
-
-
-

@@ -61,7 +61,7 @@
           $('#label_server_url').text(server_type + ' Server Address');
           $('#label_server_directory').text('Remote Directory');
         } else if (server_type == "LOCAL") {
-          $('#label_server_url').text('Device Directory Path (disk0:, harddisk:)');
+          $('#label_server_url').text('Device Path (disk0:, harddisk:)');
           $('#verify-reachability').hide();
           $('#directory-panel').hide();
         }
@@ -152,6 +152,7 @@
       placeholder="Unique Name on CSM Server") }}
     {{ edit_field(form.server_type, field_width="col-sm-2", class="form-control") }}
     {{ edit_field(form.server_url, maxlength=100, class="form-control") }}
+    {{ edit_field(form.vrf, maxlength=100, class="form-control") }}
     
     <div id="directory-panel">   
       {{ edit_field(form.server_directory, maxlength=100, class="form-control") }}

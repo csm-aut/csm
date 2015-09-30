@@ -97,7 +97,7 @@ def get_datetime_string(datetime, format):
 
 def make_file_writable(file_path):
     if os.path.isfile(file_path):
-        os.chmod(file_path, stat.S_IRWXU)  
+        os.chmod(file_path, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)  
         
 def get_tarfile_file_list(tar_file_path):
     file_list = []
@@ -214,11 +214,11 @@ def concatenate_dirs(dir1, dir2):
     
     return result_dir
 
-def trim_last_slash(str):
-    if str is not None:
-        if str.endswith('/'):
-            return str[:-1]
-    return str
+def trim_last_slash(s):
+    if s is not None:
+        if s.endswith('/'):
+            return s[:-1]
+    return s
 
 """
 Returns the base URL including the port numbetr
@@ -229,12 +229,13 @@ def get_base_url(url):
     return 'http://' + url[:url.find('/')] 
     
 def is_empty(obj):
-    if obj is None or obj == 'None':
-        return True
-    elif isinstance(obj, list) and len(obj) == 0:
-        return True
-    else:
+    if isinstance(obj, str):
+        obj = obj.replace('None','').strip()
+
+    if obj:
         return False
+
+    return True
     
 def comma_delimited_str_to_array(comma_delimited_str):
     if comma_delimited_str is None or len(comma_delimited_str) == 0:
@@ -257,4 +258,4 @@ def strip_unwanted_characters(str):
     return " ".join(pattern.sub('', str).split())
   
 if __name__ == '__main__':
-    pass 
+    pass
