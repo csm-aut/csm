@@ -71,7 +71,7 @@ def software_profile_create():
         software_profile = SoftwareProfile(
             name=form.profile_name.data,
             description=form.description.data,
-            packages = get_comma_delimited_packages(form.software_packages.data),
+            packages = ','.join([l for l in form.software_packages.data.splitlines() if l]),
             created_by=current_user.username)
         
         db_session.add(software_profile)
@@ -105,7 +105,7 @@ def software_profile_edit(profile_name):
         
         software_profile.name = form.profile_name.data       
         software_profile.description = form.description.data
-        software_profile.packages = get_comma_delimited_packages(form.software_packages.data)
+        software_profile.packages = ','.join([l for l in form.software_packages.data.splitlines() if l]),
 
         db_session.commit()
         
@@ -118,14 +118,6 @@ def software_profile_edit(profile_name):
     
     return render_template('conformance/profile_edit.html',
         form=form, server_dialog_form=server_dialog_form, system_option=SystemOption.get(db_session))
-
-def get_comma_delimited_packages(form_software_packages):
-    comma_list = ''
-    software_packages = form_software_packages.splitlines()
-    for software_package in software_packages:
-        comma_list += software_package + ','
-
-    return comma_list.rstrip(',')
             
 @conformance.route('/api/get_software_profiles')
 @login_required
