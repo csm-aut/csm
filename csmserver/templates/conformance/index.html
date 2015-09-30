@@ -1,0 +1,449 @@
+{% extends 'base.html' %}
+{% from 'host/common.html' import edit_field %}
+{% from 'conformance/conformance_report_dialog.html' import conformance_report_dialog %}
+
+{% block extra_head %}
+
+<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+<script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+<script src="/static/duallistbox/dist/dual-list-box.js"></script>
+
+<!--   plugins   -->
+<script src="/static/x-wizard-1.1/assets/js/jquery.bootstrap.wizard.js" type="text/javascript"></script>
+<link href="http://netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" rel="stylesheet"> 
+<!-- <link href="/static/x-wizard-1.1/assets/css/gsdk-base.css" rel="stylesheet" />  -->
+
+<!--  More information about jquery.validate here: http://jqueryvalidation.org/	 -->
+<script src="/static/x-wizard-1.1/assets/js/jquery.validate.min.js"></script>
+<script src="/static/x-wizard-1.1/assets/js/wizard.js"></script>
+
+<link href="/static/x-wizard-1.1/assets/css/alex.css" rel="stylesheet" /> 
+
+<script src="/static/jquery/js/conformance_report_dialog.js"></script>
+<script src="/static/jquery/js/select_region_hosts.js"></script>
+  
+<script charset="utf-8">
+
+    $(function() {
+        
+        $('a[href="#conformance"]').tab('show');
+
+        // Use delegate pattern for event
+        $("#software-profile-table").on("click", ".data-delete-link", function() {
+            var delete_url = $(this).attr('data-delete-url');
+            var profile_name = $(this).attr('data-delete-profile-name');
+
+            bootbox.confirm("You are about to delete software profile \'" + profile_name + "\'.  OK to proceed?", function(result) {
+                if (result) {
+                    $.ajax({
+                        url: delete_url,
+                        type: 'DELETE',
+                        success: function(result) {
+                            if (result.status == 'OK') {
+                                window.location = "{{ url_for('conformance.home') }}";
+                            } else {
+                                bootbox.alert('Delete failed.');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        $('#export').on('click', function(e) {
+            id = $('#conformance_reports').val();
+            if (id == -1 || id == undefined) {
+                bootbox.alert('No conformance report was selected.');
+                return;
+            }
+            
+            $('#export-conformance-report-dialog').modal({show:true, backdrop:'static'})
+        });
+        
+        $('#on-export-conformance-report-submit').on('click', function(e) {
+            var id = $('#conformance_reports').val();
+            var include_host_packages = $("#include-host-packages-yes-or-no .active").data("value");
+            export_conformance_report(id, include_host_packages);
+        });
+        
+        function export_conformance_report(id, include_host_packages) {
+            $.ajax({
+                url: "/conformance/api/get_conformance_report_datetime/" + id,
+                dataType: 'json',
+                success: function(response) {
+                    $.each(response, function(index, element) {
+                        window.location.href = '/conformance/api/export_conformance_report/' + id + '?locale_datetime=' +
+                            convertToLocaleString(element[0].conformance_report_datetime) +
+                            '&include_host_packages=' + include_host_packages;
+                    });
+                }
+            });
+        }
+        
+        $('#rerun-report').on('click', function(e) {
+            id = $('#conformance_reports').val();
+            if (id == -1 || id == undefined) {
+                bootbox.alert('No conformance report was selected.');
+                return;
+            }
+            
+            message = "Re-Run will create a new report based on the currently selected report's criteria and hosts.  OK to continue?";
+            bootbox.confirm(message, function(result) {
+                if (result) {
+                    rerun_conformance_report(id);
+                }
+            }); 
+        });
+
+        $('#on-conformance-report-dialog-submit').on('click', function(e) {
+            var match_criteria = $("input[name=match_criteria]:checked").val();
+        
+            var software_profile_name = software_profile_selector.val();
+            if (software_profile_name == 0) {
+                bootbox.alert("Software Profile has not been specified.");
+                return false;
+            }
+            
+            var selected_hosts = host_selector.get_selected_items();
+            if (selected_hosts.length == 0) {
+                bootbox.alert("Host has not been specified.");
+                return false;
+            }
+     
+            run_conformance_report(software_profile_name, match_criteria, selected_hosts);
+        });
+
+        $('#run-conformance-report').on('click', function(e) {
+            display_conformance_report_dialog();
+        });
+
+        var software_profile_table = $("#software-profile-table").dataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'profile_name',
+                "render": function(data, type, row) {
+                    return '<a href="/conformance/software_profile/' + data + '/edit">' + data + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'description',
+            }, {
+                "targets": 2,
+                "data": 'packages',
+                "render": function(data, type, row) {
+                    return insert_slider(comma2br(data), row['id']);
+                }
+            }, {
+                "targets": 3,
+                "data": 'created_by',
+            }, {
+                "targets": 4,
+                "data": 'profile_name',
+                "render": function(data, type, row) {
+                    return '<a class="data-delete-link" href="javascript://"  \
+                data-delete-profile-name="' + data + '" \
+                data-delete-url="/conformance/software_profile/' + data + '/delete">Delete</a>';
+                }
+            }],
+            "ajax": {
+                "url": "{{ url_for('conformance.api_get_software_profiles') }}",
+            }
+        });
+
+        function insert_slider(packages, id) {
+            if (packages != null && packages.length > 0) {
+                var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' +
+                    '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
+                    '</a>' +
+                    '<!-- Collapsible Element HTML -->' +
+                    '<div id="toggle' + id + '" class="collapse">' +
+                    '<div style="white-space: nowrap;">' +packages.replace(/,/g, "<br/>") +
+                    '</div>' +
+                    '</div>';
+                return html;
+            } else {
+                return '&nbsp;';
+            }
+        }
+
+        var conformance_report_table = $("#conformance-report-table").dataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "pageLength": 100,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'hostname',
+            }, {
+                "targets": 1,
+                "data": 'platform_software',
+            }, {
+                "targets": 2,
+                "data": 'last_successful_retrieval',
+                "render": function(data, type, row) {
+                    if (row['inventory_status'] != 'completed') {
+                        return '<span style="color:red;">' + data + '</span>';
+                    } else {
+                        return data;
+                    }
+                }
+            }, {
+                "targets": 3,
+                "data": 'missing_packages',
+                "render": function(data, type, row) {                   
+                    if (data.length > 0) {
+                        return comma2br(data);
+                    } else {
+                        return '';
+                    }
+                }
+
+            }, {
+                "targets": 4,
+                "data": 'missing_packages',
+                "render": function(data, type, row) {
+                    if (data.length == 0) {
+                        return '<center><img src=\"{{ url_for('static', filename='green_check.png') }}\"></center>';
+                    } else {
+                        return '<center><img src=\"{{ url_for('static', filename='error.png') }}\"></center>';
+                    }
+                }
+            }]
+        });
+
+        get_conformance_reports();
+        
+        function get_conformance_reports() {
+            $('#conformance_reports').empty();
+            $.ajax({
+                url: "/conformance/api/get_conformance_report_dates",
+                dataType: 'json',
+                success: function(response) {
+                    $.each(response, function(index, element) {
+                        for (i = 0; i < element.length; i++) {
+                             $('#conformance_reports').append('<option value="' + element[i].id + '">' + 
+                                 convertToLocaleString(element[i].created_time) + ' - ' + element[i].software_profile + '</option>');
+                        }
+                    });
+                    
+                    if ($('#conformance_reports').val() > 0) {
+                        display_conformance_report($('#conformance_reports').val());
+                    }
+                }
+            });
+        }
+        
+        $('#conformance_reports').on('change', function(e) {
+            display_conformance_report($('#conformance_reports').val());
+        });
+        
+        function display_conformance_report(id) {
+            conformance_report_table.api().ajax.url("/conformance/api/get_conformance_report/" + id).load();
+            display_conformance_report_summary(id);
+        }
+        
+        function display_conformance_report_summary(id) {
+            $.ajax({
+                url: "/conformance/api/get_conformance_report_summary/" + id,
+                dataType: 'json',
+                success: function(response) {
+                    var html_code = '';
+                    
+                    $.each(response, function(index, element) {
+                        if (element[0].host_not_in_conformance == 0) {
+                            html_code = "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All host(s) have conformed to the selected software profile. ";
+                        } else {
+                            html_code = html_code = "<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;" + 
+                                element[0].host_not_in_conformance + " host(s) are not in complete conformance (see 'Missing Packages'). ";
+                        }
+                        
+                        if (element[0].host_out_dated_inventory > 0) {
+                            html_code += element[0].host_out_dated_inventory + " host(s) may have out-dated inventory information (see 'Last Successful Retrieval')";
+                        }
+                    });
+                    
+                    if (html_code != "") {
+                        html_code = "<div class='alert alert-warning'>" + html_code + "</div>";
+                    }
+                    $('#conformance-report-info').html(html_code);
+                }
+            });
+        }
+        
+        function run_conformance_report(software_profile_name, match_criteria, selected_hosts) {
+            $.ajax({
+                url: "/conformance/api/run_conformance_report",
+                dataType: 'json',
+                data: { software_profile_name: software_profile_name, match_criteria: match_criteria, selected_hosts: selected_hosts.join()} ,
+                success: function(response) {
+                    if (response.status == 'OK') {
+                        get_conformance_reports();
+                    } else {
+                        bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;' + response.status);
+                    }
+                }
+            });
+        }
+        
+        function rerun_conformance_report(id) {
+            $.ajax({
+                url: "/conformance/api/rerun_conformance_report/" + id,
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status == 'OK') {
+                        get_conformance_reports();
+                    } else {
+                        bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;' + response.status);
+                    }
+                }
+            });
+        }
+        
+        $('.btn-toggle').click(function() {
+            $(this).find('.btn').toggleClass('active');  
+    
+            if ($(this).find('.btn-primary').size()>0) {
+    	        $(this).find('.btn').toggleClass('btn-primary');
+            }
+    
+            $(this).find('.btn').toggleClass('btn-default');       
+        });
+        
+        $('#include_host_packages').val(function() {      
+            render_switch(
+                $('#include_host_packages'),
+                $('#include-host-packages-yes-button'),
+                $('#include-host-packages-no-button'));
+        });
+
+        function render_switch(control, yes_button, no_button) {
+            if (control.val() == 'True') {
+                yes_button.addClass("btn-primary active");
+                no_button.addClass("btn-default");
+            } else {
+                no_button.addClass("btn-primary active");
+                yes_button.addClass("btn-default");
+            }
+        }
+
+    });
+    
+</script>
+
+<style>
+    .modal-dialog {    
+        width: 850px;
+    }
+</style>
+
+{% endblock extra_head %}  
+  
+{% block main %}
+
+{{ conformance_report_dialog(form.conformance_report_dialog_software_profile, form.match_criteria, form.region, form.role, form.software) }}
+
+<div id="export-conformance-report-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>A Microsoft Excel compatible file will be generated for the selected conformance report.</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group ">
+                        <label class="col-sm-7 control-label" for="{{ export_conformance_report_form.include_host_packages.id }}">{{ export_conformance_report_form.include_host_packages.label.text }}</label>
+                        <div class=col-sm-5>
+                            <div class="btn-group btn-toggle" id="include-host-packages-yes-or-no">
+                                <button type="button" id="include-host-packages-yes-button" class="btn" data-value=1>Yes</button>
+                                <button type="button" id="include-host-packages-no-button" class="btn" data-value=0>No</button>
+                            </div>
+                        </div>
+                        <input class="form-control" id="{{ export_conformance_report_form.include_host_packages.id }}" name="{{ export_conformance_report_form.include_host_packages.id }}" type="hidden" value="{{ export_conformance_report_form.include_host_packages.data }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">   
+                            <button id="on-export-conformance-report-submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Main -->
+<div class="container">
+    <div class="row">
+        <div class="col-sm-12">
+            <ul class="nav nav-tabs" id="conformance-tab">
+                <li><a data-toggle="tab" href="#conformance">Conformance</a></li>
+                <li><a data-toggle="tab" href="#software-profiles">Software Profiles</a></li>
+                <li class="dropdown">
+                    <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a data-toggle="main-tab" href="{{ url_for('conformance.software_profile_create') }}">Software Profile</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="tab-content" style="margin-top:10px;">
+                <div id="conformance" class="tab-pane fade">
+                    <div class="row">
+                        <div>
+                        {{ edit_field(form.conformance_reports, label_field_width="col-sm-2", field_width="col-sm-4", class="form-control") }}
+                        </div>
+                        <div class="btn-group pull-right">      
+                            <button id="export" type="button" class="btn btn-default">        
+                                Export
+                            </button>
+                            <button id="rerun-report" type="button" class="btn btn-default">        
+                                Re-Run
+                            </button>
+                            <button id="run-conformance-report" type="button" class="btn btn-primary">        
+                                Run Report
+                            </button>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <span id="conformance-report-info"></span>
+                    </div>
+  
+                    <div class="row col-sm-12"">
+                        <table class="display table" id="conformance-report-table">
+                            <thead>
+                                <tr>
+                                    <th>Hostname</th>
+                                    <th>Software</th>
+                                    <th>Last Successful Retrieval</th>
+                                    <th>Missing Packages</th>
+                                    <th>Conformed</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    
+                </div>
+                <div id="software-profiles" class="tab-pane fade in active">
+                    <table class="display table" id="software-profile-table">
+                        <thead>
+                            <tr>
+                                <th>Profile Name</th>
+                                <th>Description</th>
+                                <th>Packages</th>
+                                <th>Created By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}

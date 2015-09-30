@@ -11,14 +11,14 @@
     $(function() {
       
       var auto_refresh = false;
-      function insert_slider(packages, install_job_id) {
+      function insert_slider(packages, id) {
         if (packages != null && packages.length > 0) {
-          var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + install_job_id + '">' + 
+          var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' + 
                         '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
                      '</a>' +
                      '<!-- Collapsible Element HTML -->' +
-                     '<div id="toggle' + install_job_id + '" class="collapse">' +
-                       '<div class="package-slider">' +
+                     '<div id="toggle' + id + '" class="collapse">' +
+                       '<div style="white-space: nowrap;">' +
                           packages.replace(/,/g,"<br/>") +
                        '</div>' +
                      '</div>';
@@ -500,9 +500,6 @@
   </script>
 
   <style>
-    .package-slider {
-      white-space: nowrap;
-    }
     .btn-select {
       line-height: 10px;
     }

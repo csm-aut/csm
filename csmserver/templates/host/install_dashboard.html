@@ -33,19 +33,30 @@
         record_limit = selected_value;
       }
       
-      function insert_slider(packages, install_job_id) {
+      function insert_slider(packages, id) {
         if (packages != null && packages.length > 0) {
-          var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + install_job_id + '">' + 
+          var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' + 
                         '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
                      '</a>' +
                      '<!-- Collapsible Element HTML -->' +
-                     '<div id="toggle' + install_job_id + '" class="collapse">' +
+                     '<div id="toggle' + id + '" class="collapse">' +
                        display_packages(packages) +
                      '</div>';
             return html;
         } else {
             return '&nbsp;';
         }
+      }
+      
+      function display_packages(packages) {
+        if (packages) {
+          data = "<div class='package-slider'>";
+          data += packages.replace(/,/g,"<br/>");
+          data += "</div>";
+          return data;
+        } else {
+          return '&nbsp;';
+        }       
       }
       
       $(".install-delete-all").on("click", function() {
@@ -369,17 +380,6 @@
           return '&nbsp;';
         }
       }
-    
-      function display_packages(packages) {
-        if (packages) {
-          data = "<div class='package-slider'>";
-          data += packages.replace(/,/g,"<br/>");
-          data += "</div>";
-          return data;
-        } else {
-          return '&nbsp;';
-        }       
-      }
 
       var install_completed_table = $("#install-completed-datatable").dataTable({
         "order": [[ 5, "desc" ]],
@@ -565,7 +565,7 @@
         <div id="install-scheduled" class="tab-pane fade in active">
           <table cellspacing="0" class="display table" id="install-scheduled-datatable">    
             <thead> 
-              <tr>  
+              <tr>   
                 <th>Hostname</th>  
                 <th>Install Action</th> 
                 <th>Dependency</th>  
@@ -578,7 +578,7 @@
           </table>
         </div>
 
-        <div id="install-in-progress" class="tab-pane fade in">
+        <div id="install-in-progress" class="tab-pane fade">
           <table cellspacing="0" class="display table" id="install-in-progress-datatable">    
             <thead> 
               <tr>  
@@ -594,7 +594,7 @@
           </table>
         </div>
 
-        <div id="install-failed" class="tab-pane fade in">
+        <div id="install-failed" class="tab-pane fade">
 
           <table cellspacing="0" class="display table" id="install-failed-datatable">    
             <thead> 
@@ -613,12 +613,11 @@
            </table>
         </div>
         
-        <div id="install-completed" class="tab-pane fade in">
+        <div id="install-completed" class="tab-pane fade">
         
-          <div class="container">
+          <div class="row">
             <div class="form-group">  
               <label class="DodgerBlue col-sm-3 control-label" id="record-limit-selector-label">Number of Records to Retrieve:</label>
-
               <div class="col-sm-4">
               <select class="form-control" id="record-limit-selector" name="record-limit-selector" style="width:200px">
                 <option value="10">10</option>
@@ -630,6 +629,8 @@
               </div>
             </div>
           </div>
+          
+          <hr>
 
           <table cellspacing="0" class="display table" id="install-completed-datatable">    
             <thead> 

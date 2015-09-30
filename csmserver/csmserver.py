@@ -63,7 +63,6 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
-from models import SystemVersion
 from models import Package
 from models import Preferences
 from models import SMUMeta
@@ -71,13 +70,11 @@ from models import SMUInfo
 from models import DownloadJob
 from models import DownloadJobHistory
 from models import CSMMessage
-from models import RegionServer
 from models import get_download_job_key_dict
 
 from validate import is_connection_valid
 from validate import is_reachable
 
-from constants import Platform
 from constants import InstallAction
 from constants import JobStatus
 from constants import PackageState
@@ -86,7 +83,38 @@ from constants import UserPrivilege
 from constants import ConnectionType
 from constants import BUG_SEARCH_URL
 from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
-from constants import PackageType
+
+from common import get_last_successful_inventory_elapsed_time 
+from common import get_host_active_packages 
+from common import fill_servers
+from common import fill_dependencies
+from common import fill_dependency_from_host_install_jobs
+from common import fill_regions    
+from common import fill_jump_hosts
+from common import get_host
+from common import get_host_list
+from common import get_jump_host_by_id
+from common import get_jump_host
+from common import get_jump_host_list
+from common import get_server
+from common import get_server_by_id
+from common import get_server_list
+from common import get_region
+from common import get_region_by_id
+from common import get_region_list
+from common import get_user
+from common import get_user_by_id
+from common import get_user_list
+from common import get_smtp_server
+from common import can_check_reachability
+from common import can_retrieve_software
+from common import can_install
+from common import can_delete_install
+from common import can_edit_install
+from common import can_create_user
+from common import can_edit
+from common import can_delete
+from common import can_create
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -116,7 +144,9 @@ from bsd_service import BSDServiceHandler
 
 from package_utils import get_target_software_package_list
 from restful import restful_api
+
 from views.exr_migrate import exr_migrate
+from views.conformance import conformance
 
 import os
 import io
@@ -135,6 +165,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 
 app.register_blueprint(restful_api)
 app.register_blueprint(exr_migrate)
+app.register_blueprint(conformance)
 
 #hook up the filters
 filters.init(app)
@@ -164,7 +195,6 @@ def home():
     jump_hosts = get_jump_host_list(db_session)
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
-    # system_version = SystemVersion.get(db_session)
     
     form = ServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
@@ -333,7 +363,7 @@ def login():
         password = form.password.data.strip()
         
         db_session = DBSession()
-     
+
         user, authenticated = \
             User.authenticate(db_session.query, username, password)
             
@@ -1118,17 +1148,7 @@ def api_get_last_successful_inventory_elapsed_time(hostname):
          'status': host.inventory_job[0].status}
     ] } )
 
-def get_last_successful_inventory_elapsed_time(host):
-    if host is not None:
-        # Last inventory successful time
-        inventory_job = host.inventory_job[0]
-        if inventory_job.pending_submit:
-            return 'Pending Retrieval'
-        else:
-            return  time_difference_UTC(inventory_job.last_successful_time)
-        
-    return ''
-    
+
 @app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
 @login_required
 def api_get_host_dashboard_packages(hostname, package_state):
@@ -2783,68 +2803,7 @@ def get_install_actions_dict():
         "all": InstallAction.ALL
     }
         
-def fill_dependencies(choices):
-    # Remove all the existing entries
-    del choices[:] 
-    choices.append((-1, 'None'))  
-     
-    # The install action is listed in implicit ordering.  This ordering
-    # is used to formulate the dependency.
-    choices.append((InstallAction.PRE_UPGRADE, InstallAction.PRE_UPGRADE))
-    choices.append((InstallAction.INSTALL_ADD, InstallAction.INSTALL_ADD))
-    choices.append((InstallAction.INSTALL_ACTIVATE, InstallAction.INSTALL_ACTIVATE)) 
-    choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
-    choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT)) 
 
-def fill_servers(choices, servers, include_local=True):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, ''))
-    
-    if len(servers) > 0:
-        for server in servers:
-            if include_local or server.server_type != ServerType.LOCAL_SERVER:
-                choices.append((server.id, server.hostname))
-        
-def fill_dependency_from_host_install_jobs(choices, install_jobs, current_install_job_id):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, 'None'))
-    
-    for install_job in install_jobs:
-        if install_job.id != current_install_job_id:
-            choices.append((install_job.id, '%s - %s' % (install_job.install_action, get_datetime_string(install_job.scheduled_time)) ))
-        
-def fill_jump_hosts(choices):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, 'None'))
-    
-    # do not close session as the caller will do it
-    db_session = DBSession()
-    try:
-        hosts = get_jump_host_list(db_session)
-        if hosts is not None:
-            for host in hosts:
-                choices.append((host.id, host.hostname))
-    except:
-        logger.exception('fill_jump_hosts() hits exception')
-
-def fill_regions(choices):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, ''))
-    
-    # do not close session as the caller will do it
-    db_session = DBSession()
-    try:
-        regions = get_region_list(db_session)
-        if regions is not None:
-            for region in regions:
-                choices.append((region.id, region.name))
-    except:
-        logger.exception('fill_regions() hits exception')
-    
 """
 Returns the return_url encoded in the parameters
 """
@@ -2885,88 +2844,6 @@ if not app.debug:
     app.logger.addHandler(logging.StreamHandler()) # Log to stderr.
     app.logger.setLevel(logging.INFO)
  
-def can_check_reachability(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_retrieve_software(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_install(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_delete_install(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-        
-def can_edit_install(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
-        current_user.privilege == UserPrivilege.OPERATOR
-
-def can_create_user(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN
-                
-def can_edit(current_user):
-    return can_create(current_user)
-
-def can_delete(current_user):
-    return can_create(current_user)
-
-def can_create(current_user):
-    return current_user.privilege == UserPrivilege.ADMIN or \
-        current_user.privilege == UserPrivilege.NETWORK_ADMIN 
-    
-def get_host(db_session, hostname):
-    return db_session.query(Host).filter(Host.hostname == hostname).first()
-
-def get_host_list(db_session):
-    return db_session.query(Host).order_by(Host.hostname.asc()).all()
-
-def get_jump_host_by_id(db_session, id):
-    return db_session.query(JumpHost).filter(JumpHost.id == id).first()
-
-def get_jump_host(db_session, hostname):
-    return db_session.query(JumpHost).filter(JumpHost.hostname == hostname).first()
-
-def get_jump_host_list(db_session):
-    return db_session.query(JumpHost).order_by(JumpHost.hostname.asc()).all()
-
-def get_server(db_session, hostname):
-    return db_session.query(Server).filter(Server.hostname == hostname).first()
-
-def get_server_by_id(db_session, id):
-    return db_session.query(Server).filter(Server.id == id).first()
-
-def get_server_list(db_session):
-    return db_session.query(Server).order_by(Server.hostname.asc()).all()
-
-def get_region(db_session, region_name):
-    return db_session.query(Region).filter(Region.name == region_name).first()
-
-def get_region_by_id(db_session, region_id):
-    return db_session.query(Region).filter(Region.id == region_id).first()
-
-def get_region_list(db_session):
-    return db_session.query(Region).order_by(Region.name.asc()).all()
-
-def get_user(db_session, username):
-    return db_session.query(User).filter(User.username == username).first()
-
-def get_user_by_id(db_session, user_id):
-    return db_session.query(User).filter(User.id == user_id).first()
-
-def get_user_list(db_session):
-    return db_session.query(User).order_by(User.fullname.asc()).all()
-
-def get_smtp_server(db_session):
-    return db_session.query(SMTPServer).first()
 
 def event_stream():
     return 'data: testing\n\n'
@@ -2974,7 +2851,7 @@ def event_stream():
 @app.route('/stream')
 def stream():
     return Response(event_stream(),
-                          mimetype="text/event-stream")
+        mimetype="text/event-stream")
 
 @app.route('/about')
 @login_required
@@ -2982,13 +2859,12 @@ def about():
     return render_template('about.html', build_date=get_build_date() )
 
 def get_build_date(): 
-    build_date = None
     try:
-        build_date = open('build_date', 'r').read()
+        return open('build_date', 'r').read()
     except:
         pass
     
-    return build_date
+    return None
 
 @app.route('/user_preferences', methods=['GET','POST'])
 @login_required
@@ -3327,32 +3203,11 @@ def host_packages_contains(host_packages, smu_name):
             return True
     return False
 
-"""
-Returns a list of active/active-committed packages.  The list includes SMU/SP/Packages.
-"""
-def get_host_active_packages(hostname):
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-    
-    result_list = []       
-    if host is not None:
-        packages = db_session.query(Package).filter(and_(Package.host_id == host.id, or_(Package.state == PackageState.ACTIVE, Package.state == PackageState.ACTIVE_COMMITTED) )).all()      
-        for package in packages:
-            result_list.append(package.name)
-    
-    return result_list
-
 @app.route('/api/optimize_list')
 @login_required
 def api_optimize_list():
     smu_list = request.args.get('smu_list').split()
-    resultant_list, error_list = get_optimize_list(smu_list)
- 
-    rows = []
-    for smu_name in resultant_list:
-        rows.append({'smu_entry':smu_name})
-    
-    return jsonify( **{'data':rows} )
+    return  jsonify( **{'data': get_optimize_list(smu_list)} )
 
 # This route will prompt a file download
 @app.route('/download_session_log')

@@ -102,6 +102,9 @@ class User(Base):
     
     csm_message = relationship("CSMMessage",
         cascade="all, delete, delete-orphan")
+    
+    conformance_report = relationship("ConformanceReport",
+        cascade="all, delete, delete-orphan")
 
     def _get_password(self):
         return self._password
@@ -133,15 +136,15 @@ class User(Base):
         # Authenticate with LDAP Server first
         system_option = SystemOption.get(db_session)
         ldap_authenticated = False
-        
+
         try:
-            ldap_authenticated = ldap_auth(system_option, username, password)
+            if not is_empty(username) and not is_empty(password):
+                ldap_authenticated = ldap_auth(system_option, username, password)
         except CSMLDAPException:
             # logger.exception("authenticate hit exception")
             pass
         
         user = query(cls).filter(cls.username==username).first()
-          
         if ldap_authenticated:
             if user is None:
                 # Create a LDAP user with Network Administrator privilege
@@ -149,8 +152,9 @@ class User(Base):
                 return user, True
             else:
                 # Update the password
-                user.password = password
-                db_session.commit()
+                if not is_empty(password):
+                    user.password = password
+                    db_session.commit()
             
         if user is None:
             return None, False
@@ -498,7 +502,6 @@ class Server(Base):
     username = Column(String(100))
     _password = Column('password', String(100))
     server_directory = Column(String(100))
-    vrf = Column(String(100))
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     
@@ -746,6 +749,45 @@ class CSMMessage(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'))
     acknowledgment_date = Column(DateTime)
+
+class SoftwareProfile(Base):
+    __tablename__ = 'software_profile'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100))
+    description = Column(Text)
+    packages = Column(Text)
+    created_by = Column(String(50))
+    
+class ConformanceReport(Base):
+    __tablename__ = 'conformance_report'
+    id = Column(Integer, primary_key=True)
+    software_profile = Column(String(100))
+    software_profile_packages = Column(Text) 
+    match_criteria = Column(String(30))
+    hostnames = Column(Text) 
+    host_not_in_conformance = Column(Integer, default=0)
+    host_out_dated_inventory = Column(Integer, default=0)
+    created_time = Column(DateTime, default=datetime.datetime.utcnow)
+    created_by = Column(String(50))
+    user_id = Column(Integer, ForeignKey('user.id'))
+    
+    entries = relationship("ConformanceReportEntry",
+        backref="conformance_report",
+        cascade="all, delete, delete-orphan")
+    
+class ConformanceReportEntry(Base):
+    __tablename__ = 'conformance_report_entry'
+    id = Column(Integer, primary_key=True)
+    hostname = Column(String(50)) 
+    platform_software = Column(String(20))
+    inventory_status = Column(String(200))
+    last_successful_retrieval = Column(String(50)) 
+    host_packages = Column(Text)              
+    missing_packages = Column(Text)
+
+    conformance_report_id = Column(Integer, ForeignKey('conformance_report.id'))
+
     
 Base.metadata.create_all(engine)
         

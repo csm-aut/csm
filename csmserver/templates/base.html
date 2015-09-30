@@ -167,7 +167,7 @@
                  
                 <ul class="nav navbar-nav">
                   <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO Lookup<b class="caret"></b></a>               
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO<b class="caret"></b></a>               
                     <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>                         
                   </li>
                  </ul>
@@ -179,7 +179,9 @@
                     <li class="divider"></li>
                     <li><a href="{{ url_for('download_dashboard') }}">Download Dashboard</a></li>
                   </ul>
-                </li>              
+                </li> 
+                
+                <li><a href="{{ url_for('conformance.home') }}">Conformance</a></li>             
               {% endif %}
               
             </ul>
