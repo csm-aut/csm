@@ -399,6 +399,7 @@ def api_get_conformance_report_software_profile_packages(id):
     if conformance_report is not None:
         software_profile_packages = conformance_report.software_profile_packages.split(',')
 
+        smu_loader = None 
         platform, release = get_platform_and_release(software_profile_packages)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)

@@ -192,10 +192,20 @@
                 "data": 'host_packages',
                 "render": function(data, type, row) {
                     if (data.length > 0) {
-                        return comma2br(data);
-                    } else {
-                        return '';
+                        var html_code = ''
+                        var array = data.split(',');
+
+                        for (i = 0; i < array.length; i++) {
+                            if (array[i].indexOf('matched') > 0) {
+                                html_code += '<span style="color:green;">' + array[i] + '</span><br>';
+                            } else {
+                                html_code += array[i] + '<br>';
+                            }
+                        }
+                        return html_code;
                     }
+                    return '';
+
                 }
             }, {
                 "targets": 3,
