@@ -295,7 +295,7 @@
                         html_code = '<b>Total Hosts:</b> ' + element[0].total_hosts + '<br>';
                         html_code += '<b>Match Criteria:</b> ' + element[0].match_criteria + '<br>';
                         if (element[0].host_not_in_conformance == 0) {
-                            html_code += "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All hosts have conformed to the selected software profile.<br>";
+                            html_code += "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All hosts are in complete conformance.<br>";
                         } else {
                             html_code += "<span class='badge alert-danger'>" +
                                 element[0].host_not_in_conformance + "</span>&nbsp;&nbsp;hosts are not in complete conformance (see the 'Missing Packages' column).<br>";

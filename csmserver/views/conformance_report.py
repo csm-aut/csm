@@ -63,13 +63,13 @@ class XLSWriter(ReportWriter):
         self.ws.write(8, 0, 'Results:', XLSWriter.style_summary)
         
         if self.conformance_report.host_not_in_conformance == 0:
-            self.ws.write(9, 0, "     All host(s) have conformed to the selected software profile", XLSWriter.style_summary)
+            self.ws.write(9, 0, "     All hosts are in complete conformance", XLSWriter.style_summary)
         else:
-            self.ws.write(9, 0, "     %d host(s) are not in complete conformance (see the 'Missing Packages' column)" 
+            self.ws.write(9, 0, "     %d hosts are not in complete conformance (see the 'Missing Packages' column)"
                 % self.conformance_report.host_not_in_conformance, XLSWriter.style_summary)
                         
         if self.conformance_report.host_out_dated_inventory > 0:
-            self.ws.write(10, 0, "     %d host(s) failed last software inventory retrieval (see '*' in the 'Conformed' column)"
+            self.ws.write(10, 0, "     %d hosts failed last software inventory retrieval (see '*' in the 'Conformed' column)"
                 % self.conformance_report.host_out_dated_inventory, XLSWriter.style_summary)
         
     def write_software_profile_info(self):
