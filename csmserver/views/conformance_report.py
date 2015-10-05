@@ -58,7 +58,7 @@ class XLSWriter(ReportWriter):
         self.ws.write(1, 2, report_datetime, XLSWriter.style_center )
         
         self.ws.write(4, 0, 'Summary: ', XLSWriter.style_bold)
-        self.ws.write(6, 0, 'Total Hosts: %d' % len(self.conformance_report.entries), XLSWriter.style_summary)
+        self.ws.write(6, 0, 'Total Hosts: %d' % len(self.conformance_report.hostnames.split(',')), XLSWriter.style_summary)
         self.ws.write(7, 0, 'Match Criteria: ' + (self.conformance_report.match_criteria + ' packages').title(), XLSWriter.style_summary)
         self.ws.write(8, 0, 'Results:', XLSWriter.style_summary)
         

@@ -292,7 +292,8 @@
                     var html_code = '';
                     
                     $.each(response, function(index, element) {
-                        html_code = '<b>Match Criteria:</b> ' + element[0].match_criteria + '<br>';
+                        html_code = '<b>Total Hosts:</b> ' + element[0].total_hosts + '<br>';
+                        html_code += '<b>Match Criteria:</b> ' + element[0].match_criteria + '<br>';
                         if (element[0].host_not_in_conformance == 0) {
                             html_code += "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All hosts have conformed to the selected software profile.<br>";
                         } else {

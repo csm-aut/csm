@@ -344,7 +344,8 @@ def api_get_conformance_report_summary(id):
     conformance_report = get_conformance_report_by_id(db_session, id)
     if conformance_report is not None:
         return jsonify(**{'data': [
-            {'host_not_in_conformance': conformance_report.host_not_in_conformance,
+            {'total_hosts': len(conformance_report.hostnames.split(',')),
+             'host_not_in_conformance': conformance_report.host_not_in_conformance,
              'host_out_dated_inventory': conformance_report.host_out_dated_inventory,
              'match_criteria': (conformance_report.match_criteria + ' Packages').title()}
         ]})
@@ -399,7 +400,7 @@ def api_get_conformance_report_software_profile_packages(id):
     if conformance_report is not None:
         software_profile_packages = conformance_report.software_profile_packages.split(',')
 
-        smu_loader = None 
+        smu_loader = None
         platform, release = get_platform_and_release(software_profile_packages)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
