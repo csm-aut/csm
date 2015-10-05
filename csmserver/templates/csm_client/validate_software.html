@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+
+{% block extra_head %}
+<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+<script src="/static/jquery/js/validate_software.js"></script>
+   
+<script charset="utf-8">
+    $(function() {
+    
+        var spinner = $('#spinner');
+        spinner.hide();
+
+        $('#validate-software').on("click", function() {
+            validate_software($('#smu-list'), $('#software_packages'), spinner);
+        });
+        
+    });
+</script>
+
+<style>
+    textarea {
+        resize: none;
+    }
+    .modal-dialog {    
+        width: 850px;
+    }
+</style>
+{% endblock extra_head %}
+
+{% block main %}
+
+<div class="container"> <!-- Main -->
+ <form method="post" class="form-horizontal">
+  <div class="row">  <!-- upper section -->
+    
+    <div class="container col-sm-6">
+      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Validate Software</strong></span>
+      <hr>
+      
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          SMU or Service Pack List
+          <span class="pull-right">
+            <a id="validate-software" href="javascript://">Validate
+              <img title="Click to Validate" src="{{ url_for('static', filename='right_arrow.png') }}">
+            </a>
+          </span>
+        </div>
+        <div class="panel-body">
+          Paste the SMU names on below text window and click the green arrow to validate.
+          <textarea spellcheck="false" class="form-control" rows="18" id="smu-list" name="smu-list"></textarea>
+        </div>
+      </div>
+      
+    </div>
+ 
+    <div class="container col-sm-6">
+      <span>&nbsp;</span>  
+      <hr>     
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          Validated Result
+          <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">        
+        </div>
+        <div class="panel-body">
+          The resultant list contains all missing pre-requisites, minus superseded SMUs.
+          <textarea spellcheck="false" class="form-control" rows="18" id="software_packages"></textarea>
+        </div>
+      </div>
+      
+    </div>
+    
+  </div> <!-- /upper section -->
+
+  </form>
+</div> <!--/Main -->
+
+
+{% endblock main %}

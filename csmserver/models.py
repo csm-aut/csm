@@ -774,6 +774,7 @@ class ConformanceReport(Base):
     user_id = Column(Integer, ForeignKey('user.id'))
     
     entries = relationship("ConformanceReportEntry",
+        order_by="ConformanceReportEntry.hostname",
         backref="conformance_report",
         cascade="all, delete, delete-orphan")
     
@@ -781,11 +782,12 @@ class ConformanceReportEntry(Base):
     __tablename__ = 'conformance_report_entry'
     id = Column(Integer, primary_key=True)
     hostname = Column(String(50)) 
-    platform_software = Column(String(20))
-    inventory_status = Column(String(200))
-    last_successful_retrieval = Column(String(50)) 
+    platform = Column(String(20))
+    software = Column(String(20))
     host_packages = Column(Text)              
     missing_packages = Column(Text)
+    conformed = Column(String(3))
+    comments = Column(String(50))
 
     conformance_report_id = Column(Integer, ForeignKey('conformance_report.id'))
 

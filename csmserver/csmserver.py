@@ -133,7 +133,7 @@ from utils import is_ldap_supported
 from server_helper import get_server_impl
 from wtforms.validators import Required
 
-from smu_utils import get_optimize_list
+from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import get_platform_and_release
@@ -458,7 +458,7 @@ def get_managed_hosts(region_id):
             row['platform'] = host.platform
             
             if host.software_version is not None:
-                row['software'] = host.software_version + '<br>' + host.software_platform
+                row['software'] = host.software_platform + ' ' + host.software_version
             else:
                 row['software'] = 'Unknown'
             
@@ -3044,10 +3044,10 @@ def api_get_smu_meta_retrieval_elapsed_time(platform, release):
     return jsonify( **{'data': [ {'retrieval_elapsed_time': retrieval_elapsed_time }] } )
     
     
-@app.route('/optimize_list')
+@app.route('/validate_software')
 @login_required
-def optimize_list(): 
-    return render_template('csm_client/optimize_list.html')
+def validate_software():
+    return render_template('csm_client/validate_software.html')
 
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required
@@ -3203,11 +3203,11 @@ def host_packages_contains(host_packages, smu_name):
             return True
     return False
 
-@app.route('/api/optimize_list')
+@app.route('/api/validate_software')
 @login_required
-def api_optimize_list():
+def api_validate_software():
     smu_list = request.args.get('smu_list').split()
-    return  jsonify( **{'data': get_optimize_list(smu_list)} )
+    return  jsonify( **{'data': get_validated_list(smu_list)} )
 
 # This route will prompt a file download
 @app.route('/download_session_log')

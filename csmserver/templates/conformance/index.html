@@ -27,6 +27,7 @@
     $(function() {
         
         $('a[href="#conformance"]').tab('show');
+        var conformance_report_id = $.cookie('conformance-report-id');
 
         // Use delegate pattern for event
         $("#software-profile-table").on("click", ".data-delete-link", function() {
@@ -40,7 +41,7 @@
                         type: 'DELETE',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                window.location = "{{ url_for('conformance.home') }}";
+                                software_profile_table.api().ajax.reload();
                             } else {
                                 bootbox.alert('Delete failed.');
                             }
@@ -177,17 +178,23 @@
             "columnDefs": [{
                 "targets": 0,
                 "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                }
             }, {
                 "targets": 1,
-                "data": 'platform_software',
+                "data": 'platform',
+                "render": function(data, type, row) {
+                    return data + ' ' + row['software'];
+                }
             }, {
                 "targets": 2,
-                "data": 'last_successful_retrieval',
+                "data": 'host_packages',
                 "render": function(data, type, row) {
-                    if (row['inventory_status'] != 'completed') {
-                        return '<span style="color:red;">' + data + '</span>';
+                    if (data.length > 0) {
+                        return comma2br(data);
                     } else {
-                        return data;
+                        return '';
                     }
                 }
             }, {
@@ -203,13 +210,9 @@
 
             }, {
                 "targets": 4,
-                "data": 'missing_packages',
+                "data": 'conformed',
                 "render": function(data, type, row) {
-                    if (data.length == 0) {
-                        return '<center><img src=\"{{ url_for('static', filename='green_check.png') }}\"></center>';
-                    } else {
-                        return '<center><img src=\"{{ url_for('static', filename='error.png') }}\"></center>';
-                    }
+                    return data + ' ' + row['comments']
                 }
             }]
         });
@@ -241,11 +244,37 @@
         });
         
         function display_conformance_report(id) {
+            $.cookie('conformance-report-id', id); 
+
             conformance_report_table.api().ajax.url("/conformance/api/get_conformance_report/" + id).load();
             display_conformance_report_summary(id);
+            display_conformance_report_software_profile_packages(id)
+        }
+
+        function display_conformance_report_software_profile_packages(id) {
+            $.ajax({
+                url: "/conformance/api/get_conformance_report_software_profile_packages/" + id,
+                dataType: 'json',
+                success: function(response) {
+                    var html_code = '';
+                    $.each(response, function(index, element) {
+                        for (i = 0; i < element.length; i++) {
+                            html_code += element[i].software_profile_package;
+                            if (element[i].description.length > 0) {
+                                html_code += ' - ';
+                            }
+                            html_code += element[i].description + '<br>';
+                        }
+                    });
+
+                    html_code = "<div class='alert alert-success'>" + html_code + "</div>";
+
+                    $('#software-profile-package-info').html(html_code);
+                }
+            });
         }
         
-        function display_conformance_report_summary(id) {
+        function display_conformance_report_summary(id) {          
             $.ajax({
                 url: "/conformance/api/get_conformance_report_summary/" + id,
                 dataType: 'json',
@@ -253,15 +282,17 @@
                     var html_code = '';
                     
                     $.each(response, function(index, element) {
+                        html_code = '<b>Match Criteria:</b> ' + element[0].match_criteria + '<br>';
                         if (element[0].host_not_in_conformance == 0) {
-                            html_code = "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All host(s) have conformed to the selected software profile. ";
+                            html_code += "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All hosts have conformed to the selected software profile.<br>";
                         } else {
-                            html_code = html_code = "<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;" + 
-                                element[0].host_not_in_conformance + " host(s) are not in complete conformance (see 'Missing Packages'). ";
+                            html_code += "<span class='badge alert-danger'>" +
+                                element[0].host_not_in_conformance + "</span>&nbsp;&nbsp;hosts are not in complete conformance (see the 'Missing Packages' column).<br>";
                         }
                         
                         if (element[0].host_out_dated_inventory > 0) {
-                            html_code += element[0].host_out_dated_inventory + " host(s) may have out-dated inventory information (see 'Last Successful Retrieval')";
+                            html_code += "<span class='badge alert-danger'>" +
+                                element[0].host_out_dated_inventory + "</span>&nbsp;&nbsp;hosts failed last software inventory retrieval (see '*' in the 'Conformed' column).";
                         }
                     });
                     
@@ -301,7 +332,7 @@
                 }
             });
         }
-        
+
         $('.btn-toggle').click(function() {
             $(this).find('.btn').toggleClass('active');  
     
@@ -395,7 +426,7 @@
                 <div id="conformance" class="tab-pane fade">
                     <div class="row">
                         <div>
-                        {{ edit_field(form.conformance_reports, label_field_width="col-sm-2", field_width="col-sm-4", class="form-control") }}
+                        {{ edit_field(form.conformance_reports, label_field_width="col-sm-2", field_width="col-sm-5", class="form-control") }}
                         </div>
                         <div class="btn-group pull-right">      
                             <button id="export" type="button" class="btn btn-default">        
@@ -411,16 +442,24 @@
                     </div>
                     <hr>
                     <div class="row">
+                        <a class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#software-profile-packages">Software Profile <b class="caret"></b></a>
+                        <div class="collapse" id="software-profile-packages">
+                            <div id="software-profile-package-info">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <span id="conformance-report-info"></span>
                     </div>
   
-                    <div class="row col-sm-12"">
+                    <div class="row">
                         <table class="display table" id="conformance-report-table">
                             <thead>
                                 <tr>
                                     <th>Hostname</th>
                                     <th>Software</th>
-                                    <th>Last Successful Retrieval</th>
+                                    <th>Host Packages</th>
                                     <th>Missing Packages</th>
                                     <th>Conformed</th>
                                 </tr>
