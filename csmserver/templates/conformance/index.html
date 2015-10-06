@@ -243,7 +243,10 @@
                     });
                     
                     if ($('#conformance_reports').val() > 0) {
+                        $('#display-software-profile-packages').show();
                         display_conformance_report($('#conformance_reports').val());
+                    } else {
+                        $('#display-software-profile-packages').hide();
                     }
                 }
             });
@@ -277,7 +280,9 @@
                         }
                     });
 
-                    html_code = "<div class='alert alert-success'>" + html_code + "</div>";
+                    if (html_code != "") {
+                        html_code = "<div class='alert alert-success'>" + html_code + "</div>";
+                    }
 
                     $('#software-profile-package-info').html(html_code);
                 }
@@ -453,7 +458,7 @@
                     </div>
                     <hr>
                     <div class="row">
-                        <a class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#software-profile-packages">Software Profile <b class="caret"></b></a>
+                        <a id="display-software-profile-packages" class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#software-profile-packages">Software Profile <b class="caret"></b></a>
                         <div class="collapse" id="software-profile-packages">
                             <div id="software-profile-package-info">
                             </div>
