@@ -23,7 +23,7 @@
       browse_spinner.hide();    
       
       $('#search-region-selector').select2({
-        placeholder: "Select Hosts by Region",     
+        placeholder: "Filter Hosts by Region",
         allowClear: true,  
         ajax: {
           url: "/api/get_regions/",
@@ -39,7 +39,7 @@
           },
         },        
       }); 
-      
+
       $('#search-region-selector').on('change', function (e) {       
         on_refresh_host_table($(this).val());
       });         
@@ -335,7 +335,7 @@
   <div class="row">
 
     <div class="col-sm-3">
-      <span class="DodgerBlue"><strong>Region:&nbsp;</strong><span id='selected-region'></span></span>
+      <span><strong>Region:&nbsp;</strong></span><span id='selected-region'></span>
       <hr>
 
       <div class="panel panel-info">
@@ -343,29 +343,39 @@
           <table class="table table-striped">
             <tbody>
               <tr>
-                <td class="DodgerBlue">Server Time</td><td id="server-time" ></td>
+                <td>Server Time</td><td id="server-time" ></td>
               </tr>
               <tr>
-                <td class="DodgerBlue">Build Date</td><td>{{ build_date }}</td>
+                <td>Build Date</td><td>{{ build_date }}</td>
               </tr>
               <tr>
-                <td class="DodgerBlue">Login User</td><td>{{ current_user.username }}</td>
+                <td>Login User</td><td>{{ current_user.username }}</td>
               </tr>
               <tr>
-                <td class="DodgerBlue">Privilege</td><td>{{ current_user.privilege }}</td>
-              </tr>
-              <tr>
-                <td class="DodgerBlue">Regions</td><td>{{ total_region_count }}</td>
-              </tr>
-              <tr>
-                <td class="DodgerBlue">Hosts</td><td>{{ total_host_count }}</td>
+                <td>Privilege</td><td>{{ current_user.privilege }}</td>
               </tr>
             </tbody>
           </table>
       </div>
 
       <div class="panel panel-info">
-        <div class="panel-heading">Region Hosts: <span id="region_hosts_count"></span></div>
+        <div class="panel-heading">Summary</div>
+          <table class="table table-striped">
+            <tbody>
+              <tr>
+                <td>Total Regions</td><td>{{ total_region_count }}</td>
+              </tr>
+              <tr>
+                <td>Total Hosts</td><td>{{ total_host_count }}</td>
+              </tr>
+            </tbody>
+          </table>
+      </div>
+
+      <div class="panel panel-info">
+        <div class="panel-heading">
+          Region Hosts:
+          <span id="region_hosts_count"></span></div>
           <table class="display table" id="host-platform-table">
             <thead>  
               <tr>  
@@ -380,14 +390,15 @@
 
     <div class="col-sm-9">
       <!-- left -->
-      <div>
+      <div class="row">
         <span>
           <input type="hidden" class="select2" id="search-region-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
           </select>
         </span>
-        <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;<a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a></span>
+        <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;
+          <a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a>
+        </span><hr>
       </div>
-      <hr>
 
       <div class="row">
         <ul class="nav nav-tabs" id="main-dashboard-tab">
