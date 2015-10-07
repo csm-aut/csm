@@ -56,7 +56,9 @@ ACTIVE_PACKAGES_IN_CLASSIC = "active_packages_in_xr_snapshot.txt"
 TIMEOUT_FOR_COPY_CONFIG = 1000
 
 TIMEOUT_FOR_COPY_ISO = 1000
-ISO_IMAGE_NAME = "asr9k-mini-x64.iso"
+ISO_FULL_IMAGE_NAME = "asr9k-full-x64.iso"
+ISO_MINI_IMAGE_NAME = "asr9k-mini-x64.iso"
+
 GRUB_EFI_NAME = "grub.efi"
 GRUB_CFG_NAME = "grub.cfg"
 
@@ -102,9 +104,11 @@ class PreMigratePlugin(IPlugin):
         Back up the configuration of the device in user's selected repository
         Max attempts: 2
         """
-        cmd = 'copy running-config ' + repository + '/' + filename + ' \r \r'
+        cmd = 'copy running-config ' + repository + '/' + filename
         timeout = 120
-        success, output = device.execute_command(cmd, timeout=timeout)
+        device.execute_command(cmd, timeout=timeout, wait_for_string='?')
+        device.execute_command('\r', timeout=timeout, wait_for_string='?')
+        success, output = device.execute_command('\r', timeout=timeout)
         print cmd, '\n', output, "<-----------------", success
         if not re.search('OK', output):
             self.error("failed to copy running-config to your repository. Please check session.log for error and fix the issue.")
@@ -129,10 +133,13 @@ class PreMigratePlugin(IPlugin):
 
         for x in range(0, len(source_filenames)):
             success, output = device.execute_command('dir ' + dest_files[x])
-            cmd = 'copy ' + repository + '/' + source_filenames[x] + ' ' + dest_files[x] + ' \r'
+            cmd = 'copy ' + repository + '/' + source_filenames[x] + ' ' + dest_files[x]
+            device.execute_command(cmd, timeout=timeout, wait_for_string='?')
+
             if "No such file" not in output:
-                cmd += ' \r'
-            success, output = device.execute_command(cmd, timeout=timeout)
+                device.execute_command('\r', timeout=timeout, wait_for_string='?')
+
+            success, output = device.execute_command('\r', timeout=timeout)
 
             if re.search('[Ee]rror', output):
                 self.error("Failed to copy file " + repository + '/' + source_filenames[x] + " to " + dest_files[x] + " to device. Please check session.log.")
@@ -244,18 +251,16 @@ class PreMigratePlugin(IPlugin):
             self.error("Cannot ping server repository " + repo_ip.group(1) + " on device. Please check session.log.")
 
     def _resize_eusb(self, device, repository, packages):
-        #for package in packages:
-        #    if package == "resize_eusb":
-        self._copy_files_to_device(device, repository, ['resize_eusb'], ['disk0:/resize_eusb'], 100)
-        device.execute_command('run')
-        cmd = 'ksh /disk0:/resize_eusb'
-        success, output = device.execute_command(cmd)
+
+        #self._copy_files_to_device(device, repository, ['resize_eusb'], ['disk0:/resize_eusb'], 100)
+        device.execute_command('run', wait_for_string='#')
+        cmd = 'ksh /pkg/bin/resize_eusb'
+        success, output = device.execute_command(cmd, wait_for_string='#')
         device.execute_command('exit')
         if not "eUSB partition completed." in output:
             self.error("eUSB partition failed. Please check session.log.")
 
-        #    elif package == "migrate_to_eXR":
-        self._copy_files_to_device(device, repository, ['migrate_to_eXR'], ['harddiskb:/migrate_to_eXR'], 100)
+        #self._copy_files_to_device(device, repository, ['migrate_to_eXR'], ['harddiskb:/migrate_to_eXR'], 100)
 
 
 
@@ -386,8 +391,9 @@ class PreMigratePlugin(IPlugin):
 
                 self._post_status("FPD upgrade - start to upgrade FPD subtype " + fpdtype + " in location " + location)
 
-                command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location ' + location + ' \r'
-                success, output = device.execute_command(command, timeout=9600)
+                command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location ' + location
+                device.execute_command(command, timeout=60, wait_for_string='?')
+                success, output = device.execute_command('\r', timeout=9600)
                 #fpd_upgrade_success = re.search(location + '.*' + fpdtype + '[-_%.A-Z0-9a-z\s]*[Ss]uccess', output)
                 fpd_upgrade_success = re.search('[Ss]uccess', output)
                 if not fpd_upgrade_success:
@@ -468,27 +474,30 @@ class PreMigratePlugin(IPlugin):
         found_iso = False
         for package in packages:
             if ".iso" in package:
-                if package == ISO_IMAGE_NAME:
+                if package == ISO_FULL_IMAGE_NAME or package == ISO_MINI_IMAGE_NAME:
                     found_iso = True
                     self._copy_files_to_device(device, repo_str, [package], ['harddiskb:/'+ package], TIMEOUT_FOR_COPY_ISO)
                 else:
                     self.error("Please make sure that the only ISO image you select on your server repository is asr9k-full-x64.iso. This is the only ISO image supported so far.")
 
-            if ".efi" in package:
-                if package == GRUB_EFI_NAME:
-                    self._copy_files_to_device(device, repo_str, ['grub.efi'], ['harddiskb:/efi/boot/grub.efi'], TIMEOUT_FOR_COPY_ISO)
-                else:
-                    self.error("Please make sure that the only .efi binary you select on your server repository is grub.efi.")
-
-            if ".cfg" in package:
-                if package == GRUB_CFG_NAME:
-                    self._copy_files_to_device(device, repo_str, ['grub.cfg'], ['harddiskb:/efi/boot/grub.cfg'], TIMEOUT_FOR_COPY_ISO)
-                else:
-                    self.error("Please make sure that the only .cfg file you select on your server repository is grub.cfg.")
 
         if not found_iso:
             self.error("Please make sure that you select asr9k-full-x64.iso on your server repository. This ISO image is required for migration.")
 
+    def _find_nox_to_use(self):
+
+        check_32_or_64_system = subprocess.Popen(['uname', '-a'], stdout=subprocess.PIPE)
+
+        out, err = check_32_or_64_system.communicate()
+
+        if err:
+            print(err)
+            raise PluginError("Error when trying to use 'uname -a' to determine if the linux system you are hosting CSM on is 32 bit or 64 bit.")
+
+        if "x86_64" in out:
+            return NOX_64_BINARY
+        else:
+            return NOX_32_BINARY
 
 
 
@@ -521,8 +530,10 @@ class PreMigratePlugin(IPlugin):
         self._post_status("Resizing eUSB partition.")
         self._resize_eusb(device, repo_str, packages)
 
+        nox_to_use = get_migration_directory() + self._find_nox_to_use()
 
         nox_to_use = get_migration_directory() + NOX_FOR_MAC
+
         if not os.path.isfile(nox_to_use):
             self.error("The configuration conversion tool " + nox_to_use + " is missing. CSM should have downloaded it when this migration action was scheduled.")
         self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use)

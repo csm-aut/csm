@@ -121,7 +121,7 @@ class Connection(object):
             name += "->{}".format(host)
         return name[2:]
 
-    def connect(self, logfile=None, connect_with_reconfiguration=False):
+    def connect(self, logfile=None):
         """
         Connection initialization method.
         If logfile is None then the common logfile from
@@ -141,7 +141,7 @@ class Connection(object):
 
             _logger.info(
                 _c(self.hostname, "Connecting to {}".format(self.__repr__())))
-            self.connected = self.ctrl.connect(connect_with_reconfiguration=connect_with_reconfiguration)
+            self.connected = self.ctrl.connect()
 
         if self.connected:
             _logger.info(
@@ -338,7 +338,7 @@ class Connection(object):
 
             try:
                 self.ctrl.send(cmd)
-                #self.ctrl.expect_exact(cmd)
+                self.ctrl.expect_exact(cmd)
                 self.ctrl.send("\n")
                 if wait_for_string:
                     _logger.debug(_c(
@@ -380,7 +380,7 @@ class Connection(object):
                         "Waiting for XR prompt"))
         index = self.ctrl.expect(
                 [_PROMPT_IOSXR_RE, _INVALID_INPUT, _INCOMPLETE_COMMAND,
-                 pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF, _PROMPT_KSH],
+                 pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF],
                 timeout=timeout
             )
 
@@ -412,8 +412,6 @@ class Connection(object):
             raise ConnectionError(
                 "Unexpected device disconnect", self.hostname)
 
-        if index == 6:
-            return
 
 
     def _wait_for_string(self, expected_string, max_attempts=3, timeout=60):

@@ -90,8 +90,11 @@ class Protocol(object):
             )
             self.ctrl._session.logfile_read = self.logfile
 
-    def connect(self, connect_with_reconfiguration=False):
+    def connect(self):
         raise NotImplementedError("Connection method not implemented")
+
+    def connect_with_jump_host(self):
+        raise NotImplementedError("Connection with jump host method not implemented")
 
     def _dbg(self, level, msg):
         self.ctrl._dbg(level, "{}: {}".format(self.protocol, msg))

@@ -77,7 +77,7 @@ class Controller(object):
         """
         return self._session.after if self._session else None
 
-    def connect(self, connect_with_reconfiguration=False):
+    def connect(self):
         connected = False
         for hop, host in enumerate(self.hosts, start=1):
             if not host.is_valid():
@@ -103,11 +103,13 @@ class Controller(object):
                         )
                     )
                     try:
-                        connected = protocol.connect(connect_with_reconfiguration=connect_with_reconfiguration)
+                        if len(self.hosts) == 1 or hop == len(self.hosts):
+                            connected = protocol.connect()
+                        else:
+                            connected = protocol.connect_with_jump_host()
                     except Exception as inst:
                         print("Here is the error occurred in connected = protocol.connect()")
                         print(type(inst))
-                        print(inst.args)
                         print(inst)
                         self._dbg(
                             40,
@@ -154,9 +156,10 @@ class Controller(object):
             index = 0
             hop = 0
             while index != 1 and hop < 10:
+                print("sending exit")
                 self.sendline('exit')
                 index = self.expect(
-                    [pexpect.TIMEOUT, pexpect.EOF, "con.*is now available"],
+                    [pexpect.TIMEOUT, pexpect.EOF, "con.*is now available", "Need to configure root-system username"],
                     timeout=2
                 )
 
@@ -164,10 +167,18 @@ class Controller(object):
                     break
 
                 if index == 2:  # console connected through TS
+                    print("console connection detected")
                     self._dbg(10, "Console connection detected")
                     self.sendline('\x03')
                     self.sendcontrol(']')
                     self.sendline('quit')
+
+                if index == 3:  # username and password reconfiguration prompt coming up
+                    print("username and password reconfiguration prompt detected")
+                    self.sendline('\x03')
+                    self.sendcontrol(']')
+                    self.sendline('quit')
+                    break
 
                 hop += 1
 

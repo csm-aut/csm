@@ -58,7 +58,206 @@ class Telnet(Protocol):
 
         self._spawn_session(command)
 
-    def connect(self, connect_with_reconfiguration=False):
+    def connect_with_jump_host(self):
+        state = 0
+        transition = 0
+        event = 0
+        failed = False
+        max_transitions = 10
+        timeout = 300  # TIME FOR TELNET CONNECTION BEFORE ERROR
+
+        while not failed and transition < max_transitions + 1:
+            transition += 1
+            event = self.ctrl.expect(
+                [ESCAPE_CHAR, USERNAME, PASS, SHELL_PROMPT,
+                 UNABLE_TO_CONNECT, CONNECTION_REFUSED, RESET_BY_PEER,
+                 PERMISSION_DENIED, AUTH_FAILED, pexpect.TIMEOUT, pexpect.EOF],
+                timeout=timeout, searchwindowsize=80
+            )
+            self._dbg(10, "{}: EVENT={}, STATE={}, TRANSITION={}".format(
+                self.hostname, event, state, transition
+            ))
+            timeout = 60
+
+            if event == 0:  # ESCAPE_CHARACTER
+                if state == 0:
+                    state = 1
+                    timeout = 20
+                    self._dbg(
+                        10,
+                        "{}: Waiting {} sec for initial response".format(
+                            self.hostname, timeout)
+                    )
+                    continue
+                else:
+                    raise ConnectionError("Unexpected session init")
+
+            if event == 1:  # USERNAME
+                if state in [0, 1, 2]:
+                    self._dbg(
+                        10,
+                        "{}: Sending username: '{}'".format(
+                            self.hostname, self.username)
+                    )
+                    self.ctrl.sendline(self.username)
+                    state = 3
+                    timeout = 10
+                    continue
+                if state == 3:
+                    self._dbg(
+                        20,
+                        "{}: Duplicate username request. "
+                        "Ignoring.".format(self.hostname)
+                    )
+                if state == 4:
+                    self._dbg(
+                        20,
+                        "{}: Expected prompt but username request "
+                        "received ".format(self.hostname)
+                    )
+                    self.disconnect()
+                    raise ConnectionAuthenticationError(host=self.hostname)
+
+            if event == 2:  # PASS
+                if state in [1, 2, 3]:  # if waiting for pass send pass
+                    password = self._acquire_password()
+                    if password:
+                        self._dbg(
+                            10,
+                            "{}: Sending password: '***'".format(self.hostname)
+                        )
+                        self.ctrl.sendline(password)
+                    else:
+                        self.disconnect()
+                        raise ConnectionAuthenticationError(
+                            "Password not provided", self.hostname)
+
+                    state = 4  # move to wait for prompt
+                    timeout = 30
+                continue
+
+
+            if event == 3:  # SHELL PROMPT
+                if state in [1, 4, 5, 6]:
+                    self._dbg(
+                        10,
+                        "{}: Received Shell/Unix prompt".format(self.hostname)
+                    )
+                    break  # successfully got prompt
+                if state == 7:
+                    self._dbg(
+                        10,
+                        "{}: Received shell prompt after "
+                        "connection failure".format(self.hostname)
+                    )
+                    return False
+
+                self._dbg(
+                    10,
+                    "{}: Session output classified as shell "
+                    "prompt, but not expected.".format(self.hostname)
+                )
+                continue
+
+
+            if event == 4:  # UNABLE_TO_CONNECT
+                if state == 0:
+                    self._dbg(30, "{}: Unable to connect".format(self.hostname))
+                    state = 7
+                    timeout = 10
+                    continue
+
+            if event == 5:  # CONNECTION REFUSED
+                raise ConnectionError("Connection refused", self.hostname)
+
+            if event == 6:  # RESET_BY_PEER
+                raise ConnectionError(
+                    "Connection reset by peer", self.hostname)
+
+            if event == 7:  # PERMISSION_DENIED
+                self._dbg(
+                    30,
+                    "{}: Permission denied.".format(self.hostname)
+                )
+                raise ConnectionAuthenticationError(
+                    "Permission denied", self.hostname)
+
+            if event == 8:  # AUTH_FAILED
+                if state == 4:
+                    self.disconnect()
+                    raise ConnectionAuthenticationError(
+                        "Authentication failed", self.hostname)
+
+            if event == 9:  # TIMEOUT
+                if state == 1:
+                    self._dbg(
+                        30,
+                        "{}: Connection timed out waiting for "
+                        "initial response".format(self.hostname)
+                    )
+                    self._dbg(30, "{}: Sending CR/LF".format(self.hostname))
+                    self.ctrl.send("\r\n")
+                    state = 2
+                    timeout = 10
+                    continue
+
+                if state == 2:
+                    state = 4
+                    timeout = 10
+                    continue
+
+                if state == 4:
+                    self._dbg(
+                        10,
+                        "{}: Setting 'PS1=AU_PROMPT'".format(self.hostname)
+                    )
+                    self.ctrl.sendline('PS1="{}"'.format("AU_PROMPT"))
+                    state = 5
+                    timeout = 5
+                    continue
+
+                if state == 5:
+                    self._dbg(
+                        10,
+                        "{}: Setting 'set prompt="
+                        "AU_PROMPT'".format(self.hostname)
+                    )
+                    self.ctrl.sendline('set prompt="{}"'.format("AU_PROMPT"))
+                    state = 6
+                    timeout = 5
+                    continue
+
+                if state == 6:
+                    raise ConnectionError("Unable to get shell prompt")
+
+                self._dbg(30, "{}: Connection timed out".format(self.hostname))
+                raise ConnectionError("Timeout")
+
+            if event == 10:  # EOF
+                if state == 7:
+                    self._dbg(
+                        10, "{}: First session closed".format(self.hostname)
+                    )
+                    return False
+
+                raise ConnectionError(
+                    "Session closed unexpectedly", self.hostname)
+
+            self._dbg(
+                30,
+                "{}: Unexpected FSM transition".format(self.hostname)
+            )
+
+        else:
+            self._dbg(
+                50,
+                "{}: State machine error. Loop suspected".format(self.hostname)
+            )
+            return False
+
+        return True
+
+    def connect(self):
         state = 0
         transition = 0
         event = 0
@@ -70,12 +269,11 @@ class Telnet(Protocol):
             transition += 1
             event = self.ctrl.expect(
                 [ESCAPE_CHAR, PASSWORD_OK, RECONFIGURE_USERNAME_PROMPT, SET_USERNAME, SET_PASSWORD, USERNAME, PASS,
-                 XR_PROMPT, SHELL_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
+                 XR_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
                  CONNECTION_REFUSED, RESET_BY_PEER, PERMISSION_DENIED,
                  AUTH_FAILED, pexpect.TIMEOUT, pexpect.EOF],
                 timeout=timeout, searchwindowsize=80
             )
-
             self._dbg(10, "{}: EVENT={}, STATE={}, TRANSITION={}".format(
                 self.hostname, event, state, transition
             ))
@@ -240,29 +438,8 @@ class Telnet(Protocol):
                     )
                     return False
 
-            if event == 8:  # SHELL PROMPT
-                if state in [4, 5, 6]:
-                    self._dbg(
-                        10,
-                        "{}: Received Shell/Unix prompt".format(self.hostname)
-                    )
-                    break  # successfully got prompt
-                if state == 7:
-                    self._dbg(
-                        10,
-                        "{}: Received shell prompt after "
-                        "connection failure".format(self.hostname)
-                    )
-                    return False
 
-                self._dbg(
-                    10,
-                    "{}: Session output classified as shell "
-                    "prompt, but not expected.".format(self.hostname)
-                )
-                continue
-
-            if event == 9:  # PRESS_RETURN
+            if event == 8:  # PRESS_RETURN
                 if state in [0, 1, 2]:
                     self._dbg(
                         30,
@@ -273,21 +450,21 @@ class Telnet(Protocol):
                     continue
 
 
-            if event == 10:  # UNABLE_TO_CONNECT
+            if event == 9:  # UNABLE_TO_CONNECT
                 if state == 0:
                     self._dbg(30, "{}: Unable to connect".format(self.hostname))
                     state = 7
                     timeout = 10
                     continue
 
-            if event == 11:  # CONNECTION REFUSED
+            if event == 10:  # CONNECTION REFUSED
                 raise ConnectionError("Connection refused", self.hostname)
 
-            if event == 12:  # RESET_BY_PEER
+            if event == 11:  # RESET_BY_PEER
                 raise ConnectionError(
                     "Connection reset by peer", self.hostname)
 
-            if event == 13:  # PERMISSION_DENIED
+            if event == 12:  # PERMISSION_DENIED
                 self._dbg(
                     30,
                     "{}: Permission denied.".format(self.hostname)
@@ -295,83 +472,44 @@ class Telnet(Protocol):
                 raise ConnectionAuthenticationError(
                     "Permission denied", self.hostname)
 
-            if event == 14:  # AUTH_FAILED
+            if event == 13:  # AUTH_FAILED
                 if state == 4:
                     self.disconnect()
                     raise ConnectionAuthenticationError(
                         "Authentication failed", self.hostname)
 
-            if event == 15:  # TIMEOUT
-                if connect_with_reconfiguration:
-
-                    if state == 1:
-                        self._dbg(
-                            30,
-                            "{}: Connection timed out waiting for "
-                            "initial response".format(self.hostname)
-                        )
-                        self._dbg(30, "{}: Sending CR/LF".format(self.hostname))
-                        state = 2
-                        timeout = 20
-                        continue
-
-
-
+            if event == 14:  # TIMEOUT
+                if state == 1:
                     self._dbg(
-                        20,
-                        "{}: Timeout "
-                        "received ".format(self.hostname)
+                        30,
+                        "{}: Connection timed out waiting for "
+                        "initial response".format(self.hostname)
                     )
+                    self._dbg(30, "{}: Sending CR/LF".format(self.hostname))
+                    self.ctrl.send("\r\n")
+                    state = 2
+                    timeout = 10
+                    continue
 
-                    self.disconnect()
-                    raise ConnectionError("Timeout")
+                if state == 2:
+                    state = 4
+                    timeout = 10
+                    continue
 
-                else:
-                    if state == 1:
-                        self._dbg(
-                            30,
-                            "{}: Connection timed out waiting for "
-                            "initial response".format(self.hostname)
-                        )
-                        self._dbg(30, "{}: Sending CR/LF".format(self.hostname))
-                        self.ctrl.send("\r\n")
-                        state = 2
-                        timeout = 10
-                        continue
+                if state == 4:
+                    state = 5
+                    timeout = 10
+                    continue
 
-                    if state == 2:
-                        state = 4
-                        timeout = 10
-                        continue
 
-                    if state == 4:
-                        self._dbg(
-                            10,
-                            "{}: Setting 'PS1=AU_PROMPT'".format(self.hostname)
-                        )
-                        self.ctrl.sendline('PS1="{}"'.format("AU_PROMPT"))
-                        state = 5
-                        timeout = 5
-                        continue
+                self._dbg(30, "{}: Connection timed out".format(self.hostname))
+                self.disconnect()
+                print("Raising the Timeout connection error")
+                raise ConnectionError("Timeout")
 
-                    if state == 5:
-                        self._dbg(
-                            10,
-                            "{}: Setting 'set prompt="
-                            "AU_PROMPT'".format(self.hostname)
-                        )
-                        self.ctrl.sendline('set prompt="{}"'.format("AU_PROMPT"))
-                        state = 6
-                        timeout = 5
-                        continue
 
-                    if state == 6:
-                        raise ConnectionError("Unable to get shell prompt")
 
-                    self._dbg(30, "{}: Connection timed out".format(self.hostname))
-                    raise ConnectionError("Timeout")
-
-            if event == 16:  # EOF
+            if event == 15:  # EOF
                 if state == 7:
                     self._dbg(
                         10, "{}: First session closed".format(self.hostname)
@@ -398,5 +536,6 @@ class Telnet(Protocol):
 
 
     def disconnect(self):
+        print("self disconnecting from telnet...sending ] and quit...")
         self.ctrl.sendcontrol(']')
         self.ctrl.sendline('quit')

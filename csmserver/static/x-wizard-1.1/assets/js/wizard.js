@@ -26,13 +26,11 @@ $(document).ready(function(){
            
         },
         onNext: function(tab, navigation, index){
-            if(index == 1){
+            if ($('.nav-tabs .active').text() == "Select Host") {
                 return validateFirstStep();
-            } else if(index == 2){
+            } else if ($('.nav-tabs .active').text() == "Pre-Migrate") {
                 return validateSecondStep();
-            } else if(index == 3){
-                return validateThirdStep();
-            } //etc. 
+            }
               
         },
         onTabClick : function(tab, navigation, index){
@@ -86,99 +84,43 @@ $(document).ready(function(){
 });
 
 function validateFirstStep(){
-    
-    $(".wizard-card form").validate({
-		rules: {
-			firstname: "required",
-			lastname: "required",
-			email: {
-				required: true,
-				email: true
-			}
-			
-/*  other possible input validations
-			,username: {
-				required: true,
-				minlength: 2
-			},
-			password: {
-				required: true,
-				minlength: 5
-			},
-			confirm_password: {
-				required: true,
-				minlength: 5,
-				equalTo: "#password"
-			},
-		
-			topic: {
-				required: "#newsletter:checked",
-				minlength: 2
-			},
-			agree: "required"
-*/			
 
-		},
-		messages: {
-			firstname: "Please enter your First Name",
-			lastname: "Please enter your Last Name",
-			email: "Please enter a valid email address",
+    console.log("Validating first step: ");
+    if (host_selector.get_selected_items().length < 1) {
+        bootbox.alert("Please select at least one host.")
+        return false
+    }
 
-/*   other posible validation messages
-			username: {
-				required: "Please enter a username",
-				minlength: "Your username must consist of at least 2 characters"
-			},
-			password: {
-				required: "Please provide a password",
-				minlength: "Your password must be at least 5 characters long"
-			},
-			confirm_password: {
-				required: "Please provide a password",
-				minlength: "Your password must be at least 5 characters long",
-				equalTo: "Please enter the same password as above"
-			},
-			email: "Please enter a valid email address",
-			agree: "Please accept our policy",
-			topic: "Please select at least 2 topics"
-*/
-				
-		}
-	}); 
-	
-	if(!$(".wizard-card form").valid()){
-    	//form is invalid
-    	return false;
-	}
-	
+    if ($('#region option:selected').val() == -1) {
+        bootbox.alert("Region has not been specified.");
+        return false;
+    } else  {
+      var server = $.cookie('region-' + $('#region option:selected').val() + '-server');
+      var server_directory = $.cookie('region-' + $('#region option:selected').val() + '-server-directory');
+
+      $('#hidden_server').val(server == null ? -1 : server);
+      $('#hidden_server_directory').val(server_directory == null ? '' : server_directory);
+    }
+
+
 	return true;
 }
 
 function validateSecondStep(){
    
     //code here for second step
-    $(".wizard-card form").validate({
-		rules: {
-			
-		},
-		messages: {
-			
-		}
-	}); 
-	
-	if(!$(".wizard-card form").valid()){
-    	console.log('invalid');
-    	return false;
-	}
+    if (server_software_selector.get_selected_items().length < 1) {
+        bootbox.alert("Please select at least the eXR ISO image before continuing. The FPD SMU is also needed if your release version is below 6.0.0.")
+        return false
+    }
+    $.cookie('region-' + region_id + '-server', $('#hidden_server').val(), { path: '/' });
+    $.cookie('region-' + region_id + '-server-directory', $('#hidden_server_directory').val(), { path: '/' });
+
+
 	return true;
     
 }
 
-function validateThirdStep(){
-    //code here for third step
-    
-    
-}
 
  //Function to show image before upload
 

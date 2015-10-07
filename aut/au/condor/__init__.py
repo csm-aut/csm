@@ -67,11 +67,7 @@ def make_connection_from_context(ctx):
     """
 
     module_str = 'au.condor.platforms.%s' % (ctx.host.platform)
-    try:
-        __import__(module_str)
-    except Exception as e:
-        print e
-        print 'import threw error'
+    __import__(module_str)
     module = sys.modules[module_str]
     driver_class = getattr(module, 'Connection')
     nodes = []

@@ -61,12 +61,49 @@ var bootstrapWizardCreate = function(element, options) {
 			return false;
 		}
 
+		/*if ($('.nav-tabs .active').text() == "Pre-Migrate") {
+			if (server_software_selector.get_selected_items().length < 3) {
+				bootbox.alert("Please select at least the eXR iso image, grub.efi and grub.cfg before continuing. The FPD SMU is also needed if your release version is below 6.0.0.")
+				return false
+			}
+			$.cookie('region-' + region_id + '-server', $('#hidden_server').val(), { path: '/' });
+        	$.cookie('region-' + region_id + '-server-directory', $('#hidden_server_directory').val(), { path: '/' });
+
+		}
+*/
+
+		/*if ($('.nav-tabs .active').text() == "Select Host") {
+
+			if (host_selector.get_selected_items().length < 1) {
+				bootbox.alert("Please select at least one host.")
+				return false
+			}
+
+			if ($('#region option:selected').val() == -1) {
+				bootbox.alert("Region has not been specified.");
+            	return false;
+			} else  {
+              var server = $.cookie('region-' + $('#region option:selected').val() + '-server');
+              var server_directory = $.cookie('region-' + $('#region option:selected').val() + '-server-directory');
+
+              $('#hidden_server').val(server == null ? -1 : server);
+              $('#hidden_server_directory').val(server_directory == null ? '' : server_directory);
+          }
+
+		}*/
+
 		// Did we click the last button
 		$index = obj.nextIndex();
 		if($index > obj.navigationLength()) {
 		} else {
 			$navigation.find(baseItemSelector + ':eq('+$index+') a').tab('show');
 		}
+
+		if ($('.nav-tabs .active').text() == "Pre-Migrate") {
+			get_server_list()
+
+		}
+
 	};
 
 	this.previous = function(e) {
@@ -168,12 +205,6 @@ var bootstrapWizardCreate = function(element, options) {
 		var $removeTabPane = typeof args[1] != 'undefined' ? args[1] : false;
 		var $item = $navigation.find(baseItemSelector + ':eq('+$index+')');
 
-		// Remove the tab pane first if needed
-		if($removeTabPane) {
-			var $href = $item.find('a').attr('href');
-			$($href).remove();
-		}
-
 		// Remove menu item
 		$item.remove();
 	};
@@ -218,6 +249,8 @@ var bootstrapWizardCreate = function(element, options) {
 		$('a[data-toggle="tab"]', $navigation).on('shown shown.bs.tab', innerTabShown);
 		
 		obj.fixNavigationButtons();
+
+		$settings.onInit($activeTab, $navigation, 0);
 	};
 
 	$navigation = element.find('ul:first', element);
@@ -283,3 +316,39 @@ $.fn.bootstrapWizard.defaults = {
 };
 
 })(jQuery);
+
+
+function get_server_list() {
+
+	region_id = $('#region option:selected').val()
+	  // Now, gets the servers for the selected region
+  $('#server_dialog_server').empty().append('<option value=-1></option>');
+
+  $.ajax({
+	url: "/api/get_servers/region/" + region_id,
+	dataType: 'json',
+	success: function(data) {
+	  $.each(data, function(index, element) {
+		for (i = 0; i < element.length; i++) {
+		  var server_id = element[i].server_id;
+		  var hostname = element[i].hostname;
+
+		  $('#server_dialog_server').append('<option value="' + server_id + '">' + hostname + '</option>');
+		}
+		var server_id = $('#hidden_server').val();
+		var server_directory = $('#hidden_server_directory').val();
+		if (server_id != -1) {
+			$('#server_dialog_server').val(server_id);
+			retrieve_file_list(server_id, $('#server_dialog_server_directory'), server_directory);
+
+		}
+	  });
+
+
+
+	},
+	error: function(xhr, status, errorThrown) {
+	  bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
+	}
+  });
+}

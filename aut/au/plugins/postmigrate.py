@@ -117,8 +117,9 @@ class PostMigratePlugin(IPlugin):
                         self.error("Should not come to this point.")
 
             if success and commit_with_best_effort == '-1':
-                cmd = 'end \r no'
-                device.execute_command(cmd)
+                device.execute_command('end', timeout=60, wait_for_string='?')
+                device.execute_command('no', timeout=60)
+
                 self.error("Errors when loading configuration. Please check session.log.")
 
             elif success and commit_with_best_effort == '1':

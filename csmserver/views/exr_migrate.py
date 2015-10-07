@@ -111,8 +111,9 @@ def schedule_migrate():
         return redirect(url_for(return_url))
     else:
         # Initialize the hidden fields
-        form.hidden_server.data = -1
+
         form.hidden_server_name.data = ''
+        form.hidden_server.data = -1
         form.hidden_server_directory.data = ''
         form.hidden_pending_downloads.data = ''
         form.hidden_region.data = -1

@@ -224,8 +224,8 @@ class Device(object):
             name += "->{}".format(node)
         return name[2:]
 
-    def execute_command(self,command,timeout=60):
-        return self.session.connected, self.session.send(command,timeout)
+    def execute_command(self, command, timeout=60, wait_for_string=None):
+        return self.session.connected, self.session.send(command, timeout, wait_for_string)
 
     def disconnect(self):
         return self.session.disconnect()
@@ -266,7 +266,7 @@ class Device(object):
         time.sleep(60)
 
         try :
-            self.session.connect(self.session_log, connect_with_reconfiguration=connect_with_reconfiguration)
+            self.session.connect(self.session_log)
         except :
             pass 
 
@@ -278,7 +278,7 @@ class Device(object):
                 time.sleep(poll_time)
                 print "\nRetry count :%s @ %s"%(time_waited/poll_time,time.strftime("%H:%M:%S", time.localtime()))
                 try:
-                    status = self.session.connect(self.session_log, connect_with_reconfiguration=connect_with_reconfiguration)
+                    status = self.session.connect(self.session_log)
                 except:
                     continue
 

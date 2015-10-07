@@ -63,7 +63,10 @@ class SSH(Protocol):
             )
         return command
 
-    def connect(self, connect_with_reconfiguration=False):
+    def connect_with_jump_host(self):
+        return self.connect()
+
+    def connect(self):
         state = 0
         transition = 0
         event = 0

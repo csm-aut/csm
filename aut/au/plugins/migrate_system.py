@@ -102,11 +102,13 @@ class MigrateSystemToExrPlugin(IPlugin):
     def _copy_file_to_device(self, device, repository, filename, dest):
         timeout = 1500
         success, output = device.execute_command('dir ' + dest + '/' + filename)
-        cmd = 'copy ' + repository + '/' + filename + ' ' + dest +' \r'
-        if "No such file" not in output:
-            cmd += ' \r'
+        cmd = 'copy ' + repository + '/' + filename + ' ' + dest
+        device.execute_command(cmd, timeout=timeout, wait_for_string='?')
 
-        success, output = device.execute_command(cmd, timeout=timeout)
+        if "No such file" not in output:
+            device.execute_command('\r', timeout=timeout, wait_for_string='?')
+
+        success, output = device.execute_command('\r', timeout=timeout)
 
         if re.search('copied\s+in', output):
             self._second_attempt_execution(device, cmd, timeout, 'copied\s+in', "failed to copy file to your repository.")
@@ -116,17 +118,17 @@ class MigrateSystemToExrPlugin(IPlugin):
     def _migrate_to_eXR(self, device):
 
 
-        device.execute_command('run')
+        device.execute_command('run', wait_for_string='#')
         #iso_path = 'http://172.25.146.28/issus' + '/asr9k-mini-x64.iso'
-        cmd = 'ksh /harddiskb:/migrate_to_eXR '
-        success, output = device.execute_command(cmd)
+        cmd = 'ksh /pkg/bin/migrate_to_eXR -b eUSB'
+        success, output = device.execute_command(cmd, wait_for_string='#')
 
         """
         check that URL_NAME and emt mode has been set correctly.
 
         """
         if "No such file" in output:
-            self.error("No migration script is found on device. Please download the 'migrate_to_eXR' script to the server repository and select it prior to scheduling migration.")
+            self.error("No migration script is found on device. Please upgrade your image to get access to the migration scripts under /pkg/bin/")
 
         #if not iso_path in output:
         #    self.error("Failed to assign the path to eXR image to rommon variable URL_NAME. Please check session.log")
@@ -136,9 +138,10 @@ class MigrateSystemToExrPlugin(IPlugin):
 
 
     def _reload_all(self, device):
-        cmd = 'admin reload location all \r'
+        cmd = 'admin reload location all'
+
         try:
-            success, output = device.execute_command(cmd)
+            success, output = device.execute_command(cmd, wait_for_string='?')
             print cmd, '\n', output, "<-----------------", success
             if success:
                 device.execute_command('\r')
@@ -156,7 +159,7 @@ class MigrateSystemToExrPlugin(IPlugin):
 
         """
         print "device trying to reconnect..."
-        status = device.reconnect(connect_with_reconfiguration=True)
+        status = device.reconnect()
         print "device finished reconnecting..."
         # Connection to device failed
         if not status :
