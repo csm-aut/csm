@@ -9,6 +9,9 @@
     <li><a href="{{ url_for('static', filename='documents/schedule_install.pdf') }}">Schedule Installation</a></li>
     <li><a href="{{ url_for('static', filename='documents/dashboards.pdf') }}">Dashboards</a></li>
     <li><a href="{{ url_for('static', filename='documents/conformance.pdf') }}">Conformance</a></li>
+    {% if current_user.privilege == 'Admin' %}
+    <li><a href="{{ url_for('static', filename='documents/admin_tools.pdf') }}">Admin Tools</a></li>
+    {% endif %}
     <li><a href="{{ url_for('static', filename='documents/tools.pdf') }}">Tools</a></li>
     <li><a href="{{ url_for('static', filename='documents/additional_topics.pdf') }}">Additional Topics</a></li>
 {% endmacro %}
@@ -16,17 +19,19 @@
 {% macro non_admin_tools_menu() %}
     <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('validate_software') }}">Validate Software</a></li>
-    <li class="divider"></li>
     <li><a href="{{ url_for('current_user_edit') }}">Edit User</a></li>
     <li class="divider"></li>
+    <li><a href="{{ url_for('validate_software') }}">Validate Software</a></li>
+    <li class="divider"></li>
     <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
+    <!--
     <li class="divider"></li>
     <li><a href="{{ url_for('exr_migrate.schedule_migrate') }}">Migrate to eXR</a></li>
+    -->
 {% endmacro %}
 
 {% macro admin_tools_menu() %}
-    <li><a href="{{ url_for('admin_console') }}">Admin Dashboard</a></li>
+    <li><a href="{{ url_for('admin_console') }}">Admin Console</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('import_hosts') }}">Import Hosts</a></li>
     <li class="divider"></li>
@@ -189,7 +194,7 @@
                 {% if current_user.is_authenticated() %}
                 <ul class="nav navbar-nav navbar-right">
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Help<b class="caret"></b></a>
                         <ul class="dropdown-menu">
                             {{ help_menu() }}
                         </ul>

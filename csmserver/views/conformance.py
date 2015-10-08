@@ -37,6 +37,8 @@ from smu_utils import get_platform_and_release
 from platform_matcher import UNKNOWN
 from smu_info_loader import SMUInfoLoader
 
+from forms import ServerDialogForm
+
 import re
 
 conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
@@ -463,13 +465,6 @@ def get_software_profile(db_session, profile_name):
 
 def get_software_profile_names(db_session):
     return db_session.query(SoftwareProfile.name).order_by(SoftwareProfile.name.asc()).all()
-
-
-class ServerDialogForm(Form):
-    server_dialog_target_software = StringField('Target Software Release')
-    server_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
-    server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
-
 
 class SoftwareProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])

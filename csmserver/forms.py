@@ -84,8 +84,15 @@ class JumpHostForm(Form):
         choices = [(ConnectionType.TELNET, ConnectionType.TELNET), 
                    (ConnectionType.SSH, ConnectionType.SSH)])
     port_number = StringField('Port Number')
-     
-class HostScheduleInstallForm(Form):
+
+
+class ServerDialogForm(Form):
+    server_dialog_target_software = StringField('Target Software Release')
+    server_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
+    server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
+
+
+class HostScheduleInstallForm(ServerDialogForm):
     install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
        
     scheduled_time = StringField('Scheduled Time', [required()])
@@ -98,11 +105,7 @@ class HostScheduleInstallForm(Form):
     host_software_dialog_target_software = StringField('Target Software Release')
     host_software_dialog_host = SelectField('Host', coerce=str, choices = [('', '')])
     host_software_dialog_last_successful_inventory_elapsed_time = StringField('Last Successful Retrieval')
-    
-    server_dialog_target_software = StringField('Target Software Release')
-    server_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
-    server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices = [('', '')])
-    
+
     cisco_dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
     cisco_dialog_server_directory = SelectField('Server Directory', coerce=str, choices = [('', '')])
     
@@ -175,8 +178,8 @@ class PreferencesForm(Form):
     cco_username = StringField('Username')
     cco_password = PasswordField('Password')
 
-class ServerDialogForm(Form):
-    dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')]) 
+class BrowseServerDialogForm(Form):
+    dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])
 
 if __name__ == '__main__':
     pass

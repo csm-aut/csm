@@ -49,6 +49,7 @@ from forms import SMTPForm
 from forms import PreferencesForm
 from forms import HostImportForm
 from forms import ServerDialogForm
+from forms import BrowseServerDialogForm
 
 from models import Host
 from models import JumpHost
@@ -196,7 +197,7 @@ def home():
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
     
-    form = ServerDialogForm(request.form)
+    form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
     return render_template('host/home.html', form=form, total_host_count=total_host_count, 
@@ -2932,7 +2933,7 @@ def get_platforms_and_releases_dict(db_session):
 @login_required
 def get_smu_list(platform, release):        
     system_option = SystemOption.get(DBSession())
-    form = ServerDialogForm(request.form)
+    form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
     
     return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release, system_option=system_option) 
@@ -3047,7 +3048,8 @@ def api_get_smu_meta_retrieval_elapsed_time(platform, release):
 @app.route('/validate_software')
 @login_required
 def validate_software():
-    return render_template('csm_client/validate_software.html')
+    server_dialog_form = ServerDialogForm(request.form)
+    return render_template('csm_client/validate_software.html', server_dialog_form=server_dialog_form)
 
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required
