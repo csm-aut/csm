@@ -304,7 +304,7 @@ class Telnet(Protocol):
 
             if event == 2:  # RECONFIGURE_USERNAME_PROMPT
                 state = 1
-                timeout = 300
+                timeout = 180
                 self._dbg(
                     10,
                     "{}: Waiting {} sec for entering username prompt".format(

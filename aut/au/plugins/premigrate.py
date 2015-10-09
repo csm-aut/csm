@@ -50,7 +50,8 @@ from au.plugins.install_act import InstallActivatePlugin
 NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
 NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_FOR_MAC = "nox"
-MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.2"
+MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
+MAXIMUM_RELEASE_VERSION_FOR_MIGRATION = "6.0.0"
 ACTIVE_PACKAGES_IN_CLASSIC = "active_packages_in_xr_snapshot.txt"
 
 TIMEOUT_FOR_COPY_CONFIG = 1000
@@ -66,6 +67,7 @@ ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
 LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
 MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.0'
+
 
 SUPPORTED_CONFIG_LOG = "supported_admin_configurations_log"
 UNSUPPORTED_CONFIG_LOG = "unsupported_admin_configurations_log"
@@ -237,8 +239,9 @@ class PreMigratePlugin(IPlugin):
 
 
         if release_version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
-            self.error("The minimal release version required for migration is 5.3.2. Please upgrade to at lease R5.3.2 before migration.")
-
+            self.error("The minimal release version required for migration is 5.3.3. Please upgrade to at lease R5.3.3 before migration.")
+        if release_version > MAXIMUM_RELEASE_VERSION_FOR_MIGRATION:
+            self.error("The device is already running eXR.")
     def _ping_repo_check(self, device, repo_str):
 
         repo_ip = re.search('.*/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/.*', repo_str)

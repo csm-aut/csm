@@ -92,21 +92,38 @@ class PostMigratePlugin(IPlugin):
             self.error(filename + " is missing in /eusbb/ on device after migration.")
 
         cmd = 'exit'
-        success, output = device.execute_command(cmd)
+        device.execute_command(cmd)
 
-
-
-    def _apply_config(self, device, repository, filename, commit_with_best_effort):
-
-        self._copy_file_from_eusb_to_harddisk(device, filename)
-
+    def _load_admin_config(self, device):
         cmd = 'config'
+        device.execute_command(cmd)
+
+        cmd = 'load override admin.iox'
         success, output = device.execute_command(cmd)
 
-        cmd = 'load ' + repository + '/' + filename
+        if "failed" in output or "Error" in output:
+            device.execute_command('end', timeout=60, wait_for_string='?')
+            device.execute_command('no', timeout=60)
+            device.execute_command('exit')
+            self.error("Aborted committing admin configuration. Please check session.log for errors.")
+        else:
+            success, output = device.execute_command('commit')
+            if "failure" in output:
+                device.execute_command('end', timeout=60, wait_for_string='?')
+                device.execute_command('no', timeout=60)
+                device.execute_command('exit')
+                self.error("Failure to commit admin configuration. Please check session.log.")
+            device.execute_command('end')
+
+
+    def _load_nonadmin_config(self, device, filename, commit_with_best_effort):
+        cmd = 'config'
+        device.execute_command(cmd)
+
+        cmd = 'load harddisk:/' + filename
         success, output = device.execute_command(cmd)
 
-        if "failed" in output:
+        if "failed" in output or "error" in output:
 
             if "show configuration failed load [detail]" in output:
                 cmd = 'show configuration failed load detail'
@@ -123,19 +140,15 @@ class PostMigratePlugin(IPlugin):
                 self.error("Errors when loading configuration. Please check session.log.")
 
             elif success and commit_with_best_effort == '1':
-                cmd = 'commit'
-                device.execute_command(cmd)
+                cmd = 'commit best-effort force'
+                success, output = device.execute_command(cmd)
                 self.log("Committed configurations with best-effort. Please check session.log for errors.")
+                if "No configuration changes to commit" in output:
+                    self.log("No configuration changes in /eusbb/" + filename + " were committed. Please check session.log for errors.")
                 device.execute_command('end')
                 return True
 
-        cmd = 'commit'
-        success, output = device.execute_command(cmd)
 
-        cmd = 'end'
-        success, output = device.execute_command(cmd)
-
-        return True
 
     def _wait_for_final_band(self, device):
          # Wait for all nodes to Final Band
@@ -201,7 +214,7 @@ class PostMigratePlugin(IPlugin):
 
         self.log('best_effort_config = ' + str(best_effort_config))
 
-        """
+
 
 
         self._post_status("Waiting for all nodes to come to FINAL Band.")
@@ -214,7 +227,8 @@ class PostMigratePlugin(IPlugin):
         cmd = 'admin'
         success, output = device.execute_command(cmd)
         if success:
-            self._apply_config(device, repo_str, filename + "_admin", best_effort_config)
+            self._copy_file_from_eusb_to_harddisk(device, "admin.iox")
+            self._load_admin_config(device)
             cmd = 'exit'
             device.execute_command(cmd)
         else:
@@ -222,9 +236,10 @@ class PostMigratePlugin(IPlugin):
 
         if os.path.isfile(fileloc + os.sep + filename + "_breakout"):
             self._post_status("Applying the breakout configuration to device.")
-            self._apply_config(device, repo_str, filename + "_breakout", best_effort_config)
+            self._copy_file_from_eusb_to_harddisk(device, "breakout.cfg")
+            self._load_nonadmin_config(device, "breakout.cfg", best_effort_config)
 
 
         self._post_status("Applying the configuration to device.")
-        self._apply_config(device, repo_str, filename, best_effort_config)
-        """
+        self._copy_file_from_eusb_to_harddisk(device, "classic.cfg")
+        self._load_nonadmin_config(device, "classic.cfg", best_effort_config)

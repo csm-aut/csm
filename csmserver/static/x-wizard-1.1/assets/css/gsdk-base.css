@@ -47,7 +47,7 @@
 }
 .wizard-card .nav-pills > li a {
     border: 0 !important;
-    text-transform: uppercase;
+    text-transform: capitalize;
     background-color: #999999;
     color: #FFFFFF !important;
     font-size: 12px;
