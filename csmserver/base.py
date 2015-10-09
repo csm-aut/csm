@@ -157,7 +157,7 @@ class InstallContext(ImageContext):
 
                 server_sub_directory = self.install_job.server_directory
                 
-                if server_sub_directory is not None and not is_empty(server_sub_directory):
+                if not is_empty(server_sub_directory):
                     url += '/' + server_sub_directory  
                 
                 return url

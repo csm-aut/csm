@@ -1,260 +1,266 @@
 <!DOCTYPE html>
 <html>
 
+{% macro help_menu() %}
+    <li><a href="{{ url_for('static', filename='documents/overview.pdf') }}">Overview</a></li>
+    <li><a href="{{ url_for('static', filename='documents/home.pdf') }}">Home</a></li>
+    <li><a href="{{ url_for('static', filename='documents/cco.pdf') }}">CCO</a></li>
+    <li><a href="{{ url_for('static', filename='documents/host_dashboard.pdf') }}">Host Dashboard</a></li>
+    <li><a href="{{ url_for('static', filename='documents/schedule_install.pdf') }}">Schedule Installation</a></li>
+    <li><a href="{{ url_for('static', filename='documents/dashboards.pdf') }}">Dashboards</a></li>
+    <li><a href="{{ url_for('static', filename='documents/conformance.pdf') }}">Conformance</a></li>
+    {% if current_user.privilege == 'Admin' %}
+    <li><a href="{{ url_for('static', filename='documents/admin_tools.pdf') }}">Admin Tools</a></li>
+    {% endif %}
+    <li><a href="{{ url_for('static', filename='documents/tools.pdf') }}">Tools</a></li>
+    <li><a href="{{ url_for('static', filename='documents/additional_topics.pdf') }}">Additional Topics</a></li>
+{% endmacro %}
+
 {% macro non_admin_tools_menu() %}
-
-  <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
-  <!-- <li><a href="{{ url_for('jump_host_list') }}">List Jump Servers</a></li> -->
-  <li class="divider"></li>
-  <li><a href="{{ url_for('optimize_list') }}">Optimize List</a></li>
-  <li class="divider"></li> 
-  <!-- <li><a href="{{ url_for('login') }}?return_url=current_user_edit">Edit My Profile</a></li>  -->
-  <li><a href="{{ url_for('current_user_edit') }}">Edit User</a></li>
-  <li class="divider"></li> 
-  <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
-  <li class="divider"></li> 
-  <li><a href="{{ url_for('exr_migrate.schedule_migrate') }}">Migrate to eXR</a></li>
-  <!-- <li class="divider"></li> -->
-  <!-- <li class="divider"></li> -->
-  <!-- <li><a href="{{ url_for('logout') }}">Logout</a></li>  -->
-
+    <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('current_user_edit') }}">Edit User</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('validate_software') }}">Validate Software</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
+    <!--
+    <li class="divider"></li>
+    <li><a href="{{ url_for('exr_migrate.schedule_migrate') }}">Migrate to eXR</a></li>
+    -->
 {% endmacro %}
 
 {% macro admin_tools_menu() %}
-  <!-- <li><span style="background: red;"><center>Admin Tools</center></span></li> -->
-  <li><a href="{{ url_for('admin_console') }}">Admin Dashboard</a></li>
-  <li class="divider"></li> 
-  <li><a href="{{ url_for('import_hosts') }}">Import Hosts</a></li>
-  <li class="divider"></li> 
-  <li><a href="{{ url_for('user_create') }}">Create User</a></li> 
-  <li class="divider"></li> 
-  <li><a href="{{ url_for('user_list') }}">List All Users</a></li>
-  <li class="divider"></li> 
-  <!-- <li><a href="{{ url_for('failed_software_inventory_list') }}">Failed Last Software Inventory</a></li> -->
-  <!-- <li class="divider"></li>  -->
-  <li><a href="{{ url_for('logs') }}">System Logs</a></li>
-
+    <li><a href="{{ url_for('admin_console') }}">Admin Console</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('import_hosts') }}">Import Hosts</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('user_create') }}">Create User</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('user_list') }}">List All Users</a></li>
+    <li class="divider"></li>
+    <!-- <li><a href="{{ url_for('failed_software_inventory_list') }}">Failed Last Software Inventory</a></li> -->
+    <!-- <li class="divider"></li>  -->
+    <li><a href="{{ url_for('logs') }}">System Logs</a></li>
 {% endmacro %}
 
-  <head>
+<head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>Cisco Software Manager Server</title>
 
     <!-- jquery -->
-    <script src="/static/jquery/js/jquery-1.10.2.js"></script>  
+    <script src="/static/jquery/js/jquery-1.10.2.js"></script>
     <script src="/static/jquery/js/jquery-ui-1.10.4.min.js"></script>
     <script type="text/javascript" src="/static/jquery/js/datetime-utils.js"></script>
     <script type="text/javascript" src="/static/jquery/js/common-utils.js"></script>
 
     <!-- DateTimePicker CSS -->
-    <link rel="stylesheet" type="text/css" href="/static/jquery/css/smoothness/jquery-ui-1.10.4.custom.min.css" >
+    <link rel="stylesheet" type="text/css" href="/static/jquery/css/smoothness/jquery-ui-1.10.4.custom.min.css">
 
     <!-- Bootstrap -->
     <script src="/static/bootstrap/3.1.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="/static/bootstrap/3.1.1/css/bootstrap.min.css">
-              
+
     <!-- DataTables -->
     <link rel="stylesheet" type="text/css" href="/static/datatables-1.10.4/media/css/dataTables.bootstrap.css">
     <link rel="stylesheet" type="text/css" href="/static/datatables-1.10.4/media/css/jquery.dataTables.min.css">
     <script type="text/javascript" src="/static/datatables-1.10.4/media/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="/static/datatables-1.10.4/media/js/dataTables.bootstrap.js"></script>
-    
+
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    
-    <script src="/static/select2-4.0.0/dist/js/select2.min.js"></script>  
-    <script src="/static/underscorejs/underscore.min.js"></script> 
+
+    <script src="/static/select2-4.0.0/dist/js/select2.min.js"></script>
+    <script src="/static/underscorejs/underscore.min.js"></script>
     <link rel="stylesheet" href="/static/select2-4.0.0/dist/css/select2.css">
     <link rel="stylesheet" type="text/css" href="/static/jquery/css/base.css">
-    
+
     <script>
-      $(function() {
-      
-        $('body').on("click mousemove keyup", _.debounce(function(){
-          // logout user here
-          {% if request.endpoint != 'login' %}
-            window.location = "{{ url_for('logout') }}";
-          {% endif %}
-        }, 3600000)) // 60 minutes inactivity
-        
-        $('#search-host-selector').select2({
-          placeholder: "Search a host",     
-          allowClear: true,  
-          ajax: {
-            url: "/api/get_hostnames/",
-            dataType: 'json',
-            processResults: function (data, page) {
-              return { results: data.data };
-            },
-            data: function (params) {
-              return {
-                q: params.term, // search term
-                page: params.page
-             };
-            },
-          },        
-        });         
-        
-        $('#search-host-selector').on('change', function (e) {        
-          var host = $(this).val();   
-          window.location = "/hosts/" + host + "/host_dashboard/"
-        })      
-        
-        function create_menu() {          
-          $.ajax({
-            url: "{{ url_for('api_get_catalog') }}",
-            dataType: 'json',
-            success: function (data) {
-              var html = '';
-              
-              $.each(data, function(index, element) {
-                for (i = 0; i < element.length; i++) {
-                
-                  var beautified_platform = element[i].beautified_platform
-                  var platform = element[i].platform;
-                  var releases = element[i].releases;
-                  
-                  html += '<li class="dropdown-submenu">' +
-                          '<a href="javascript://">' + beautified_platform + '</a>' +   
-                          '<ul class="dropdown-menu">';
-                  
-                  for (var j = 0; j < releases.length; j++) {
-                      html += '<li><a href="/get_smu_list/platform/' + platform + '/release/' + releases[j] + '">' + releases[j] + '</a></li>'  
-                  }
-                  
-                  html += '</ul>' + '</li>'
-                }
-              });
-              
-              $('#dropdown-menu').html(html);
-            },
-            error: function(XMLHttpRequest, textStatus, errorThrown) { 
-              //bootbox.alert("Unable to retrieve catalog data");
-            }  
-          });      
-         
-        }
-     
-        create_menu(); 
-      
-      });
+        $(function() {
+
+            $('body').on("click mousemove keyup", _.debounce(function() {
+                // logout user here
+                {% if request.endpoint != 'login' %}
+                    window.location = "{{ url_for('logout') }}";
+                {% endif %}
+            }, 3600000)); // 60 minutes inactivity
+
+            $('#search-host-selector').select2({
+                placeholder: "Search a host",
+                allowClear: true,
+                ajax: {
+                    url: "/api/get_hostnames/",
+                    dataType: 'json',
+                    processResults: function(data, page) {
+                        return {
+                            results: data.data
+                        };
+                    },
+                    data: function(params) {
+                        return {
+                            q: params.term, // search term
+                            page: params.page
+                        };
+                    },
+                },
+            });
+
+            $('#search-host-selector').on('change', function(e) {
+                var host = $(this).val();
+                window.location = "/hosts/" + host + "/host_dashboard/"
+            })
+
+            function create_menu() {
+                $.ajax({
+                    url: "{{ url_for('api_get_catalog') }}",
+                    dataType: 'json',
+                    success: function(data) {
+                        var html = '';
+
+                        $.each(data, function(index, element) {
+                            for (i = 0; i < element.length; i++) {
+
+                                var beautified_platform = element[i].beautified_platform
+                                var platform = element[i].platform;
+                                var releases = element[i].releases;
+
+                                html += '<li class="dropdown-submenu">' +
+                                    '<a href="javascript://">' + beautified_platform + '</a>' +
+                                    '<ul class="dropdown-menu">';
+
+                                for (var j = 0; j < releases.length; j++) {
+                                    html += '<li><a href="/get_smu_list/platform/' + platform + '/release/' + releases[j] + '">' + releases[j] + '</a></li>'
+                                }
+
+                                html += '</ul>' + '</li>'
+                            }
+                        });
+
+                        $('#dropdown-menu').html(html);
+                    },
+                    error: function(XMLHttpRequest, textStatus, errorThrown) {
+                        //bootbox.alert("Unable to retrieve catalog data");
+                    }
+                });
+
+            }
+
+            create_menu();
+
+        });
     </script>
-  
+
     {% block extra_head %}{% endblock extra_head %}
 
   </head>
   <body>
-
     <!-- Fixed navbar -->
     <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-            <span class="sr-only">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
-          <a class="navbar-brand" href="javascript://">&nbsp;</a>
-          <a class="navbar-brand" href="{{ url_for('about') }}">CSM Server</a>
-        </div>
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
+                <a class="navbar-brand" href="javascript://">&nbsp;</a>
+                <a class="navbar-brand" href="{{ url_for('about') }}">CSM Server</a>
+            </div>
 
-        <div class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">              
-              {% if current_user.is_authenticated() %}
-                <li class="active"><a href="{{ url_for('home') }}">Home</a></li>
-                 
+            <div class="navbar-collapse collapse">
                 <ul class="nav navbar-nav">
-                  <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO<b class="caret"></b></a>               
-                    <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>                         
-                  </li>
-                 </ul>
-                          
-                <li class="dropdown">
-                  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Dashboards<b class="caret"></b></a>
-                  <ul class="dropdown-menu">
-                    <li><a href="{{ url_for('install_dashboard') }}">Install Dashboard</a></li>
-                    <li class="divider"></li>
-                    <li><a href="{{ url_for('download_dashboard') }}">Download Dashboard</a></li>
-                  </ul>
-                </li> 
-                
-                <li><a href="{{ url_for('conformance.home') }}">Conformance</a></li>             
-              {% endif %}
-              
-            </ul>
-            
-            {% if current_user.is_authenticated() %}
-            
-              <ul class="nav navbar-nav navbar-right"> 
-                <li><a href="{{ url_for('static', filename='user_guide.pdf') }}" target="_blank"><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"</img></a></li>
-                <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"</img></a></li>
-              </ul>
-            
-              <ul class="nav navbar-nav navbar-right">           
-                <li class="dropdown">
-                  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
-                  
-                  {% if current_user.privilege == 'Admin' %}
-                    <ul class="dropdown-menu multi-column columns-2">
-		              <div class="row">
-			            <div class="col-sm-6">
-				          <ul class="multi-column-dropdown">
-				            {{ non_admin_tools_menu() }}
-	  		              </ul>
-		                </div>
-			        
-			            <div class="col-sm-6">
-				          <ul class="multi-column-dropdown">				        
-					        {{ admin_tools_menu() }}                         
-				          </ul>
-			            </div>
-		              </div>
-	                </ul>
-	              {% else %}
-	                <ul class="dropdown-menu">
-	                  {{ non_admin_tools_menu() }}
-	                </ul>
-	              {% endif %}
+                    {% if current_user.is_authenticated() %}
+                    <li class="active"><a href="{{ url_for('home') }}">Home</a></li>
+                    <ul class="nav navbar-nav">
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO<b class="caret"></b></a>
+                            <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
+                        </li>
+                    </ul>
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Dashboards<b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="{{ url_for('install_dashboard') }}">Install Dashboard</a></li>
+                            <li class="divider"></li>
+                            <li><a href="{{ url_for('download_dashboard') }}">Download Dashboard</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="{{ url_for('conformance.home') }}">Conformance</a></li>
+                    {% endif %}
+                </ul>
 
-                </li>                  
-              </ul>
-              
-              <form class="navbar-form navbar-left pull-right" role="search">
-              
-                <div class="form-group">
-                 <input type="hidden" class="select2" id="search-host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
-                 </select>                 
-                </div>     
-              </form>
-            {% endif %}
-            
-        </div><!--/.nav-collapse -->
-      </div>
+                {% if current_user.is_authenticated() %}
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Help<b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                            {{ help_menu() }}
+                        </ul>
+                    </li>
+                    <!--              <li><a href="{{ url_for('static', filename='user_guide.pdf') }}" target="_blank"><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"></a></li>  -->
+                    <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
+                </ul>
+
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
+                        {% if current_user.privilege == 'Admin' %}
+                        <ul class="dropdown-menu multi-column columns-2">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <ul class="multi-column-dropdown">
+                                        {{ non_admin_tools_menu() }}
+                                    </ul>
+                                </div>
+                                <div class="col-sm-6">
+                                    <ul class="multi-column-dropdown">
+                                        {{ admin_tools_menu() }}
+                                    </ul>
+                                </div>
+                            </div>
+                        </ul>
+                        {% else %}
+                        <ul class="dropdown-menu">
+                            {{ non_admin_tools_menu() }}
+                        </ul>
+                        {% endif %}
+                    </li>
+                </ul>
+                <form class="navbar-form navbar-left pull-right" role="search">
+                    <div class="form-group">
+                        <input type="hidden" class="select2" id="search-host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
+                        </select>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+            <!--/.nav-collapse -->
+        </div>
     </div>
 
     <div class="row">
-      <div class="col-sm-12">
-        {% block title %}{% endblock title %}
-      </div>
+        <div class="col-sm-12">
+            {% block title %}{% endblock title %}
+        </div>
     </div>
 
     {% block main %}{% endblock main %}
-   
-    <div class="container">
-      <hr>
-      <p><center>Copyright &copy; 2000 -
-        <script language="JavaScript" type="text/javascript">
-          now = new Date
-          theYear=now.getYear()
-          if (theYear < 1900)
-            theYear=theYear+1900
-          document.write(theYear)
-        </script>
-        Cisco Systems, Inc. All rights reserved. </center></p>
-     </div>
 
-  </body>  
-</html>  
+    <div class="container">
+        <hr>
+        <center>
+            Copyright &copy; 2000 -
+            <script language="JavaScript" type="text/javascript">
+                now = new Date
+                theYear=now.getYear()
+                if (theYear < 1900)
+                  theYear=theYear+1900
+                document.write(theYear)
+            </script>
+            Cisco Systems, Inc. All rights reserved.
+        </center>
+    </div>
+</body>
+</html>

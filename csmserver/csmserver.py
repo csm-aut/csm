@@ -49,6 +49,7 @@ from forms import SMTPForm
 from forms import PreferencesForm
 from forms import HostImportForm
 from forms import ServerDialogForm
+from forms import BrowseServerDialogForm
 
 from models import Host
 from models import JumpHost
@@ -135,7 +136,7 @@ from utils import is_ldap_supported
 from server_helper import get_server_impl
 from wtforms.validators import Required
 
-from smu_utils import get_optimize_list
+from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import get_platform_and_release
@@ -198,7 +199,7 @@ def home():
     regions = get_region_list(db_session)
     servers = get_server_list(db_session)
     
-    form = ServerDialogForm(request.form)
+    form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
     return render_template('host/home.html', form=form, total_host_count=total_host_count, 
@@ -461,7 +462,7 @@ def get_managed_hosts(region_id):
             row['platform'] = host.platform
             
             if host.software_version is not None:
-                row['software'] = host.software_version + '<br>' + host.software_platform
+                row['software'] = host.software_platform + ' ' + host.software_version
             else:
                 row['software'] = 'Unknown'
             
@@ -2823,7 +2824,7 @@ def get_platforms_and_releases_dict(db_session):
 @login_required
 def get_smu_list(platform, release):        
     system_option = SystemOption.get(DBSession())
-    form = ServerDialogForm(request.form)
+    form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
     
     return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release, system_option=system_option) 
@@ -2935,10 +2936,11 @@ def api_get_smu_meta_retrieval_elapsed_time(platform, release):
     return jsonify( **{'data': [ {'retrieval_elapsed_time': retrieval_elapsed_time }] } )
     
     
-@app.route('/optimize_list')
+@app.route('/validate_software')
 @login_required
-def optimize_list(): 
-    return render_template('csm_client/optimize_list.html')
+def validate_software():
+    server_dialog_form = ServerDialogForm(request.form)
+    return render_template('csm_client/validate_software.html', server_dialog_form=server_dialog_form)
 
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required
@@ -3094,11 +3096,11 @@ def host_packages_contains(host_packages, smu_name):
             return True
     return False
 
-@app.route('/api/optimize_list')
+@app.route('/api/validate_software')
 @login_required
-def api_optimize_list():
+def api_validate_software():
     smu_list = request.args.get('smu_list').split()
-    return  jsonify( **{'data': get_optimize_list(smu_list)} )
+    return  jsonify( **{'data': get_validated_list(smu_list)} )
 
 # This route will prompt a file download
 @app.route('/download_session_log')

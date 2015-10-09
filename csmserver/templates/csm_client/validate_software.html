@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% from 'share/server_software_dialog.html' import server_software_dialog %}
+{% from 'share/cisco_software_dialog.html' import cisco_software_dialog %}
+
+{% block extra_head %}
+<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+<script src="/static/jquery/js/validate_software.js"></script>
+<script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+<script src="/static/duallistbox/dist/dual-list-box.js"></script>
+<script src="/static/jquery/js/smu_info_dialog.js"></script>
+<script src="/static/jquery/js/cisco_software_dialog.js"></script>
+<script src="/static/jquery/js/server_software_dialog.js"></script>
+   
+<script charset="utf-8">
+    $(function() {
+    
+        var spinner = $('#spinner');
+        spinner.hide();
+
+        $('#validate-software').on("click", function() {
+            validate_software($('#software_packages'), $('#validate_results'), spinner);
+        });
+
+        $('#browse-server-button').on('click', function(e) {
+            display_server_software_dialog(-1, '', '');
+        });
+
+        $('#browse-cisco-button').on('click', function(e) {
+            display_cisco_software_dialog();
+        });
+
+        $('#on-server-software-dialog-submit').click(function(e) {
+
+            if ($('#server_dialog_server').val() == -1) {
+                bootbox.alert("Server Repository has not been specified.");
+                return false;
+            }
+
+            update_software_packages(server_software_selector.get_selected_items());
+        });
+
+
+        $('#on-cisco-software-dialog-submit').click(function(e) {
+            var new_software_packages = [];
+
+            $('.check').each(function(index) {
+                if (this.checked) {
+                    $(this).attr('checked', false);
+                    new_software_packages.push($(this).val());
+                }
+            });
+            update_software_packages(new_software_packages);
+        });
+
+        function update_software_packages(new_software_packages) {
+            if (new_software_packages.length == 0) {
+                return;
+            }
+
+            var software_packages = convert_lines_to_list($('#software_packages').val());
+
+            if (software_packages.length > 0) {
+                bootbox.dialog({
+                    message: "Overwrite existing selected software packages?  Click 'Yes' to overwrite or 'No' to append.",
+                    title: "Confirmation",
+                    buttons: {
+                        success: {
+                            label: "Yes",
+                            className: "btn-success",
+                            callback: function() {
+                                $('#software_packages').val(String(new_software_packages).replace(/,/g, '\n'));
+                            }
+                        },
+                        danger: {
+                            label: "No",
+                            className: "btn-danger",
+                            callback: function() {
+                                for (i = 0; i < new_software_packages.length; i++) {
+                                    software_packages.push(new_software_packages[i]);
+                                }
+                                $('#software_packages').val(String(software_packages).replace(/,/g, '\n'));
+                            }
+                        },
+                    }
+                });
+            } else {
+                $('#software_packages').val(String(new_software_packages).replace(/,/g, '\n'));
+            }
+        }
+
+    });
+</script>
+
+<style>
+    textarea {
+        resize: none;
+    }
+    .modal-dialog {    
+        width: 850px;
+    }
+    a:link, a:visited {
+        text-decoration:none;
+    }
+</style>
+
+{% endblock extra_head %}
+
+{% block main %}
+
+{{ cisco_software_dialog() }}
+{{ server_software_dialog(server_dialog_form.server_dialog_server, server_dialog_form.server_dialog_server_directory, server_dialog_form.server_dialog_target_software) }}
+
+
+<div class="container">
+    <!-- Main -->
+    <form method="post" class="form-horizontal">
+        <div class="row">
+            <!-- upper section -->
+            <div class="container col-sm-6">
+                <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Validate Software</strong></span>
+                <hr>
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        Software Package List
+                        <span class="pull-right">
+                            <a id="browse-server-button" href="javascript://">
+                                <img src="/static/browse_server.png">&nbsp;Server Repository&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            </a>
+                            <a id="browse-cisco-button" href="javascript://">
+                                <img src="/static/internet.png">&nbsp;CCO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            </a>
+                            <a id="validate-software" href="javascript://">
+                                <img title="Click to Validate" src="{{ url_for('static', filename='right_arrow.png') }}">
+                            </a>
+                        </span>
+                    </div>
+                    <div class="panel-body">
+                        Paste the software package names below and click the green arrow to validate.
+                        <textarea spellcheck="false" class="form-control" rows="18" id="software_packages" name="software_packages"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="container col-sm-6">
+                <span>&nbsp;</span>
+                <hr>
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        Validated Results
+                        <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+                    </div>
+                    <div class="panel-body">
+                        &nbsp;
+                        <textarea spellcheck="false" class="form-control" rows="18" id="validate_results"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /upper section -->
+    </form>
+</div>
+<!--/Main -->
+{% endblock main %}

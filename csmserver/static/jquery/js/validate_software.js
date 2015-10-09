@@ -1,17 +1,17 @@
 
-var optimized_list;
+var validated_list;
 
-function optimize_list(src_control, target_control, spinner) {
+function validate_software(src_control, target_control, spinner) {
     if (spinner) { spinner.show() };
 
     $.ajax({
-        url: "/api/optimize_list",
+        url: "/api/validate_software",
         dataType: 'json',
         data: { smu_list: src_control.val() },
         success: function(data) {
             var lines = '';
             $.each(data, function(index, element) {
-                optimized_list = element;
+                validated_list = element;
 
                 for (i = 0; i < element.length; i++) {
                     var smu_entry = element[i].smu_entry;
@@ -26,7 +26,7 @@ function optimize_list(src_control, target_control, spinner) {
             });
 
             if (lines) {
-                display_optimized_dialog(lines, target_control);
+                display_validated_dialog(lines, target_control);
             }
             
             if (spinner) { spinner.hide(); }
@@ -37,7 +37,7 @@ function optimize_list(src_control, target_control, spinner) {
     });
 }
 
-function display_optimized_dialog(lines, target_control) {
+function display_validated_dialog(lines, target_control) {
 
     bootbox.dialog({
         message: lines,
@@ -49,14 +49,14 @@ function display_optimized_dialog(lines, target_control) {
                 label: "Accept",
                 className: "btn-success",
                 callback: function() {
-                    accept_optimized_list(false, target_control);
+                    accept_validated_list(false, target_control);
                 }
             },
             primary: {
                 label: "Accept excludes Unrecognized",
                 className: "btn-primary",
                 callback: function() {
-                    accept_optimized_list(true, target_control);
+                    accept_validated_list(true, target_control);
                 }
             },
             main: {
@@ -68,12 +68,12 @@ function display_optimized_dialog(lines, target_control) {
 
 }
 
-function accept_optimized_list(exclude_unrecognized, target_control) {
+function accept_validated_list(exclude_unrecognized, target_control) {
     var result_list = [];
 
-    for (i = 0; i < optimized_list.length; i++) {
-        var entry = optimized_list[i].smu_entry;
-        var is = optimized_list[i].is;
+    for (i = 0; i < validated_list.length; i++) {
+        var entry = validated_list[i].smu_entry;
+        var is = validated_list[i].is;
 
         if (is.indexOf('Pre-requisite') >= 0) {
             result_list.push(entry);
