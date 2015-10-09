@@ -473,7 +473,7 @@ class SoftwareProfileForm(Form):
 
 
 class ConformanceReportDialogForm(Form):
-    conformance_reports = SelectField('Conformance Reports', coerce=int, choices=[(-1, '')])
+    conformance_reports = SelectField('Previously Run Reports', coerce=int, choices=[(-1, '')])
     conformance_report_dialog_software_profile = SelectField('Software Profile', coerce=str, choices=[('', '')])
     match_criteria = RadioField('Match Criteria',
                                 choices=[('inactive', 'Packages that have not been activated'),
