@@ -12,8 +12,8 @@ Caller may provide the following WTForms elements with the following IDs
 {% macro select_region_hosts(region, role, software) %}
 
 {{ edit_field(region, field_width="col-sm-5", class="form-control") }}
-{{ edit_field(role, field_width="col-sm-5", class="form-control") }}
-{{ edit_field(software, field_width="col-sm-5", class="form-control") }}
+{{ edit_field(role, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+{{ edit_field(software, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
       
 <div class="col-sm-12">
     <div class="form-group row">

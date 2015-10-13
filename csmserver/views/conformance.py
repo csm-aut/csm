@@ -1,3 +1,27 @@
+# =============================================================================
+# Copyright (c)  2015, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from flask import Blueprint
 from flask import render_template, jsonify, abort, send_file
 from flask.ext.login import login_required, current_user
@@ -24,6 +48,7 @@ from common import fill_servers
 from common import fill_regions
 from common import get_server_list
 from common import get_host
+from common import can_create_user
 
 from database import DBSession
 
@@ -45,6 +70,7 @@ conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 
 
 @conformance.route('/')
+@login_required
 def home():
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
     export_conformance_report_form = ExportConformanceReportForm(request.form)
@@ -61,6 +87,7 @@ def home():
 def software_profile_create():
     # if not can_create_user(current_user):
     #    abort(401)
+
     db_session = DBSession()
 
     form = SoftwareProfileForm(request.form)
@@ -479,8 +506,8 @@ class ConformanceReportDialogForm(Form):
                                 choices=[('inactive', 'Packages that have not been activated'),
                                          ('active', 'Packages that are currently in active state')], default='active')
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
-    role = SelectField('Role', coerce=str, choices=[('Any', 'Any')])
-    software = SelectField('Software Version', coerce=str, choices=[('Any', 'Any')])
+    role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
+    software = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
 
 
 class ExportConformanceReportForm(Form):

@@ -118,8 +118,8 @@ class HostScheduleInstallForm(ServerDialogForm):
     
 class ScheduleInstallForm(HostScheduleInstallForm):
     region = SelectField('Region', coerce=int, choices = [(-1, '')]) 
-    role = SelectField('Role', coerce=str, choices = [('Any', 'Any')]) 
-    software = SelectField('Software Version', coerce=str, choices = [('Any', 'Any')]) 
+    role = SelectField('Role', coerce=str, choices = [('ALL', 'ALL')])
+    software = SelectField('Software Version', coerce=str, choices = [('ALL', 'ALL')])
     
 class ServerForm(Form):
     hostname = StringField('Server Repository Name', [required()])

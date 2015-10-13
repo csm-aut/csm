@@ -3,7 +3,7 @@
     
     <label class="{{ label_field_width }} control-label" id="label_{{ field.id }}" for="{{ field.id }}">{{ field.label.text }}</label>
 
-    <div class={{ field_width }}>
+    <div class="{{ field_width }}">
       {{ field(**kwargs) }}
     </div>
     
