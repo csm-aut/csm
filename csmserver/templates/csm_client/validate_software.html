@@ -19,6 +19,10 @@
         spinner.hide();
 
         $('#validate-software').on("click", function() {
+            if ($('#software_packages').val().length == 0) {
+                bootbox.alert("No software packages was specified.");
+                return;
+            }
             validate_software($('#software_packages'), $('#validate_results'), spinner);
         });
 
@@ -122,21 +126,23 @@
                 <hr>
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        Software Package List
-                        <span class="pull-right">
+                        &nbsp;
+                        <span class="pull-left">
                             <a id="browse-server-button" href="javascript://">
-                                <img src="/static/browse_server.png">&nbsp;Server Repository&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                <img title="Browse from a server repository" src="/static/browse_server.png">&nbsp;Server Repository&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                             </a>
                             <a id="browse-cisco-button" href="javascript://">
-                                <img src="/static/internet.png">&nbsp;CCO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                <img title="Browse from CCO" src="/static/internet.png">&nbsp;CCO
                             </a>
+                        </span>
+                        <span class="pull-right">
                             <a id="validate-software" href="javascript://">
-                                <img title="Click to Validate" src="{{ url_for('static', filename='right_arrow.png') }}">
+                                <img title="Click to validate software" src="{{ url_for('static', filename='wizard.png') }}">Validate
                             </a>
                         </span>
                     </div>
                     <div class="panel-body">
-                        Paste the software package names below and click the green arrow to validate.
+                        Paste software packages (SMUs/SPs) or select from above sources.
                         <textarea spellcheck="false" class="form-control" rows="18" id="software_packages" name="software_packages"></textarea>
                     </div>
                 </div>
