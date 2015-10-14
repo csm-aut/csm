@@ -274,6 +274,7 @@ class Telnet(Protocol):
                  AUTH_FAILED, pexpect.TIMEOUT, pexpect.EOF],
                 timeout=timeout, searchwindowsize=80
             )
+
             self._dbg(10, "{}: EVENT={}, STATE={}, TRANSITION={}".format(
                 self.hostname, event, state, transition
             ))
@@ -317,6 +318,7 @@ class Telnet(Protocol):
                 if state in [0, 1, 2]:
 
                     index = 2
+                    # ignoring duplicate username requests
                     while index == 2:
 
                         index = self.ctrl.expect(
@@ -342,9 +344,10 @@ class Telnet(Protocol):
 
 
             if event == 4:  #SET_PASSWORD
-                if state in [0, 1]:  # if waiting for pass send pass
+                if state in [0, 1, 2]:  # if waiting for pass send pass
 
                     index = 2
+                    # ignoring duplicate password requests
                     while index == 2:
 
                         index = self.ctrl.expect(
@@ -362,7 +365,8 @@ class Telnet(Protocol):
                         print "setting password  = " + password
 
                         self.ctrl.sendline(password)
-                        state += 1
+                        if state < 2:
+                            state += 1
                         timeout = 10
 
                         continue
@@ -504,7 +508,6 @@ class Telnet(Protocol):
 
                 self._dbg(30, "{}: Connection timed out".format(self.hostname))
                 self.disconnect()
-                print("Raising the Timeout connection error")
                 raise ConnectionError("Timeout")
 
 
@@ -536,6 +539,5 @@ class Telnet(Protocol):
 
 
     def disconnect(self):
-        print("self disconnecting from telnet...sending ] and quit...")
         self.ctrl.sendcontrol(']')
         self.ctrl.sendline('quit')

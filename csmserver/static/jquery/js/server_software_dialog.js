@@ -135,5 +135,12 @@ function server_software_populate_file_list(element, server_directory_selector, 
         }
     }
     server_software_selector.initialize(available_software, []);
+
+        // In edit mode.
+    if ($('#hidden_edit') != null && $('#hidden_edit').val() == 'True' && $('#hidden_software_packages') != null) {
+        var previously_selected_packages = $('#hidden_software_packages').val().split(',');
+        console.log("previously_selected_packages = " + String(previously_selected_packages));
+        server_software_selector.select_exact_match(previously_selected_packages);
+    }
 }
  

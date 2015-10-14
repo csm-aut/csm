@@ -44,9 +44,15 @@ NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 exr_migrate = Blueprint('exr_migrate', __name__, url_prefix='/exr_migrate')
 
 @exr_migrate.route('/schedule_migrate', methods=['GET', 'POST'])
+@login_required
 def schedule_migrate():
+
+    if current_user.privilege == UserPrivilege.VIEWER:
+        return render_template('user/not_authorized.html', user=current_user)
+
     if not can_install(current_user):
-        abort(401)
+        render_template('user/not_authorized.html', user=current_user)
+
     db_session = DBSession()
 
     hosts = get_host_list(db_session)

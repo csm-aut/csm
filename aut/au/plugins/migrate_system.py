@@ -174,7 +174,7 @@ class MigrateSystemToExrPlugin(IPlugin):
         success = False
         cmd = "show sdr"
         print "Waiting for all nodes to come up"
-        time.sleep(100)
+        time.sleep(60)
         while 1:
             # Wait till all nodes are in XR run state
             time_waited += poll_time

@@ -45,15 +45,13 @@ from ..exceptions import \
 
 _PROMPT_IOSXR = re.compile('\w+/\w+/\w+/\w+:.+#')
 _PROMPT_SHELL = re.compile('\$\s*|>\s*')
-_PROMPT_KSH = re.compile('#')
-_PROMPT_SYSADMIN = re.compile('sysadmin-vm:.+#')
 
 _PROMPT_XML = 'XML> '
 _INVALID_INPUT = "Invalid input detected"
 _INCOMPLETE_COMMAND = "Incomplete command."
 _CONNECTION_CLOSED = "Connection closed"
 
-_PROMPT_IOSXR_RE = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
+_PROMPT_IOSXR_RE = re.compile('(sysadmin-vm:.*?|\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
 _DEVICE_PROMPTS = {
     'Shell': _PROMPT_SHELL,
@@ -380,7 +378,7 @@ class Connection(object):
                         self.hostname,
                         "Waiting for XR prompt"))
         index = self.ctrl.expect(
-                [_PROMPT_IOSXR_RE, _PROMPT_SYSADMIN, _INVALID_INPUT, _INCOMPLETE_COMMAND,
+                [_PROMPT_IOSXR_RE, _INVALID_INPUT, _INCOMPLETE_COMMAND,
                  pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF],
                 timeout=timeout
             )
@@ -393,29 +391,24 @@ class Connection(object):
                                  self.ctrl.after)))
             return
 
-        if index == 1:
-            _logger.debug(_c(self.hostname,
-                             "Received sysadmin Prompt: {}".format(
-                                 self.ctrl.after)))
-            return
 
-        if index == 2:
+        if index == 1:
             _logger.warning(_c(self.hostname, "Invalid input detected"))
             raise CommandSyntaxError(host=self.hostname,
                                      message="Invalid input detected")
 
-        if index == 3:
+        if index == 2:
             _logger.warning(_c(self.hostname, "Incomplete command"))
             raise CommandSyntaxError(host=self.hostname,
                                      message="Incomplete command")
 
-        if index == 4:
+        if index == 3:
             _logger.warning(
                 _c(self.hostname, "Timeout waiting for prompt"))
             raise CommandTimeoutError(host=self.hostname,
                                      message="Timeout waiting for prompt")
 
-        if index in [5, 6]:
+        if index in [4, 5]:
             raise ConnectionError(
                 "Unexpected device disconnect", self.hostname)
 

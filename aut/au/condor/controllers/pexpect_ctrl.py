@@ -107,10 +107,7 @@ class Controller(object):
                             connected = protocol.connect()
                         else:
                             connected = protocol.connect_with_jump_host()
-                    except Exception as inst:
-                        print("Here is the error occurred in connected = protocol.connect()")
-                        print(type(inst))
-                        print(inst)
+                    except Exception:
                         self._dbg(
                             40,
                             "Error during connecting to target device")
@@ -156,7 +153,6 @@ class Controller(object):
             index = 0
             hop = 0
             while index != 1 and hop < 10:
-                print("sending exit")
                 self.sendline('exit')
                 index = self.expect(
                     [pexpect.TIMEOUT, pexpect.EOF, "con.*is now available", "Need to configure root-system username"],
@@ -167,14 +163,12 @@ class Controller(object):
                     break
 
                 if index == 2:  # console connected through TS
-                    print("console connection detected")
                     self._dbg(10, "Console connection detected")
                     self.sendline('\x03')
                     self.sendcontrol(']')
                     self.sendline('quit')
 
                 if index == 3:  # username and password reconfiguration prompt coming up
-                    print("username and password reconfiguration prompt detected")
                     self.sendline('\x03')
                     self.sendcontrol(']')
                     self.sendline('quit')

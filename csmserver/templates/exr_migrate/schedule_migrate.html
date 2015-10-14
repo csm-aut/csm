@@ -2,6 +2,7 @@
 {% from 'host/common.html' import edit_field %}
 {% from 'host/common.html' import log_icon %}
 {% from 'host/common.html' import trace_icon %}
+ {% from 'share/select_region_hosts.html' import select_region_hosts %}
 
 {% macro schedule_migrate_gui() %}
     <div class="form-group ">
@@ -81,6 +82,10 @@
     <script src="/static/jquery/js/smu_info_dialog.js"></script>
     <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
 
+    <script src="/static/jquery/js/select_region_hosts.js"></script>
+    <script src="/static/jquery/js/auto_select_migration_software.js"></script>
+    <script src="/static/jquery/js/server_software_dialog.js"></script>
+
     <style>
         .modal-dialog {
             width: 850px;
@@ -95,83 +100,12 @@
     <script type="text/javascript">
 
 
-        var host_selector;
-
-        var server_software_selector;
-
-        var browse_spinner;
-
-        function retrieve_file_list(server_id, server_directory_selector, server_directory) {
-
-            server_directory_selector.html('');
-            server_directory_selector.append('<option value="' + server_directory + '">' + server_directory + '</option>');
-
-            console.log("browse spinner show");
-            browse_spinner.show();
-
-
-            $.ajax({
-                url: "/api/get_server_file_dict/" + server_id,
-                dataType: 'json',
-                data: {
-                    server_directory: server_directory
-                },
-                success: function (response) {
-                    if (response.status == 'Failed') {
-                        bootbox.alert("Either the server repository is not reachable or server directory does not exist.");
-                    } else {
-                        $.each(response, function (index, element) {
-                            populate_file_list(element, server_directory_selector, server_directory);
-                        });
-                    }
-
-                    browse_spinner.hide();
-                },
-                error: function (XMLHttpRequest, textStatus, errorThrown) {
-                    bootbox.alert("Unable to list files. Server repository may not be visible by CSM Server.");
-                    browse_spinner.hide();
-                }
-            });
-        }
-
-        function populate_file_list(element, server_directory_selector, server_directory) {
-
-
-            var available_software = [];
-            var selected_software = [];
-
-            for (i = 0; i < element.length; i++) {
-                var filename = element[i].filename;
-                var is_directory = element[i].is_directory;
-
-                if (is_directory == true) {
-                    server_directory_selector.append('<option value="' + filename + '">' + filename + '</option>');
-                } else {
-                    available_software.push({
-                        'id': filename,
-                        'name': filename
-                    });
-                }
-            }
-            server_software_selector.initialize(available_software, selected_software);
-
-            // In edit mode.
-            if ($('#hidden_edit').val() == 'True') {
-                var previously_selected_packages = $('#hidden_software_packages').val().split(',');
-                console.log("previously_selected_packages = " + String(previously_selected_packages));
-                server_software_selector.select_exact_match(previously_selected_packages);
-            }
-        }
-
         $(function () {
 
-            host_selector = $('#host-selector').DualListBox();
             var current_filter = "";
 
             var submit_spinner = $('#submit-spinner');
-            browse_spinner = $('.browse-spinner')
 
-            browse_spinner.hide();
             submit_spinner.hide();
 
             var PRE_MIGRATE = "{{ install_action.premigrate }}";
@@ -263,14 +197,11 @@
 
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                         add_new_tab("pre-migrate", "Pre-Migrate")
-
-
                     }
 
                     if (has_one_of_these(install_actions, [POST_MIGRATE])) {
                         add_new_tab("post-migrate", "Post-Migrate")
                     }
-
 
                     // make the first tab active
                     //$('#tabs a:first').tab('show');
@@ -287,152 +218,6 @@
                 $('<li><a href="#' + new_tab_id + '" data-toggle="tab" >' + new_tab_name + '</a></li>').appendTo('#tabs');
 
             }
-
-
-            $('#role').on('change', function (e) {
-                populate_host_duallist($('#region option:selected').val(), $('#role option:selected').val(), $('#software option:selected').val());
-            });
-
-            $('#software').on('change', function (e) {
-                populate_host_duallist($('#region option:selected').val(), $('#role option:selected').val(), $('#software option:selected').val());
-            });
-
-            $('#region').on('change', function (e) {
-                var region_id = $('#region option:selected').val();
-                if (region_id == -1) {
-                    return;
-                }
-
-                populate_host_duallist(region_id, 'Any', 'Any');
-
-
-            });
-
-
-            function populate_host_duallist(region_id, selected_role, selected_software) {
-
-                $.ajax({
-                    url: "/api/get_hosts/region/" + region_id + "/role/" + selected_role + "/software/" + selected_software,
-                    dataType: 'json',
-                    success: function (data) {
-
-                        var roles = []
-                        var platform_software = []
-                        var available_hosts = []
-                        $.each(data, function (index, element) {
-                            for (i = 0; i < element.length; i++) {
-                                available_hosts.push({
-                                    'id': element[i].hostname,
-                                    'name': element[i].hostname
-                                });
-
-                                // host_roles may contain comma delimited roles.
-                                if (selected_role == 'Any') {
-                                    var host_roles = element[i].roles;
-                                    if (host_roles != null) {
-                                        host_roles = host_roles.split(',');
-                                        for (var j = 0; j < host_roles.length; j++) {
-                                            if ($.inArray(host_roles[j].trim(), roles) == -1) {
-                                                roles.push(host_roles[j].trim());
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (selected_software == 'Any') {
-                                    if ($.inArray(element[i].platform_software, platform_software) == -1) {
-                                        platform_software.push(element[i].platform_software);
-                                    }
-                                }
-                            }
-                        });
-
-
-                        host_selector.initialize(available_hosts);
-
-
-                        // Populate the role selector with newly selected region.
-                        if (selected_role == 'Any') {
-                            $('#role').find('option').remove();
-                            $('#role').append('<option value="Any">Any</option>');
-
-                            for (var i = 0; i < roles.length; i++) {
-                                $('#role').append('<option value="' + roles[i] + '">' + roles[i] + '</option>');
-                            }
-                        }
-
-                        // Populate the software selector with newly selected region.
-                        if (selected_software == 'Any') {
-                            $('#software').find('option').remove();
-                            $('#software').append('<option value="Any">Any</option>');
-
-                            for (var i = 0; i < platform_software.length; i++) {
-                                $('#software').append('<option value="' + platform_software[i] + '">' + platform_software[i] + '</option>');
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Software selected from server repository
-            server_software_selector = $('#server-software-selector').DualListBox();
-
-            $('#server_dialog_server').on('change', function (e) {
-                var server_id = $('#server_dialog_server').val();
-                if (server_id == -1) {
-                    $('#server_dialog_server_directory').html('');
-                } else {
-                    retrieve_file_list(server_id, $('#server_dialog_server_directory'), '')
-                }
-            });
-
-            $('#server_dialog_server_directory').on('change', function (e) {
-                retrieve_file_list(
-                        $('#server_dialog_server').val(),
-                        $('#server_dialog_server_directory'),
-                        $('#server_dialog_server_directory').val());
-            });
-
-
-            function auto_select_migration_software(selector) {
-
-                if ($('#server_dialog_server').val() == -1) {
-                    bootbox.alert("Please select server repository.");
-                    return false
-                }
-
-                if (selector.get_unselected_items().length <= 0) {
-                    bootbox.alert("There is no available package to select from.");
-                    return false
-                }
-
-                required_packages = ["asr9k-full-x64.iso"];
-
-                selector.select_exact_match(required_packages);
-                var selected_package_list = selector.get_selected_items();
-
-
-                for (i = selected_package_list.length; i >= 0; i--) {
-
-                    var index = $.inArray(selected_package_list[i], required_packages);
-                    console.log("index = " + index);
-                    if (index > -1) {
-                        console.log("removing...");
-                        required_packages.splice(index, 1);
-                    }
-                }
-
-                if (required_packages.length > 0) {
-                    bootbox.alert("Auto Select cannot locate " + required_packages.toString() + ". Please select the equivalent of the file yourself. Please also select FPD SMU if the release version of current image is below 6.0.0.")
-                }
-
-            }
-
-            $('#server-dialog-auto-select-software').on('click', function (e) {
-                // Cancel default behavior
-                e.preventDefault();
-                auto_select_migration_software(server_software_selector);
-            });
 
             $('#on-submit').click(function (e) {
 
@@ -503,8 +288,8 @@
 
             function submit_form_on_successfully_download_config_conversion_tool() {
 
-                console.log("browse spinner show")
-                browse_spinner.show();
+                console.log("submit spinner show")
+                submit_spinner.show();
 
                 $.ajax({
                     url: "/exr_migrate/api/get_latest_config_migration_tool/",
@@ -523,11 +308,11 @@
 
 
                         }
-                        browse_spinner.hide();
+                        submit_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
                         bootbox.alert("Unable to get the latest NoX tool for migrating configurations from CCO to CSM. Error=" + errorThrown);
-                        browse_spinner.hide();
+                        submit_spinner.hide();
                     }
                 });
             }
@@ -542,7 +327,7 @@
                 $('#server_dialog_server_directory').val($('#hidden_server_directory').val());
 
                 if (has_one_of_these($("#install_action").val(), [PRE_MIGRATE])) {
-                    retrieve_file_list(
+                    server_software_retrieve_file_list(
                             $('#server_dialog_server').val(),
                             $('#server_dialog_server_directory'),
                             $('#server_dialog_server_directory').val());
@@ -563,36 +348,12 @@
                 $("#install_action").prop("disabled", false);
             }
 
-            // Move up one folder (i.e. parent folder)
-            $('#server-dialog-move-up').on('click', function (e) {
-                retrieve_file_list(
-                        $('#server_dialog_server').val(),
-                        $('#server_dialog_server_directory'),
-                        get_parent_folder($('#server_dialog_server_directory').val()));
-            });
-
-            $('#server-dialog-reset-server-directory').on('click', function (e) {
-                reset_server_directory(
-                        $('#server_dialog_server').val(),
-                        $('#server_dialog_server_directory'),
-                        $('#server_dialog_server_directory').val());
-            });
-
-            function reset_server_directory(server_id, server_directory_selector, server_directory) {
-                if (server_directory != '') {
-                    bootbox.confirm('Reset the server directory to use the server repository base directory?', function (result) {
-                        if (result) {
-                            retrieve_file_list(server_id, server_directory_selector, '')
-                        }
-                    });
-                }
-            }
 
         })
 
     </script>
 
-    <link href="/static/x-wizard-1.1/assets/css/gsdk-base.css" rel="stylesheet"/>
+    <link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet"/>
   <!--   plugins 	 -->
 
     <script src="/static/x-wizard-1.1/assets/js/jquery.bootstrap.wizard.js" type="text/javascript"></script>
@@ -668,15 +429,17 @@
             <div id="wizard-dialog" class="modal" role="dialog">
                 <div class="modal-dialog">
                     <div class="modal-content">
+
                             <div class="modal-body">
                                 <!--      Wizard container        -->
-
+                                <button type="button" class="close" data-dismiss="modal">x</button>
                                     <div class="card wizard-card csm-blue" id="wizard">
                                         <form method="post" class="form-horizontal">
                                         <div class="form-horizontal">
                                         <!--        You can switch "ct-wizard-orange"  with one of the next bright colors: "ct-wizard-blue", "ct-wizard-green", "ct-wizard-orange", "ct-wizard-red"             -->
 
                                         <div class="wizard-header">
+
                                             <h3>
                                                 eXR Migration<br>
                                             </h3>
@@ -687,7 +450,7 @@
                                         <div class="tab-content">
 
                                             <div class="tab-pane" id="select-host">
-                                              {% include("exr_migrate/select_host.html") %}
+                                                {{ select_region_hosts(form.region, form.role, form.software) }}
                                             </div>
 
                                             <div class="tab-pane" id="pre-migrate">
@@ -695,7 +458,7 @@
                                             </div>
 
                                             <div class="tab-pane" id="post-migrate">
-                                                <h4>On failure to load configuration files on eXR successfully,
+                                                <h4>On failure to load IOS-XR configuration on eXR successfully,
                                                     would you like CSM to:</h4>
 
                                                 <div class="btn-group">
@@ -721,7 +484,7 @@
                                             <div class="pull-right">
 
                                                 <input type='button' id="on-continue" class='btn btn-primary btn-next'
-                                                       name='next' value='Continue'/>
+                                                       name='next' value='Next'/>
 
                                                 <div class="form-actions">
                                                     <button id="on-submit" type="button"
@@ -739,8 +502,8 @@
                                             <div class="pull-left">
                                                 <input type='button' class='btn btn-default btn-previous'
                                                        name='previous' value='Previous'/>
-                                                <input type='button' class='btn btn-default btn-cancel' name='cancel'
-                                                       value='Cancel' data-dismiss="modal">
+                                                <!--input type='button' class='btn btn-default btn-cancel' name='cancel'
+                                                       value='Cancel' data-dismiss="modal"-->
                                             </div>
                                             <img id="submit-spinner"
                                                  src="{{ url_for('static', filename='spinner.gif') }}">

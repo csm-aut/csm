@@ -81,31 +81,40 @@ class PostMigratePlugin(IPlugin):
     TYPE = "POST_MIGRATE"
     VERSION = "0.0.1"
 
-    def _copy_file_from_eusb_to_harddisk(self, device, filename):
+    def _copy_file_from_eusb_to_harddisk(self, device, filename, optional=False):
         cmd = 'run'
-        success, output = device.execute_command(cmd)
+        device.execute_command(cmd, wait_for_string=']$')
 
-        cmd = 'cp /eusbb/' + filename + ' /harddisk:/' + filename
-        success, output = device.execute_command(cmd)
+        cmd = 'ls /eusbb/' + filename
+        success, output = device.execute_command(cmd, wait_for_string=']$')
 
         if "No such file" in output:
-            self.error(filename + " is missing in /eusbb/ on device after migration.")
+            if not optional:
+                self.error(filename + " is missing in /eusbb/ on device after migration.")
+            else:
+                device.execute_command('exit')
+                return False
+
+        cmd = 'cp /eusbb/' + filename + ' /harddisk:/' + filename
+        success, output = device.execute_command(cmd, wait_for_string=']$')
 
         cmd = 'exit'
         device.execute_command(cmd)
 
-    def _load_admin_config(self, device):
+        return True
+
+    def _load_admin_config(self, device, filename):
         cmd = 'config'
         device.execute_command(cmd)
 
-        cmd = 'load override admin.iox'
+        cmd = 'load replace ' + filename
         success, output = device.execute_command(cmd)
 
         if "failed" in output or "Error" in output:
             device.execute_command('end', timeout=60, wait_for_string='?')
             device.execute_command('no', timeout=60)
             device.execute_command('exit')
-            self.error("Aborted committing admin configuration. Please check session.log for errors.")
+            self.error("Aborted committing admin Calvados configuration. Please check session.log for errors.")
         else:
             success, output = device.execute_command('commit')
             if "failure" in output:
@@ -123,30 +132,51 @@ class PostMigratePlugin(IPlugin):
         cmd = 'load harddisk:/' + filename
         success, output = device.execute_command(cmd)
 
-        if "failed" in output or "error" in output:
+        if "error" in output or "failed" in output:
+            return self._handle_failed_commit(output, device, commit_with_best_effort, filename)
 
-            if "show configuration failed load [detail]" in output:
-                cmd = 'show configuration failed load detail'
-                try:
-                    success, output = device.execute_command(cmd)
-                except CommandSyntaxError as e:
-                    if not _INVALID_INPUT in e:
-                        self.error("Should not come to this point.")
+        cmd = 'commit'
+        success, output = device.execute_command(cmd)
+        if "Failed" in output:
+            return self._handle_failed_commit(output, device, commit_with_best_effort, filename)
 
-            if success and commit_with_best_effort == '-1':
-                device.execute_command('end', timeout=60, wait_for_string='?')
-                device.execute_command('no', timeout=60)
+        if "No configuration changes to commit" in output:
+            self.log("No configuration changes in /eusbb/" + filename + " were committed. Please check session.log.")
+        if "Abort" in output:
+            device.execute_command('end', timeout=60, wait_for_string='?')
+            device.execute_command('no', timeout=60)
+            self.error("Failure to commit configuration. Please check session.log for errors.")
+        device.execute_command('end')
+        return True
 
-                self.error("Errors when loading configuration. Please check session.log.")
+    def _handle_failed_commit(self, output, device, commit_with_best_effort, filename):
+        cmd = ''
+        if "show configuration failed load [detail]" in output:
+            cmd = 'show configuration failed load detail'
+        elif "show configuration failed [inheritance]" in output:
+            cmd = 'show configuration failed inheritance'
+        if cmd:
+            try:
+                device.execute_command(cmd)
+            except CommandSyntaxError as e:
+                if not _INVALID_INPUT in e:
+                    self.error("Should not come to this point.")
 
-            elif success and commit_with_best_effort == '1':
-                cmd = 'commit best-effort force'
-                success, output = device.execute_command(cmd)
-                self.log("Committed configurations with best-effort. Please check session.log for errors.")
-                if "No configuration changes to commit" in output:
-                    self.log("No configuration changes in /eusbb/" + filename + " were committed. Please check session.log for errors.")
-                device.execute_command('end')
-                return True
+        print "commit_with_best_effort = " + str(commit_with_best_effort)
+        if commit_with_best_effort == -1:
+            device.execute_command('end', timeout=60, wait_for_string='?')
+            device.execute_command('no', timeout=60)
+
+            self.error("Errors when loading configuration. Please check session.log.")
+
+        elif commit_with_best_effort == 1:
+            cmd = 'commit best-effort force'
+            success, output = device.execute_command(cmd)
+            self.log("Committed configurations with best-effort. Please check session.log for result.")
+            if "No configuration changes to commit" in output:
+                self.log("No configuration changes in /eusbb/" + filename + " were committed. Please check session.log for errors.")
+            device.execute_command('end')
+            return True
 
 
 
@@ -216,30 +246,37 @@ class PostMigratePlugin(IPlugin):
 
 
 
-
         self._post_status("Waiting for all nodes to come to FINAL Band.")
         if not self._wait_for_final_band(device):
             self.error("Some nodes did not come to FINAL Band. Please load the configuration files at your discretion.")
 
 
 
-        self._post_status("Applying the migrated admin configuration first.")
+        self._post_status("Loading the migrated Calvados configuration first.")
         cmd = 'admin'
         success, output = device.execute_command(cmd)
         if success:
-            self._copy_file_from_eusb_to_harddisk(device, "admin.iox")
-            self._load_admin_config(device)
+            self._copy_file_from_eusb_to_harddisk(device, "admin.cal")
+            self._load_admin_config(device, "admin.cal")
             cmd = 'exit'
             device.execute_command(cmd)
         else:
             self.error("Cannot enter admin mode on device. Please check session.log.")
 
-        if os.path.isfile(fileloc + os.sep + filename + "_breakout"):
-            self._post_status("Applying the breakout configuration to device.")
-            self._copy_file_from_eusb_to_harddisk(device, "breakout.cfg")
-            self._load_nonadmin_config(device, "breakout.cfg", best_effort_config)
 
 
-        self._post_status("Applying the configuration to device.")
-        self._copy_file_from_eusb_to_harddisk(device, "classic.cfg")
-        self._load_nonadmin_config(device, "classic.cfg", best_effort_config)
+        self._post_status("Loading the admin IOS-XR configuration on device.")
+        file_exists = self._copy_file_from_eusb_to_harddisk(device, "admin.iox", optional=True)
+        if file_exists:
+            self._load_nonadmin_config(device, "admin.iox", best_effort_config)
+
+        # if os.path.isfile(fileloc + os.sep + filename + "_breakout"):
+        #     self._post_status("Loading the breakout configuration on device.")
+        #     self._copy_file_from_eusb_to_harddisk(device, "breakout.cfg")
+        #     self._load_nonadmin_config(device, "breakout.cfg", best_effort_config)
+
+
+        self._post_status("Loading the IOS-XR configuration on device.")
+        file_exists = self._copy_file_from_eusb_to_harddisk(device, "xr.iox")
+        if file_exists:
+            self._load_nonadmin_config(device, "xr.iox", best_effort_config)

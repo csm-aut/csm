@@ -225,6 +225,25 @@ class PreMigratePlugin(IPlugin):
             self.error("The admin configuration file contains configurations that are unknown or unsupported to the NoX configuration conversion tool. Please look into " + UNSUPPORTED_CONFIG_LOG + " for configurations that are unprocessed by the conversion tool. The known or supported configurations are in " + SUPPORTED_CONFIG_LOG + ". If you still wish to migrate the system, all configurations have been backed up in both your server repository and locally in " + fileloc + ", however, you will need to schedule System Migrate separately and manually load the correct configurations on eXR after system migration.")
 
 
+    def _check_platform(self, device):
+
+        success, output = device.execute_command("admin")
+
+        if success:
+            success, output = device.execute_command("show install active")
+            if success:
+                match = re.search('asr9k-mini-px', output)
+
+                if not match:
+                    self.error('Device is not running asr9k-mini-px.vm image. Abort migration action.')
+            else:
+                self.error("Failed to detect active package on device. Please check session.log.")
+        else:
+            self.error("Failed to enter admin mode. Please check session.log.")
+
+        device.execute_command("exit")
+
+        return True
 
     def _check_release_version(self, device):
 
@@ -237,11 +256,10 @@ class PreMigratePlugin(IPlugin):
 
         release_version = match.group(1)
 
-
         if release_version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
-            self.error("The minimal release version required for migration is 5.3.3. Please upgrade to at lease R5.3.3 before migration.")
-        if release_version > MAXIMUM_RELEASE_VERSION_FOR_MIGRATION:
-            self.error("The device is already running eXR.")
+            self.error("The minimal release version required for migration is 5.3.3. Please upgrade to at lease R5.3.3 before scheduling migration.")
+
+
     def _ping_repo_check(self, device, repo_str):
 
         repo_ip = re.search('.*/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/.*', repo_str)
@@ -251,12 +269,12 @@ class PreMigratePlugin(IPlugin):
 
         success, output = device.execute_command("ping " + repo_ip.group(1))
         if "100 percent" not in output:
-            self.error("Cannot ping server repository " + repo_ip.group(1) + " on device. Please check session.log.")
+            self.error("Failed to ping server repository " + repo_ip.group(1) + " on device. Please check session.log.")
 
     def _resize_eusb(self, device, repository, packages):
 
         #self._copy_files_to_device(device, repository, ['resize_eusb'], ['disk0:/resize_eusb'], 100)
-        device.execute_command('run', wait_for_string='#')
+        device.execute_command('run'                  )
         cmd = 'ksh /pkg/bin/resize_eusb'
         success, output = device.execute_command(cmd, wait_for_string='#')
         device.execute_command('exit')
@@ -306,6 +324,7 @@ class PreMigratePlugin(IPlugin):
 
         if location_to_subtypes_need_upgrade:
 
+
             cmd = "show install active summary"
             success, active_packages = device.execute_command(cmd)
             print cmd, '\n', active_packages, "<-----------------", success
@@ -313,7 +332,7 @@ class PreMigratePlugin(IPlugin):
             match = re.search('fpd', active_packages)
 
             if not match:
-                self.error("Device needs FPD upgrade but no FPD pie is active on device. Please install FPD pie to try again or upgrade your FPDs to eXR capable FPDs.")
+                self.error("Device needs FPD upgrade but no FPD pie is active on device. Please install FPD pie to try again or manually upgrade your FPDs to eXR capable FPDs.")
 
 
             cmd = "show version"
@@ -458,18 +477,23 @@ class PreMigratePlugin(IPlugin):
         self._run_migration_on_config(device, fileloc, admin_config_name_in_csm, nox_to_use)
         #self._run_migration_on_config(device, fileloc, "system.tech", NOX_FOR_MAC)
 
+        self._post_status("Converting IOS-XR configuration file with configuration migration tool")
+        self._run_migration_on_config(device, fileloc, xr_config_name_in_csm, nox_to_use)
 
-        config_files = [xr_config_name_in_csm, "admin.iox"]
+        config_files = ["xr.iox", "admin.iox"]
 
         if not self._take_out_breakout_config(device, fileloc + os.sep + xr_config_name_in_csm, fileloc + os.sep + breakout_config_name_in_csm):
             config_files.append(breakout_config_name_in_csm)
 
+        if os.path.isfile(get_migration_directory() + "admin.cal"):
+            config_files.append("admin.cal")
 
         self._post_status("Uploading the migrated configuration files to server repository and device.")
 
         config_names_in_repo = [host_ip + "_" + config_name for config_name in config_files]
 
-        if self._upload_files_to_tftp(device, [fileloc + os.sep + config_name for config_name in config_files], repo_str, config_names_in_repo):
+        #if self._upload_files_to_tftp(device, [fileloc + os.sep + config_name for config_name in config_files], repo_str, config_names_in_repo):
+        if self._upload_files_to_tftp(device, [get_migration_directory() + config_name for config_name in config_files], repo_str, config_names_in_repo):
 
             self._copy_files_to_device(device, repo_str, config_names_in_repo, ["harddiskb:/" + config_name for config_name in config_files], TIMEOUT_FOR_COPY_CONFIG)
 
@@ -527,6 +551,7 @@ class PreMigratePlugin(IPlugin):
 
 
         self._post_status("Checking if migration requirements are met.")
+        self._check_platform(device)
         self._check_release_version(device)
         self._ping_repo_check(device, repo_str)
 
