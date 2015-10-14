@@ -274,7 +274,7 @@ class PreMigratePlugin(IPlugin):
     def _resize_eusb(self, device, repository, packages):
 
         #self._copy_files_to_device(device, repository, ['resize_eusb'], ['disk0:/resize_eusb'], 100)
-        device.execute_command('run'                  )
+        device.execute_command('run', wait_for_string='#')
         cmd = 'ksh /pkg/bin/resize_eusb'
         success, output = device.execute_command(cmd, wait_for_string='#')
         device.execute_command('exit')
