@@ -23,12 +23,11 @@
 
 <script>
     $(function() {
-     
         var spinner = $('#spinner');
-        spinner.hide(); 
+        spinner.hide();
 
         $('#form').submit(function() {
-
+            var current_form = this;
             var profile_name = $('#profile_name').val();
             var acceptable_string = get_acceptable_string(profile_name);
 
@@ -76,14 +75,14 @@
                     buttons: {
                         success: {
                             label: "Yes",
-                            className: "btn-success",
+                            className: "btn-primary",
                             callback: function() {
                                 $('#software_packages').val(String(new_software_packages).replace(/,/g, '\n'));
                             }
                         },
                         danger: {
                             label: "No",
-                            className: "btn-danger",
+                            className: "btn-default",
                             callback: function() {
                                 for (i = 0; i < new_software_packages.length; i++) {
                                     software_packages.push(new_software_packages[i]);
@@ -99,8 +98,12 @@
         }
 
         $('#validate-software').click(function(e) {
-            validate_software($('#software_packages'), $('#software_packages'), spinner);
+            validate_software_packages();
         });
+
+        function validate_software_packages() {
+            validate_software($('#software_packages'), $('#software_packages'), spinner);
+        }
         
         $('#browse-server-button').on('click', function(e) {                  
             display_server_software_dialog(-1, '', '');

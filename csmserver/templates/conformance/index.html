@@ -25,8 +25,14 @@
 <script charset="utf-8">
 
     $(function() {
-        
-        $('a[href="#conformance"]').tab('show');
+
+        var selected_tab = $.cookie('conformance-tab') == null ? '#conformance' : $.cookie('conformance-tab');
+        $('a[href=' + selected_tab + ']').tab('show');
+
+        $('#conformance-tab').on('shown.bs.tab', function () {
+            $.cookie('conformance-tab', $('.nav-tabs .active > a').attr('href'));
+        });
+
         var conformance_report_id = $.cookie('conformance-report-id');
 
         // Use delegate pattern for event

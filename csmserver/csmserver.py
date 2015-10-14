@@ -2437,46 +2437,35 @@ def api_get_servers_by_region(region_id):
 @app.route('/api/get_hosts/region/<int:region_id>/role/<role>/software/<software>')
 @login_required
 def api_get_hosts_by_region(region_id, role, software):
+    selected_roles = []
+    selected_software = []
+
+    if 'all' not in role.lower():
+        selected_roles = role.split(',')
+
+    if 'all' not in software.lower():
+        selected_software = software.split(',')
 
     rows = []
     db_session = DBSession()    
-    
-    if software.lower() == 'any':
-        hosts = db_session.query(Host).filter(Host.region_id == region_id). \
-            order_by(Host.hostname.asc())
-    else:
-        if software == 'Unknown':  
-            platform = None
-            software = None
-        else:
-            platform = software.split()[0]
-            software = software.split()[1]
-            
-        hosts = db_session.query(Host). \
-            filter(and_(Host.region_id == region_id, Host.software_platform == platform, Host.software_version == software)). \
-            order_by(Host.hostname.asc())
-        
-    if hosts is not None:
-        for host in hosts:
-            row = {}
-            row['hostname'] = host.hostname
-            row['roles'] = host.roles
-            
+
+    hosts = db_session.query(Host).filter(Host.region_id == region_id). \
+        order_by(Host.hostname.asc())
+
+    for host in hosts:
+        host_roles = [] if host.roles is None else host.roles.split(',')
+        if not selected_roles or any(role in host_roles for role in selected_roles):
             if host.software_platform is not None and host.software_version is not None:
-                row['platform_software'] = host.software_platform + ' ' + host.software_version
+                host_platform_software = host.software_platform + ' ' + host.software_version
             else:
-                row['platform_software'] = 'Unknown'
-            
-            if role.lower() == 'any':
+                host_platform_software = 'Unknown'
+
+            if not selected_software or host_platform_software in selected_software:
+                row = {'hostname': host.hostname,
+                       'roles': host.roles,
+                       'platform_software': host_platform_software}
+
                 rows.append(row)
-            else:
-                # If one of the host roles matches 'role', include it.
-                if host.roles is not None:
-                    roles = host.roles.split(',')
-                    for host_role in roles:
-                        if host_role == role:
-                            rows.append(row)
-                            break
     
     return jsonify(**{'data':rows})
 

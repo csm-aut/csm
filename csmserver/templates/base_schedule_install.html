@@ -494,14 +494,14 @@ $(function() {
                 buttons: {
                     success: {
                         label: "Yes",
-                        className: "btn-success",
+                        className: "btn-primary",
                         callback: function() {
                             $('#software_packages').val(String(new_software_packages).replace(/,/g, '\n'));
                         }
                     },
                     danger: {
                         label: "No",
-                        className: "btn-danger",
+                        className: "btn-default",
                         callback: function() {
                             for (i = 0; i < new_software_packages.length; i++) {
                                 software_packages.push(new_software_packages[i]);
