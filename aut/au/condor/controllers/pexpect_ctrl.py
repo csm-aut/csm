@@ -107,7 +107,7 @@ class Controller(object):
                             connected = protocol.connect()
                         else:
                             connected = protocol.connect_with_jump_host()
-                    except Exception:
+                    except:
                         self._dbg(
                             40,
                             "Error during connecting to target device")

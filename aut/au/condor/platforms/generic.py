@@ -382,7 +382,6 @@ class Connection(object):
                  pexpect.TIMEOUT, _CONNECTION_CLOSED, pexpect.EOF],
                 timeout=timeout
             )
-
         _logger.debug(_c(self.hostname, "INDEX={}".format(index)))
 
         if index == 0:
@@ -390,7 +389,6 @@ class Connection(object):
                              "Received XR Prompt: {}".format(
                                  self.ctrl.after)))
             return
-
 
         if index == 1:
             _logger.warning(_c(self.hostname, "Invalid input detected"))

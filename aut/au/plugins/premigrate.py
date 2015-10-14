@@ -49,7 +49,7 @@ from au.plugins.install_act import InstallActivatePlugin
 
 NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
 NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
-NOX_FOR_MAC = "nox"
+NOX_FOR_MAC = "nox-mac64"
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 MAXIMUM_RELEASE_VERSION_FOR_MIGRATION = "6.0.0"
 ACTIVE_PACKAGES_IN_CLASSIC = "active_packages_in_xr_snapshot.txt"
@@ -104,12 +104,11 @@ class PreMigratePlugin(IPlugin):
     def _copy_config_to_repo(self, device, repository, filename):
         """
         Back up the configuration of the device in user's selected repository
-        Max attempts: 2
         """
         cmd = 'copy running-config ' + repository + '/' + filename
-        timeout = 120
-        device.execute_command(cmd, timeout=timeout, wait_for_string='?')
-        device.execute_command('\r', timeout=timeout, wait_for_string='?')
+        timeout = 600
+        device.execute_command(cmd, timeout=60, wait_for_string='?')
+        device.execute_command('\r', timeout=60, wait_for_string='?')
         success, output = device.execute_command('\r', timeout=timeout)
         print cmd, '\n', output, "<-----------------", success
         if not re.search('OK', output):
@@ -480,20 +479,19 @@ class PreMigratePlugin(IPlugin):
         self._post_status("Converting IOS-XR configuration file with configuration migration tool")
         self._run_migration_on_config(device, fileloc, xr_config_name_in_csm, nox_to_use)
 
-        config_files = ["xr.iox", "admin.iox"]
+        config_files = ["xr.iox", "admin.cal"]
 
         if not self._take_out_breakout_config(device, fileloc + os.sep + xr_config_name_in_csm, fileloc + os.sep + breakout_config_name_in_csm):
             config_files.append(breakout_config_name_in_csm)
 
-        if os.path.isfile(get_migration_directory() + "admin.cal"):
-            config_files.append("admin.cal")
+        if os.path.isfile(fileloc + os.sep + "admin.iox"):
+            config_files.append("admin.iox")
 
         self._post_status("Uploading the migrated configuration files to server repository and device.")
 
         config_names_in_repo = [host_ip + "_" + config_name for config_name in config_files]
 
-        #if self._upload_files_to_tftp(device, [fileloc + os.sep + config_name for config_name in config_files], repo_str, config_names_in_repo):
-        if self._upload_files_to_tftp(device, [get_migration_directory() + config_name for config_name in config_files], repo_str, config_names_in_repo):
+        if self._upload_files_to_tftp(device, [fileloc + os.sep + config_name for config_name in config_files], repo_str, config_names_in_repo):
 
             self._copy_files_to_device(device, repo_str, config_names_in_repo, ["harddiskb:/" + config_name for config_name in config_files], TIMEOUT_FOR_COPY_CONFIG)
 
@@ -549,7 +547,7 @@ class PreMigratePlugin(IPlugin):
         except PluginError:
             raise PluginError("Not all nodes are in valid IOS-XR final states. Pre-Migrate fails. Please check session.log to trouble-shoot.")
 
-
+        """
         self._post_status("Checking if migration requirements are met.")
         self._check_platform(device)
         self._check_release_version(device)
@@ -557,6 +555,7 @@ class PreMigratePlugin(IPlugin):
 
         self._post_status("Resizing eUSB partition.")
         self._resize_eusb(device, repo_str, packages)
+        """
 
         nox_to_use = get_migration_directory() + self._find_nox_to_use()
 
@@ -566,13 +565,14 @@ class PreMigratePlugin(IPlugin):
             self.error("The configuration conversion tool " + nox_to_use + " is missing. CSM should have downloaded it when this migration action was scheduled.")
         self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use)
 
-
+        """
         self._post_status("Copying the eXR ISO image from server repository to device.")
         self._copy_iso_to_device(device, packages, repo_str)
 
 
         self._post_status("Checking FPD version...")
         self._ensure_updated_fpd(device, repo_str, packages)
+        """
 
         return True
 
