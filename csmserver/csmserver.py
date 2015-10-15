@@ -47,7 +47,6 @@ from forms import HostScheduleInstallForm
 from forms import AdminConsoleForm
 from forms import SMTPForm
 from forms import PreferencesForm
-from forms import HostImportForm
 from forms import ServerDialogForm
 from forms import BrowseServerDialogForm
 
@@ -130,6 +129,7 @@ from utils import get_tarfile_file_list
 from utils import comma_delimited_str_to_array
 from utils import get_base_url 
 from utils import is_ldap_supported
+from utils import remove_extra_spaces
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -148,6 +148,7 @@ from restful import restful_api
 
 from views.exr_migrate import exr_migrate
 from views.conformance import conformance
+from views.host_import import host_import
 
 import os
 import io
@@ -158,7 +159,6 @@ import filters
 import collections
 import shutil
 import re
-import csv
 import initialize
 
 app = Flask(__name__)
@@ -167,6 +167,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 app.register_blueprint(restful_api)
 app.register_blueprint(exr_migrate)
 app.register_blueprint(conformance)
+app.register_blueprint(host_import)
 
 #hook up the filters
 filters.init(app)
@@ -578,119 +579,6 @@ def host_list():
             
     return render_template('host/index.html', hosts=hosts)
 
-@app.route('/hosts/import/', methods=['GET','POST'])
-@login_required
-def import_hosts(): 
-    if not can_create(current_user):
-        abort(401)
-        
-    form = HostImportForm(request.form)
-    fill_regions(form.region.choices)
-    
-    if request.method == 'POST' and form.validate():
-        return redirect(url_for('home'))
-    
-    return render_template('host/import.html', form=form) 
-
-@app.route('/api/import_hosts', methods=['POST'])
-@login_required
-def api_import_hosts(): 
-    db_session = DBSession()
-   
-    expected_header = 'hostname,ip,username,password,connection,port'.split(',')
-    platform = data_list = request.form['platform']
-    region_id = data_list = request.form['region']
-    data_list = request.form['data_list']
-    
-    region = get_region_by_id(db_session, region_id)
-    if region is None:
-        return jsonify({'status':'Region is no longer exists in the database.'}) 
-    
-    header = None
-    error = None
-    im_hosts = []
-    row_number = 0
-    
-    reader = csv.reader(data_list.split('\n'), delimiter=',')  
-    for row in reader:
-        row_number += 1
-        
-        if row_number == 1:
-            # Check if header is correct
-            header = row
-            if 'hostname' not in header:
-                error = '"hostname" is missing in the header.'
-                break
-            
-            if 'ip' not in header:
-                error = '"ip" is missing in the header.'
-                break
-            
-            if 'connection' not in header:
-                error = '"connection" is missing in the header.'
-                break
-                
-            for header_field in header:                
-                if header_field not in expected_header:
-                    error = header_field + ' is not a correct header field.'
-                    break
-        else:
-            if len(row) > 0:
-                if (len(row) != len(header)):
-                    error = '"' + ','.join(row) + '" has wrong number of data fields.'
-                    break
-                
-                im_host = Host()
-                im_host.platform = platform
-                im_host.region_id = region_id
-                im_host.created_by = current_user.username
-                im_host.inventory_job.append(InventoryJob())
-                im_host.connection_param.append(ConnectionParam())
-                
-                im_host.connection_param[0].username = ''
-                im_host.connection_param[0].password = ''
-                
-                for column in range(len(header)):
-                    
-                    header_field = header[column]
-                    data_field = row[column]
-                    
-                    if header_field == 'hostname':
-                        # Check if the hostname exists already
-                        if get_host(db_session, data_field) is not None:
-                            error = 'hostname "' + data_field + '" already exists in the database.'
-                            break
-                        
-                        if data_field in im_hosts:
-                            error = 'hostname "' + data_field + '" already exists in the import data.'
-                            break
-                        
-                        im_hosts.append(data_field)
-                        im_host.hostname = data_field
-                    elif header_field == 'ip':
-                        im_host.connection_param[0].host_or_ip = data_field
-                    elif header_field == 'username':
-                        im_host.connection_param[0].username = data_field
-                    elif header_field == 'password':
-                        im_host.connection_param[0].password = data_field
-                    elif header_field == 'connection':
-                        if data_field != ConnectionType.TELNET and data_field != ConnectionType.SSH:
-                            error = '"' + ','.join(row) + '" has a wrong connection type (should be "telnet" or "ssh").'
-                            break
-                        im_host.connection_param[0].connection_type = data_field
-                    elif header_field == 'port':
-                        im_host.connection_param[0].port_number = data_field
-                        
-        
-                # Add the import host
-                db_session.add(im_host)
-     
-    if error is not None:
-        return jsonify({'status':error})
-    else:
-        db_session.commit()
-        return jsonify({'status':'OK'})
-
 @app.route('/hosts/create/', methods=['GET', 'POST'])
 @login_required
 def host_create():    
@@ -736,15 +624,6 @@ def host_create():
         return redirect(url_for('home') ) 
 
     return render_template('host/edit.html', form=form)
-
-"""
-Given a comma delimited string and remove extra spaces
-Example: 'x   x  ,   y,  z' becomes 'x x,y,z'
-"""
-def remove_extra_spaces(str):
-    if str is not None:
-        return ','.join([re.sub(r'\s+', ' ', x).strip() for x in str.split(',')])
-    return str
     
 @app.route('/hosts/<hostname>/edit/', methods=['GET', 'POST'])
 @login_required
@@ -3101,11 +2980,13 @@ def api_get_missing_files_on_server(server_id):
     if is_reachable:
         for smu_name, cco_filename in download_info_dict.items():
             if not is_smu_on_server_repository(server_file_dict, smu_name):
+                smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
+                description = '' if smu_info is None else smu_info.description
                 # If selected SMU on CCO
                 if cco_filename is not None:             
-                    rows.append({'smu_entry':smu_name, 'cco_filename': cco_filename, 'is_downloadable':True})
+                    rows.append({'smu_entry':smu_name, 'description': description, 'cco_filename': cco_filename, 'is_downloadable':True})
                 else:
-                    rows.append({'smu_entry':smu_name, 'is_downloadable':False})
+                    rows.append({'smu_entry':smu_name, 'description': description, 'is_downloadable':False})
     else:
         return jsonify({'status':'Failed'}) 
     
@@ -3141,20 +3022,26 @@ SMU entries returned also have the file extension appended.
 """
 @app.route('/api/get_missing_prerequisite_list')
 @login_required
-def api_get_missing_prerequisite_list():    
+def api_get_missing_prerequisite_list():
     hostname = request.args.get('hostname')
     # The SMUs selected by the user to install
     smu_list = request.args.get('smu_list').split()
 
-    prerequisite_list = get_missing_prerequisite_list(smu_list)
-    host_packages = get_host_active_packages(hostname)
-    
     rows = []
-    for smu_name in prerequisite_list:
-        # If the missing pre-requisites have not been installed
-        # (i.e. not in the Active/Active-Committed), include them.
-        if not host_packages_contains(host_packages, smu_name):
-            rows.append({'smu_entry':smu_name})
+    platform, release = get_platform_and_release(smu_list)
+    if platform != UNKNOWN and release != UNKNOWN:
+        smu_loader = SMUInfoLoader(platform, release)
+
+        prerequisite_list = get_missing_prerequisite_list(smu_list)
+        host_packages = get_host_active_packages(hostname)
+
+        for smu_name in prerequisite_list:
+            # If the missing pre-requisites have not been installed
+            # (i.e. not in the Active/Active-Committed), include them.
+            if not host_packages_contains(host_packages, smu_name):
+                smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
+                description = '' if smu_info is None else smu_info.description
+                rows.append({'smu_entry':smu_name, 'description':description})
     
     return jsonify( **{'data':rows} )
 
@@ -3182,7 +3069,7 @@ def api_get_reload_list():
                     smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
                     if smu_info is not None:
                         if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
-                            rows.append({ 'entry' : package_name}) 
+                            rows.append({ 'entry' : package_name, 'description': smu_info.description})
  
     
     return jsonify( **{'data':rows} )

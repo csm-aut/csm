@@ -67,14 +67,7 @@ class HostForm(Form):
                    (ConnectionType.SSH, ConnectionType.SSH)])
     port_number = StringField('Port Number')
     jump_host = SelectField('Jump Server', coerce=int, choices = [(-1, 'None')])
-    
-class HostImportForm(Form):
-    platform = SelectField('Platform', coerce=str,
-        choices = [(Platform.ASR9K, Platform.ASR9K),  
-                   (Platform.CRS,Platform.CRS)])
-    region = SelectField('Region', coerce=int, choices = [(-1, '')])
-    data_list = TextAreaField('Comma Delimited Fields')   
-    
+
 class JumpHostForm(Form):
     hostname = StringField('Jump Server', [required(), Length(max=255)])
     host_or_ip = StringField('Name or IP', [required(), Length(max=255)])

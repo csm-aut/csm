@@ -68,7 +68,17 @@ def create_directory(directory):
             os.makedirs(directory) 
         except:
             print('ERROR: Unable to create directory' + directory)      
-        
+
+
+"""
+Given a comma delimited string and remove extra spaces
+Example: 'x   x  ,   y,  z' becomes 'x x,y,z'
+"""
+def remove_extra_spaces(str):
+    if str is not None:
+        return ','.join([re.sub(r'\s+', ' ', x).strip() for x in str.split(',')])
+    return str
+
 """
 Converts a datetime string to internal python datetime.  
 Returns None if the string is not a valid date time.

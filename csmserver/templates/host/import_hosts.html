@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import edit_field %}
+
+{% block extra_head %}
+
+<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+<script src="/static/jquery/js/common-utils.js"></script>
+
+<script>
+    $(function() {
+        $('#form').submit(function() {
+            var current_form = this;
+
+            if ($('#region option:selected').val() == -1) {
+                bootbox.alert("Region has not been specified.");
+                return false;
+            }
+
+            $.ajax({
+                url: "/host_import/api/import_hosts",
+                type: "POST",
+                dataType: 'json',
+                data: {
+                    platform: $('#platform').val(),
+                    region: $('#region').val(),
+                    data_list: trim_lines($('#import-data').val())
+                },
+                success: function(data) {
+                    if (data.status == 'OK') {
+                        bootbox.alert("Import has been successful!", function() {
+                            current_form.submit();
+                        });
+                    } else {
+                        bootbox.alert('Error: ' + data.status);
+                    }
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    alert(errorThrown);
+                }
+            });
+
+            return false;
+        });
+
+    });
+</script>
+
+{% endblock extra_head %}
+
+{% block main %}
+
+<div class="row">
+    <div class="well col-sm-offset-2 col-sm-8">
+        <form id="form" method="post" class="form-horizontal">
+            <legend>Import Hosts</legend>
+            {{ edit_field(form.platform, field_width="col-sm-4", class="form-control") }}
+            {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
+            <fieldset>
+                <div class="row">
+                    <a class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#import-instructions">Import Instructions <b class="caret"></b></a>
+                    <div class="collapse" id="import-instructions">
+                        <div class="form-group ">
+                            <div class="col-sm-offset-1 col-sm-10">
+                                <ul class="list-group">
+                                    <li class="list-group-item">The first data line must be a header line.</li>
+                                    <li class="list-group-item">Data fields must be comma delimited.</li>
+                                    <li class="list-group-item">If a data field contains multiple values (e.g. ip, port, and roles), the values must be separated by comma(s) and the data field must be double-quoted.</li>
+                                    <li class="list-group-item">If a data field contains comma(s), it must be double-quoted.</li>
+                                    <li class="list-group-item">If a data field does not contain any value, leave it blank.</li>
+                                    <li class="list-group-item">If no username and password is specified, the default host username and password defined on CSM Server will be used.</li>
+                                    <li class="list-group-item">Mandatory data fields are hostname, ip, and connection.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>Example</legend>
+                <div class="form-group">
+                    <div class="col-sm-offset-1 col-sm-10" style="font-family: monospace;font-size:medium">
+                        hostname,roles,ip,username,password,connection,port&nbsp;<- header line<br>
+                        myhost1,,172.27.22.34,johnsmith,password,telnet,&nbsp; <- leave blank for empty field<br>
+                        myhost2,PE,172.27.22.35,davidsmith,password,ssh,"2033,2034"
+                    </div>
+                </div>
+            </fieldset>
+            <div class="form-group ">
+                <div class="col-sm-offset-1 col-sm-10">
+                    <textarea class="form-control" id="import-data" spellcheck=false name="data_list" rows="10"></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <div class="btn col-sm-offset-5">
+                    <button type="submit" class="btn btn-primary">Import</button>
+                    <button type="button" onClick="location.href='{{ url_for('home') }}'" class="btn btn-default">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+{% endblock main %}

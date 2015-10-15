@@ -20,8 +20,9 @@ function validate_software(src_control, target_control, spinner) {
                     if (is == 'Pre-requisite') {
                         is = 'A Missing ' + is;
                     }
-                            
-                    lines += smu_entry + ' (' + is + ')<br>';
+
+                    var description = (element[i].description.length > 0) ? ' - ' + element[i].description : ''
+                    lines += smu_entry + ' (' + is + ')' + description + '<br>';
                 }
             });
 
@@ -53,7 +54,7 @@ function display_validated_dialog(lines, target_control) {
                 }
             },
             primary: {
-                label: "Accept excludes Unrecognized",
+                label: "Accept Excludes Unrecognized",
                 className: "btn-primary",
                 callback: function() {
                     accept_validated_list(true, target_control);

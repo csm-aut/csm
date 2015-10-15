@@ -224,23 +224,25 @@ def get_validated_list(smu_list):
         
         missing_required_prerequisite_set = get_unique_set_from_dict(missing_required_prerequisite_dict)
         for pre_requisite_smu in missing_required_prerequisite_set:
-            result_list.append({ 'smu_entry': pre_requisite_smu + '.' + file_suffix, 'is':'Pre-requisite' })
+            pre_requisite_smu_info = smu_loader.get_smu_info(pre_requisite_smu)
+            description = pre_requisite_smu_info.description if pre_requisite_smu_info is not None else ''
+            result_list.append({ 'smu_entry': pre_requisite_smu + '.' + file_suffix, 'is':'Pre-requisite', 'description':description })
                 
         excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
         
         for smu_info in smu_info_list:
             if smu_info.name not in excluded_supersede_dict:
-                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'Superseded' })
+                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'Superseded', 'description':smu_info.description })
             else:
-                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'SMU/SP' })
+                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'SMU/SP', 'description':smu_info.description })
     
     if len(package_list) > 0:
         for entry in package_list:
-            result_list.append({'smu_entry': entry, 'is':'Package' })
+            result_list.append({'smu_entry': entry, 'is':'Package', 'description':'' })
             
     if len(unrecognized_list) > 0:
         for entry in unrecognized_list:
-            result_list.append({'smu_entry': entry, 'is':'Unrecognized' })
+            result_list.append({'smu_entry': entry, 'is':'Unrecognized', 'description':'' })
  
             
     return result_list
