@@ -174,18 +174,18 @@ def make_url(connection_type, username, password, host_or_ip, port_number, defau
     no_password = False
     
     # Set the default username and password only if both username and password have not been specified
-    if (username is None or len(username) == 0) and (password is None or len(password) == 0):
+    if is_empty(username) and is_empty(password):
         if default_username is not None:
             username = default_username
         if default_password is not None:
             password = default_password
     
-    if username is not None and len(username) > 0:
+    if not is_empty(username):
         url += '{}'.format(username)
     else:
         no_username = True
         
-    if password is not None and len(password) > 0:
+    if not is_empty(password):
         url += ':{}'.format(password)
     else:
         no_password = True
@@ -196,7 +196,7 @@ def make_url(connection_type, username, password, host_or_ip, port_number, defau
         url += '@{}'.format(host_or_ip)
     
     # It is possible there may be multiple ports separated by comma
-    if port_number is not None and len(port_number) > 0:
+    if not is_empty(port_number):
         url += ':{}'.format(port_number) 
   
     return url
@@ -227,7 +227,11 @@ e.g. (localhost:50000)
 def get_base_url(url):
     url = url.replace('http://', '')
     return 'http://' + url[:url.find('/')] 
-    
+
+"""
+These conditions are considered empty
+   s = [], s = None, s = '', s = '    ', s = 'None'
+"""
 def is_empty(obj):
     if isinstance(obj, str):
         obj = obj.replace('None','').strip()
@@ -238,7 +242,7 @@ def is_empty(obj):
     return True
     
 def comma_delimited_str_to_array(comma_delimited_str):
-    if comma_delimited_str is None or len(comma_delimited_str) == 0:
+    if is_empty(comma_delimited_str):
         return []
     return comma_delimited_str.split(',')   
 
