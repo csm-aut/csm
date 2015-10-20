@@ -5,164 +5,164 @@ Caller may provide the following WTForms elements with the following IDs
     form.cisco_dialog_server  (id = cisco_dialog_server)
     form.cisco_dialog_server_directory (id = cisco_dialog_server_directory)
 -->
-
+{% from 'host/common.html' import alert_cco_lookup_disabled %}
 {% from 'host/common.html' import edit_field %}
 
-{% macro cisco_software_dialog(server, server_directory) %}
+{% macro cisco_software_dialog(enable_cco_lookup, server, server_directory) %}
 
 <div id="smu-info-dialog" class="modal" role="dialog">
-  <div class="modal-dialog">
-    <form method="post" class="form-horizontal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal">x</button>
-          <a href="javascript://">
-          <img id="move-back" src="/static/blue_left_arrow.png" title="Go Back">
-          <img id="move-forward" src="/static/blue_right_arrow.png" title="Go Forward">
-          </a>
-          <h4>
-            <center><span id="smu-name-title"></span></center>
-          </h4>
-        </div>
-        <div class="modal-body">
-          <div style="height:350px; overflow-y: scroll;">
-            <table class="table table-striped" id="smu-details-table">
-              <thead>
-                <tr>
-                  <th>Field Name</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-            </table>
-          </div>
-        </div>
-        <div class="modal-footer"> 	     
-        </div>
-      </div>
-    </form>
-  </div>
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <a href="javascript://">
+                    <img id="move-back" src="/static/blue_left_arrow.png" title="Go Back">
+                    <img id="move-forward" src="/static/blue_right_arrow.png" title="Go Forward">
+                    </a>
+                    <h4>
+                        <center><span id="smu-name-title"></span></center>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div style="height:350px; overflow-y: scroll;">
+                        <table class="table table-striped" id="smu-details-table">
+                            <thead>
+                                <tr>
+                                    <th>Field Name</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div id="cisco-software-dialog" class="modal" role="dialog">
-  <div class="modal-dialog">
-    <form method="post" class="form-horizontal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal">x</button>
-          <div class="form-group ">
+<div id="cisco-software-dialog" enable_cco_lookup="{{ enable_cco_lookup }}" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <div class="form-group ">
 
-            <span id="retrieval-elapsed-time"></span>
-            <div class="dropdown col-sm-4">
-              <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Browse CCO
-              <span class="caret"></span></button>
-              <ul id="dropdown-cisco-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
-            </div>
-            
-            <div class="col-sm-offset-4 col-sm-3">
-              <div class="input-group">
-                <span id="filter-icon" title="SMU/Service Pack Filter" class="input-group-addon glyphicon glyphicon-filter"></span>
-                <select class="form-control" id="filter-selector" name="filter-selector">
-                  <option value="Optimal">Optimal</option>
-                  <option value="All">All</option>
-                </select>
-              </div>
-            
-            </div>
-          </div>
- 
-          {% if server and server_directory %}
-          
-            {% set extra_field =    
-              '<span id="cisco-software-dialog-browse-spinner">
-                <img src="/static/spinner.gif">
-               </span>'
-            %}   
-            
-            {{ edit_field(server, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}  
-          
-            {% set extra_field =
-              '<a href="javascript://">
-              <img id="cisco-dialog-move-up" src="/static/up_arrow.png" title="Go to Parent Folder">
-              <img id="cisco-dialog-reset-server-directory" src="/static/remove.png" title="Reset Server Directory">
-              </a>' 
-            %}
-          
-            {{ edit_field(server_directory, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}   
-          
-          {% endif %}
-          
-        </div>
-        <div class="modal-body">
-    
-          <!-- upper section -->
-          <div class="row">
-            <div class="col-sm-12">
-              <ul class="nav nav-tabs" id="smu-list-tab">
-                <li>
-                  <a data-toggle="tab" href="#smu-tab">
-                  <span id="platform-and-release">SMUs &nbsp;</span>
-                  <span id="badge-smu-list" class="badge alert-success">0</span>
-                  </a>
-                </li>
-                <li>
-                  <a data-toggle="tab"  href="#sp-tab">
-                  Service Packs &nbsp;
-                  <span id="badge-sp-list" class="badge alert-success">0</span>
-                  </a>
-                </li>
-              </ul>
-              <div class="tab-content" style="margin-top:20px;">
-                <div id="smu-tab" class="tab-pane fade in active">
-                  <table class="display table" id="smu-datatable">
-                    <thead>
-                      <tr>
-                        <th><center><input type='checkbox' id='smu-check-all'></center></th>
-                        <th>Posted Date</th>
-                        <th>SMU ID</th>
-                        <th>DDTS</th>
-                        <th>Type</th>
-                        <th>Description</th>
-                        <th>Impact</th>
-                        <th>Functional Areas</th>
-                        <th>Status</th>
-                        <th>Package Bundles</th>
-                      </tr>
-                    </thead>
-                  </table>
+                        {% if not enable_cco_lookup %}
+                            {{ alert_cco_lookup_disabled() }}
+                        {% endif %}
+
+                        <div class="dropdown col-sm-4">
+                            <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Browse CCO
+                            <span class="caret"></span></button>
+                            <ul id="dropdown-cisco-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
+                        </div>
+                        <div class="col-sm-offset-4 col-sm-3">
+                            <div class="input-group">
+                                <span id="filter-icon" title="SMU/Service Pack Filter" class="input-group-addon glyphicon glyphicon-filter"></span>
+                                <select class="form-control" id="filter-selector" name="filter-selector">
+                                    <option value="Optimal">Optimal</option>
+                                    <option value="All">All</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {% if server and server_directory %}
+                        {% set extra_field =
+                            '<span id="cisco-software-dialog-browse-spinner">
+                             <img src="/static/spinner.gif">
+                             </span>'
+                        %}
+
+                        {{ edit_field(server, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}
+
+                        {% set extra_field =
+                            '<a href="javascript://">
+                            <img id="cisco-dialog-move-up" src="/static/up_arrow.png" title="Go to Parent Folder">
+                            <img id="cisco-dialog-reset-server-directory" src="/static/remove.png" title="Reset Server Directory">
+                            </a>'
+                        %}
+
+                        {{ edit_field(server_directory, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}
+                    {% endif %}
                 </div>
-                <div id="sp-tab" class="tab-pane fade in">
-                  <table class="display table" id="sp-datatable">
-                    <thead>
-                      <tr>
-                        <th><center><input type='checkbox' id='sp-check-all'></center></th>
-                        <th>Posted Date</th>
-                        <th>SMU ID</th>
-                        <th>DDTS</th>
-                        <th>Type</th>
-                        <th>Description</th>
-                        <th>Impact</th>
-                        <th>Functional Areas</th>
-                        <th>Status</th>
-                        <th>Package Bundles</th>
-                      </tr>
-                    </thead>
-                  </table>
+                <div class="modal-body">
+                    <!-- upper section -->
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <ul class="nav nav-tabs" id="smu-list-tab">
+                                <li>
+                                    <a data-toggle="tab" href="#smu-tab">
+                                    <span id="platform-and-release">SMUs &nbsp;</span>
+                                    <span id="badge-smu-list" class="badge alert-success">0</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a data-toggle="tab"  href="#sp-tab">
+                                    Service Packs &nbsp;
+                                    <span id="badge-sp-list" class="badge alert-success">0</span>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="tab-content" style="margin-top:20px;">
+                                <div id="smu-tab" class="tab-pane fade in active">
+                                    <table class="display table" id="smu-datatable">
+                                        <thead>
+                                            <tr>
+                                                <th>
+                                                    <center><input type='checkbox' id='smu-check-all'></center>
+                                                </th>
+                                                <th>Posted Date</th>
+                                                <th>SMU ID</th>
+                                                <th>DDTS</th>
+                                                <th>Type</th>
+                                                <th>Description</th>
+                                                <th>Impact</th>
+                                                <th>Functional Areas</th>
+                                                <th>Status</th>
+                                                <th>Package Bundles</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                                <div id="sp-tab" class="tab-pane fade in">
+                                    <table class="display table" id="sp-datatable">
+                                        <thead>
+                                            <tr>
+                                                <th>
+                                                    <center><input type='checkbox' id='sp-check-all'></center>
+                                                </th>
+                                                <th>Posted Date</th>
+                                                <th>SMU ID</th>
+                                                <th>DDTS</th>
+                                                <th>Type</th>
+                                                <th>Description</th>
+                                                <th>Impact</th>
+                                                <th>Functional Areas</th>
+                                                <th>Status</th>
+                                                <th>Package Bundles</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /upper section -->
                 </div>
-              </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-cisco-software-dialog-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-          <!-- /upper section -->
-        </div>
-        <div class="modal-footer">
-          <div class="form-actions">
-            <div class="btn col-sm-offset-4">   
-              <button id="on-cisco-software-dialog-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
-              <button class="btn" data-dismiss="modal">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </form>
-  </div>
+        </form>
+    </div>
 </div>
 {% endmacro %}

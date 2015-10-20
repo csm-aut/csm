@@ -32,7 +32,7 @@ import stat
 import datetime 
 import importlib
 import tarfile
-import traceback
+import re
 
 from constants import get_autlogs_directory
 from __builtin__ import True
@@ -240,11 +240,20 @@ def is_empty(obj):
         return False
 
     return True
-    
-def comma_delimited_str_to_array(comma_delimited_str):
+
+"""
+Strips all unwanted characters except a-z, A-Z, 0-9, and '(). -_'
+"""
+def get_acceptable_string(input_string):
+    temp = re.sub("[^a-z0-9()-_.\s]",'', input_string, flags=re.I)
+    return re.sub("\s+", " ", temp)
+
+
+def comma_delimited_str_to_list(comma_delimited_str):
     if is_empty(comma_delimited_str):
         return []
     return comma_delimited_str.split(',')   
+
 
 def is_ldap_supported():
     try:
@@ -252,14 +261,6 @@ def is_ldap_supported():
     except:
         return False
     return True
-    
 
-"""
-Only retain alphanumeric, space, and "-"
-"""
-def strip_unwanted_characters(str):
-    pattern = re.compile('([^\s\w-])+')
-    return " ".join(pattern.sub('', str).split())
-  
 if __name__ == '__main__':
-    pass
+    print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

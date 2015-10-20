@@ -14,7 +14,6 @@
 
 $(function() {
     $('#on-finish-submit').on('click', function(e) {
-
         $.ajax({
             url: "/host_import/api/import_hosts",
             type: "POST",
@@ -22,7 +21,7 @@ $(function() {
             data: {
                 platform: $('#platform').val(),
                 region: $('#region').val(),
-                data_list: trim_lines($('#data_list').val())
+                data_list: trim_lines($('#data_list').val()),
             },
             success: function(data) {
                 if (data.status == 'OK') {
@@ -129,15 +128,16 @@ $(function() {
                                 <div class="collapse" id="import-instructions">
                                     <div class="col-sm-12">
                                         <ul>
-                                            <li>Paste the import data onto the text area below.</li>
+                                            <li>Paste the import data onto the text window below.</li>
                                             <li>The first data line must be a header line.</li>
                                             <li>The data fields must be comma delimited.</li>
                                             <li>The following data fields roles, ip, and port may contain multiple values.</li>
                                             <li>If a data field contains multiple values, they must be separated by comma(s) and the data field must be double-quoted.</li>
                                             <li>If a data field does not contain any value, leave it blank.</li>
                                             <li>If no username and password is specified, the default host username and password defined on CSM Server will be used.</li>
-                                            <li>Allowed header fields are hostname, region, roles, ip, username, password, connection, and port.</li>
+                                            <li>Acceptable header fields are hostname, region, roles, ip, username, password, connection, and port.</li>
                                             <li>Mandatory header fields are hostname, ip, and connection (either 'telnet' or 'ssh').</li>
+                                            <li>Acceptable characters for hostname, region, and username are a-z, A-Z, 0-9, and (). -_</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -148,7 +148,7 @@ $(function() {
                                 myhost1,blg 20,,172.27.22.34,johnsmith,password,telnet,&nbsp; <- leave blank for an empty field<br>
                                 myhost2,blg 20,PE,172.27.22.35,davidsmith,password,ssh,"2033,2034"
                             </div>
-                            {{ edit_field(form.data_list, field_width="col-sm-12", spellcheck=false, rows="10", class="form-control") }}
+                            {{ edit_field(form.data_list, field_width="col-sm-12", spellcheck="false", rows="10", class="form-control") }}
                         </div>
                     </div>
                     <div class="wizard-footer">

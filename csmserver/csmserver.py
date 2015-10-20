@@ -126,7 +126,7 @@ from utils import make_url
 from utils import trim_last_slash
 from utils import is_empty
 from utils import get_tarfile_file_list
-from utils import comma_delimited_str_to_array
+from utils import comma_delimited_str_to_list
 from utils import get_base_url 
 from utils import is_ldap_supported
 from utils import remove_extra_spaces
@@ -2841,7 +2841,7 @@ def get_smu_or_sp_list(smu_info_list, file_suffix):
         row['package_name'] = smu_info.name + '.' + file_suffix 
         row['posted_date'] = smu_info.posted_date.split()[0]
         row['ddts'] = smu_info.ddts
-        row['ddts_url'] = '<a href="' + BUG_SEARCH_URL + smu_info.ddts + '" target="_blank">' + smu_info.ddts + '</a>'
+        row['ddts_url'] = BUG_SEARCH_URL + smu_info.ddts
         row['type'] = smu_info.type
         row['description'] = smu_info.description
         row['impact'] = smu_info.impact
@@ -2891,7 +2891,7 @@ def api_get_smu_details(smu_id):
 
 def get_smu_ids(db_session, smu_name_list):
     smu_ids = []
-    smu_names = comma_delimited_str_to_array(smu_name_list)
+    smu_names = comma_delimited_str_to_list(smu_name_list)
     for smu_name in smu_names:
         smu_info = db_session.query(SMUInfo).filter(SMUInfo.name == smu_name).first()
         if smu_info is not None:

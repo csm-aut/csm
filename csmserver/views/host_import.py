@@ -27,6 +27,7 @@ from models import Region
 from database import DBSession
 
 from utils import remove_extra_spaces
+from utils import get_acceptable_string
 
 import csv
 
@@ -41,7 +42,7 @@ HEADER_FIELD_PASSWORD = 'password'
 HEADER_FIELD_CONNECTION = 'connection'
 HEADER_FIELD_PORT = 'port'
 
-@host_import.route('/', methods=['GET', 'POST'])
+@host_import.route('/')
 @login_required
 def import_hosts():
     if not can_create(current_user):
@@ -49,9 +50,6 @@ def import_hosts():
 
     form = HostImportForm(request.form)
     fill_regions(form.region.choices)
-
-    if request.method == 'POST' and form.validate():
-        return redirect(url_for('home'))
 
     return render_template('host/import_hosts.html', form=form)
 
@@ -156,23 +154,26 @@ def api_import_hosts():
             data_field = data[column]
 
             if header_field == HEADER_FIELD_HOSTNAME:
-                db_host = get_host(db_session, data_field)
-                im_host.hostname = data_field
+                hostname = get_acceptable_string(data_field)
+                db_host = get_host(db_session, hostname)
+                im_host.hostname = hostname
             elif header_field == HEADER_FIELD_REGION:
-                if data_field in im_regions:
-                    im_host.region_id = im_regions[data_field]
+                region_name = get_acceptable_string(data_field)
+                if region_name in im_regions:
+                    im_host.region_id = im_regions[region_name]
                 else:
-                    region = get_region(db_session, data_field)
+                    region = get_region(db_session, region_name)
                     if region is not None:
                         im_host.region_id = region.id
                         # Saved for later lookup
-                        im_regions[data_field] = region.id
+                        im_regions[region_name] = region.id
             elif header_field == HEADER_FIELD_ROLES:
                 im_host.roles = remove_extra_spaces(data_field)
             elif header_field == HEADER_FIELD_IP:
                 im_host.connection_param[0].host_or_ip = remove_extra_spaces(data_field)
             elif header_field == HEADER_FIELD_USERNAME:
-                im_host.connection_param[0].username = data_field
+                username = get_acceptable_string(data_field)
+                im_host.connection_param[0].username = username
             elif header_field == HEADER_FIELD_PASSWORD:
                 im_host.connection_param[0].password = data_field
             elif header_field == HEADER_FIELD_CONNECTION:
@@ -184,9 +185,7 @@ def api_import_hosts():
         if db_host is not None:
             db_host.platform = im_host.platform
             db_host.created_by = im_host.created_by
-
-            if HEADER_FIELD_REGION in header_row:
-                db_host.region_id = im_host.region_id
+            db_host.region_id = im_host.region_id
 
             if HEADER_FIELD_ROLES in header_row:
                 db_host.roles = im_host.roles

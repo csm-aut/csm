@@ -29,20 +29,17 @@ function get_acceptable_string_message(field, old_value, new_value) {
 }
 
 /*
- * Trims all whitespaces from lines and returns them as separate line
+ * Trims all whitespaces from lines include blank lines and returns result as separate lines
  */
 function trim_lines(lines) {
+    if (lines == null) return lines;
+
     var result = '';
-    // Use a regex to split the String literal by all whitespace (i.e. spaces/newlines/tabs).
-    var temp = lines.split(/\s+/g);
+    temp = lines.split('\n');
     for (var i = 0; i < temp.length; i++) {
-        var line = temp[i]
+        line = temp[i].replace(/\s+/g,' ').trim();
         if (line.length > 0) {
-            if (i == temp.length - 1) {
-                result += line;
-            } else {
-                result += line + "\n";
-            }
+            result += (i == temp.length - 1) ? line : line + '\n';
         }
     }
     return result;

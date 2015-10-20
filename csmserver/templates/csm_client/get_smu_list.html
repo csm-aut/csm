@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
 {% from 'host/common.html' import alert_cco_lookup_disabled %}
-{% from 'host/common.html' import cco_lookup_last_retrieved %}
 
 {% block extra_head %}
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
@@ -10,11 +9,12 @@
   <script src="/static/jquery/js/browse_server_dialog.js"></script>
   <script>  
     $(function() {
-            
+
       var spinner = $('#spinner');    
       var browse_spinner = $('#browse-spinner');  
       browse_spinner.hide();
-      
+
+      var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}" == 'True' ? true : false;
       var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
       $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
       
@@ -81,12 +81,15 @@
             "targets": 3,
             "data" : 'id',
             "render": function ( data, type, row ) {
-              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>';
             }
           },
           {
             "targets": 4,
-            "data" : 'ddts_url'
+            "data" : 'ddts',
+            "render": function ( data, type, row ) {
+              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+            }
           },
           {
             "targets": 5,
@@ -170,12 +173,15 @@
             "targets": 3,
             "data" : 'id',
             "render": function ( data, type, row ) {
-              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>';
             }
           },
           {
             "targets": 4,
-            "data" : 'ddts_url'
+            "data" : 'ddts',
+            "render": function ( data, type, row ) {
+              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+            }
           },
           {
             "targets": 5,
@@ -228,8 +234,7 @@
       }
        
       function get_retrieval_elapsed_time() {
-        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
-        if (cco_lookup_enabled) {
+        if (!cco_lookup_enabled) {
           $.ajax({
             url: "{{ url_for('api_get_smu_meta_retrieval_elapsed_time', platform=platform, release=release) }}",
             dataType: 'json',
@@ -251,7 +256,23 @@
         sp_table.api().ajax.url("{{ url_for('api_get_sp_list', platform=platform, release=release) }}" + 
           "?filter=" + filter_option).load();
       }
-      
+
+      smu_table.on("click", ".show-ddts-details", function() {
+         open_ddts_url($(this).attr('ddts_url') );
+      });
+
+      sp_table.on("click", ".show-ddts-details", function() {
+         open_ddts_url($(this).attr('ddts_url') );
+      });
+
+      function open_ddts_url(url) {
+         if (cco_lookup_enabled) {
+            window.open(url,'_blank');
+         } else {
+             bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing Internet connectivity.");
+         }
+      }
+
       function toggle_filter_icon_color(filter_option) {
         if (filter_option == 'Optimal') {
           $('#filter-icon').addClass("DarkGreen");

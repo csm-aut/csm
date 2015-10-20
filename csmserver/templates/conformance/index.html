@@ -235,10 +235,10 @@
                     });
                     
                     if ($('#conformance_reports').val() > 0) {
-                        $('#display-software-profile-packages').show();
+                        $('#report-result-panel').show();
                         display_conformance_report($('#conformance_reports').val());
                     } else {
-                        $('#display-software-profile-packages').hide();
+                        $('#report-result-panel').hide();
                     }
                 }
             });
@@ -495,31 +495,35 @@
                             </button>
                         </div>
                     </div>
-                    <hr>
-                    <div class="row">
-                        <a id="display-software-profile-packages" class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#software-profile-packages">Software Profile <b class="caret"></b></a>
-                        <div class="collapse" id="software-profile-packages">
-                            <div id="software-profile-package-info">
+
+                    <div id="report-result-panel">
+                        <h4 style="color:Gray;">Results:</h4><hr style="margin-top: 0px;">
+
+                        <div class="row">
+                            <a id="display-software-profile-packages" class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#software-profile-packages">Software Profile <b class="caret"></b></a>
+                            <div class="collapse" id="software-profile-packages">
+                                <div id="software-profile-package-info">
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="row">
-                        <span id="conformance-report-info"></span>
-                    </div>
-  
-                    <div class="row">
-                        <table class="display table" id="conformance-report-table">
-                            <thead>
-                                <tr>
-                                    <th>Hostname</th>
-                                    <th>Software</th>
-                                    <th>Host Packages</th>
-                                    <th>Missing Packages</th>
-                                    <th>Conformed</th>
-                                </tr>
-                            </thead>
-                        </table>
+                        <div class="row">
+                            <span id="conformance-report-info"></span>
+                        </div>
+
+                        <div class="row">
+                            <table class="display table" id="conformance-report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hostname</th>
+                                        <th>Software</th>
+                                        <th>Host Packages</th>
+                                        <th>Missing Packages</th>
+                                        <th>Conformed</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
                     </div>
                     
                 </div>
