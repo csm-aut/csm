@@ -246,7 +246,7 @@ Strips all unwanted characters except a-z, A-Z, 0-9, and '(). -_'
 """
 def get_acceptable_string(input_string):
     temp = re.sub("[^a-z0-9()-_.\s]",'', input_string, flags=re.I)
-    return re.sub("\s+", " ", temp)
+    return re.sub("\s+", " ", temp).strip()
 
 
 def comma_delimited_str_to_list(comma_delimited_str):

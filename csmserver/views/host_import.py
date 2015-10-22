@@ -114,9 +114,9 @@ def api_import_hosts():
                         error.append('line %d has a wrong connection type (should either be "telnet" or "ssh").' % row)
                 if COLUMN_REGION >= 0:
                     # Create a region if necessary
-                    data_field = row_data[COLUMN_REGION]
+                    data_field = get_acceptable_string(row_data[COLUMN_REGION])
                     region = get_region(db_session, data_field)
-                    if region is None:
+                    if region is None and data_field:
                         try:
                             db_session.add(Region(name=data_field,
                                                   created_by=current_user.username))
@@ -151,7 +151,7 @@ def api_import_hosts():
         for column in range(len(header_row)):
 
             header_field = header_row[column]
-            data_field = data[column]
+            data_field = data[column].strip()
 
             if header_field == HEADER_FIELD_HOSTNAME:
                 hostname = get_acceptable_string(data_field)
