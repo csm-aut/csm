@@ -1917,10 +1917,15 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # Retrieves all the install jobs for this host.  This will allow
     # the user to select which install job this install job can depend on.
     install_jobs = db_session.query(InstallJob).filter(InstallJob.host_id == host.id).order_by(InstallJob.scheduled_time.asc()).all()
-        
+
+    region_servers = host.region.servers
+    # Returns all server repositories if the region does not have any server repository designated.
+    if is_empty(region_servers):
+        region_servers = get_server_list(db_session)
+
     # Fills the selections
-    fill_servers(form.server_dialog_server.choices, host.region.servers)
-    fill_servers(form.cisco_dialog_server.choices, host.region.servers, False)
+    fill_servers(form.server_dialog_server.choices, region_servers)
+    fill_servers(form.cisco_dialog_server.choices, region_servers, False)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs, (-1 if install_job is None else install_job.id))
         
     if request.method == 'POST':
@@ -2424,7 +2429,11 @@ def api_get_servers_by_region(region_id):
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
             result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
-       
+
+    if len(region.servers) == 0:
+        # Returns all server repositories if the region does not have any server repository designated.
+        return api_get_servers()
+
     return jsonify(**{'data':result_list})
 
 @app.route('/api/get_hosts/region/<int:region_id>/role/<role>/software/<software>')
