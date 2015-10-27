@@ -367,24 +367,20 @@
         }
 
         $('.wizard-card').bootstrapWizard({
-        'tabClass': 'nav nav-pills',
-        'nextSelector': '.btn-next',
-        'previousSelector': '.btn-previous',
+            'tabClass': 'nav nav-pills',
+            'nextSelector': '.btn-next',
+            'previousSelector': '.btn-previous',
 
-         onInit : function(tab, navigation, index){
+        onInit : function(tab, navigation, index){
+             //check number of tabs and fill the entire row
+             var $total = navigation.find('li').length;
+             $width = 100/$total;
+             $display_width = $(document).width();
 
-           //check number of tabs and fill the entire row
-           var $total = navigation.find('li').length;
-           $width = 100/$total;
-
-           $display_width = $(document).width();
-
-           if($display_width < 600 && $total > 3){
-               $width = 50;
-           }
-
-           navigation.find('li').css('width',$width + '%');
-
+             if($display_width < 600 && $total > 3){
+                 $width = 50;
+             }
+             navigation.find('li').css('width',$width + '%');
         },
         onNext: function(tab, navigation, index){
             if (index == 1){

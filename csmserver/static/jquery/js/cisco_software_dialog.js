@@ -353,9 +353,7 @@ $(function() {
     
     // The SP table has problem with the table layout
     $('#smu-list-tab a[href="#sp-tab"]').click(function() {
-        setTimeout(function() {
-            refresh_sp_list_table();
-        }, 300);
+        refresh_sp_list_table();
     });
     
       
