@@ -1,8 +1,13 @@
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
+
 {% from 'conformance/conformance_report_dialog.html' import conformance_report_dialog %}
+{% from 'conformance/make_conform_dialog.html' import make_conform_dialog %}
 
 {% block extra_head %}
+
+<link rel="stylesheet" href="/static/datetimepicker/css/bootstrap-datetimepicker.min.css">
+<script src="/static/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
 
 <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
 <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
@@ -12,6 +17,8 @@
 <link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet" />
 
 <script src="/static/jquery/js/conformance_report_dialog.js"></script>
+<script src="/static/jquery/js/select_server.js"></script>
+<script src="/static/jquery/js/make_conform_dialog.js"></script>
 <script src="/static/jquery/js/select_region_hosts.js"></script>
   
 <script charset="utf-8">
@@ -209,14 +216,22 @@
                         return '';
                     }
                 }
-
             }, {
                 "targets": 4,
                 "data": 'conformed',
                 "render": function(data, type, row) {
-                    return data + ' ' + row['comments']
+                    return data + ' ' + row['comments'];
                 }
-            }]
+            }, /* {
+                "targets": 5,
+                "data": 'conformed',
+                "render": function(data, type, row) {
+                    return '<button type="button" style="line-height: 10px;" class="btn btn-default make-conform-button" ' +
+                        'data-hostname="' + row['hostname'] + '"' +
+                        'data-missing-packages="' + row['missing_packages'] + '"' +
+                        '>Make Conform</button>';
+                }
+            } */]
         });
 
         get_conformance_reports();
@@ -366,50 +381,11 @@
             }
         }
 
-        $('.wizard-card').bootstrapWizard({
-            'tabClass': 'nav nav-pills',
-            'nextSelector': '.btn-next',
-            'previousSelector': '.btn-previous',
-
-        onInit : function(tab, navigation, index){
-             //check number of tabs and fill the entire row
-             var $total = navigation.find('li').length;
-             $width = 100/$total;
-             $display_width = $(document).width();
-
-             if($display_width < 600 && $total > 3){
-                 $width = 50;
-             }
-             navigation.find('li').css('width',$width + '%');
-        },
-        onNext: function(tab, navigation, index){
-            if (index == 1){
-                if (software_profile_selector.val() == 0) {
-                    bootbox.alert("Software Profile has not been specified.");
-                    return false;
-                }
-            }
-        },
-        onTabClick : function(tab, navigation, index){
-            // Disable the possibility to click on tabs
-            return false;
-        },
-        onTabShow: function(tab, navigation, index) {
-            var $total = navigation.find('li').length;
-            var $current = index+1;
-
-            var wizard = navigation.closest('.wizard-card');
-
-            // If it's the last tab then hide the last button and show the finish instead
-            if($current >= $total) {
-                $(wizard).find('.btn-next').hide();
-                $(wizard).find('.btn-finish').show();
-            } else {
-                $(wizard).find('.btn-next').show();
-                $(wizard).find('.btn-finish').hide();
-            }
-        }
-    });
+        conformance_report_table.on("click", ".make-conform-button", function() {
+            var hostname = $(this).attr('data-hostname');
+            var missing_packages = $(this).attr('data-missing-packages');
+            display_make_conform_dialog(hostname, missing_packages);
+        });
 
     });
     
@@ -426,6 +402,9 @@
 {% block main %}
 
 {{ conformance_report_dialog(form.conformance_report_dialog_software_profile, form.match_criteria, form.region, form.role, form.software) }}
+{{ make_conform_dialog(select_server_form.select_server, select_server_form.select_server_directory,
+    server_time, install_actions, make_conform_dialog_form.software_packages, make_conform_dialog_form.scheduled_time,
+    make_conform_dialog_form.scheduled_time_UTC) }}
 
 <div id="export-conformance-report-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -515,7 +494,8 @@
                                         <th>Software</th>
                                         <th>Host Packages</th>
                                         <th>Missing Packages</th>
-                                        <th>Conformed</th>
+                                        <th>Is Conformed</th>
+                                   <!--     <th>Action</th>  -->
                                     </tr>
                                 </thead>
                             </table>

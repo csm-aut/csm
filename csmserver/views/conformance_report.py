@@ -131,7 +131,7 @@ class XLSWriter(ReportWriter):
                 self.ws.write(self.row, 2, 'Active Packages', XLSWriter.style_bold)
             
         self.ws.write(self.row, 3 if self.include_host_packages else 2, 'Missing Packages', XLSWriter.style_bold)
-        self.ws.write(self.row, 4 if self.include_host_packages else 3, 'Conformed', XLSWriter.style_bold)
+        self.ws.write(self.row, 4 if self.include_host_packages else 3, 'Is Conformed', XLSWriter.style_bold)
     
         self.row += 2
 

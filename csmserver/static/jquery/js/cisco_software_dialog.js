@@ -15,7 +15,7 @@ $(function() {
 
     var platform = '';
     var release = '';
-    var cco_lookup_enabled = $('#cisco-software-dialog').attr('enable_cco_lookup') == 'True' ? true : false;
+    var cco_lookup_enabled = $('#cisco-software-dialog').attr('data-enable-cco-lookup') == 'True' ? true : false;
 
     cisco_software_dialog_spinner = $('#cisco-software-dialog-browse-spinner');
     cisco_software_dialog_spinner.hide()
@@ -67,22 +67,18 @@ $(function() {
             "data": 'type'
         }, {
             "targets": 5,
-            "width": "42%",
             "data": 'description'
         }, {
             "targets": 6,
-            "width": "10%",
             "data": 'impact'
         }, {
             "targets": 7,
-            "width": "10%",
             "data": 'functional_areas'
         }, {
             "targets": 8,
             "data": 'status'
         }, {
             "targets": 9,
-            "width": "20%",
             "data": 'package_bundles'
         }, ],
 
@@ -137,11 +133,9 @@ $(function() {
             "data": 'type'
         }, {
             "targets": 5,
-            "width": "42%",
             "data": 'description'
         }, {
             "targets": 6,
-            "width": "10%",
             "data": 'impact'
         }, {
             "targets": 7,
@@ -151,7 +145,6 @@ $(function() {
             "data": 'status'
         }, {
             "targets": 9,
-            "width": "9%",
             "data": 'package_bundles'
         }, ],
     }).on('draw.dt', function(e, settings, json) {

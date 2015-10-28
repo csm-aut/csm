@@ -56,6 +56,13 @@ function comma2br(s) {
     return s.replace(/,/g, "<br>")
 }
 
+/**
+ * Converts comma delimited string to line break ('\n') delimited.
+ */
+function comma2newline(s) {
+    return s.replace(/,/g, "\n")
+}
+
 function get_parent_folder(directory) {
     if (directory != null) {
         var pos = directory.lastIndexOf('/');

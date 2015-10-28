@@ -8,7 +8,7 @@
 
 {% macro common_schedule_install_gui() %}
 
-  <div class="form-group ">
+<div class="form-group ">
     <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
     <div class=col-sm-6>
         <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
@@ -281,8 +281,8 @@ $(function() {
             });
         }
     }
-    
-    server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
+
+    var server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
 
     // Called when the Schedule (i.e. submit) button is clicked but before the
     // form actually being submitted.  Returning false will stop the submission.

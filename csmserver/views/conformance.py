@@ -33,6 +33,7 @@ from wtforms import SelectField
 from wtforms import TextAreaField
 from wtforms import RadioField
 from wtforms import HiddenField
+from wtforms import SelectMultipleField
 from wtforms.validators import Length, required
 
 from models import logger
@@ -52,6 +53,7 @@ from common import can_create_user
 
 from database import DBSession
 
+from constants import InstallAction
 from constants import JobStatus
 from constants import get_temp_directory
 
@@ -63,8 +65,10 @@ from platform_matcher import UNKNOWN
 from smu_info_loader import SMUInfoLoader
 
 from forms import ServerDialogForm
+from forms import SelectServerForm
 
 import re
+import datetime
 
 conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 
@@ -73,13 +77,23 @@ conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 @login_required
 def home():
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
+    make_conform_dialog_form = MakeConformDialogForm(request.form)
+    select_server_form = SelectServerForm(request.form)
+
     export_conformance_report_form = ExportConformanceReportForm(request.form)
     export_conformance_report_form.include_host_packages.data = True
 
     fill_regions(conformance_report_dialog_form.region.choices)
 
-    return render_template('conformance/index.html', form=conformance_report_dialog_form,
-                           export_conformance_report_form=export_conformance_report_form)
+    return render_template('conformance/index.html',
+                           form=conformance_report_dialog_form,
+                           install_actions=[InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
+                                            InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+                                            InstallAction.INSTALL_COMMIT, InstallAction.ALL],
+                           make_conform_dialog_form=make_conform_dialog_form,
+                           export_conformance_report_form=export_conformance_report_form,
+                           select_server_form=select_server_form,
+                           server_time=get_datetime_string(datetime.datetime.utcnow()))
 
 
 @conformance.route('/software_profile/create', methods=['GET', 'POST'])
@@ -493,6 +507,7 @@ def get_software_profile(db_session, profile_name):
 def get_software_profile_names(db_session):
     return db_session.query(SoftwareProfile.name).order_by(SoftwareProfile.name.asc()).all()
 
+
 class SoftwareProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
     description = StringField('Description', [required(), Length(max=100)])
@@ -512,3 +527,10 @@ class ConformanceReportDialogForm(Form):
 
 class ExportConformanceReportForm(Form):
     include_host_packages = HiddenField("Include Host packages on the report")
+
+
+class MakeConformDialogForm(Form):
+    install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
+    scheduled_time = StringField('Scheduled Time', [required()])
+    scheduled_time_UTC = HiddenField('Scheduled Time')
+    software_packages = TextAreaField('Software Packages')
