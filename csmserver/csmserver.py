@@ -2412,7 +2412,8 @@ def api_get_install_history(hostname):
 @login_required
 def api_get_servers():
     result_list = []
-    db_session = DBSession()   
+    db_session = DBSession()
+
     servers = get_server_list(db_session)
     if servers is not None:
         for server in servers:
@@ -2420,17 +2421,28 @@ def api_get_servers():
     
     return jsonify(**{'data':result_list})
 
+@app.route('/api/get_servers/host/<hostname>')
+@login_required
+def api_get_servers_by_hostname(hostname):
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if host is not None:
+        return api_get_servers_by_region(host.region_id)
+
+    return jsonify(**{'data': []})
+
 @app.route('/api/get_servers/region/<int:region_id>')
 @login_required
 def api_get_servers_by_region(region_id):
     result_list = [] 
-    db_session = DBSession() 
+    db_session = DBSession()
+
     region = get_region_by_id(db_session, region_id)
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
             result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
-
-    if len(region.servers) == 0:
+    else:
         # Returns all server repositories if the region does not have any server repository designated.
         return api_get_servers()
 

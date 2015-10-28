@@ -174,6 +174,11 @@ class PreferencesForm(Form):
 class BrowseServerDialogForm(Form):
     dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])
 
+
+class SelectServerForm(Form):
+    select_server= SelectField('Server Repository', coerce=int, choices=[(-1, '')])
+    select_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
+
 if __name__ == '__main__':
     pass
     
