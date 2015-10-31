@@ -166,7 +166,7 @@ function on_validate_prerequisites_and_files_on_server(validate_object) {
 }
 
 function check_missing_prerequisite(validate_object) {
-    validate_object.spinner.show();
+    if (validate_object.spinner != null ) validate_object.spinner.show();
 
     // Only '.pie' or '.tar' files should be checked
 
@@ -205,7 +205,7 @@ function check_missing_prerequisite(validate_object) {
 
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
-            validate_object.spinner.hide();
+            if (validate_object.spinner != null )  validate_object.spinner.hide();
         }
     });
 }
@@ -238,7 +238,7 @@ function check_need_reload(validate_object) {
             }
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
-            validate_object.spinner.hide();
+            if (validate_object.spinner != null ) validate_object.spinner.hide();
         }
     });
 }
@@ -264,7 +264,7 @@ function display_package_reload_dialog(validate_object, reload_list) {
                 label: "Cancel",
                 className: "btn-default",
                 callback: function() {
-                    validate_object.spinner.hide();
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                 }
             }
         }
@@ -311,14 +311,14 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
                     } else {
                         validate_object.callback(validate_object);
                     }
-                    validate_object.spinner.hide();
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                 }
             },
             main: {
                 label: "Cancel",
                 className: "btn-default",
                 callback: function() {
-                    validate_object.spinner.hide();
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                 }
             }
         }
@@ -327,7 +327,7 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
 }
 
 function check_missing_files_on_server(validate_object) {
-    validate_object.spinner.show();
+    if (validate_object.spinner != null ) validate_object.spinner.show();
 
     // Only '.pie' or '.tar' files should be checked
 
@@ -373,7 +373,7 @@ function check_missing_files_on_server(validate_object) {
             }
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
-            validate_object.spinner.hide();
+            if (validate_object.spinner != null ) validate_object.spinner.hide();
         }
     });
 }
@@ -396,7 +396,7 @@ function display_missing_files_dialog(validate_object, missing_file_list, downlo
                 label: "Ignore",
                 className: "btn-success",
                 callback: function() {
-                    validate_object.spinner.hide();
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                     validate_object.callback(validate_object);
                 }
             },
@@ -404,7 +404,7 @@ function display_missing_files_dialog(validate_object, missing_file_list, downlo
                 label: "Cancel",
                 className: "btn-default",
                 callback: function() {
-                    validate_object.spinner.hide();
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                 }
             }
         }
@@ -420,12 +420,12 @@ function check_cisco_authentication(validate_object) {
             if (response.status == 'OK') {
                 validate_object.callback(validate_object);
             } else {
-                bootbox.alert("Cisco user authentication information has not been entered.  Go to Tools - User Preferences.");
-                validate_object.spinner.hide();
+                bootbox.alert("Cisco user authentication information has not been entered.  Go to Tools - User Preferences to enter it.");
+                if (validate_object.spinner != null ) validate_object.spinner.hide();
             }
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {
-            validate_object.spinner.hide();
+            if (validate_object.spinner != null ) validate_object.spinner.hide();
         }
     });
 }
@@ -440,7 +440,7 @@ function display_server_unreachable_dialog(validate_object) {
                 label: "Continue",
                 className: "btn-primary",
                 callback: function() {
-                    validate_object.spinner.hide();
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                     validate_object.callback(validate_object);
                 }
             },
@@ -448,7 +448,7 @@ function display_server_unreachable_dialog(validate_object) {
                 label: "Cancel",
                 className: "btn-default",
                 callback: function() {
-                    validate_object.spinner.hide();
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                 }
             }
         }

@@ -1,9 +1,13 @@
+from flask.ext.login import current_user
 from sqlalchemy import or_, and_
+from platform_matcher import get_platform
+from platform_matcher import get_release
 
 from constants import ServerType
 from constants import UserPrivilege
 from constants import InstallAction
 from constants import PackageState
+from constants import JobStatus
 
 from models import Server
 from models import Host
@@ -13,11 +17,18 @@ from models import User
 from models import SMTPServer
 from models import logger
 from models import Package
+from models import InstallJob
+from models import SMUMeta
+from models import DownloadJob
+from models import get_download_job_key_dict
 
 from database import DBSession
 
 from filters import get_datetime_string
-from filters import time_difference_UTC 
+from filters import time_difference_UTC
+
+from smu_utils import SP_INDICATOR
+from utils import is_empty, get_datetime
 
 def fill_servers(choices, servers, include_local=True):
     # Remove all the existing entries
@@ -90,7 +101,7 @@ def get_last_successful_inventory_elapsed_time(host):
         if inventory_job.pending_submit:
             return 'Pending Retrieval'
         else:
-            return  time_difference_UTC(inventory_job.last_successful_time)
+            return time_difference_UTC(inventory_job.last_successful_time)
         
     return ''
     
@@ -208,4 +219,133 @@ def can_delete(current_user):
 def can_create(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN 
-    
+
+def create_or_update_install_job(
+    db_session, host_id, install_action, scheduled_time, software_packages=None,
+    server=-1, server_directory='', dependency=0, pending_downloads=None, install_job=None):
+
+    # This is a new install_job
+    if install_job is None:
+        install_job = InstallJob()
+        install_job.host_id = host_id
+        db_session.add(install_job)
+
+    install_job.install_action = install_action
+
+    if install_job.install_action == InstallAction.INSTALL_ADD and \
+        not is_empty(pending_downloads):
+        install_job.pending_downloads = ','.join(pending_downloads.split())
+    else:
+        install_job.pending_downloads = ''
+
+    install_job.scheduled_time = get_datetime(scheduled_time, "%m/%d/%Y %I:%M %p")
+
+    # Only Install Add should have server_id and server_directory
+    if install_action == InstallAction.INSTALL_ADD:
+        install_job.server_id = int(server) if int(server) > 0 else None
+        install_job.server_directory = server_directory
+    else:
+        install_job.server_id = None
+        install_job.server_directory = ''
+
+    install_job_packages = []
+
+    # Only the following install actions should have software packages
+    if install_action == InstallAction.INSTALL_ADD or \
+        install_action == InstallAction.INSTALL_ACTIVATE or \
+        install_action == InstallAction.INSTALL_REMOVE or \
+        install_action == InstallAction.INSTALL_DEACTIVATE:
+
+        software_packages = software_packages.split() if software_packages is not None else []
+        for software_package in software_packages:
+            if install_action == InstallAction.INSTALL_ADD:
+                # Install Add only accepts external package names with the following suffix
+                if '.pie' in software_package or \
+                    '.tar' in software_package or \
+                    '.rpm' in software_package:
+                    install_job_packages.append(software_package)
+            else:
+                # Install Activate can have external or internal package names
+                install_job_packages.append(software_package)
+
+    install_job.packages = ','.join(install_job_packages)
+    install_job.dependency = dependency if dependency > 0 else None
+    install_job.created_by = current_user.username
+    install_job.user_id = current_user.id
+
+    #Resets the following fields
+    install_job.status = None
+    install_job.status_time = None
+    install_job.session_log = None
+    install_job.trace = None
+
+    if install_job.install_action != InstallAction.UNKNOWN:
+        db_session.commit()
+
+    # Creates download jobs if needed
+    if install_job.install_action == InstallAction.INSTALL_ADD and \
+        len(install_job.packages) > 0 and \
+        len(install_job.pending_downloads) > 0:
+
+        # Use the SMU name to derive the platform and release strings
+        smu_list = install_job.packages.split(',')
+        pending_downloads = install_job.pending_downloads.split(',')
+
+        # Derives the platform and release using the first SMU name.
+        platform = get_platform(smu_list[0])
+        release = get_release(smu_list[0])
+
+        create_download_jobs(db_session, platform, release, pending_downloads,
+            install_job.server_id, install_job.server_directory)
+
+    return install_job
+
+"""
+Pending downloads is an array of TAR files.
+"""
+def create_download_jobs(db_session, platform, release, pending_downloads, server_id, server_directory):
+    smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+    if smu_meta is not None:
+        for cco_filename in pending_downloads:
+            # If the requested download_file is not in the download table, include it
+            if not is_pending_on_download(db_session, cco_filename, server_id, server_directory):
+                # Unfortunately, the cco_filename may not conform to the SMU format (i.e. CSC).
+                # For example, for CRS, it is possible to have hfr-px-5.1.2.CRS-X-2.tar which contains
+                # multiple pie file. Thus, we check if it has a "sp" substring.
+                if SP_INDICATOR in cco_filename:
+                    software_type_id = smu_meta.sp_software_type_id
+                else:
+                    software_type_id = smu_meta.smu_software_type_id
+
+                download_job = DownloadJob(
+                    cco_filename = cco_filename,
+                    pid = smu_meta.pid,
+                    mdf_id = smu_meta.mdf_id,
+                    software_type_id = software_type_id,
+                    server_id = server_id,
+                    server_directory = server_directory,
+                    user_id = current_user.id,
+                    created_by = current_user.username)
+
+                db_session.add(download_job)
+
+            db_session.commit()
+
+def is_pending_on_download(db_session, filename, server_id, server_directory):
+    download_job_key_dict = get_download_job_key_dict()
+    download_job_key = get_download_job_key(current_user.id, filename, server_id, server_directory)
+
+    if download_job_key in download_job_key_dict:
+        download_job = download_job_key_dict[download_job_key]
+        # Resurrect the download job
+        if download_job is not None and download_job.status == JobStatus.FAILED:
+            download_job.status = None
+            download_job.status_time = None
+            db_session.commit()
+        return True
+
+    return False
+
+
+def get_download_job_key(user_id, filename, server_id, server_directory):
+    return "{}{}{}{}".format(user_id, filename, server_id, server_directory)

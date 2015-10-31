@@ -222,7 +222,7 @@
                 "render": function(data, type, row) {
                     return data + ' ' + row['comments'];
                 }
-            }, /* {
+            }, {
                 "targets": 5,
                 "data": 'conformed',
                 "render": function(data, type, row) {
@@ -231,7 +231,7 @@
                         'data-missing-packages="' + row['missing_packages'] + '"' +
                         '>Make Conform</button>';
                 }
-            } */]
+            }]
         });
 
         get_conformance_reports();
@@ -302,7 +302,8 @@
                     var html_code = '';
                     
                     $.each(response, function(index, element) {
-                        html_code = '<b>Total Hosts:</b> ' + element[0].total_hosts + '<br>';
+                        html_code = '<b><u>Summary</u></b><br>';
+                        html_code += '<b>Total Hosts:</b> ' + element[0].total_hosts + '<br>';
                         html_code += '<b>Match Criteria:</b> ' + element[0].match_criteria + '<br>';
                         if (element[0].host_not_in_conformance == 0) {
                             html_code += "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All hosts are in complete conformance.<br>";
@@ -475,7 +476,7 @@
                         <h4 style="color:LightGray;">Results:</h4><hr style="margin-top:10px;margin-bottom:10px;">
 
                         <div class="row">
-                            <a id="display-software-profile-packages" class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#software-profile-packages">Software Profile <b class="caret"></b></a>
+                            <a id="display-software-profile-packages" class="btn btn-sm btn-default pull-right" data-toggle="collapse" title="Click to view the contents" href="#software-profile-packages">Software Profile Used <b class="caret"></b></a>
                             <div class="collapse" id="software-profile-packages">
                                 <div id="software-profile-package-info">
                                 </div>
@@ -495,7 +496,7 @@
                                         <th>Host Packages</th>
                                         <th>Missing Packages</th>
                                         <th>Is Conformed</th>
-                                   <!--     <th>Action</th>  -->
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                             </table>

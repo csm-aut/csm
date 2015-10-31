@@ -115,12 +115,14 @@ from common import can_create_user
 from common import can_edit
 from common import can_delete
 from common import can_create
+from common import create_or_update_install_job
+from common import create_download_jobs
+from common import get_download_job_key
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
 from filters import beautify_platform
 
-from utils import get_datetime
 from utils import get_file_list
 from utils import make_url
 from utils import trim_last_slash
@@ -138,7 +140,6 @@ from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import get_platform_and_release
-from smu_utils import SP_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
 from bsd_service import BSDServiceHandler
@@ -1668,6 +1669,11 @@ def schedule_install():
                 host = get_host(db_session, hostname)  
                 if host is not None:
                     db_session = DBSession()
+                    scheduled_time = form.scheduled_time_UTC.data
+                    software_packages = form.software_packages.data
+                    server = form.hidden_server.data
+                    server_directory = form.hidden_server_directory
+                    pending_downloads = form.hidden_pending_downloads
        
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -1678,16 +1684,20 @@ def schedule_install():
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
                                     
-                        create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                            install_action=install_action[0], dependency=dependency)
+                        create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
+                                                     scheduled_time=scheduled_time, software_packages=software_packages, server=server,
+                                                     server_directory=server_directory, pending_downloads=pending_downloads, dependency=dependency)
                     else:
                         # The dependency on each install action is already indicated in the implicit ordering in the selector.
                         # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
                         # have Pre-Upgrade (predecessor) as the dependency.
                         dependency = 0              
                         for one_install_action in install_action:
-                            new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                                install_action=one_install_action, dependency=dependency)
+                            new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
+                                                                           install_action=one_install_action,
+                                                                           scheduled_time=scheduled_time, software_packages=software_packages,
+                                                                           server=server, server_directory=server_directory,
+                                                                           pending_downloads=pending_downloads, dependency=dependency)
                             dependency = new_install_job.id
                                                   
         return redirect(url_for(return_url))
@@ -1727,86 +1737,6 @@ def host_schedule_install_edit(hostname, id):
     
     return handle_schedule_install_form(request=request, db_session=db_session, hostname=hostname, install_job=install_job)
 
-def create_or_update_install_job(db_session, host_id, form, install_action, dependency=0, install_job=None):
-    # This is a new install_job
-    if install_job is None:
-        install_job = InstallJob()
-        install_job.host_id = host_id
-        db_session.add(install_job)
-    
-    install_job.install_action = install_action
-        
-    if install_job.install_action == InstallAction.INSTALL_ADD and \
-        not is_empty(form.hidden_pending_downloads.data):
-        install_job.pending_downloads = ','.join(form.hidden_pending_downloads.data.split())
-    else:
-        install_job.pending_downloads = ''
-
-    install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")  
-
-    # Only Install Add should have server_id and server_directory
-    if install_action == InstallAction.INSTALL_ADD:
-        install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
-        install_job.server_directory = form.hidden_server_directory.data
-    else:
-        install_job.server_id = None
-        install_job.server_directory = ''
-        
-    # Only the following install actions should have software packages
-    if install_action == InstallAction.INSTALL_ADD or \
-        install_action == InstallAction.INSTALL_ACTIVATE or \
-        install_action == InstallAction.INSTALL_REMOVE or \
-        install_action == InstallAction.INSTALL_DEACTIVATE:
-        
-        package_list = ''
-        software_packages = form.software_packages.data.split()
-        for software_package in software_packages:
-            if install_action == InstallAction.INSTALL_ADD:
-                # Install Add only accepts external package names with the following suffix
-                if '.pie' in software_package or \
-                    '.tar' in software_package or \
-                    '.rpm' in software_package:
-                    package_list += software_package + ','
-            else:
-                # Install Activate can have external or internal package names
-                package_list += software_package + ','
-                
-        # remove trailing ',' if any
-        install_job.packages = package_list.rstrip(',')
-    else:
-        install_job.packages = ''
-        
-    install_job.dependency = dependency if dependency > 0 else None
-    install_job.created_by = current_user.username
-    install_job.user_id = current_user.id
-         
-    #Resets the following fields
-    install_job.status = None
-    install_job.status_time = None
-    install_job.session_log = None
-    install_job.trace = None
-       
-    if install_job.install_action != InstallAction.UNKNOWN:
-        db_session.commit()
-    
-    # Creates download jobs if needed
-    if install_job.install_action == InstallAction.INSTALL_ADD and \
-        len(install_job.packages) > 0 and \
-        len(install_job.pending_downloads) > 0:
-        
-        # Use the SMU name to derive the platform and release strings
-        smu_list = install_job.packages.split(',')
-        pending_downloads = install_job.pending_downloads.split(',')
-        
-        # Derives the platform and release using the first SMU name.
-        platform = get_platform(smu_list[0])
-        release = get_release(smu_list[0])
-    
-        create_download_jobs(db_session, platform, release, pending_downloads, 
-            install_job.server_id, install_job.server_directory)
-        
-    return install_job
-
 @app.route('/hosts/download_dashboard/', methods=['GET', 'POST'])
 @login_required
 def download_dashboard():
@@ -1814,24 +1744,6 @@ def download_dashboard():
         abort(401)
         
     return render_template('host/download_dashboard.html')
-
-def get_download_job_key(user_id, filename, server_id, server_directory):
-    return "{}{}{}{}".format(user_id, filename, server_id, server_directory)
-
-def is_pending_on_download(db_session, filename, server_id, server_directory):
-    download_job_key_dict = get_download_job_key_dict()
-    download_job_key = get_download_job_key(current_user.id, filename, server_id, server_directory)
-    
-    if download_job_key in download_job_key_dict:
-        download_job = download_job_key_dict[download_job_key]
-        # Resurrect the download job
-        if download_job is not None and download_job.status == JobStatus.FAILED:
-            download_job.status = None
-            download_job.status_time = None        
-            db_session.commit()
-        return True
-    
-    return False
 
 @app.route('/api/create_download_jobs')
 @login_required
@@ -1853,58 +1765,6 @@ def api_create_download_jobs():
         return jsonify({'status':'Failed'})
     finally:
         return jsonify({'status':'OK'})
-    
-"""
-Pending downloads is an array of TAR files.
-"""
-def create_download_jobs(db_session, platform, release, pending_downloads, server_id, server_directory):
-    smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
-    if smu_meta is not None:  
-        for cco_filename in pending_downloads:
-            # If the requested download_file is not in the download table, include it
-            if not is_pending_on_download(db_session, cco_filename, server_id, server_directory):
-                # Unfortunately, the cco_filename may not conform to the SMU format (i.e. CSC).
-                # For example, for CRS, it is possible to have hfr-px-5.1.2.CRS-X-2.tar which contains
-                # multiple pie file. Thus, we check if it has a "sp" substring.
-                if SP_INDICATOR in cco_filename:
-                    software_type_id = smu_meta.sp_software_type_id
-                else:
-                    software_type_id = smu_meta.smu_software_type_id
-            
-                download_job = DownloadJob(
-                    cco_filename = cco_filename,
-                    pid = smu_meta.pid,
-                    mdf_id = smu_meta.mdf_id,
-                    software_type_id = software_type_id,
-                    server_id = server_id,
-                    server_directory = server_directory,
-                    user_id = current_user.id,
-                    created_by = current_user.username)
-                
-                db_session.add(download_job)
-
-            db_session.commit()
-    
-def create_install_jobs_for_all_install_actions(db_session, host_id, form):                
-    # Create Pre-Upgrade
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.PRE_UPGRADE)
-    
-    # Create Install Add
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.INSTALL_ADD, dependency=new_install_job.id)
-            
-    # Create Activate
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.INSTALL_ACTIVATE, dependency=new_install_job.id)
-              
-    # Create Post-Upgrade
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.POST_UPGRADE, dependency=new_install_job.id)
-    
-    # Create Install-Commit
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.INSTALL_COMMIT, dependency=new_install_job.id)
 
 def handle_schedule_install_form(request, db_session, hostname, install_job=None):    
     host = get_host(db_session, hostname)
@@ -1935,21 +1795,31 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             install_action = [ install_job.install_action ]
         else:
             install_action = form.install_action.data
+
+        scheduled_time = form.scheduled_time_UTC.data
+        software_packages = form.software_packages.data
+        server = form.hidden_server.data
+        server_directory = form.hidden_server_directory
+        pending_downloads = form.hidden_pending_downloads
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
         if len(install_action) == 1:
             dependency = int(form.dependency.data)        
-            create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                install_action=install_action[0], dependency=dependency, install_job=install_job)
+            create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
+                                         scheduled_time=scheduled_time, software_packages=software_packages, server=server,
+                                         server_directory=server_directory, pending_downloads=pending_downloads,
+                                         dependency=dependency, install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
             # have Pre-Upgrade (predecessor) as the dependency.
             dependency = 0              
             for one_install_action in install_action:
-                new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                    install_action=one_install_action, dependency=dependency, install_job=install_job)
+                new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=one_install_action,
+                                                               scheduled_time=scheduled_time, software_packages=software_packages, server=server,
+                                                               server_directory=server_directory, pending_downloads=pending_downloads,
+                                                               dependency=dependency, install_job=install_job)
                 dependency = new_install_job.id
                    
         return redirect(url_for(return_url, hostname=hostname))

@@ -50,7 +50,6 @@ Caller must provide the following WTForms elements with the following IDs
                                     <div class="col-sm-6">
                                         <div  class="input-group date form_datetime">
                                             <input id="scheduled-time" name="{{ scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
-                                            <input id="scheduled-time-UTC" name="{{ scheduled_time_UTC.name }}" value="{{ scheduled_time_UTC.data }}" class="form-control" type="hidden">
                                             <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
                                         </div>
                                     </div>
@@ -58,13 +57,15 @@ Caller must provide the following WTForms elements with the following IDs
 
                             </div>
                             <div class="tab-pane" id="dialog_server_repository">
+                                 <h4 class="info-text">Skip the server repository selection if there is no Install Add action.</h4>
                                 {{ select_server(server, server_directory) }}
                             </div>
                         </div>
                         <div class="wizard-footer">
                             <div class="pull-right">
+                                <img id="make-conform-dialog-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                                 <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
-                                <input id='on-conformance-report-dialog-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                                <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
                             </div>
                             <div class="pull-left">
                                 <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />

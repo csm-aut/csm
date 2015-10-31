@@ -8,19 +8,15 @@
  * <script src="/static/jquery/js/select_server_dialog.js"></script>
  */
 
+var make_conform_dialog_spinner;
+
 $(function() {
+    make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
+    make_conform_dialog_spinner.hide()
+
     var server_time_as_locale_time = convertToLocaleString($('#make-conform-dialog').attr('data-server-time'));
 
     $("#install_action").select2({});
-
-    // Convert the UTC time to Locale time
-    $('#scheduled-time-UTC').val(function(index, value) {
-        if (value == 'None' || value.length == 0) {
-            $('#scheduled-time').val(server_time_as_locale_time);
-        } else {
-            $('#scheduled-time').val(convertToLocaleString(value));
-        }
-    });
 
     var datetimepicker = $(".form_datetime").datetimepicker({
         format: "mm/dd/yyyy HH:ii P",
@@ -83,14 +79,117 @@ $(function() {
         }
     });
 
+    $('#on-finish-submit').on('click', function(e) {
+        // Only Install Add requires a server repository
+        if ($('#select_server').val() == -1 &&
+            has_one_of_these($('#install_action').val(), ['Install Add'])) {
+
+            bootbox.alert('Server repository has not been specified.');
+            return false;
+        }
+
+        on_submit_install_jobs();
+
+        return false;
+    });
+
+    function on_submit_install_jobs() {
+        var hostname = $('#make-conform-dialog').data('hostname');
+        var validate_object = {
+            form: null,
+            hostname: hostname,
+            server_id: $('#select_server').val(),
+            server_directory: $('#select_server_directory').val(),
+            software_packages: $('#software_packages').val(),
+            spinner: make_conform_dialog_spinner,
+            install_actions: $('#install_action').val(),
+            check_missing_file_on_server: $('#select_server').val() > -1,
+            callback: submit_install_jobs,
+            pending_downloads: null
+        };
+
+        if (has_one_of_these($('#install_action').val(), ['Install Add'])) {
+            on_validate_prerequisites_and_files_on_server(validate_object);
+        } else if (has_one_of_these($('#install_action').val(), ['Activate'])) {
+            // Check for packages that may cause router to reload during Activate.
+            // Turn off check_missing_file_on_server as it is only used for
+            // Install Add.
+            validate_object.check_missing_file_on_server = false;
+            check_need_reload(validate_object);
+
+        } else {
+            submit_install_jobs(validate_object);
+        }
+    }
+
+    function submit_install_jobs(validate_object) {
+        // Update the software packages textarea
+        $('#software_packages').val(validate_object.software_packages);
+
+        var hostname = $('#make-conform-dialog').data('hostname');
+        var install_action = $('#install_action').val();
+
+
+        $.ajax({
+            url: "/conformance/api/create_install_jobs",
+            dataType: 'json',
+            type: "POST",
+            data: {
+                hostname: hostname,
+                install_action: install_action,
+                scheduled_time_UTC: convertToUTCString($('#scheduled-time').val()),
+                software_packages: trim_lines($('#software_packages').val()),
+                server: $('#select_server').val(),
+                server_directory: $('#select_server_directory').val(),
+                pending_downloads: validate_object.pending_downloads
+            },
+            success: function(data) {
+                if (data.status == 'OK') {
+                    if (install_action.length == 1) {
+                        bootbox.alert('The request scheduled installation has been submitted for ' + hostname + '.');
+                    } else {
+                        bootbox.alert('The request scheduled installations have been submitted for ' + hostname + '.');
+                    }
+                    $('#make-conform-dialog').modal('hide');
+                } else {
+                    bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to create scheduled installation.');
+                }
+            }
+        });
+    }
+
 });
 
+function get_server_time() {
+    $.ajax({
+        url: "/api/get_server_time",
+        dataType: 'json',
+        success: function (data) {
+            $.each(data, function(index, element) {
+                $('#scheduled-time').val(convertToLocaleString(element.server_time));
+            });
+        }
+    });
+}
+
 function display_make_conform_dialog(hostname, missing_packages) {
-    $('#make-conform-dialog').data('data-hostname', hostname)
+    // Reset variables
+    $("#install_action").val(null).trigger("change");
+    $('#select_server').val(-1);
+    $('#select_server_directory').val('');
+
+    $('#make-conform-dialog').data('hostname', hostname)
     $('#make-conform-dialog-title').html(hostname);
     $('#software_packages').val(comma2newline(missing_packages));
 
+    // Initialize the server repository selector
     initialize_server_by_hostname(hostname);
+
+    // Go to the first page especially when the dialog is re-used.
+    $('a[href="#dialog_general"]').tab('show');
+
+    // Get the latest server time
+    get_server_time();
 
     $('#make-conform-dialog').modal({
         show: true,
