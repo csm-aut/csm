@@ -155,7 +155,8 @@ class AdminConsoleForm(Form):
     ldap_server_url = StringField('LDAP Server URL')
     enable_cco_lookup = HiddenField("Enable CCO Lookup")
     cco_lookup_time = HiddenField("Last Retrieval")
-    
+
+
 class SMTPForm(Form):
     server = StringField('Outgoing SMTP Server')
     server_port = StringField('SMTP Server Port')
@@ -171,6 +172,7 @@ class PreferencesForm(Form):
     cco_username = StringField('Username')
     cco_password = PasswordField('Password')
 
+
 class BrowseServerDialogForm(Form):
     dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])
 
@@ -178,6 +180,11 @@ class BrowseServerDialogForm(Form):
 class SelectServerForm(Form):
     select_server= SelectField('Server Repository', coerce=int, choices=[(-1, '')])
     select_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
+
+
+class SoftwareProfileForm(Form):
+    profile_name = StringField('Profile Name', [required(), Length(max=30)])
+    description = StringField('Description', [required(), Length(max=100)])
 
 if __name__ == '__main__':
     pass

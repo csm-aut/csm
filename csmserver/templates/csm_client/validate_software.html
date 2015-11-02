@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 
+{% from 'host/common.html' import edit_field %}
 {% from 'share/server_software_dialog.html' import server_software_dialog %}
 {% from 'share/cisco_software_dialog.html' import cisco_software_dialog %}
 
@@ -93,6 +94,74 @@
             }
         }
 
+        $('#save-as-software-profile').click(function(e) {
+            var software_packages = trim_lines($('#validate_results').val());
+            if (software_packages.length == 0) {
+                bootbox.alert('Software packages has not been specified.');
+                return;
+            }
+
+            // Initialize the variables
+            $('#profile_name').val('');
+            $('#description').val('');
+
+            $('#create-software-profile-dialog').modal({
+                show: true,
+                backdrop: 'static'
+            });
+
+        });
+
+        $('#on-create-software-profile-submit').click(function(e) {
+            var profile_name = $('#profile_name').val().trim();
+            if (profile_name.length == 0) {
+                bootbox.alert('Software profile name has not been specified.');
+                return false;
+            }
+
+            var description = $('#description').val().trim();
+            if (description.length == 0) {
+                bootbox.alert('Description has not been specified.');
+                return false;
+            }
+
+            var acceptable_string = get_acceptable_string(profile_name);
+
+            if (acceptable_string != profile_name) {
+                var message = get_acceptable_string_message('Profile name', profile_name, acceptable_string);
+                bootbox.confirm(message, function(result) {
+                    if (result) {
+                        $('#profile_name').val(acceptable_string);
+                    }
+                });
+            } else {
+                create_software_profile(profile_name, description, $('#validate_results').val());
+            }
+
+            return false;
+        });
+
+        function create_software_profile(profile_name, description, software_packages) {
+            $.ajax({
+                url: "/conformance/api/create_software_profile",
+                dataType: 'json',
+                type: "POST",
+                data: {
+                    profile_name: profile_name,
+                    description: description,
+                    software_packages: trim_lines(software_packages),
+                },
+                success: function(data) {
+                    if (data.status == 'OK') {
+                        $('#create-software-profile-dialog').modal('hide');
+                        bootbox.alert('Software Profile has been created.');
+                    } else {
+                        bootbox.alert('<img src="/static/error.png">&nbsp;' + data.status);
+                    }
+                }
+            });
+        }
+
     });
 </script>
 
@@ -119,6 +188,30 @@
 {{ cisco_software_dialog() }}
 {{ server_software_dialog(server_dialog_form.server_dialog_server, server_dialog_form.server_dialog_server_directory, server_dialog_form.server_dialog_target_software) }}
 
+<div id="create-software-profile-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Create Software Profile</h4>
+                </div>
+                <div class="modal-body">
+                    {{ edit_field(software_profile_form.profile_name, field_width="col-sm-6", class="form-control") }}
+                    {{ edit_field(software_profile_form.description, field_width="col-sm-6", class="form-control") }}
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-create-software-profile-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
 <div class="container">
     <!-- Main -->
@@ -141,7 +234,7 @@
                         </span>
                         <span class="pull-right">
                             <a id="validate-software" href="javascript://">
-                                <img title="Click to validate software" src="{{ url_for('static', filename='wizard.png') }}">Validate
+                                Validate<img title="Click to validate software" src="{{ url_for('static', filename='blue_right_arrow.png') }}">
                             </a>
                         </span>
                     </div>
@@ -156,13 +249,18 @@
                 <hr>
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        Validated Results
+                        Validated Software Packages
                         <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                     </div>
                     <div class="panel-body">
                         &nbsp;
                         <textarea spellcheck="false" class="form-control" rows="18" id="validate_results"></textarea>
+                        <p>
+                        <div class="pull-right">
+                            <input type='button' class='btn btn-primary' id="save-as-software-profile" value='Save as Software Profile' />
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>

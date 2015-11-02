@@ -49,6 +49,7 @@ from forms import SMTPForm
 from forms import PreferencesForm
 from forms import ServerDialogForm
 from forms import BrowseServerDialogForm
+from forms import SoftwareProfileForm
 
 from models import Host
 from models import JumpHost
@@ -2808,7 +2809,11 @@ def api_get_smu_meta_retrieval_elapsed_time(platform, release):
 @login_required
 def validate_software():
     server_dialog_form = ServerDialogForm(request.form)
-    return render_template('csm_client/validate_software.html', server_dialog_form=server_dialog_form)
+    software_profile_form = SoftwareProfileForm(request.form)
+
+    return render_template('csm_client/validate_software.html',
+                           server_dialog_form=server_dialog_form,
+                           software_profile_form=software_profile_form)
 
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required

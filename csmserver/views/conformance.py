@@ -190,6 +190,31 @@ def api_get_software_profiles():
 
     return jsonify(**{'data': rows})
 
+@conformance.route('/api/create_software_profile', methods=['POST'])
+@login_required
+def api_create_software_profile():
+    profile_name = request.form['profile_name']
+    description = request.form['description']
+    software_packages = request.form['software_packages']
+
+    db_session = DBSession()
+
+    software_profile = get_software_profile(db_session, profile_name)
+
+    if software_profile is not None:
+        return jsonify({'status': 'Software profile "' + profile_name + '" already exists.  Use a different name instead.'})
+
+    software_profile = SoftwareProfile(
+        name=profile_name,
+        description=description,
+        packages=','.join([l for l in software_packages.splitlines() if l]),
+        created_by=current_user.username)
+
+    db_session.add(software_profile)
+    db_session.commit()
+
+    return jsonify({'status': 'OK'})
+
 
 @conformance.route('/software_profile/<profile_name>/delete', methods=['DELETE'])
 @login_required
