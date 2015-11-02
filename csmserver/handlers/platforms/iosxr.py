@@ -43,7 +43,7 @@ class BaseConnectionHandler(BaseHandler):
         csm_au_module = import_module('au.csm_au', AUT_PATH)
         if csm_au_module is not None:
             status = csm_au_module.execute(ctx)
-            if status == 0 :
+            if status == 0:
                 ctx.success = True
         else:    
             try:
@@ -62,7 +62,7 @@ class BaseInventoryHandler(BaseHandler):
         csm_au_module = import_module('au.csm_au', AUT_PATH)
         if csm_au_module is not None:
             status = csm_au_module.execute(ctx)
-            if status == 0 :
+            if status == 0:
                 self.get_software(ctx,
                     install_inactive_cli=ctx.inactive_cli, 
                     install_active_cli=ctx.active_cli, 
@@ -119,6 +119,8 @@ class BaseInventoryHandler(BaseHandler):
         condor = import_module('au.condor', AUT_PATH)
 
         conn = condor.make_connection_from_context(ctx)
+
+        #conn = condor.make_connection_from_urls('host', ctx.urls)
         conn.connect()
 
         asr9k_exr = False

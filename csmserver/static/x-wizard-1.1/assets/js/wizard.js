@@ -109,8 +109,21 @@ function validateFirstStep(){
 function validateSecondStep(){
    
     //code here for second step
-    if (server_software_selector.get_selected_items().length < 1) {
-        bootbox.alert("Please select at least the eXR ISO image before continuing. The FPD SMU is also needed if your release version is below 6.0.0.")
+    console.log($('#server_dialog_server').val())
+    if ($('#server_dialog_server').val() == -1) {
+        bootbox.alert("Please select server repository");
+        return false
+    }
+    var selected_ISO = false;
+    var selected_items = server_software_selector.get_selected_items();
+
+    for (var index in selected_items) {
+        if (selected_items[index] == "asr9k-mini-x64.iso" || selected_items[index] == "asr9k-full-x64.iso") {
+            selected_ISO = true;
+        }
+    }
+    if (!selected_ISO) {
+        bootbox.alert("Please select at least the eXR ISO image 'asr9k-mini-x64.iso' or 'asr9k-full-x64.iso' before continuing. The FPD SMU is also needed if your release version is below 6.0.0.");
         return false
     }
     $.cookie('region-' + region_id + '-server', $('#hidden_server').val(), { path: '/' });

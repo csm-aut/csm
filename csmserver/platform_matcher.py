@@ -33,7 +33,7 @@ PLATFORM_CRS_PX = "crs_px"
 PLATFORM_NCS6K = "ncs6k"
 PLATFORM_NCS6K_SYSADMIN = "ncs6k_sysadmin"
 
-PLATFORM_TYPE_UNKNOWN  = -1
+PLATFORM_TYPE_UNKNOWN = -1
 
 # IOS XR
 PLATFORM_TYPE_ASR9K_PX_SMU = 0
@@ -51,10 +51,10 @@ Match NCS6K_SMU before NS6K_PACKAGE so a SMU won't
 be treated as a package as they have a very similar format.
 In addition, the long string (ncs6k-sysadmin) is matched first.
 """
-PLATFORM_TYPE_NCS6K_SYSADMIN_SMU = 9;         
-PLATFORM_TYPE_NCS6K_SYSADMIN_PACKAGE = 10;    
-PLATFORM_TYPE_NCS6K_SMU = 11;         
-PLATFORM_TYPE_NCS6K_PACKAGE = 12;
+PLATFORM_TYPE_NCS6K_SYSADMIN_SMU = 9
+PLATFORM_TYPE_NCS6K_SYSADMIN_PACKAGE = 10
+PLATFORM_TYPE_NCS6K_SMU = 11
+PLATFORM_TYPE_NCS6K_PACKAGE = 12
 
 pattern_list = {}
 
@@ -127,7 +127,7 @@ def get_IOSXR_release(name, architecture):
         tokens = partial.split('.')
         if len(tokens) >= 3:
             return tokens[0] + '.' + tokens[1] + '.' + tokens[2]
-    return UNKNOWN;
+    return UNKNOWN
 
 """
 Example,
@@ -150,7 +150,7 @@ def get_NCS6K_release(name, platform_type):
     tokens = name.split('.')
     if len(tokens) >= 3:
         return tokens[0] + '.' + tokens[1] + '.' + tokens[2]
-    return UNKNOWN;
+    return UNKNOWN
 
 def get_platform_type(name):
     for platform_type in pattern_list:
@@ -165,7 +165,7 @@ Returns the platform based on the pattern type.
 ASR9K-PX, CRS-PX, NCS6K
 """
 def get_platform(name):
-    platform_type = get_platform_type(name);
+    platform_type = get_platform_type(name)
     
     if platform_type == PLATFORM_TYPE_ASR9K_P_SMU or \
        platform_type == PLATFORM_TYPE_ASR9K_P_PACKAGE:
@@ -188,7 +188,7 @@ def get_platform(name):
             return PLATFORM_NCS6K_SYSADMIN
     else:
         return UNKNOWN
-        
+
 def get_release(name):
     platform_type = get_platform_type(name)   
 
@@ -209,7 +209,7 @@ def get_release(name):
          platform_type == PLATFORM_TYPE_CRS_PX_PACKAGE:
         return get_IOSXR_release(name, "-px-")
     else:
-        return UNKNOWN;
+        return UNKNOWN
 
 if __name__ == '__main__':   
     name = 'ncs6k-5.0.1.CSCul51055-0.0.2.i'

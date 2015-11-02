@@ -47,6 +47,8 @@ from au.plugins.install_add import InstallAddPlugin
 from au.plugins.install_commit import InstallCommitPlugin
 from au.plugins.install_act import InstallActivatePlugin
 
+from sets import Set
+
 NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
 NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_FOR_MAC = "nox-mac64"
@@ -69,8 +71,12 @@ FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
 MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.0'
 
 
-SUPPORTED_CONFIG_LOG = "supported_admin_configurations_log"
-UNSUPPORTED_CONFIG_LOG = "unsupported_admin_configurations_log"
+XR_CONFIG_NAME_IN_CSM = "xr.cfg"
+xr_config_name_in_csm = "xr.cfg"
+BREAKOUT_CONFIG_NAME_IN_CSM = "breakout.cfg"
+breakout_config_name_in_csm = "breakout.cfg"
+ADMIN_CONFIG_NAME_IN_CSM = "admin.cfg"
+admin_config_name_in_csm = "admin.cfg"
 
 
 class PreMigratePlugin(IPlugin):
@@ -93,13 +99,22 @@ class PreMigratePlugin(IPlugin):
 
 
     def _is_conversion_successful(self, nox_output):
-        match = re.search('Filename[\sA-Za-z\n]*[-\s]*\S*\s+(\d*)\s+\d*\(\s*\d%\)\s+\d*\(\s*\d%\)\s+(\d*)', nox_output)
+        match = re.search('Filename[\sA-Za-z\n]*[-\s]*\S*\s+(\d*)\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+(\d*)', nox_output)
 
         if match:
             if match.group(1) == match.group(2):
                 return True
 
         return False
+
+    def _is_there_unsupported_config(self, nox_output):
+        match = re.search('Filename[\sA-Za-z\n]*[-\s]*\S*\s+\d*\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+(\d*)', nox_output)
+
+        if match:
+            if match.group(1) != '0':
+                return False
+
+        return True
 
     def _copy_config_to_repo(self, device, repository, filename):
         """
@@ -204,7 +219,7 @@ class PreMigratePlugin(IPlugin):
         if self.csm_ctx:
             self.csm_ctx.post_status(msg)
 
-    def _run_migration_on_config(self, device, fileloc, filename, nox_to_use):
+    def _run_migration_on_config(self, device, fileloc, filename, nox_to_use, host_ip):
         commands = [subprocess.Popen(["chmod", "+x", nox_to_use]), subprocess.Popen([nox_to_use, "-f", fileloc + os.sep + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
 
         nox_output, nox_error = commands[1].communicate()
@@ -214,14 +229,24 @@ class PreMigratePlugin(IPlugin):
 
         conversion_success = self._is_conversion_successful(nox_output)
 
+        if filename == ADMIN_CONFIG_NAME_IN_CSM:
+            supported_log_name = "supported_config_in_admin_configuration"
+            unsupported_log_name = "unsupported_config_in_admin_configuration"
+        else:
+            supported_log_name = "supported_config_in_xr_configuration"
+            unsupported_log_name = "unsupported_config_in_xr_configuration"
+
         if conversion_success:
 
-            self._post_status("Finished migrating the admin configuration.")
-
+            if self._is_there_unsupported_config(nox_output):
+                self.log("Configuration " + filename + " was migrated successfully. No unsupported configurations found.")
+            else:
+                self._create_config_logs(device, fileloc + os.sep + filename.split('.')[0] + ".csv", supported_log_name, unsupported_log_name, host_ip, filename)
+                self.log("Configuration " + filename + " was migrated successfully, however, please know that we removed some configurations that are unsupported in eXR. Please look into " + unsupported_log_name + " and " + supported_log_name + ".")
         else:
-            self._create_config_logs(device, fileloc + os.sep + filename.split('.')[0] + ".csv")
+            self._create_config_logs(device, fileloc + os.sep + filename.split('.')[0] + ".csv", supported_log_name, unsupported_log_name, host_ip, filename)
 
-            self.error("The admin configuration file contains configurations that are unknown or unsupported to the NoX configuration conversion tool. Please look into " + UNSUPPORTED_CONFIG_LOG + " for configurations that are unprocessed by the conversion tool. The known or supported configurations are in " + SUPPORTED_CONFIG_LOG + ". If you still wish to migrate the system, all configurations have been backed up in both your server repository and locally in " + fileloc + ", however, you will need to schedule System Migrate separately and manually load the correct configurations on eXR after system migration.")
+            self.error("The configuration file contains configurations that are unknown to the NoX configuration conversion tool. Please look into " + unsupported_log_name + " for configurations that are unprocessed by the conversion tool. The known or supported configurations are in " + supported_log_name + ". You can see the configurations in both your server repository and locally in " + fileloc + ".")
 
 
     def _check_platform(self, device):
@@ -234,7 +259,7 @@ class PreMigratePlugin(IPlugin):
                 match = re.search('asr9k-mini-px', output)
 
                 if not match:
-                    self.error('Device is not running asr9k-mini-px.vm image. Abort migration action.')
+                    self.error('Device is not running ASR9K Classic XR asr9k-mini-px image. Migration action aborted.')
             else:
                 self.error("Failed to detect active package on device. Please check session.log.")
         else:
@@ -280,7 +305,7 @@ class PreMigratePlugin(IPlugin):
         if not "eUSB partition completed." in output:
             self.error("eUSB partition failed. Please check session.log.")
 
-        #self._copy_files_to_device(device, repository, ['migrate_to_eXR'], ['harddiskb:/migrate_to_eXR'], 100)
+        # self._copy_files_to_device(device, repository, ['migrate_to_eXR'], ['harddiskb:/migrate_to_eXR'], 100)
 
 
 
@@ -292,25 +317,31 @@ class PreMigratePlugin(IPlugin):
             self.error("Failed to check FPD version before migration")
 
 
-        location_to_subtypes_need_upgrade = {}
+        # location_to_subtypes_need_upgrade = {}
 
-        self._find_all_fpds_need_upgrade(fpdtable, ROUTEPROCESSOR_RE, location_to_subtypes_need_upgrade)
-        self._find_all_fpds_need_upgrade(fpdtable, LINECARD_RE, location_to_subtypes_need_upgrade)
+        # self._find_all_fpds_need_upgrade(fpdtable, ROUTEPROCESSOR_RE, location_to_subtypes_need_upgrade)
+        # self._find_all_fpds_need_upgrade(fpdtable, LINECARD_RE, location_to_subtypes_need_upgrade)
+
+        subtypes_need_upgrade = Set([])
+        self._find_all_fpds_need_upgrade(fpdtable, ROUTEPROCESSOR_RE, subtypes_need_upgrade)
+        self._find_all_fpds_need_upgrade(fpdtable, LINECARD_RE, subtypes_need_upgrade)
+
+        # return location_to_subtypes_need_upgrade
+        return subtypes_need_upgrade
 
 
-        return location_to_subtypes_need_upgrade
 
-
-
-    def _find_all_fpds_need_upgrade(self, fpdtable, location, location_to_subtypes_need_upgrade):
+    # def _find_all_fpds_need_upgrade(self, fpdtable, location, location_to_subtypes_need_upgrade):
+    def _find_all_fpds_need_upgrade(self, fpdtable, location, subtypes_need_upgrade):
         for fpdtype in FPDS_CHECK_FOR_UPGRADE:
             match = re.search(location + '[-.A-Z0-9a-z\s]*?' + fpdtype + '[-.A-Z0-9a-z\s]*?(No|Yes)', fpdtable)
 
             if match:
                 if match.group(2) == "Yes":
-                    if not match.group(1) in location_to_subtypes_need_upgrade:
-                        location_to_subtypes_need_upgrade[match.group(1)] = []
-                    location_to_subtypes_need_upgrade[match.group(1)].append(fpdtype)
+                    subtypes_need_upgrade.add(fpdtype)
+                    # if not match.group(1) in location_to_subtypes_need_upgrade:
+                        # location_to_subtypes_need_upgrade[match.group(1)] = []
+                    # location_to_subtypes_need_upgrade[match.group(1)].append(fpdtype)
 
 
     def _ensure_updated_fpd(self, device, repo, packages):
@@ -318,11 +349,11 @@ class PreMigratePlugin(IPlugin):
         # check for the FPD version, if FPD needs upgrade,
         # enable the FPD Auto Upgrade Feature
 
-        location_to_subtypes_need_upgrade = self._check_fpd(device)
+        # location_to_subtypes_need_upgrade = self._check_fpd(device)
+        subtypes_need_upgrade = self._check_fpd(device)
 
-
-        if location_to_subtypes_need_upgrade:
-
+        # if location_to_subtypes_need_upgrade:
+        if subtypes_need_upgrade:
 
             cmd = "show install active summary"
             success, active_packages = device.execute_command(cmd)
@@ -387,7 +418,8 @@ class PreMigratePlugin(IPlugin):
             """
             Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
             """
-            self._upgrade_all_fpds(device, location_to_subtypes_need_upgrade)
+            # self._upgrade_all_fpds(device, location_to_subtypes_need_upgrade)
+            self._upgrade_all_fpds(device, subtypes_need_upgrade)
 
 
         return True
@@ -404,36 +436,45 @@ class PreMigratePlugin(IPlugin):
 
 
 
-    def _upgrade_all_fpds(self, device, location_to_subtypes_need_upgrade):
+    # def _upgrade_all_fpds(self, device, location_to_subtypes_need_upgrade):
+    def _upgrade_all_fpds(self, device, subtypes_need_upgrade):
 
-        for location in location_to_subtypes_need_upgrade:
+        # for location in location_to_subtypes_need_upgrade:
 
-            for fpdtype in location_to_subtypes_need_upgrade[location]:
+        #    for fpdtype in location_to_subtypes_need_upgrade[location]:
+        for fpdtype in subtypes_need_upgrade:
 
-                self._post_status("FPD upgrade - start to upgrade FPD subtype " + fpdtype + " in location " + location)
+            # self._post_status("FPD upgrade - start to upgrade FPD subtype " + fpdtype + " in location " + location)
+            self._post_status("FPD upgrade - start to upgrade FPD subtype " + fpdtype + " in all locations")
+            # command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location ' + location
+            command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location all'
+            device.execute_command(command, timeout=60, wait_for_string='?')
+            print "entered upgrade command"
+            success, output = device.execute_command('\r yes', timeout=9600)
+            print "entered enter and yes"
 
-                command = 'admin upgrade hw-module fpd ' + fpdtype + ' force location ' + location
-                device.execute_command(command, timeout=60, wait_for_string='?')
-                success, output = device.execute_command('\r', timeout=9600)
-                #fpd_upgrade_success = re.search(location + '.*' + fpdtype + '[-_%.A-Z0-9a-z\s]*[Ss]uccess', output)
-                fpd_upgrade_success = re.search('[Ss]uccess', output)
-                if not fpd_upgrade_success:
-                    self.error("Failed to force upgrade FPD subtype " + fpdtype + " in location " + location)
+            # fpd_upgrade_success = re.search(location + '.*' + fpdtype + '[-_%.A-Z0-9a-z\s]*[Ss]uccess', output)
+            fpd_upgrade_success = re.search('[Ss]uccess', output)
+            if not fpd_upgrade_success:
+                # self.error("Failed to force upgrade FPD subtype " + fpdtype + " in location " + location)
+                self.error("Failed to force upgrade FPD subtype " + fpdtype + " in all locations")
 
         return True
 
 
-    def _create_config_logs(self, device, csvfile):
+    def _create_config_logs(self, device, csvfile, supported_log_name, unsupported_log_name, host_ip, filename):
         if not self.csm_ctx or not self.csm_ctx.log_directory:
             self.error("Cannot fetch the log directory in csm_ctx from plugin.")
 
-        supported_config_log = self.csm_ctx.log_directory + os.sep + SUPPORTED_CONFIG_LOG
-        unsupported_config_log = self.csm_ctx.log_directory + os.sep + UNSUPPORTED_CONFIG_LOG
+        supported_config_log = self.csm_ctx.log_directory + os.sep + supported_log_name
+        unsupported_config_log = self.csm_ctx.log_directory + os.sep + unsupported_log_name
         try:
             with open(supported_config_log, 'w') as supp_log:
                 with open(unsupported_config_log, 'w') as unsupp_log:
-                    supp_log.write('Configurations Known or Supported to the NoX Conversion Tool \n \n')
+                    supp_log.write('Configurations Known and Supported to the NoX Conversion Tool \n \n')
+
                     unsupp_log.write('Configurations Unprocessed by the NoX Conversion Tool (Comments, Markers, or Unknown/Unsupported Configurations) \n \n')
+
                     supp_log.write('{0[0]:<8} {0[1]:^20}'.format(("Line No.", "Configuration")) + '\n')
                     unsupp_log.write('{0[0]:<8} {0[1]:^20}'.format(("Line No.", "Configuration")) + '\n')
                     with open(csvfile, 'rb') as csvfile:
@@ -443,6 +484,13 @@ class PreMigratePlugin(IPlugin):
                                 supp_log.write('{0[0]:<8} {0[1]:<}'.format((row[0], row[2])) + '\n')
                             elif len(row) >= 3:
                                 unsupp_log.write('{0[0]:<8} {0[1]:<}'.format((row[0], row[2])) + '\n')
+
+                    msg = '\n \nPlease find original configuration ' + filename + ' in csm_data/migration/' + host_ip + '/' + filename + ' \n'
+                    supp_log.write(msg)
+                    unsupp_log.write(msg)
+                    msg2 = 'The final converted configuration is in csm_data/migration/' + host_ip + '/' + filename.split('.')[0] + '.iox'
+                    supp_log.write(msg2)
+                    unsupp_log.write(msg2)
                     csvfile.close()
                 unsupp_log.close()
             supp_log.close()
@@ -451,11 +499,10 @@ class PreMigratePlugin(IPlugin):
 
     def _handle_configs(self, device, host_ip, repo_str, fileloc, nox_to_use):
 
-        xr_config_name_in_repo = host_ip + "_xr.cfg"
-        xr_config_name_in_csm = "xr.cfg"
-        breakout_config_name_in_csm = "breakout.cfg"
-        admin_config_name_in_repo = host_ip + "_admin.cfg"
-        admin_config_name_in_csm = "admin.cfg"
+        xr_config_name_in_repo = host_ip + "_" + XR_CONFIG_NAME_IN_CSM
+
+        admin_config_name_in_repo = host_ip + "_" + ADMIN_CONFIG_NAME_IN_CSM
+
 
 
         self._post_status("Saving current configuration files on device into server repository and csm_data")
@@ -468,21 +515,21 @@ class PreMigratePlugin(IPlugin):
             device.execute_command('exit')
 
 
-        self._copy_files_to_csm_data(device, repo_str, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + xr_config_name_in_csm, fileloc + os.sep + admin_config_name_in_csm])
+        self._copy_files_to_csm_data(device, repo_str, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + XR_CONFIG_NAME_IN_CSM, fileloc + os.sep + ADMIN_CONFIG_NAME_IN_CSM])
 
 
 
         self._post_status("Converting admin configuration file with configuration migration tool")
-        self._run_migration_on_config(device, fileloc, admin_config_name_in_csm, nox_to_use)
+        self._run_migration_on_config(device, fileloc, ADMIN_CONFIG_NAME_IN_CSM, nox_to_use, host_ip)
         #self._run_migration_on_config(device, fileloc, "system.tech", NOX_FOR_MAC)
 
         self._post_status("Converting IOS-XR configuration file with configuration migration tool")
-        self._run_migration_on_config(device, fileloc, xr_config_name_in_csm, nox_to_use)
+        self._run_migration_on_config(device, fileloc, XR_CONFIG_NAME_IN_CSM, nox_to_use, host_ip)
 
         config_files = ["xr.iox", "admin.cal"]
 
-        if not self._take_out_breakout_config(device, fileloc + os.sep + xr_config_name_in_csm, fileloc + os.sep + breakout_config_name_in_csm):
-            config_files.append(breakout_config_name_in_csm)
+        if not self._take_out_breakout_config(device, fileloc + os.sep + XR_CONFIG_NAME_IN_CSM, fileloc + os.sep + BREAKOUT_CONFIG_NAME_IN_CSM):
+            config_files.append(BREAKOUT_CONFIG_NAME_IN_CSM)
 
         if os.path.isfile(fileloc + os.sep + "admin.iox"):
             config_files.append("admin.iox")
@@ -541,38 +588,38 @@ class PreMigratePlugin(IPlugin):
 
         self.log(self.NAME + " Plugin is running")
 
+
+        self._post_status("Checking if migration requirements are met.")
+        self._check_platform(device)
+        self._check_release_version(device)
+        self._ping_repo_check(device, repo_str)
+
         node_status = NodeStatusPlugin()
         try:
             node_status.start(device)
         except PluginError:
             raise PluginError("Not all nodes are in valid IOS-XR final states. Pre-Migrate fails. Please check session.log to trouble-shoot.")
 
-        """
-        self._post_status("Checking if migration requirements are met.")
-        self._check_platform(device)
-        self._check_release_version(device)
-        self._ping_repo_check(device, repo_str)
-
         self._post_status("Resizing eUSB partition.")
         self._resize_eusb(device, repo_str, packages)
-        """
+
 
         nox_to_use = get_migration_directory() + self._find_nox_to_use()
 
         nox_to_use = get_migration_directory() + NOX_FOR_MAC
 
         if not os.path.isfile(nox_to_use):
+            print nox_to_use
             self.error("The configuration conversion tool " + nox_to_use + " is missing. CSM should have downloaded it when this migration action was scheduled.")
         self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use)
 
-        """
         self._post_status("Copying the eXR ISO image from server repository to device.")
         self._copy_iso_to_device(device, packages, repo_str)
 
 
         self._post_status("Checking FPD version...")
         self._ensure_updated_fpd(device, repo_str, packages)
-        """
+
 
         return True
 

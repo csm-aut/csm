@@ -219,6 +219,116 @@ class PostMigratePlugin(IPlugin):
             self.csm_ctx.post_status(msg)
 
 
+    def _check_fpds_for_upgrade(self, device):
+
+        device.execute_command('admin')
+
+        cmd = 'show hw-module fpd'
+        success, fpdtable = device.execute_command(cmd)
+
+        if not success:
+            self.error("Failed to check FPD version before migration")
+
+        match = re.search('\d+/\w+.+\d+.\d+\s+[-\w]+\s+(NEED UPGD)', fpdtable)
+
+        if match:
+            print "found items need upgrade"
+            total_num = len(re.findall('NEED UPGD', fpdtable)) + len(re.findall('CURRENT', fpdtable))
+            if not self._upgrade_all_fpds(device, total_num):
+                self.error("FPD upgrade in eXR is not finished. Please check session.log.")
+                return False
+
+
+        device.execute_command('exit')
+        return True
+
+
+    def _upgrade_all_fpds(self, device, num_fpds):
+
+        device.execute_command('upgrade hw-module location all fpd all')
+        print "issued upgrade command"
+
+        timeout = 9600
+        poll_time = 30
+        time_waited = 0
+
+        time.sleep(60)
+        while 1:
+            # Wait till all FPDs finish upgrade
+            time_waited += poll_time
+            if time_waited >= timeout:
+                break
+            time.sleep(poll_time)
+            success, output = device.execute_command('show hw-module fpd')
+            if success:
+                num_need_reload = len(re.findall('RLOAD REQ', output))
+                if len(re.findall('CURRENT', output)) + num_need_reload >= num_fpds:
+                    if num_need_reload > 0:
+                        print "need reload"
+                        self._post_status("Finished upgrading FPD(s). Now reloading the device to complete the upgrade.")
+                        return self._reload_all_in_admin(device)
+                    return True
+
+        # Some FPDs didn't finish upgrade
+        return False
+
+
+    def _reload_all_in_admin(self, device):
+        #cmd = 'admin'
+        #device.execute_command(cmd)
+        cmd = 'hw-module location all reload'
+        device.execute_command(cmd, wait_for_string='?')
+
+        try:
+            success, output = device.execute_command('yes')
+            print cmd, '\n', output, "<-----------------", success
+            if success:
+                device.execute_command('\r')
+        except CommandTimeoutError:
+            print "Reload command - expected to timeout"
+
+        return self._wait_for_reload(device)
+
+
+
+
+    def _wait_for_reload(self, device):
+        """
+         Wait for system to come up with max timeout as 30 Minutes
+
+        """
+        print "device trying to reconnect..."
+        status = device.reconnect()
+        print "device finished reconnecting..."
+        # Connection to device failed
+        if not status :
+            return status
+
+        # Connection to device is established , now look for all nodes to xr run state
+        timeout = 1500
+        poll_time = 30
+        time_waited = 0
+        xr_run = "IOS XR RUN"
+
+        success = False
+        cmd = "show sdr"
+        print "Waiting for all nodes to come up"
+        time.sleep(60)
+        while 1:
+            # Wait till all nodes are in XR run state
+            time_waited += poll_time
+            if time_waited >= timeout:
+                break
+            time.sleep(poll_time)
+            success, output = device.execute_command(cmd)
+            if success and xr_run in output:
+                inventory = pkgutils.parse_exr_show_sdr(output)
+                if pkgutils.validate_exr_node_state(inventory, device):
+                    return True
+
+        # Some nodes did not come to run state
+        return False
+
 
 
 
@@ -241,6 +351,7 @@ class PostMigratePlugin(IPlugin):
 
 
         self.log(self.NAME + " Plugin is running")
+        """
 
         self.log('best_effort_config = ' + str(best_effort_config))
 
@@ -280,3 +391,7 @@ class PostMigratePlugin(IPlugin):
         file_exists = self._copy_file_from_eusb_to_harddisk(device, "xr.iox")
         if file_exists:
             self._load_nonadmin_config(device, "xr.iox", best_effort_config)
+        """
+        self._check_fpds_for_upgrade(device)
+
+        #self._reload_all(device)
