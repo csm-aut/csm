@@ -309,12 +309,16 @@
                             html_code += "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All hosts are in complete conformance.<br>";
                         } else {
                             html_code += "<span class='badge alert-danger'>" +
-                                element[0].host_not_in_conformance + "</span>&nbsp;&nbsp;hosts are not in complete conformance (see the 'Missing Packages' column).<br>";
+                                element[0].host_not_in_conformance + "</span>&nbsp;&nbsp;" +
+                                    (element[0].host_not_in_conformance > 1 ? "hosts are not" : "host is not") +
+                                    " in complete conformance (see the 'Missing Packages' column).<br>";
                         }
                         
                         if (element[0].host_out_dated_inventory > 0) {
                             html_code += "<span class='badge alert-danger'>" +
-                                element[0].host_out_dated_inventory + "</span>&nbsp;&nbsp;hosts failed last software inventory retrieval (see '*' in the 'Conformed' column).";
+                                element[0].host_out_dated_inventory + "</span>&nbsp;&nbsp;" +
+                                (element[0].host_out_dated_inventory > 1 ? "hosts" : "host") +
+                                " failed last software inventory retrieval (see '*' in the 'Is Conformed' column).";
                         }
                     });
                     
