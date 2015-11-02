@@ -151,7 +151,8 @@ def software_profile_edit(profile_name):
         if profile_name != form.profile_name.data and \
                         get_software_profile(db_session, form.profile_name.data) is not None:
             return render_template('conformance/profile_edit.html',
-                                   form=form, system_option=SystemOption.get(db_session), duplicate_error=True)
+                                   form=form, server_dialog_form=server_dialog_form,
+                                   system_option=SystemOption.get(db_session), duplicate_error=True)
 
         software_profile.name = form.profile_name.data
         software_profile.description = form.description.data
@@ -167,7 +168,8 @@ def software_profile_edit(profile_name):
             form.software_packages.data = '\n'.join(software_profile.packages.split(','))
 
     return render_template('conformance/profile_edit.html',
-                           form=form, server_dialog_form=server_dialog_form, system_option=SystemOption.get(db_session))
+                           form=form, server_dialog_form=server_dialog_form,
+                           system_option=SystemOption.get(db_session))
 
 
 @conformance.route('/api/get_software_profiles')
