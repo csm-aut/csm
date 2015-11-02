@@ -130,7 +130,7 @@ class XLSWriter(ReportWriter):
         
         if self.include_host_packages:
             if self.conformance_report.match_criteria == 'inactive':
-                self.ws.write(self.row, 2, 'Installed Packages', XLSWriter.style_bold)
+                self.ws.write(self.row, 2, 'Inactive Packages', XLSWriter.style_bold)
             else:
                 self.ws.write(self.row, 2, 'Active Packages', XLSWriter.style_bold)
             
