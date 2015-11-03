@@ -1,12 +1,14 @@
 from flask.ext.login import current_user
-from platform_matcher import get_platform, get_release
 from sqlalchemy import or_, and_
+from platform_matcher import get_platform
+from platform_matcher import get_release
 
 from constants import ServerType
 from constants import UserPrivilege
 from constants import InstallAction
 from constants import JobStatus
 from constants import PackageState
+from constants import JobStatus
 
 from models import Server
 from models import Host
@@ -23,11 +25,18 @@ from models import get_download_job_key_dict
 from smu_utils import SP_INDICATOR
 from utils import is_empty, get_datetime
 from models import Package
+from models import InstallJob
+from models import SMUMeta
+from models import DownloadJob
+from models import get_download_job_key_dict
 
 from database import DBSession
 
 from filters import get_datetime_string
-from filters import time_difference_UTC 
+from filters import time_difference_UTC
+
+from smu_utils import SP_INDICATOR
+from utils import is_empty, get_datetime
 
 def fill_servers(choices, servers, include_local=True):
     # Remove all the existing entries
@@ -113,7 +122,7 @@ def get_last_successful_inventory_elapsed_time(host):
         if inventory_job.pending_submit:
             return 'Pending Retrieval'
         else:
-            return  time_difference_UTC(inventory_job.last_successful_time)
+            return time_difference_UTC(inventory_job.last_successful_time)
         
     return ''
 
@@ -232,9 +241,6 @@ def can_create(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN 
 
-
-
-
 """
 Returns the return_url encoded in the parameters
 """
@@ -251,7 +257,10 @@ def get_first_install_action(db_session, install_action):
         order_by(InstallJob.scheduled_time.asc()).first()
 
 
-def create_or_update_install_job(db_session, host_id, form, install_action, dependency=0, install_job=None):
+def create_or_update_install_job(
+    db_session, host_id, install_action, scheduled_time, software_packages=None,
+    server=-1, server_directory='', dependency=0, pending_downloads=None, install_job=None, best_effort_config=0):
+
     # This is a new install_job
     if install_job is None:
         install_job = InstallJob()
@@ -260,21 +269,23 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
 
     install_job.install_action = install_action
 
-    if (install_job.install_action == InstallAction.INSTALL_ADD or install_job.install_action == InstallAction.PRE_MIGRATE) and \
-        not is_empty(form.hidden_pending_downloads.data):
-        install_job.pending_downloads = ','.join(form.hidden_pending_downloads.data.split())
+    if install_job.install_action == InstallAction.INSTALL_ADD and \
+        not is_empty(pending_downloads):
+        install_job.pending_downloads = ','.join(pending_downloads.split())
     else:
         install_job.pending_downloads = ''
 
-    install_job.scheduled_time = get_datetime(form.scheduled_time_UTC.data, "%m/%d/%Y %I:%M %p")
+    install_job.scheduled_time = get_datetime(scheduled_time, "%m/%d/%Y %I:%M %p")
 
     # Only Install Add and Pre-Migrate should have server_id and server_directory
     if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE:
-        install_job.server_id = int(form.hidden_server.data) if int(form.hidden_server.data) > 0 else None
-        install_job.server_directory = form.hidden_server_directory.data
+        install_job.server_id = int(server) if int(server) > 0 else None
+        install_job.server_directory = server_directory
     else:
         install_job.server_id = None
         install_job.server_directory = ''
+
+    install_job_packages = []
 
     # Only the following install actions should have software packages
     if install_action == InstallAction.INSTALL_ADD or \
@@ -283,28 +294,24 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
         install_action == InstallAction.INSTALL_DEACTIVATE or \
         install_action == InstallAction.PRE_MIGRATE:
 
-        package_list = ''
-        # ################################################ There is a change here on original code
         if install_action == InstallAction.PRE_MIGRATE:
-            software_packages = form.hidden_software_packages.data.split(',')
+            software_packages = software_packages.split(',') if software_packages is not None else []
         else:
-            software_packages = form.software_packages.data.split()
+            software_packages = software_packages.split() if software_packages is not None else []
+
         for software_package in software_packages:
             if install_action == InstallAction.INSTALL_ADD:
                 # Install Add only accepts external package names with the following suffix
                 if '.pie' in software_package or \
                     '.tar' in software_package or \
                     '.rpm' in software_package:
-                    package_list += software_package + ','
+
+                    install_job_packages.append(software_package)
             else:
                 # Install Activate can have external or internal package names
-                package_list += software_package + ','
+                install_job_packages.append(software_package)
 
-        # remove trailing ',' if any
-        install_job.packages = package_list.rstrip(',')
-    else:
-        install_job.packages = ''
-
+    install_job.packages = ','.join(install_job_packages)
     install_job.dependency = dependency if dependency > 0 else None
     install_job.created_by = current_user.username
     install_job.user_id = current_user.id
@@ -315,11 +322,8 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
     install_job.session_log = None
     install_job.trace = None
 
-    # ################################################ There is a change here on original code
-    install_job.best_effort_config_applying = '0'
-    if install_action == InstallAction.POST_MIGRATE:
-       install_job.best_effort_config_applying = form.hidden_best_effort_config.data
-       print("install_job.best_effort_config_applying = "+install_job.best_effort_config_applying)
+    # for post-migrate
+    install_job.best_effort_config_applying = best_effort_config
 
     if install_job.install_action != InstallAction.UNKNOWN:
         db_session.commit()
@@ -341,7 +345,6 @@ def create_or_update_install_job(db_session, host_id, form, install_action, depe
             install_job.server_id, install_job.server_directory)
 
     return install_job
-
 
 """
 Pending downloads is an array of TAR files.
@@ -373,8 +376,6 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
                 db_session.add(download_job)
 
             db_session.commit()
-
-
 
 def is_pending_on_download(db_session, filename, server_id, server_directory):
     download_job_key_dict = get_download_job_key_dict()

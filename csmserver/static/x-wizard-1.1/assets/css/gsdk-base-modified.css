@@ -12,8 +12,7 @@
 
 
 .wizard-container{
-
-    padding-top: 100px;
+    padding-top: 40px;
     z-index: 3;
 }
 .wizard-card{
@@ -23,6 +22,10 @@
     padding: 10px 0;
     transition: all 0.2s;
     -webkit-transition: all 0.2s;
+}
+
+.wizard-border{
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 .wizard-card .tab-content{
@@ -145,5 +148,3 @@
     color: #999999;
     font-size: 14px;
 }
-
-

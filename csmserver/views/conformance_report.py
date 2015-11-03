@@ -1,3 +1,27 @@
+# =============================================================================
+# Copyright (c)  2015, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 import xlwt
 
 from filters import get_datetime_string
@@ -44,8 +68,8 @@ class XLSWriter(ReportWriter):
         self.ws.set_portrait(False)
 
         # Fit for Landscape mode
-        self.ws.col(0).width = 6000
-        self.ws.col(1).width = 6000
+        self.ws.col(0).width = 7000
+        self.ws.col(1).width = 5000
         self.ws.col(2).width = 8000
         self.ws.col(3).width = 8000
         self.ws.col(4).width = 5000
@@ -65,12 +89,16 @@ class XLSWriter(ReportWriter):
         if self.conformance_report.host_not_in_conformance == 0:
             self.ws.write(9, 0, "     All hosts are in complete conformance", XLSWriter.style_summary)
         else:
-            self.ws.write(9, 0, "     %d hosts are not in complete conformance (see the 'Missing Packages' column)"
-                % self.conformance_report.host_not_in_conformance, XLSWriter.style_summary)
+            self.ws.write(9, 0, "     %d %s in complete conformance (see the 'Missing Packages' column)"
+                % (self.conformance_report.host_not_in_conformance,
+                    "hosts are not" if self.conformance_report.host_not_in_conformance > 1 else "host is not"),
+                    XLSWriter.style_summary)
                         
         if self.conformance_report.host_out_dated_inventory > 0:
-            self.ws.write(10, 0, "     %d hosts failed last software inventory retrieval (see '*' in the 'Conformed' column)"
-                % self.conformance_report.host_out_dated_inventory, XLSWriter.style_summary)
+            self.ws.write(10, 0, "     %d %s failed last software inventory retrieval (see '*' in the 'Is Conformed' column)"
+                % (self.conformance_report.host_out_dated_inventory,
+                    "hosts" if self.conformance_report.host_out_dated_inventory > 1 else "host"),
+                    XLSWriter.style_summary)
         
     def write_software_profile_info(self):
         self.ws.write(self.row, 0, 'Software Profile: ' + self.conformance_report.software_profile, XLSWriter.style_bold)
@@ -102,12 +130,12 @@ class XLSWriter(ReportWriter):
         
         if self.include_host_packages:
             if self.conformance_report.match_criteria == 'inactive':
-                self.ws.write(self.row, 2, 'Installed Packages', XLSWriter.style_bold)
+                self.ws.write(self.row, 2, 'Inactive Packages', XLSWriter.style_bold)
             else:
                 self.ws.write(self.row, 2, 'Active Packages', XLSWriter.style_bold)
             
         self.ws.write(self.row, 3 if self.include_host_packages else 2, 'Missing Packages', XLSWriter.style_bold)
-        self.ws.write(self.row, 4 if self.include_host_packages else 3, 'Conformed', XLSWriter.style_bold)
+        self.ws.write(self.row, 4 if self.include_host_packages else 3, 'Is Conformed', XLSWriter.style_bold)
     
         self.row += 2
 

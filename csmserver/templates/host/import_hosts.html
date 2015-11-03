@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import edit_field %}
+
+{% block extra_head %}
+
+<script src="/static/x-wizard-1.1/assets/js/jquery.bootstrap.wizard.js" type="text/javascript"></script>
+<link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet" />
+
+<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+<script src="/static/jquery/js/common-utils.js"></script>
+
+<script>
+
+$(function() {
+    $('#on-finish-submit').on('click', function(e) {
+        $.ajax({
+            url: "/host_import/api/import_hosts",
+            type: "POST",
+            dataType: 'json',
+            data: {
+                platform: $('#platform').val(),
+                region: $('#region').val(),
+                data_list: trim_lines($('#data_list').val()),
+            },
+            success: function(data) {
+                if (data.status == 'OK') {
+                    bootbox.alert("Data has been imported successfully!", function() {
+                        window.location = "{{ url_for('host_import.import_hosts') }}";
+                    });
+                } else {
+                    bootbox.alert('<img src="/static/error.png">&nbsp;Following errors were encountered: <br><br>' + comma2br(data.status));
+                }
+            },
+            error: function(XMLHttpRequest, textStatus, errorThrown) {
+                alert(errorThrown);
+            }
+        });
+
+        return false;
+    });
+
+    $('.wizard-card').bootstrapWizard({
+        'tabClass': 'nav nav-pills',
+        'nextSelector': '.btn-next',
+        'previousSelector': '.btn-previous',
+
+         onInit : function(tab, navigation, index){
+
+           //check number of tabs and fill the entire row
+           var $total = navigation.find('li').length;
+           $width = 100/$total;
+
+           $display_width = $(document).width();
+
+           if($display_width < 600 && $total > 3){
+               $width = 50;
+           }
+
+           navigation.find('li').css('width',$width + '%');
+
+        },
+        onNext: function(tab, navigation, index){
+            if(index == 1){
+                if ($('#region option:selected').val() == -1) {
+                    bootbox.alert("Region has not been specified.");
+                    return false;
+                }
+            } //etc.
+
+        },
+        onTabClick : function(tab, navigation, index){
+            // Disable the possibility to click on tabs
+            return false;
+        },
+        onTabShow: function(tab, navigation, index) {
+            var $total = navigation.find('li').length;
+            var $current = index+1;
+
+            var wizard = navigation.closest('.wizard-card');
+
+            // If it's the last tab then hide the last button and show the finish instead
+            if($current >= $total) {
+                $(wizard).find('.btn-next').hide();
+                $(wizard).find('.btn-finish').show();
+            } else {
+                $(wizard).find('.btn-next').show();
+                $(wizard).find('.btn-finish').hide();
+            }
+        }
+    });
+
+
+});
+
+</script>
+
+{% endblock extra_head %}
+
+{% block main %}
+
+<div class="row">
+    <div class="col-sm-8 col-sm-offset-2">
+        <!--      Wizard container        -->
+        <div id="wizard-dialog" class="wizard-container">
+            <div class="card wizard-card wizard-border csm-blue" id="wizard">
+                <form class="form-horizontal" method="post">
+                    <div class="wizard-header">
+                        <h3>
+                            Import Hosts <br>
+                        </h3>
+                    </div>
+                    <ul>
+                        <li><a href="#general" data-toggle="tab">GENERAL</a></li>
+                        <li><a href="#import_data" data-toggle="tab">IMPORT DATA</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane" id="general">
+                            <div class="row">
+                                <h4 class="info-text">If the import data does not contain a region, the region selected below will be used.</h4>
+                                {{ edit_field(form.platform, field_width="col-sm-4", class="form-control") }}
+                                {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="import_data">
+                            <div class="row">
+                                <a class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#import-instructions">Import Instructions <b class="caret"></b></a>
+                                <div class="collapse" id="import-instructions">
+                                    <div class="col-sm-12">
+                                        <ul>
+                                            <li>Paste the import data onto the text window below.</li>
+                                            <li>The first data line must be a header line.</li>
+                                            <li>The data fields must be comma delimited.</li>
+                                            <li>The following data fields roles, ip, and port may contain multiple values.</li>
+                                            <li>If a data field contains multiple values, they must be separated by comma(s) and the data field must be double-quoted.</li>
+                                            <li>If a data field does not contain any value, leave it blank.</li>
+                                            <li>If no username and password is specified, the default host username and password defined on CSM Server will be used.</li>
+                                            <li>Acceptable header fields are hostname, region, roles, ip, username, password, connection, and port.</li>
+                                            <li>Mandatory header fields are hostname, ip, and connection (either 'telnet' or 'ssh').</li>
+                                            <li>Acceptable characters for hostname, region, and username are a-z, A-Z, 0-9, and (). -_</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="col-sm-12" style="font-family: monospace;font-size:medium">
+                                <b>hostname,region,roles,ip,username,password,connection,port</b>&nbsp;<- header (some fields are optional)<br>
+                                myhost1,blg 20,,172.27.22.34,johnsmith,password,telnet,&nbsp; <- leave blank for an empty field<br>
+                                myhost2,blg 20,PE,172.27.22.35,davidsmith,password,ssh,"2033,2034"
+                            </div>
+                            {{ edit_field(form.data_list, field_width="col-sm-12", spellcheck="false", rows="10", class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="wizard-footer">
+                        <div class="pull-right">
+                            <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                            <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                        </div>
+                        <div class="pull-left">
+                            <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- wizard container -->
+    </div>
+</div>
+
+
+{% endblock main %}

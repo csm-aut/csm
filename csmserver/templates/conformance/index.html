@@ -1,25 +1,24 @@
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
+
 {% from 'conformance/conformance_report_dialog.html' import conformance_report_dialog %}
+{% from 'conformance/make_conform_dialog.html' import make_conform_dialog %}
 
 {% block extra_head %}
+
+<link rel="stylesheet" href="/static/datetimepicker/css/bootstrap-datetimepicker.min.css">
+<script src="/static/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
 
 <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
 <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
 <script src="/static/duallistbox/dist/dual-list-box.js"></script>
 
-<!--   plugins   -->
 <script src="/static/x-wizard-1.1/assets/js/jquery.bootstrap.wizard.js" type="text/javascript"></script>
-<link href="http://netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" rel="stylesheet"> 
-<!-- <link href="/static/x-wizard-1.1/assets/css/gsdk-base.css" rel="stylesheet" />  -->
-
-<!--  More information about jquery.validate here: http://jqueryvalidation.org/	 -->
-<script src="/static/x-wizard-1.1/assets/js/jquery.validate.min.js"></script>
-<script src="/static/x-wizard-1.1/assets/js/wizard.js"></script>
-
-<link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet" /> 
+<link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet" />
 
 <script src="/static/jquery/js/conformance_report_dialog.js"></script>
+<script src="/static/jquery/js/select_server.js"></script>
+<script src="/static/jquery/js/make_conform_dialog.js"></script>
 <script src="/static/jquery/js/select_region_hosts.js"></script>
   
 <script charset="utf-8">
@@ -104,19 +103,13 @@
 
         $('#on-conformance-report-dialog-submit').on('click', function(e) {
             var match_criteria = $("input[name=match_criteria]:checked").val();
-        
             var software_profile_name = software_profile_selector.val();
-            if (software_profile_name == 0) {
-                bootbox.alert("Software Profile has not been specified.");
-                return false;
-            }
-            
             var selected_hosts = host_selector.get_selected_items();
             if (selected_hosts.length == 0) {
                 bootbox.alert("Host has not been specified.");
                 return false;
             }
-     
+
             run_conformance_report(software_profile_name, match_criteria, selected_hosts);
         });
 
@@ -223,12 +216,20 @@
                         return '';
                     }
                 }
-
             }, {
                 "targets": 4,
                 "data": 'conformed',
                 "render": function(data, type, row) {
-                    return data + ' ' + row['comments']
+                    return data + ' ' + row['comments'];
+                }
+            }, {
+                "targets": 5,
+                "data": 'conformed',
+                "render": function(data, type, row) {
+                    return '<button type="button" style="line-height: 10px;" class="btn btn-default make-conform-button" ' +
+                        'data-hostname="' + row['hostname'] + '"' +
+                        'data-missing-packages="' + row['missing_packages'] + '"' +
+                        '>Make Conform</button>';
                 }
             }]
         });
@@ -249,10 +250,10 @@
                     });
                     
                     if ($('#conformance_reports').val() > 0) {
-                        $('#display-software-profile-packages').show();
+                        $('#report-result-panel').show();
                         display_conformance_report($('#conformance_reports').val());
                     } else {
-                        $('#display-software-profile-packages').hide();
+                        $('#report-result-panel').hide();
                     }
                 }
             });
@@ -275,20 +276,18 @@
                 url: "/conformance/api/get_conformance_report_software_profile_packages/" + id,
                 dataType: 'json',
                 success: function(response) {
-                    var html_code = '';
+                    var html_code = '<ul>';
                     $.each(response, function(index, element) {
                         for (i = 0; i < element.length; i++) {
-                            html_code += element[i].software_profile_package;
+                            html_code += '<li>' + element[i].software_profile_package;
                             if (element[i].description.length > 0) {
-                                html_code += ' - ';
+                                html_code += ' - ' + element[i].description;
                             }
-                            html_code += element[i].description + '<br>';
+                            html_code += '</li>';
                         }
                     });
 
-                    if (html_code != "") {
-                        html_code = "<div class='alert alert-success'>" + html_code + "</div>";
-                    }
+                    html_code += '</ul>';
 
                     $('#software-profile-package-info').html(html_code);
                 }
@@ -303,18 +302,26 @@
                     var html_code = '';
                     
                     $.each(response, function(index, element) {
-                        html_code = '<b>Total Hosts:</b> ' + element[0].total_hosts + '<br>';
+                        html_code = '<b><u>Summary</u></b><br>';
+                        html_code += '<b>Total Hosts:</b> ' + element[0].total_hosts + '<br>';
                         html_code += '<b>Match Criteria:</b> ' + element[0].match_criteria + '<br>';
+
+                        $('#header-host-packages').html(element[0].match_criteria);
+
                         if (element[0].host_not_in_conformance == 0) {
                             html_code += "<img src=\"{{ url_for('static', filename='green_check.png') }}\">&nbsp;All hosts are in complete conformance.<br>";
                         } else {
                             html_code += "<span class='badge alert-danger'>" +
-                                element[0].host_not_in_conformance + "</span>&nbsp;&nbsp;hosts are not in complete conformance (see the 'Missing Packages' column).<br>";
+                                element[0].host_not_in_conformance + "</span>&nbsp;&nbsp;" +
+                                    (element[0].host_not_in_conformance > 1 ? "hosts are not" : "host is not") +
+                                    " in complete conformance (see the 'Missing Packages' column).<br>";
                         }
                         
                         if (element[0].host_out_dated_inventory > 0) {
                             html_code += "<span class='badge alert-danger'>" +
-                                element[0].host_out_dated_inventory + "</span>&nbsp;&nbsp;hosts failed last software inventory retrieval (see '*' in the 'Conformed' column).";
+                                element[0].host_out_dated_inventory + "</span>&nbsp;&nbsp;" +
+                                (element[0].host_out_dated_inventory > 1 ? "hosts" : "host") +
+                                " failed last software inventory retrieval (see '*' in the 'Is Conformed' column).";
                         }
                     });
                     
@@ -382,6 +389,12 @@
             }
         }
 
+        conformance_report_table.on("click", ".make-conform-button", function() {
+            var hostname = $(this).attr('data-hostname');
+            var missing_packages = $(this).attr('data-missing-packages');
+            display_make_conform_dialog(hostname, missing_packages);
+        });
+
     });
     
 </script>
@@ -397,6 +410,9 @@
 {% block main %}
 
 {{ conformance_report_dialog(form.conformance_report_dialog_software_profile, form.match_criteria, form.region, form.role, form.software) }}
+{{ make_conform_dialog(select_server_form.select_server, select_server_form.select_server_directory,
+    server_time, install_actions, make_conform_dialog_form.software_packages, make_conform_dialog_form.scheduled_time,
+    make_conform_dialog_form.scheduled_time_UTC) }}
 
 <div id="export-conformance-report-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -462,31 +478,36 @@
                             </button>
                         </div>
                     </div>
-                    <hr>
-                    <div class="row">
-                        <a id="display-software-profile-packages" class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#software-profile-packages">Software Profile <b class="caret"></b></a>
-                        <div class="collapse" id="software-profile-packages">
-                            <div id="software-profile-package-info">
+
+                    <div id="report-result-panel">
+                        <h4 style="color:LightGray;">Results:</h4><hr style="margin-top:10px;margin-bottom:10px;">
+
+                        <div class="row">
+                            <a id="display-software-profile-packages" class="btn btn-sm btn-default pull-right" data-toggle="collapse" title="Click to view the contents" href="#software-profile-packages">Software Profile Used <b class="caret"></b></a>
+                            <div class="collapse" id="software-profile-packages">
+                                <div id="software-profile-package-info">
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="row">
-                        <span id="conformance-report-info"></span>
-                    </div>
-  
-                    <div class="row">
-                        <table class="display table" id="conformance-report-table">
-                            <thead>
-                                <tr>
-                                    <th>Hostname</th>
-                                    <th>Software</th>
-                                    <th>Host Packages</th>
-                                    <th>Missing Packages</th>
-                                    <th>Conformed</th>
-                                </tr>
-                            </thead>
-                        </table>
+                        <div class="row">
+                            <span id="conformance-report-info"></span>
+                        </div>
+
+                        <div class="row">
+                            <table class="display table" id="conformance-report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hostname</th>
+                                        <th>Software</th>
+                                        <th id="header-host-packages">Host Packages</th>
+                                        <th>Missing Packages</th>
+                                        <th>Is Conformed</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
                     </div>
                     
                 </div>

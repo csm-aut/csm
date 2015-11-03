@@ -33,6 +33,7 @@ from wtforms import SelectField
 from wtforms import TextAreaField
 from wtforms import RadioField
 from wtforms import HiddenField
+from wtforms import SelectMultipleField
 from wtforms.validators import Length, required
 
 from models import logger
@@ -49,9 +50,11 @@ from common import fill_regions
 from common import get_server_list
 from common import get_host
 from common import can_create_user
+from common import create_or_update_install_job
 
 from database import DBSession
 
+from constants import InstallAction
 from constants import JobStatus
 from constants import get_temp_directory
 
@@ -63,8 +66,10 @@ from platform_matcher import UNKNOWN
 from smu_info_loader import SMUInfoLoader
 
 from forms import ServerDialogForm
+from forms import SelectServerForm
 
 import re
+import datetime
 
 conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 
@@ -73,13 +78,22 @@ conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 @login_required
 def home():
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
+    make_conform_dialog_form = MakeConformDialogForm(request.form)
+    select_server_form = SelectServerForm(request.form)
+
     export_conformance_report_form = ExportConformanceReportForm(request.form)
     export_conformance_report_form.include_host_packages.data = True
 
     fill_regions(conformance_report_dialog_form.region.choices)
 
-    return render_template('conformance/index.html', form=conformance_report_dialog_form,
-                           export_conformance_report_form=export_conformance_report_form)
+    return render_template('conformance/index.html',
+                           form=conformance_report_dialog_form,
+                           install_actions=[InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
+                                            InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+                                            InstallAction.INSTALL_COMMIT, InstallAction.ALL],
+                           make_conform_dialog_form=make_conform_dialog_form,
+                           export_conformance_report_form=export_conformance_report_form,
+                           select_server_form=select_server_form)
 
 
 @conformance.route('/software_profile/create', methods=['GET', 'POST'])
@@ -137,7 +151,8 @@ def software_profile_edit(profile_name):
         if profile_name != form.profile_name.data and \
                         get_software_profile(db_session, form.profile_name.data) is not None:
             return render_template('conformance/profile_edit.html',
-                                   form=form, system_option=SystemOption.get(db_session), duplicate_error=True)
+                                   form=form, server_dialog_form=server_dialog_form,
+                                   system_option=SystemOption.get(db_session), duplicate_error=True)
 
         software_profile.name = form.profile_name.data
         software_profile.description = form.description.data
@@ -153,7 +168,8 @@ def software_profile_edit(profile_name):
             form.software_packages.data = '\n'.join(software_profile.packages.split(','))
 
     return render_template('conformance/profile_edit.html',
-                           form=form, server_dialog_form=server_dialog_form, system_option=SystemOption.get(db_session))
+                           form=form, server_dialog_form=server_dialog_form,
+                           system_option=SystemOption.get(db_session))
 
 
 @conformance.route('/api/get_software_profiles')
@@ -173,6 +189,31 @@ def api_get_software_profiles():
         rows.append(row)
 
     return jsonify(**{'data': rows})
+
+@conformance.route('/api/create_software_profile', methods=['POST'])
+@login_required
+def api_create_software_profile():
+    profile_name = request.form['profile_name']
+    description = request.form['description']
+    software_packages = request.form['software_packages']
+
+    db_session = DBSession()
+
+    software_profile = get_software_profile(db_session, profile_name)
+
+    if software_profile is not None:
+        return jsonify({'status': 'Software profile "' + profile_name + '" already exists.  Use a different name instead.'})
+
+    software_profile = SoftwareProfile(
+        name=profile_name,
+        description=description,
+        packages=','.join([l for l in software_packages.splitlines() if l]),
+        created_by=current_user.username)
+
+    db_session.add(software_profile)
+    db_session.commit()
+
+    return jsonify({'status': 'OK'})
 
 
 @conformance.route('/software_profile/<profile_name>/delete', methods=['DELETE'])
@@ -224,7 +265,7 @@ def api_run_conformance_report():
 
 def run_conformance_report(profile_name, match_criteria, hostnames):
     host_not_in_conformance = 0
-    host_out_dated_inventroy = 0
+    host_out_dated_inventory = 0
 
     db_session = DBSession()
 
@@ -253,7 +294,7 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
 
                 if inventory_job.status != JobStatus.COMPLETED:
                     comments += ' *'
-                    host_out_dated_inventroy += 1
+                    host_out_dated_inventory += 1
 
                 host_packages = []
                 if match_criteria == 'inactive':
@@ -279,7 +320,7 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
                     missing_packages=','.join(sorted(missing_packages)))
             else:
                 # Flag host not found condition
-                host_out_dated_inventroy += 1
+                host_out_dated_inventory += 1
                 host_not_in_conformance += 1
 
                 conformance_report_entry = ConformanceReportEntry(
@@ -294,7 +335,7 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
             conformance_report.entries.append(conformance_report_entry)
 
         conformance_report.host_not_in_conformance = host_not_in_conformance
-        conformance_report.host_out_dated_inventory = host_out_dated_inventroy
+        conformance_report.host_out_dated_inventory = host_out_dated_inventory
 
         db_session.add(conformance_report)
         db_session.commit()
@@ -486,12 +527,45 @@ def api_get_software_profile_names():
     return jsonify(**{'data': rows})
 
 
+@conformance.route('/api/create_install_jobs', methods=['POST'])
+@login_required
+def api_create_install_jobs():
+    db_session = DBSession()
+
+    hostname = request.form['hostname']
+    install_action = request.form.getlist('install_action[]')
+    scheduled_time = request.form['scheduled_time_UTC']
+    software_packages = request.form['software_packages']
+    server = request.form['server']
+    server_directory = request.form['server_directory']
+    pending_downloads = request.form['pending_downloads']
+
+    host = get_host(db_session, hostname)
+
+    try:
+        # The dependency on each install action is already indicated in the implicit ordering in the selector.
+        # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
+        # have Pre-Upgrade (predecessor) as the dependency.
+        dependency = 0
+        for one_install_action in install_action:
+            new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
+                                                           install_action=one_install_action,
+                                                           scheduled_time=scheduled_time, software_packages=software_packages,
+                                                           server=server, server_directory=server_directory,
+                                                           pending_downloads=pending_downloads, dependency=dependency)
+            dependency = new_install_job.id
+
+        return jsonify({'status': 'OK'})
+    except Exception:
+        return jsonify({'status': 'Failed'})
+
 def get_software_profile(db_session, profile_name):
     return db_session.query(SoftwareProfile).filter(SoftwareProfile.name == profile_name).first()
 
 
 def get_software_profile_names(db_session):
     return db_session.query(SoftwareProfile.name).order_by(SoftwareProfile.name.asc()).all()
+
 
 class SoftwareProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
@@ -512,3 +586,9 @@ class ConformanceReportDialogForm(Form):
 
 class ExportConformanceReportForm(Form):
     include_host_packages = HiddenField("Include Host packages on the report")
+
+
+class MakeConformDialogForm(Form):
+    install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
+    scheduled_time = StringField('Scheduled Time', [required()])
+    software_packages = TextAreaField('Software Packages')

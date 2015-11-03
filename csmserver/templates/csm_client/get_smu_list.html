@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% from 'host/common.html' import edit_field %}
 {% from 'host/common.html' import alert_cco_lookup_disabled %}
-{% from 'host/common.html' import cco_lookup_last_retrieved %}
 
 {% block extra_head %}
   <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
@@ -10,11 +9,12 @@
   <script src="/static/jquery/js/browse_server_dialog.js"></script>
   <script>  
     $(function() {
-            
+
       var spinner = $('#spinner');    
       var browse_spinner = $('#browse-spinner');  
       browse_spinner.hide();
-      
+
+      var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}" == 'True' ? true : false;
       var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
       $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
       
@@ -35,10 +35,8 @@
       $('#smu-list-tab a:first').tab('show');
 
       // The SP table has problem with the table layout
-      $('#smu-list-tab a[href="#sp-tab"]').click(function() { 
-        setTimeout(function(){ 
-          refresh_sp_list_table();
-        }, 300);   
+      $('#smu-list-tab a[href="#sp-tab"]').click(function() {
+        refresh_sp_list_table();
       });
        
       var smu_table = $("#smu-datatable").dataTable({
@@ -81,30 +79,30 @@
             "targets": 3,
             "data" : 'id',
             "render": function ( data, type, row ) {
-              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>';
             }
           },
           {
             "targets": 4,
-            "data" : 'ddts_url'
+            "data" : 'ddts',
+            "render": function ( data, type, row ) {
+              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+            }
           },
           {
             "targets": 5,
             "data" : 'type'
           },
           {
-            "targets": 6, 
-            "width": "42%",
+            "targets": 6,
             "data" : 'description'
           },
           {
             "targets": 7,
-            "width": "10%",
             "data" : 'impact'
           },
           {
             "targets": 8,
-            "width": "10%",
             "data" : 'functional_areas'
           },
           {
@@ -113,7 +111,6 @@
           },
           {
             "targets": 10,
-            "width": "20%",
             "data" : 'package_bundles'
           }, 
         ],
@@ -170,20 +167,22 @@
             "targets": 3,
             "data" : 'id',
             "render": function ( data, type, row ) {
-              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+              return '<a class="show-smu-details" smu_id="' + data + '" href="javascript://">' + data + '</a>';
             }
           },
           {
             "targets": 4,
-            "data" : 'ddts_url'
+            "data" : 'ddts',
+            "render": function ( data, type, row ) {
+              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+            }
           },
           {
             "targets": 5,
             "data" : 'type'
           },
           {
-            "targets": 6, 
-            "width": "42%",
+            "targets": 6,
             "data" : 'description'
           },
           {
@@ -200,7 +199,6 @@
           },
           {
             "targets": 10,
-            "width": "20%",
             "data" : 'package_bundles',
           },
         ],
@@ -228,8 +226,7 @@
       }
        
       function get_retrieval_elapsed_time() {
-        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
-        if (cco_lookup_enabled) {
+        if (!cco_lookup_enabled) {
           $.ajax({
             url: "{{ url_for('api_get_smu_meta_retrieval_elapsed_time', platform=platform, release=release) }}",
             dataType: 'json',
@@ -251,7 +248,23 @@
         sp_table.api().ajax.url("{{ url_for('api_get_sp_list', platform=platform, release=release) }}" + 
           "?filter=" + filter_option).load();
       }
-      
+
+      smu_table.on("click", ".show-ddts-details", function() {
+         open_ddts_url($(this).attr('ddts_url') );
+      });
+
+      sp_table.on("click", ".show-ddts-details", function() {
+         open_ddts_url($(this).attr('ddts_url') );
+      });
+
+      function open_ddts_url(url) {
+         if (cco_lookup_enabled) {
+            window.open(url,'_blank');
+         } else {
+             bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing Internet connectivity.");
+         }
+      }
+
       function toggle_filter_icon_color(filter_option) {
         if (filter_option == 'Optimal') {
           $('#filter-icon').addClass("DarkGreen");
@@ -408,6 +421,9 @@
     .modal-dialog {
       width: 700px;
     }
+    th,td {
+      white-space: nowrap;
+    }
   </style>
   
 {% endblock extra_head %}
@@ -477,7 +493,7 @@
         <div class="modal-footer">
   	      <div class="form-actions">
             <div class="btn col-sm-offset-4">   
-              <button id="on-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">Continue</button>
+              <button id="on-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
               <button class="btn" data-dismiss="modal">Cancel</button>
               <img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
             </div>
@@ -508,7 +524,7 @@
          <div class="btn-group">      
            <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">        
               Action
-             <span class="glyphicon glyphicon-link"> 
+             <span class="glyphicon glyphicon-link"></span> 
              <span class="caret"></span>
            </button>
            <ul class="dropdown-menu">

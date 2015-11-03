@@ -67,14 +67,7 @@ class HostForm(Form):
                    (ConnectionType.SSH, ConnectionType.SSH)])
     port_number = StringField('Port Number')
     jump_host = SelectField('Jump Server', coerce=int, choices = [(-1, 'None')])
-    
-class HostImportForm(Form):
-    platform = SelectField('Platform', coerce=str,
-        choices = [(Platform.ASR9K, Platform.ASR9K),  
-                   (Platform.CRS,Platform.CRS)])
-    region = SelectField('Region', coerce=int, choices = [(-1, '')])
-    data_list = TextAreaField('Comma Delimited Fields')   
-    
+
 class JumpHostForm(Form):
     hostname = StringField('Jump Server', [required(), Length(max=255)])
     host_or_ip = StringField('Name or IP', [required(), Length(max=255)])
@@ -164,7 +157,8 @@ class AdminConsoleForm(Form):
     ldap_server_url = StringField('LDAP Server URL')
     enable_cco_lookup = HiddenField("Enable CCO Lookup")
     cco_lookup_time = HiddenField("Last Retrieval")
-    
+
+
 class SMTPForm(Form):
     server = StringField('Outgoing SMTP Server')
     server_port = StringField('SMTP Server Port')
@@ -180,8 +174,19 @@ class PreferencesForm(Form):
     cco_username = StringField('Username')
     cco_password = PasswordField('Password')
 
+
 class BrowseServerDialogForm(Form):
     dialog_server = SelectField('Server Repository', coerce=int, choices = [(-1, '')])
+
+
+class SelectServerForm(Form):
+    select_server= SelectField('Server Repository', coerce=int, choices=[(-1, '')])
+    select_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
+
+
+class SoftwareProfileForm(Form):
+    profile_name = StringField('Profile Name', [required(), Length(max=30)])
+    description = StringField('Description', [required(), Length(max=100)])
 
 if __name__ == '__main__':
     pass

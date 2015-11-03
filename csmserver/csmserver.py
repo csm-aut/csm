@@ -47,9 +47,9 @@ from forms import HostScheduleInstallForm
 from forms import AdminConsoleForm
 from forms import SMTPForm
 from forms import PreferencesForm
-from forms import HostImportForm
 from forms import ServerDialogForm
 from forms import BrowseServerDialogForm
+from forms import SoftwareProfileForm
 
 from models import Host
 from models import JumpHost
@@ -116,6 +116,9 @@ from common import can_create_user
 from common import can_edit
 from common import can_delete
 from common import can_create
+from common import create_or_update_install_job
+from common import create_download_jobs
+from common import get_download_job_key
 
 from common import *
 
@@ -123,15 +126,15 @@ from filters import get_datetime_string
 from filters import time_difference_UTC 
 from filters import beautify_platform
 
-from utils import get_datetime
 from utils import get_file_list
 from utils import make_url
 from utils import trim_last_slash
 from utils import is_empty
 from utils import get_tarfile_file_list
-from utils import comma_delimited_str_to_array
+from utils import comma_delimited_str_to_list
 from utils import get_base_url 
 from utils import is_ldap_supported
+from utils import remove_extra_spaces
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -140,7 +143,6 @@ from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import get_platform_and_release
-from smu_utils import SP_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
 from bsd_service import BSDServiceHandler
@@ -150,6 +152,7 @@ from restful import restful_api
 
 from views.exr_migrate import exr_migrate
 from views.conformance import conformance
+from views.host_import import host_import
 
 import os
 import io
@@ -160,7 +163,6 @@ import filters
 import collections
 import shutil
 import re
-import csv
 import initialize
 
 app = Flask(__name__)
@@ -169,6 +171,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 app.register_blueprint(restful_api)
 app.register_blueprint(exr_migrate)
 app.register_blueprint(conformance)
+app.register_blueprint(host_import)
 
 #hook up the filters
 filters.init(app)
@@ -581,119 +584,6 @@ def host_list():
             
     return render_template('host/index.html', hosts=hosts)
 
-@app.route('/hosts/import/', methods=['GET','POST'])
-@login_required
-def import_hosts(): 
-    if not can_create(current_user):
-        abort(401)
-        
-    form = HostImportForm(request.form)
-    fill_regions(form.region.choices)
-    
-    if request.method == 'POST' and form.validate():
-        return redirect(url_for('home'))
-    
-    return render_template('host/import.html', form=form) 
-
-@app.route('/api/import_hosts', methods=['POST'])
-@login_required
-def api_import_hosts(): 
-    db_session = DBSession()
-   
-    expected_header = 'hostname,ip,username,password,connection,port'.split(',')
-    platform = data_list = request.form['platform']
-    region_id = data_list = request.form['region']
-    data_list = request.form['data_list']
-    
-    region = get_region_by_id(db_session, region_id)
-    if region is None:
-        return jsonify({'status':'Region is no longer exists in the database.'}) 
-    
-    header = None
-    error = None
-    im_hosts = []
-    row_number = 0
-    
-    reader = csv.reader(data_list.split('\n'), delimiter=',')  
-    for row in reader:
-        row_number += 1
-        
-        if row_number == 1:
-            # Check if header is correct
-            header = row
-            if 'hostname' not in header:
-                error = '"hostname" is missing in the header.'
-                break
-            
-            if 'ip' not in header:
-                error = '"ip" is missing in the header.'
-                break
-            
-            if 'connection' not in header:
-                error = '"connection" is missing in the header.'
-                break
-                
-            for header_field in header:                
-                if header_field not in expected_header:
-                    error = header_field + ' is not a correct header field.'
-                    break
-        else:
-            if len(row) > 0:
-                if (len(row) != len(header)):
-                    error = '"' + ','.join(row) + '" has wrong number of data fields.'
-                    break
-                
-                im_host = Host()
-                im_host.platform = platform
-                im_host.region_id = region_id
-                im_host.created_by = current_user.username
-                im_host.inventory_job.append(InventoryJob())
-                im_host.connection_param.append(ConnectionParam())
-                
-                im_host.connection_param[0].username = ''
-                im_host.connection_param[0].password = ''
-                
-                for column in range(len(header)):
-                    
-                    header_field = header[column]
-                    data_field = row[column]
-                    
-                    if header_field == 'hostname':
-                        # Check if the hostname exists already
-                        if get_host(db_session, data_field) is not None:
-                            error = 'hostname "' + data_field + '" already exists in the database.'
-                            break
-                        
-                        if data_field in im_hosts:
-                            error = 'hostname "' + data_field + '" already exists in the import data.'
-                            break
-                        
-                        im_hosts.append(data_field)
-                        im_host.hostname = data_field
-                    elif header_field == 'ip':
-                        im_host.connection_param[0].host_or_ip = data_field
-                    elif header_field == 'username':
-                        im_host.connection_param[0].username = data_field
-                    elif header_field == 'password':
-                        im_host.connection_param[0].password = data_field
-                    elif header_field == 'connection':
-                        if data_field != ConnectionType.TELNET and data_field != ConnectionType.SSH:
-                            error = '"' + ','.join(row) + '" has a wrong connection type (should be "telnet" or "ssh").'
-                            break
-                        im_host.connection_param[0].connection_type = data_field
-                    elif header_field == 'port':
-                        im_host.connection_param[0].port_number = data_field
-                        
-        
-                # Add the import host
-                db_session.add(im_host)
-     
-    if error is not None:
-        return jsonify({'status':error})
-    else:
-        db_session.commit()
-        return jsonify({'status':'OK'})
-
 @app.route('/hosts/create/', methods=['GET', 'POST'])
 @login_required
 def host_create():    
@@ -739,15 +629,6 @@ def host_create():
         return redirect(url_for('home') ) 
 
     return render_template('host/edit.html', form=form)
-
-"""
-Given a comma delimited string and remove extra spaces
-Example: 'x   x  ,   y,  z' becomes 'x x,y,z'
-"""
-def remove_extra_spaces(str):
-    if str is not None:
-        return ','.join([re.sub(r'\s+', ' ', x).strip() for x in str.split(',')])
-    return str
     
 @app.route('/hosts/<hostname>/edit/', methods=['GET', 'POST'])
 @login_required
@@ -1365,7 +1246,7 @@ def get_download_job_status(download_job_key_dict, install_job, dependency_statu
     num_pending_downloads = 0
     num_failed_downloads = 0
     is_pending_download = False
-    
+
     pending_downloads = install_job.pending_downloads.split(',')
     for filename in pending_downloads:
         download_job_key = get_download_job_key(install_job.user_id, filename, install_job.server_id, install_job.server_directory)
@@ -1793,6 +1674,11 @@ def schedule_install():
                 host = get_host(db_session, hostname)  
                 if host is not None:
                     db_session = DBSession()
+                    scheduled_time = form.scheduled_time_UTC.data
+                    software_packages = form.software_packages.data
+                    server = form.hidden_server.data
+                    server_directory = form.hidden_server_directory
+                    pending_downloads = form.hidden_pending_downloads
        
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -1803,16 +1689,20 @@ def schedule_install():
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
                                     
-                        create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                            install_action=install_action[0], dependency=dependency)
+                        create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
+                                                     scheduled_time=scheduled_time, software_packages=software_packages, server=server,
+                                                     server_directory=server_directory, pending_downloads=pending_downloads, dependency=dependency)
                     else:
                         # The dependency on each install action is already indicated in the implicit ordering in the selector.
                         # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
                         # have Pre-Upgrade (predecessor) as the dependency.
                         dependency = 0              
                         for one_install_action in install_action:
-                            new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                                install_action=one_install_action, dependency=dependency)
+                            new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
+                                                                           install_action=one_install_action,
+                                                                           scheduled_time=scheduled_time, software_packages=software_packages,
+                                                                           server=server, server_directory=server_directory,
+                                                                           pending_downloads=pending_downloads, dependency=dependency)
                             dependency = new_install_job.id
                                                   
         return redirect(url_for(return_url))
@@ -1851,8 +1741,6 @@ def host_schedule_install_edit(hostname, id):
     
     return handle_schedule_install_form(request=request, db_session=db_session, hostname=hostname, install_job=install_job)
 
-
-
 @app.route('/hosts/download_dashboard/', methods=['GET', 'POST'])
 @login_required
 def download_dashboard():
@@ -1860,7 +1748,6 @@ def download_dashboard():
         abort(401)
         
     return render_template('host/download_dashboard.html')
-
 
 @app.route('/api/create_download_jobs')
 @login_required
@@ -1882,29 +1769,6 @@ def api_create_download_jobs():
         return jsonify({'status':'Failed'})
     finally:
         return jsonify({'status':'OK'})
-    
-
-    
-def create_install_jobs_for_all_install_actions(db_session, host_id, form):                
-    # Create Pre-Upgrade
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.PRE_UPGRADE)
-    
-    # Create Install Add
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.INSTALL_ADD, dependency=new_install_job.id)
-            
-    # Create Activate
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.INSTALL_ACTIVATE, dependency=new_install_job.id)
-              
-    # Create Post-Upgrade
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.POST_UPGRADE, dependency=new_install_job.id)
-    
-    # Create Install-Commit
-    new_install_job = create_or_update_install_job(db_session=db_session, host_id=host_id, form=form, \
-        install_action=InstallAction.INSTALL_COMMIT, dependency=new_install_job.id)
 
 
 def handle_schedule_install_form(request, db_session, hostname, install_job=None):    
@@ -1919,10 +1783,15 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # Retrieves all the install jobs for this host.  This will allow
     # the user to select which install job this install job can depend on.
     install_jobs = db_session.query(InstallJob).filter(InstallJob.host_id == host.id).order_by(InstallJob.scheduled_time.asc()).all()
-        
+
+    region_servers = host.region.servers
+    # Returns all server repositories if the region does not have any server repository designated.
+    if is_empty(region_servers):
+        region_servers = get_server_list(db_session)
+
     # Fills the selections
-    fill_servers(form.server_dialog_server.choices, host.region.servers)
-    fill_servers(form.cisco_dialog_server.choices, host.region.servers, False)
+    fill_servers(form.server_dialog_server.choices, region_servers)
+    fill_servers(form.cisco_dialog_server.choices, region_servers, False)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs, (-1 if install_job is None else install_job.id))
         
     if request.method == 'POST':
@@ -1932,21 +1801,31 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             install_action = [ install_job.install_action ]
         else:
             install_action = form.install_action.data
+
+        scheduled_time = form.scheduled_time_UTC.data
+        software_packages = form.software_packages.data
+        server = form.hidden_server.data
+        server_directory = form.hidden_server_directory
+        pending_downloads = form.hidden_pending_downloads
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
         if len(install_action) == 1:
             dependency = int(form.dependency.data)        
-            create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                install_action=install_action[0], dependency=dependency, install_job=install_job)
+            create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
+                                         scheduled_time=scheduled_time, software_packages=software_packages, server=server,
+                                         server_directory=server_directory, pending_downloads=pending_downloads,
+                                         dependency=dependency, install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
             # have Pre-Upgrade (predecessor) as the dependency.
             dependency = 0              
             for one_install_action in install_action:
-                new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, form=form, 
-                    install_action=one_install_action, dependency=dependency, install_job=install_job)
+                new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=one_install_action,
+                                                               scheduled_time=scheduled_time, software_packages=software_packages, server=server,
+                                                               server_directory=server_directory, pending_downloads=pending_downloads,
+                                                               dependency=dependency, install_job=install_job)
                 dependency = new_install_job.id
                    
         return redirect(url_for(return_url, hostname=hostname))
@@ -2414,7 +2293,8 @@ def api_get_install_history(hostname):
 @login_required
 def api_get_servers():
     result_list = []
-    db_session = DBSession()   
+    db_session = DBSession()
+
     servers = get_server_list(db_session)
     if servers is not None:
         for server in servers:
@@ -2422,16 +2302,31 @@ def api_get_servers():
     
     return jsonify(**{'data':result_list})
 
+@app.route('/api/get_servers/host/<hostname>')
+@login_required
+def api_get_servers_by_hostname(hostname):
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if host is not None:
+        return api_get_servers_by_region(host.region_id)
+
+    return jsonify(**{'data': []})
+
 @app.route('/api/get_servers/region/<int:region_id>')
 @login_required
 def api_get_servers_by_region(region_id):
     result_list = [] 
-    db_session = DBSession() 
+    db_session = DBSession()
+
     region = get_region_by_id(db_session, region_id)
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
             result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
-       
+    else:
+        # Returns all server repositories if the region does not have any server repository designated.
+        return api_get_servers()
+
     return jsonify(**{'data':result_list})
 
 @app.route('/api/get_hosts/region/<int:region_id>/role/<role>/software/<software>')
@@ -2853,7 +2748,7 @@ def get_smu_or_sp_list(smu_info_list, file_suffix):
         row['package_name'] = smu_info.name + '.' + file_suffix 
         row['posted_date'] = smu_info.posted_date.split()[0]
         row['ddts'] = smu_info.ddts
-        row['ddts_url'] = '<a href="' + BUG_SEARCH_URL + smu_info.ddts + '" target="_blank">' + smu_info.ddts + '</a>'
+        row['ddts_url'] = BUG_SEARCH_URL + smu_info.ddts
         row['type'] = smu_info.type
         row['description'] = smu_info.description
         row['impact'] = smu_info.impact
@@ -2903,7 +2798,7 @@ def api_get_smu_details(smu_id):
 
 def get_smu_ids(db_session, smu_name_list):
     smu_ids = []
-    smu_names = comma_delimited_str_to_array(smu_name_list)
+    smu_names = comma_delimited_str_to_list(smu_name_list)
     for smu_name in smu_names:
         smu_info = db_session.query(SMUInfo).filter(SMUInfo.name == smu_name).first()
         if smu_info is not None:
@@ -2929,7 +2824,11 @@ def api_get_smu_meta_retrieval_elapsed_time(platform, release):
 @login_required
 def validate_software():
     server_dialog_form = ServerDialogForm(request.form)
-    return render_template('csm_client/validate_software.html', server_dialog_form=server_dialog_form)
+    software_profile_form = SoftwareProfileForm(request.form)
+
+    return render_template('csm_client/validate_software.html',
+                           server_dialog_form=server_dialog_form,
+                           software_profile_form=software_profile_form)
 
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required
@@ -2992,11 +2891,13 @@ def api_get_missing_files_on_server(server_id):
     if is_reachable:
         for smu_name, cco_filename in download_info_dict.items():
             if not is_smu_on_server_repository(server_file_dict, smu_name):
+                smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
+                description = '' if smu_info is None else smu_info.description
                 # If selected SMU on CCO
                 if cco_filename is not None:             
-                    rows.append({'smu_entry':smu_name, 'cco_filename': cco_filename, 'is_downloadable':True})
+                    rows.append({'smu_entry':smu_name, 'description': description, 'cco_filename': cco_filename, 'is_downloadable':True})
                 else:
-                    rows.append({'smu_entry':smu_name, 'is_downloadable':False})
+                    rows.append({'smu_entry':smu_name, 'description': description, 'is_downloadable':False})
     else:
         return jsonify({'status':'Failed'}) 
     
@@ -3032,20 +2933,26 @@ SMU entries returned also have the file extension appended.
 """
 @app.route('/api/get_missing_prerequisite_list')
 @login_required
-def api_get_missing_prerequisite_list():    
+def api_get_missing_prerequisite_list():
     hostname = request.args.get('hostname')
     # The SMUs selected by the user to install
     smu_list = request.args.get('smu_list').split()
 
-    prerequisite_list = get_missing_prerequisite_list(smu_list)
-    host_packages = get_host_active_packages(hostname)
-    
     rows = []
-    for smu_name in prerequisite_list:
-        # If the missing pre-requisites have not been installed
-        # (i.e. not in the Active/Active-Committed), include them.
-        if not host_packages_contains(host_packages, smu_name):
-            rows.append({'smu_entry':smu_name})
+    platform, release = get_platform_and_release(smu_list)
+    if platform != UNKNOWN and release != UNKNOWN:
+        smu_loader = SMUInfoLoader(platform, release)
+
+        prerequisite_list = get_missing_prerequisite_list(smu_list)
+        host_packages = get_host_active_packages(hostname)
+
+        for smu_name in prerequisite_list:
+            # If the missing pre-requisites have not been installed
+            # (i.e. not in the Active/Active-Committed), include them.
+            if not host_packages_contains(host_packages, smu_name):
+                smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
+                description = '' if smu_info is None else smu_info.description
+                rows.append({'smu_entry':smu_name, 'description':description})
     
     return jsonify( **{'data':rows} )
 
@@ -3073,7 +2980,7 @@ def api_get_reload_list():
                     smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
                     if smu_info is not None:
                         if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
-                            rows.append({ 'entry' : package_name}) 
+                            rows.append({ 'entry' : package_name, 'description': smu_info.description})
  
     
     return jsonify( **{'data':rows} )

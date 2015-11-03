@@ -15,6 +15,7 @@ $(function() {
 
     var platform = '';
     var release = '';
+    var cco_lookup_enabled = $('#cisco-software-dialog').attr('data-enable-cco-lookup') == 'True' ? true : false;
 
     cisco_software_dialog_spinner = $('#cisco-software-dialog-browse-spinner');
     cisco_software_dialog_spinner.hide()
@@ -53,32 +54,31 @@ $(function() {
             "targets": 2,
             "data": 'id',
             "render": function(data, type, row) {
-                return '<a class="show-smu-info" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+                return '<a class="show-smu-info" smu_id="' + data + '" href="javascript://">' + data + '</a>';
             }
         }, {
             "targets": 3,
-            "data": 'ddts_url'
+            "data" : 'ddts',
+            "render": function ( data, type, row ) {
+              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+            }
         }, {
             "targets": 4,
             "data": 'type'
         }, {
             "targets": 5,
-            "width": "42%",
             "data": 'description'
         }, {
             "targets": 6,
-            "width": "10%",
             "data": 'impact'
         }, {
             "targets": 7,
-            "width": "10%",
             "data": 'functional_areas'
         }, {
             "targets": 8,
             "data": 'status'
         }, {
             "targets": 9,
-            "width": "20%",
             "data": 'package_bundles'
         }, ],
 
@@ -120,21 +120,22 @@ $(function() {
             "targets": 2,
             "data": 'id',
             "render": function(data, type, row) {
-                return '<a class="show-smu-info" smu_id="' + data + '" href="javascript://">' + data + '</a>'
+                return '<a class="show-smu-info" smu_id="' + data + '" href="javascript://">' + data + '</a>';
             }
         }, {
             "targets": 3,
-            "data": 'ddts_url'
+            "data" : 'ddts',
+            "render": function ( data, type, row ) {
+              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+            }
         }, {
             "targets": 4,
             "data": 'type'
         }, {
             "targets": 5,
-            "width": "42%",
             "data": 'description'
         }, {
             "targets": 6,
-            "width": "10%",
             "data": 'impact'
         }, {
             "targets": 7,
@@ -144,7 +145,6 @@ $(function() {
             "data": 'status'
         }, {
             "targets": 9,
-            "width": "9%",
             "data": 'package_bundles'
         }, ],
     }).on('draw.dt', function(e, settings, json) {
@@ -155,6 +155,21 @@ $(function() {
         $('#badge-sp-list').html(rows);
     });
 
+    smu_table.on("click", ".show-ddts-details", function() {
+        open_ddts_url($(this).attr('ddts_url') );
+    });
+
+    sp_table.on("click", ".show-ddts-details", function() {
+        open_ddts_url($(this).attr('ddts_url') );
+    });
+
+    function open_ddts_url(url) {
+        if (cco_lookup_enabled) {
+            window.open(url,'_blank');
+        } else {
+            bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing Internet connectivity.");
+        }
+    }
 
     $('#cisco-dialog-move-up').on('click', function(e) {
         retrieve_file_list(
@@ -314,26 +329,24 @@ $(function() {
     
     function get_retrieval_elapsed_time() {
         if (platform.length > 0 && release.length > 0) {
-            //var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
-            //if (cco_lookup_enabled) {
+            if (!cco_lookup_enabled) {
                 $.ajax({
                     url: "/api/get_smu_meta_retrieval_elapsed_time/platform/" + platform + "/release/" + release,
                     dataType: 'json',
                     success: function(response) {
                         $.each(response, function(index, element) {
-                            $('#retrieval-elapsed-time').html('Retrieved: ' + element[0].retrieval_elapsed_time);
+                            var html_code =
+                            $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time);
                         });
                     }
                 });
-            //}
+            }
         }
     }
     
     // The SP table has problem with the table layout
     $('#smu-list-tab a[href="#sp-tab"]').click(function() {
-        setTimeout(function() {
-            refresh_sp_list_table();
-        }, 300);
+        refresh_sp_list_table();
     });
     
       

@@ -8,7 +8,7 @@
 
 {% macro common_schedule_install_gui() %}
 
-  <div class="form-group ">
+<div class="form-group ">
     <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
     <div class=col-sm-6>
         <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
@@ -107,14 +107,17 @@
 <script src="/static/jquery/js/host_software_dialog.js"></script>
 
 <style>
-
-.modal-dialog {    
-    width: 850px;
-}
-a:link, a:visited {
-    text-decoration:none;
-}
-
+    .modal-dialog {
+        width: 850px;
+    }
+    a:link,
+    a:visited {
+        text-decoration: none;
+    }
+    th,
+    td {
+        white-space: nowrap;
+    }
 </style>
 
 <script type="text/javascript">
@@ -279,8 +282,8 @@ $(function() {
             });
         }
     }
-    
-    server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
+
+    var server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
 
     // Called when the Schedule (i.e. submit) button is clicked but before the
     // form actually being submitted.  Returning false will stop the submission.
@@ -531,7 +534,7 @@ $(function() {
 {% block main %}
 
 {{ install_history_dialog(form.install_history_dialog_host) }}
-{{ cisco_software_dialog(form.cisco_dialog_server, form.cisco_dialog_server_directory) }}
+{{ cisco_software_dialog(system_option.enable_cco_lookup, form.cisco_dialog_server, form.cisco_dialog_server_directory) }}
 {{ server_software_dialog(form.server_dialog_server, form.server_dialog_server_directory, form.server_dialog_target_software) }}
 {{ host_software_dialog(form.host_software_dialog_host, form.host_software_dialog_last_successful_inventory_elapsed_time, form.host_software_dialog_target_software) }}
 
