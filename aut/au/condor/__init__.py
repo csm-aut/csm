@@ -72,7 +72,21 @@ def make_connection_from_context(ctx):
 
     driver_class = getattr(module, 'Connection')
     nodes = []
+    urls = []
     for url in ctx.host.urls:
+        if "," in url:
+            # It has standby
+            alt_address = url.split(',')
+            if ('.' in alt_address[-1]):
+                #Alternate mgmt IP given for standby connections
+                for alt_ip in alt_address[1:] :
+                    urls.append('@'.join(url.split("@")[:-1]) + "@" + alt_ip)
+            else :
+                #Alternate ports given for standby connections
+                for alt_port in alt_address[1:] :
+                    urls.append(':'.join(url.split(":")[:-1]) + ":" + alt_port)
+
+    for url in urls:
         nodes.append(make_hop_info_from_url(url))
 
     return driver_class(

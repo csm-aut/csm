@@ -351,7 +351,7 @@ class PostMigratePlugin(IPlugin):
 
 
         self.log(self.NAME + " Plugin is running")
-        """
+
 
         self.log('best_effort_config = ' + str(best_effort_config))
 
@@ -391,7 +391,7 @@ class PostMigratePlugin(IPlugin):
         file_exists = self._copy_file_from_eusb_to_harddisk(device, "xr.iox")
         if file_exists:
             self._load_nonadmin_config(device, "xr.iox", best_effort_config)
-        """
+
         self._check_fpds_for_upgrade(device)
 
         #self._reload_all(device)
