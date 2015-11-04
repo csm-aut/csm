@@ -1,4 +1,3 @@
-
 var validated_list;
 
 function validate_software(src_control, target_control, spinner) {

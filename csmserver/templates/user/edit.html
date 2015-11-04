@@ -4,145 +4,135 @@
 {% from 'host/common.html' import alert_duplicate %}
 
 {% if request.endpoint.endswith('edit') %}
-  {% set isEdit = True %}
+    {% set isEdit = True %}
 {% else %}
-  {% set isEdit = False %}
+    {% set isEdit = False %}
 {% endif %}
 
 {% block extra_head %}  
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  <script src="/static/showhidepassword-1.0.0/js/password.js"></script>
-  <script>
+<script>
     $(function() {
-    
-      {% if current_user.privilege == 'Admin' and current_user.username != form.username.data %}
-        $('#privilege-panel').show();
-      {% else %}
-        $('#privilege-panel').hide();
-      {% endif %}
-      
-      {% if isEdit %}
+
+        {% if current_user.privilege == 'Admin' and current_user.username != form.username.data %}
+            $('#privilege-panel').show();
+        {% else %}
+            $('#privilege-panel').hide();
+        {% endif %}
+
+        {% if isEdit %}
         var is_password_panel_visible = false;
         var password_panel = $('#password-panel');
         password_panel.hide();
-        
+
         $('#modify-password').on("click", function() {
-          if (is_password_panel_visible) {
-            password_panel.hide();
-            is_password_panel_visible = false;
-          } else {
-            password_panel.show();
-            is_password_panel_visible = true;
-          }
-        });    
-      {% endif %}
-      
-      $('.btn-toggle').click(function() {
-        $(this).find('.btn').toggleClass('active');  
-    
-        if ($(this).find('.btn-primary').size()>0) {
-    	  $(this).find('.btn').toggleClass('btn-primary');
-        }
-    
-        $(this).find('.btn').toggleClass('btn-default');       
-      });
-      
-      $('#active').val(function() {
-        if ($('#active').val() == 'True') {
-          $('#active-yes-button').addClass("btn-primary active");
-          $('#active-no-button').addClass("btn-default");
-        } else {
-          $('#active-no-button').addClass("btn-primary active");
-          $('#active-yes-button').addClass("btn-default");
-        }      
-      });
-      
-      $('#password').password();
-      
-      $('#form').submit(function() {
-        var is_active = $("#active-yes-or-no .active").data("value");
-        
-        // This may happen for non-Admin user as this field is not visible
-        if (is_active != null) {
-          $('#active').val(is_active);
-        }
-        
-        var username = $('#username').val();
-        var acceptable_string = get_acceptable_string(username);
-       
-        if (acceptable_string != username) {
-          var message = get_acceptable_string_message('User name', username, acceptable_string);
-          bootbox.confirm(message, function(result) {
-            if (result) {
-              $('#username').val(acceptable_string);
+            if (is_password_panel_visible) {
+                password_panel.hide();
+                is_password_panel_visible = false;
+            } else {
+                password_panel.show();
+                is_password_panel_visible = true;
             }
-          }); 
-        } else {
-          return true;
-        }
-        
-        return false;
-      });
+        });
+        {% endif %}
+
+        $('.btn-toggle').click(function() {
+            $(this).find('.btn').toggleClass('active');
+
+            if ($(this).find('.btn-primary').size() > 0) {
+                $(this).find('.btn').toggleClass('btn-primary');
+            }
+
+            $(this).find('.btn').toggleClass('btn-default');
+        });
+
+        $('#active').val(function() {
+            if ($('#active').val() == 'True') {
+                $('#active-yes-button').addClass("btn-primary active");
+                $('#active-no-button').addClass("btn-default");
+            } else {
+                $('#active-no-button').addClass("btn-primary active");
+                $('#active-yes-button').addClass("btn-default");
+            }
+        });
+
+        $('#password').password();
+
+        $('#form').submit(function() {
+            var is_active = $("#active-yes-or-no .active").data("value");
+
+            // This may happen for non-Admin user as this field is not visible
+            if (is_active != null) {
+                $('#active').val(is_active);
+            }
+
+            var username = $('#username').val();
+            var acceptable_string = get_acceptable_string(username);
+
+            if (acceptable_string != username) {
+                var message = get_acceptable_string_message('User name', username, acceptable_string);
+                bootbox.confirm(message, function(result) {
+                    if (result) {
+                        $('#username').val(acceptable_string);
+                    }
+                });
+            } else {
+                return true;
+            }
+
+            return false;
+        });
     });
-    
-  </script>
+</script>
 {% endblock extra_head %}
 
 {% block main %}
 <div class="row">
-  <div class="well col-sm-offset-3 col-sm-6">
-    <form id="form" method=post class="form-horizontal">
-    
-    <legend>{% if isEdit %}Edit User{% else %}Create User{% endif %}</legend>
-    {{ alert_duplicate(form.username.data, duplicate_error) }}
-        
-    {% if isEdit %}
-      {% set extra_field ='<a href="javascript://" id="modify-password">
-        <img src=\"/static/lock.png\" title="Change Password (toggle on/off)"></a>' %}      
-        {{ edit_field(form.username, readonly=True, field_width="col-sm-6", maxlength=100, class="form-control", extra_field=extra_field ) }}
-      {% else %}
-        {{ edit_field(form.username, field_width="col-sm-6", maxlength=100, class="form-control") }}
-    {% endif %}
-    
-    <div id="password-panel">
-      {% if isEdit %}
-        {{ edit_field(form.password, autocomplete="off", field_width="col-sm-6", maxlength=100, class="form-control",
-          placeholder="Use Password on File") }}
-      {% else %}
-        {{ edit_field(form.password, autocomplete="off", field_width="col-sm-6", maxlength=100, class="form-control") }}
-      {% endif %}
+    <div class="well col-sm-offset-3 col-sm-6">
+        <form id="form" method=post class="form-horizontal">
+            <legend>{% if isEdit %}Edit User{% else %}Create User{% endif %}</legend>
+            {{ alert_duplicate(form.username.data, duplicate_error) }}
+
+            {% if isEdit %}
+                {% set extra_field ='<a href="javascript://" id="modify-password">
+                    <img src=\"/static/lock.png\" title="Change Password (toggle on/off)"></a>' %}
+                {{ edit_field(form.username, readonly=True, field_width="col-sm-6", maxlength=100, class="form-control", extra_field=extra_field ) }}
+            {% else %}
+                {{ edit_field(form.username, field_width="col-sm-6", maxlength=100, class="form-control") }}
+            {% endif %}
+            <div id="password-panel">
+                {% if isEdit %}
+                    {{ edit_field(form.password, autocomplete="off", field_width="col-sm-6", maxlength=100, class="form-control",
+                        placeholder="Use Password on File") }}
+                {% else %}
+                    {{ edit_field(form.password, autocomplete="off", field_width="col-sm-6", maxlength=100, class="form-control") }}
+                {% endif %}
+            </div>
+            <div id="privilege-panel">
+                {{ edit_field(form.privilege, class="form-control") }}
+                <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+                <div class="form-group ">
+                    <label class="col-sm-4 control-label" for="{{ form.active.id }}">{{ form.active.label.text }}</label>
+                    <div class=col-sm-5>
+                        <div class="btn-group btn-toggle" id="active-yes-or-no">
+                            <button type="button" id="active-yes-button" class="btn" data-value=1>Yes</button>
+                            <button type="button" id="active-no-button" class="btn" data-value=0>No</button>
+                        </div>
+                    </div>
+                    <input class="form-control" id="{{ form.active.id }}" name="{{ form.active.id }}" type="hidden" value="{{ form.active.data }}">
+                </div>
+            </div>
+            <legend>Information</legend>
+
+            {{ edit_field(form.fullname, class="form-control") }}
+            {{ edit_field(form.email, class="form-control") }}
+
+            <div class="form-actions">
+                <div class="btn col-sm-offset-4">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" onClick="location.href='{{ url_for('home') }}'" class="btn btn-default">Cancel</button>
+                </div>
+            </div>
+        </form>
     </div>
-
-    <div id="privilege-panel">
-      {{ edit_field(form.privilege, class="form-control") }}
-    
-      <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
-      <div class="form-group ">        
-        <label class="col-sm-4 control-label" for="{{ form.active.id }}">{{ form.active.label.text }}</label>
-        <div class=col-sm-5>
-          <div class="btn-group btn-toggle" id="active-yes-or-no">            
-            <button type="button" id="active-yes-button" class="btn" data-value=1>Yes</button>
-            <button type="button" id="active-no-button" class="btn" data-value=0>No</button>          
-          </div>
-        </div>
-         
-        <input class="form-control" id="{{ form.active.id }}" name="{{ form.active.id }}" type="hidden" value="{{ form.active.data }}">
-       </div>
-    </div>
-
-    <legend>Information</legend>
-
-    {{ edit_field(form.fullname, class="form-control") }}
-    {{ edit_field(form.email, class="form-control") }}
-
-    <div class="form-actions">
-      <div class="btn col-sm-offset-4">
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" onClick="location.href='{{ url_for('home') }}'" class="btn btn-default">Cancel</button>
-      </div>
-    </div>
-    
-  </form>
-  </div>
 </div>
 {% endblock main %}

@@ -1,77 +1,71 @@
 {% extends 'base.html' %}
 
-{% block title %}<center><h4><b>Jump Servers</b></center></h4>{% endblock title %}
+{% block title %}<center><h4><b>Jump Servers</b></h4></center>{% endblock title %}
 
 {% block extra_head %}
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  <script>
+<script>
     $(function() {
-      $("#datatable").dataTable();
+        $("#datatable").dataTable();
 
-      $(".host-delete-link").on("click", function() {
-        var delete_url = $(this).attr('data-delete-url');
-        var delete_host = $(this).attr('delete-host');
+        $(".host-delete-link").on("click", function() {
+            var delete_url = $(this).attr('data-delete-url');
+            var delete_host = $(this).attr('delete-host');
 
-        bootbox.confirm("You are about to delete jump host \'" + delete_host + "\'.  OK to proceed?", function(result) {
-          if (result) {
-            $.ajax({
-              url: delete_url,
-              type: 'DELETE',
-              success: function(result) {
-                if (result.status == 'OK') {
-                  window.location = "{{ url_for('jump_host_list') }}";
-                } else {
-                   bootbox.alert('Delete failed.');
+            bootbox.confirm("You are about to delete jump host \'" + delete_host + "\'.  OK to proceed?", function(result) {
+                if (result) {
+                    $.ajax({
+                        url: delete_url,
+                        type: 'DELETE',
+                        success: function(result) {
+                            if (result.status == 'OK') {
+                                window.location = "{{ url_for('jump_host_list') }}";
+                            } else {
+                                bootbox.alert('Delete failed.');
+                            }
+                        }
+                    });
                 }
-              }
-           });
-          }
-        }); 
-      });
-
+            });
+        });
     });
-  </script>
+</script>
 {% endblock extra_head %}
 
 {% block main %}
 <div class="container" style="margin-top: 10px">
-   <table cellspacing="0" class="display table" id="datatable">   
-    <thead>  
-      <tr>  
-        <th>Jump Server</th>  
-        <th>Connection</th>
-        <th>Name or IP</th>  
-        <th>Port</th> 
-        <th>Username</th>  
-        <th>Action</th>
-      </tr>  
-    </thead>  
-    <tbody> 
+    <table cellspacing="0" class="display table" id="datatable">
+        <thead>
+            <tr>
+                <th>Jump Server</th>
+                <th>Connection</th>
+                <th>Name or IP</th>
+                <th>Port</th>
+                <th>Username</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for host in hosts %}
+                <tr>
+                    <td><a href="{{ url_for('jump_host_edit', hostname = host.hostname) }}">{{ host.hostname }}</a></td>
+                    <td>{{ host.connection_type }}
+                    <td>{{ host.host_or_ip }}</td>
 
-      {% for host in hosts %}
-          <tr>  
-            <td><a href="{{ url_for('jump_host_edit', hostname = host.hostname) }}">{{ host.hostname }}</a></td> 
-            
-            <td>{{ host.connection_type }}
-            <td>{{ host.host_or_ip }}</td>  
+                    {% if host.port_number %}
+                        <td>{{ host.port_number }}</td>
+                    {% else %}
+                        <td>Default</td>
+                    {% endif %}
 
-            {% if host.port_number %}
-              <td>{{ host.port_number }}</td> 
+                    <td>{{ host.username }}</td>
+                    <td><a class="host-delete-link" href="javascript://"
+                        delete-host="{{ host.hostname }}"
+                        data-delete-url="{{ url_for('jump_host_delete', hostname = host.hostname) }}">Delete</a></td>
+                </tr>
             {% else %}
-              <td>Default</td>
-            {% endif %}
-            
-            <td>{{ host.username }}</td> 
-
-            <td><a class="host-delete-link" href="javascript://" 
-              delete-host="{{ host.hostname }}"
-              data-delete-url="{{ url_for('jump_host_delete', hostname = host.hostname) }}">Delete</a></td>
-          </tr>   
-      {% else %}
-        <h3>No Jump Server</h3>
-      {% endfor %}
-
-    </tbody> 
-  </table>
+                <h3>No Jump Server</h3>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock main %}

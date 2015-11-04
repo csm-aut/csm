@@ -1,86 +1,84 @@
 {% macro edit_field(field, field_width="col-sm-6", label_field_width="col-sm-4", catch_kwargs=true, extra_field="None") %}
-  <div class="form-group {% if field.errors %} has-error {% endif %}">
-    
-    <label class="{{ label_field_width }} control-label" id="label_{{ field.id }}" for="{{ field.id }}">{{ field.label.text }}</label>
+    <div class="form-group {% if field.errors %} has-error {% endif %}">
+        <label class="{{ label_field_width }} control-label" id="label_{{ field.id }}">{{ field.label.text }}</label>
 
-    <div class="{{ field_width }}">
-      {{ field(**kwargs) }}
-    </div>
-    
-    {% if extra_field != "None" %}
-      {{ extra_field | safe }}
-    {% endif %}
-       
-    {% for error in field.errors %}
-      <span style="color:red;" class="help-inline">{{ error }}</span>
-    {% endfor %}
+        <div class="{{ field_width }}">
+            {{ field(**kwargs) }}
+        </div>
 
+        {% if extra_field != "None" %}
+            {{ extra_field | safe }}
+        {% endif %}
+
+        {% for error in field.errors %}
+            <span style="color:red;" class="help-inline">{{ error }}</span>
+        {% endfor %}
   </div>
 {% endmacro %}
-  
+
 {% macro alert_cco_lookup_disabled() %}
   <div class="alert alert-danger">
-    <strong>NOTICE:&nbsp;</strong>
-      CCO Lookup is disabled by the administrator.  Information was retrieved on
-      <span id='retrieval-elapsed-time'></span> 
+      <strong>NOTICE:&nbsp;</strong>
+          CCO Lookup is disabled by the administrator.  Information was retrieved on
+          <span id='retrieval-elapsed-time'></span>
   </div>
 {% endmacro %}
 
 {% macro alert_duplicate(name, duplicate_error) %}
-  {% if duplicate_error %}
-    <div class="alert alert-danger">
-      <strong>NOTE:&nbsp;</strong>
-      '{{ name }}' already exists in the database.  The name must be an unique name on CSM Server.
-    </div>
+    {% if duplicate_error %}
+        <div class="alert alert-danger">
+            <strong>NOTE:&nbsp;</strong>
+                '{{ name }}' already exists in the database.  The name must be an unique name on CSM Server.
+        </div>
   {% endif %}
 {% endmacro %}
 
 {% macro space_for_none(value) %}
-  {% if value %} {{ value }} {% else %} &nbsp; {% endif %}
+    {% if value %} {{ value }} {% else %} &nbsp; {% endif %}
 {% endmacro %}
 
 {% macro show_install_status_icon(is_install_action, is_install_action_success, status) %}
-  {% if is_install_action %}
-    {% if (status == 'completed') or (status == 'failed') %} 
-      {% if is_install_action_success %}
-        {{ green_check_icon(is_install_action) }}
-      {% else %} 
-        {{ error_icon() }}
-      {% endif %}
-    {% else %} 
-      {{ gray_check_icon(is_install_action) }}
+    {% if is_install_action %}
+        {% if (status == 'completed') or (status == 'failed') %}
+            {% if is_install_action_success %}
+                {{ green_check_icon(is_install_action) }}
+            {% else %}
+                {{ error_icon() }}
+            {% endif %}
+        {% else %}
+            {{ gray_check_icon(is_install_action) }}
+        {% endif %}
+    {% else %}
+        &nbsp;
     {% endif %}
-  {% else %} 
-    &nbsp; 
-  {% endif %}
 {% endmacro %}
 
 
 {% macro file_open_icon() %}
-  <img src="{{ url_for('static', filename='file_open.png') }}">
+    <img src="{{ url_for('static', filename='file_open.png') }}">
 {% endmacro %}
 
 {% macro view_icon() %}
-  <img src="{{ url_for('static', filename='view.png') }}">
+    <img src="{{ url_for('static', filename='view.png') }}">
 {% endmacro %}
 
 {% macro log_icon(tooltip) %}
-  <img src="{{ url_for('static', filename='file.png') }}" title="{{ tooltip }}">
+    <img src="{{ url_for('static', filename='file.png') }}" title="{{ tooltip }}">
 {% endmacro %}
 
 {% macro error_icon() %}
-  <img src="{{ url_for('static', filename='error.png') }}" title="Error">
+    <img src="{{ url_for('static', filename='error.png') }}" title="Error">
 {% endmacro %}
 
 {% macro trace_icon() %}
-  <img src="{{ url_for('static', filename='error.png') }}" title="Debug Trace">
+    <img src="{{ url_for('static', filename='error.png') }}" title="Debug Trace">
 {% endmacro %}
 
 {% macro green_check_icon() %}
-  <img src="{{ url_for('static', filename='green_check.png') }}">
+    <img src="{{ url_for('static', filename='green_check.png') }}">
 {% endmacro %}
 
 {% macro gray_check_icon(value) %}
-  <img src="{{ url_for('static', filename='gray_check.png') }}">
+    <img src="{{ url_for('static', filename='gray_check.png') }}">
 {% endmacro %}
 
