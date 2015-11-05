@@ -93,7 +93,8 @@ def home():
                                             InstallAction.INSTALL_COMMIT, InstallAction.ALL],
                            make_conform_dialog_form=make_conform_dialog_form,
                            export_conformance_report_form=export_conformance_report_form,
-                           select_server_form=select_server_form)
+                           select_server_form=select_server_form,
+                           system_option=SystemOption.get(DBSession()))
 
 
 @conformance.route('/software_profile/create', methods=['GET', 'POST'])
