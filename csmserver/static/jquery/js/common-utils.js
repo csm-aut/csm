@@ -363,12 +363,16 @@ function check_missing_files_on_server(validate_object) {
                 if (missing_file_count == 0) {
                     validate_object.callback(validate_object);
                     // Scheduled Install will not reach the message below as the above function will cause a form submission.
-                    // This message is intended for the Platforms menu since there is no form submission.
+                    // This message is intended for the Platforms menu since there is no form submission (i.e. form == null).
                     if (validate_object.form == null) {
                         bootbox.alert("Requested file(s) already on the selected server repository.  No download is needed.");
                     }
                 } else {
-                    display_missing_files_dialog(validate_object, missing_file_list, downloadable_file_list);
+                    if (validate_object.cco_lookup_enabled) {
+                        display_downloadable_files_dialog(validate_object, missing_file_list, downloadable_file_list);
+                    } else {
+                        display_unable_to_download_dialog(validate_object, missing_file_list);
+                    }
                 }
             }
         },
@@ -378,7 +382,32 @@ function check_missing_files_on_server(validate_object) {
     });
 }
 
-function display_missing_files_dialog(validate_object, missing_file_list, downloadable_file_list) {
+function display_unable_to_download_dialog(validate_object, missing_file_list) {
+    bootbox.dialog({
+        message: missing_file_list,
+        title: "<span style='color:red;'>Following files are missing on the server repository.  Files that are marked as 'Downloadable' " +
+            "will not be downloaded because the administrator has disabled outgoing CCO connection.</span>",
+        buttons: {
+            success: {
+                label: "Ignore",
+                className: "btn-success",
+                callback: function() {
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
+                    validate_object.callback(validate_object);
+                }
+            },
+            main: {
+                label: "Cancel",
+                className: "btn-default",
+                callback: function() {
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
+                }
+            }
+        }
+    });
+}
+
+function display_downloadable_files_dialog(validate_object, missing_file_list, downloadable_file_list) {
     bootbox.dialog({
         message: missing_file_list,
         title: "Following files are missing on the server repository.  Those that are identified as 'Downloadable' can be downloaded from CCO.  If there is an scheduled installation that depends on these files, " +

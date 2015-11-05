@@ -153,7 +153,7 @@ class AdminConsoleForm(Form):
     default_host_password = PasswordField('Default Host Password')
     enable_ldap_auth = HiddenField("Enable LDAP")
     ldap_server_url = StringField('LDAP Server URL')
-    enable_cco_lookup = HiddenField("Enable CCO Lookup")
+    enable_cco_lookup = HiddenField("Enable CCO Connection")
     cco_lookup_time = HiddenField("Last Retrieval")
 
 

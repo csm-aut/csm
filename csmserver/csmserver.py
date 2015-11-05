@@ -1673,8 +1673,8 @@ def schedule_install():
                     scheduled_time = form.scheduled_time_UTC.data
                     software_packages = form.software_packages.data
                     server = form.hidden_server.data
-                    server_directory = form.hidden_server_directory
-                    pending_downloads = form.hidden_pending_downloads
+                    server_directory = form.hidden_server_directory.data
+                    pending_downloads = form.hidden_pending_downloads.data
        
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -1800,8 +1800,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         scheduled_time = form.scheduled_time_UTC.data
         software_packages = form.software_packages.data
         server = form.hidden_server.data
-        server_directory = form.hidden_server_directory
-        pending_downloads = form.hidden_pending_downloads
+        server_directory = form.hidden_server_directory.data
+        pending_downloads = form.hidden_pending_downloads.data
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any

@@ -332,7 +332,8 @@ $(function() {
             install_actions: $('#install_action').val(),
             check_missing_file_on_server: $('#hidden_server').val() > -1,
             callback: on_finish_validate,
-            pending_downloads: null
+            pending_downloads: null,
+            cco_lookup_enabled: "{{ system_option.enable_cco_lookup }}" == 'True'
         };
 
         // If hostname is null, this method is called by Batch Installs

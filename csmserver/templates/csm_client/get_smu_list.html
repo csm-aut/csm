@@ -12,7 +12,7 @@
         var browse_spinner = $('#browse-spinner');
         browse_spinner.hide();
 
-        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}" == 'True' ? true : false;
+        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}" == 'True'
         var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
         $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
 
@@ -212,7 +212,7 @@
                     dataType: 'json',
                     success: function(response) {
                         $.each(response, function(index, element) {
-                            $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time);
+                            $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time + '.');
                         });
                     }
                 });
@@ -241,7 +241,7 @@
             if (cco_lookup_enabled) {
                 window.open(url, '_blank');
             } else {
-                bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing Internet connectivity.");
+                bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing CCO connection.");
             }
         }
 
@@ -258,6 +258,10 @@
         var software_packages = '';
 
         $('#download-software').on('click', function() {
+            if (!cco_lookup_enabled) {
+                bootbox.alert("Unable to download software.  The administrator has disabled outgoing CCO connection.");
+                return;
+            }
             // Re-initialize the package list
             software_packages = "";
 
@@ -331,7 +335,8 @@
                             install_actions: null,
                             check_missing_file_on_server: server_id > -1,
                             callback: on_finish_validate,
-                            pending_downloads: null
+                            pending_downloads: null,
+                            cco_lookup_enabled: cco_lookup_enabled
                         };
 
                         on_validate_prerequisites_and_files_on_server(validate_object);

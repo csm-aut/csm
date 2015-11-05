@@ -15,7 +15,7 @@ $(function() {
 
     var platform = '';
     var release = '';
-    var cco_lookup_enabled = $('#cisco-software-dialog').attr('data-enable-cco-lookup') == 'True' ? true : false;
+    var cco_lookup_enabled = $('#cisco-software-dialog').attr('data-cco-lookup-enabled') == 'True' ? true : false;
 
     cisco_software_dialog_spinner = $('#cisco-software-dialog-browse-spinner');
     cisco_software_dialog_spinner.hide()
@@ -167,7 +167,7 @@ $(function() {
         if (cco_lookup_enabled) {
             window.open(url,'_blank');
         } else {
-            bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing Internet connectivity.");
+            bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing CCO connection.");
         }
     }
 
@@ -336,7 +336,7 @@ $(function() {
                     success: function(response) {
                         $.each(response, function(index, element) {
                             var html_code =
-                            $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time);
+                            $('#retrieval-elapsed-time').html(element[0].retrieval_elapsed_time + '.');
                         });
                     }
                 });

@@ -95,6 +95,8 @@ $(function() {
 
     function on_submit_install_jobs() {
         var hostname = $('#make-conform-dialog').data('hostname');
+        var cco_lookup_enabled = $('#make-conform-dialog').data('cco-lookup-enabled') == 'True';
+
         var validate_object = {
             form: null,
             hostname: hostname,
@@ -105,7 +107,8 @@ $(function() {
             install_actions: $('#install_action').val(),
             check_missing_file_on_server: $('#select_server').val() > -1,
             callback: submit_install_jobs,
-            pending_downloads: null
+            pending_downloads: null,
+            cco_lookup_enabled: cco_lookup_enabled
         };
 
         if (has_one_of_these($('#install_action').val(), ['Install Add'])) {

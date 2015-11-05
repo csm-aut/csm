@@ -400,7 +400,7 @@
 {% block main %}
 
 {{ conformance_report_dialog(form.conformance_report_dialog_software_profile, form.match_criteria, form.region, form.role, form.software) }}
-{{ make_conform_dialog(select_server_form.select_server, select_server_form.select_server_directory,
+{{ make_conform_dialog(system_option.enable_cco_lookup, select_server_form.select_server, select_server_form.select_server_directory,
     server_time, install_actions, make_conform_dialog_form.software_packages, make_conform_dialog_form.scheduled_time,
     make_conform_dialog_form.scheduled_time_UTC) }}
 
