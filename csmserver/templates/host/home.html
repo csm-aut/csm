@@ -11,7 +11,7 @@
         browse_spinner.hide();
 
         $('#search-region-selector').select2({
-            placeholder: "Filter Hosts by Region",
+            placeholder: "Select Hosts by Region",
             allowClear: true,
             ajax: {
                 url: "/api/get_regions/",
@@ -379,16 +379,18 @@
             <!-- left -->
             <div class="row">
                 <span>
+                    <b>Filter:</b>&nbsp;
                 <input type="hidden" class="select2" id="search-region-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
                 </select>
                 </span>
                 <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;
                 <a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a>
                 </span>
-                <hr>
+
             </div>
+
             <div class="row">
-                <ul class="nav nav-tabs" id="main-dashboard-tab">
+                <ul class="nav nav-tabs" id="main-dashboard-tab" style="margin-top:20px;">
                     <li><a data-toggle="tab" href="#managed-hosts">Managed Hosts</a>  </li>
                     <li><a data-toggle="tab" href="#managed-jump-hosts">Jump Servers</a></li>
                     <li><a data-toggle="tab" href="#managed-regions">Regions</a></li>
