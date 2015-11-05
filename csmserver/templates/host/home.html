@@ -388,101 +388,97 @@
         </div>
         <div class="col-sm-9">
             <!-- left -->
-            <div class="row">
-                <div class="input-group">
-                    <span title="Filter Hosts" class="input-group-addon glyphicon glyphicon-filter"></span>
-                    <input type="hidden" class="select2" id="search-region-selector">
-
-                    <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;
-                        <a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a>
-                    </span>
-                </div>
+            <div class="input-group">
+                <span title="Filter Hosts" class="input-group-addon glyphicon glyphicon-filter"></span>
+                <input type="hidden" class="select2" id="search-region-selector">
+                <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;
+                <a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a>
+                </span>
             </div>
-
-            <div class="row">
-                <ul class="nav nav-tabs" id="main-dashboard-tab" style="margin-top:20px;">
-                    <li><a data-toggle="tab" href="#managed-hosts">Managed Hosts</a>  </li>
-                    <li><a data-toggle="tab" href="#managed-jump-hosts">Jump Servers</a></li>
-                    <li><a data-toggle="tab" href="#managed-regions">Regions</a></li>
-                    <!-- Required to be a privilege user -->
-                    <li><a data-toggle="tab" href="#managed-servers">Server Repositories</a></li>
-                    <li class="dropdown">
-                        <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
-                        <ul class="dropdown-menu">
-                            <li><a data-toggle="main-tab" href="{{ url_for('host_create') }}">Host</a></li>
-                            <li><a data-toggle="main-tab" href="{{ url_for('jump_host_create') }}">Jump Server</a></li>
-                            <li class="divider"></li>
-                            <li><a data-toggle="main-tab" href="{{ url_for('region_create') }}">Region</a></li>
-                            <!-- Required to be a privilege user -->
-                            <li><a data-toggle="main-tab" href="{{ url_for('server_create') }}">Server Repository</a></li>
-                        </ul>
-                    </li>
-                </ul>
-                <div class="tab-content" style="margin-top:20px;">
-                    <div id="managed-hosts" class="tab-pane fade in active">
-                        <table cellspacing="0" class="display table" id="managed-host-datatable">
-                            <thead>
-                                <tr>
-                                    <th>Hostname</th>
-                                    <th>Region</th>
-                                    <th>TS or IP</th>
-                                    <th>Platform</th>
-                                    <th>Software</th>
-                                    <th>Last<br> Successful<br> Retrieval</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                    <div id="managed-jump-hosts" class="tab-pane fade">
-                        <table cellspacing="0" class="display table" id="managed-jump-host-datatable">
-                            <thead>
-                                <tr>
-                                    <th>Jump Server</th>
-                                    <th>Name or IP</th>
-                                    <th>Username</th>
-                                    <th>Connection</th>
-                                    <th>Port</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for jump_host in jump_hosts %}
-                                <tr>
-                                    <td><a href="{{ url_for('jump_host_edit', hostname = jump_host.hostname) }}">{{ jump_host.hostname }}</a></td>
-                                    <td>{{ jump_host.host_or_ip }}</td>
-                                    <td>{{ jump_host.username }}</td>
-                                    <td>{{ jump_host.connection_type }}</td>
-                                    {% if jump_host.port_number %}
-                                        <td>{{ jump_host.port_number }}</td>
-                                    {% else %}
-                                        <td>Default</td>
-                                    {% endif %}
-                                    <td>
-                                        <a class="host-delete-link" href="#"
-                                            host-type="jump_host"
-                                            delete-host="{{ jump_host.hostname }}"
-                                            delete-url="{{ url_for('jump_host_delete', hostname = jump_host.hostname) }}">Delete</a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="managed-regions" class="tab-pane fade">
-                        <table cellspacing="0" class="display table" id="managed-region-datatable">
-                            <thead>
-                                <tr>
-                                    <th>Region</th>
-                                    <th>Server Repository</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for region in regions %}
-                                <tr>
-                                    <td><a href="{{ url_for('region_edit', region_name = region.name) }}">{{ region.name }}</a></td>
-                                    {% if region.servers %}
+            <hr style="margin-top:12px;">
+            <ul class="nav nav-tabs" id="main-dashboard-tab">
+                <li><a data-toggle="tab" href="#managed-hosts">Managed Hosts</a>  </li>
+                <li><a data-toggle="tab" href="#managed-jump-hosts">Jump Servers</a></li>
+                <li><a data-toggle="tab" href="#managed-regions">Regions</a></li>
+                <!-- Required to be a privilege user -->
+                <li><a data-toggle="tab" href="#managed-servers">Server Repositories</a></li>
+                <li class="dropdown">
+                    <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a data-toggle="main-tab" href="{{ url_for('host_create') }}">Host</a></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('jump_host_create') }}">Jump Server</a></li>
+                        <li class="divider"></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('region_create') }}">Region</a></li>
+                        <!-- Required to be a privilege user -->
+                        <li><a data-toggle="main-tab" href="{{ url_for('server_create') }}">Server Repository</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="tab-content" style="margin-top:20px;">
+                <div id="managed-hosts" class="tab-pane fade in active">
+                    <table cellspacing="0" class="display table" id="managed-host-datatable">
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>Region</th>
+                                <th>TS or IP</th>
+                                <th>Platform</th>
+                                <th>Software</th>
+                                <th>Last<br> Successful<br> Retrieval</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div id="managed-jump-hosts" class="tab-pane fade">
+                    <table cellspacing="0" class="display table" id="managed-jump-host-datatable">
+                        <thead>
+                            <tr>
+                                <th>Jump Server</th>
+                                <th>Name or IP</th>
+                                <th>Username</th>
+                                <th>Connection</th>
+                                <th>Port</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for jump_host in jump_hosts %}
+                            <tr>
+                                <td><a href="{{ url_for('jump_host_edit', hostname = jump_host.hostname) }}">{{ jump_host.hostname }}</a></td>
+                                <td>{{ jump_host.host_or_ip }}</td>
+                                <td>{{ jump_host.username }}</td>
+                                <td>{{ jump_host.connection_type }}</td>
+                                {% if jump_host.port_number %}
+                                    <td>{{ jump_host.port_number }}</td>
+                                {% else %}
+                                    <td>Default</td>
+                                {% endif %}
+                                <td>
+                                    <a class="host-delete-link" href="#"
+                                        host-type="jump_host"
+                                        delete-host="{{ jump_host.hostname }}"
+                                        delete-url="{{ url_for('jump_host_delete', hostname = jump_host.hostname) }}">Delete</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div id="managed-regions" class="tab-pane fade">
+                    <table cellspacing="0" class="display table" id="managed-region-datatable">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Server Repository</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for region in regions %}
+                            <tr>
+                                <td><a href="{{ url_for('region_edit', region_name = region.name) }}">{{ region.name }}</a></td>
+                                {% if region.servers %}
                                     <td>
                                         <ul style="list-style-type:square;margin:0;">
                                             {% for server in region.servers %}
@@ -490,70 +486,69 @@
                                             {% endfor %}
                                         </ul>
                                     </td>
-                                    {% else %}
+                                {% else %}
                                     <td>&nbsp;</td>
-                                    {% endif %}
-                                    <td>
-                                        <a class="host-delete-link" href="#"
-                                            host-type="region"
-                                            delete-host="{{ region.name }}"
-                                            delete-url="{{ url_for('region_delete', region_name = region.name) }}">Delete</a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- Required to be a privilege user -->
-                    <div id="managed-servers" class="tab-pane fade">
-                        <div class="pull-right">
-                            <a id="browse-server-button" href="javascript://"><img src="{{ url_for('static', filename='browse_server.png') }}">Browse Repository</a>
-                        </div>
-                        <table cellspacing="0" class="display table" id="managed-server-datatable">
-                            <thead>
-                                <tr>
-                                    <th>Server Repository</th>
-                                    <th>Server Type</th>
-                                    <th>Server Information</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for server in servers %}
-                                <tr>
-                                    <td><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></td>
-                                    <td>{{ server.server_type }}</td>
-                                    <td>
-                                        <span style="color: Gray;"><b>URL:</b></span> {{ server.server_url }}<br/>
-                                        {% if server.vrf %}
-                                            <span style="color: Gray;"><b>VRF:</b></span> {{ server.vrf }}<br/>
-                                        {% endif %}
-
-                                        {% if server.server_directory %}
-                                            <span style="color: Gray;">
-                                            {% if server.server_type == "FTP" or server.server_type == "SFTP" %}
-                                                <b>Remote Directory:</b>
-                                            {% else %}
-                                                <b>File Directory:</b>
-                                            {% endif %}
-                                            </span>
-                                            {{ server.server_directory }}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a class="host-delete-link" href="#"
-                                            host-type="server"
-                                            delete-host="{{ server.hostname }}"
-                                            delete-url="{{ url_for('server_delete', hostname = server.hostname) }}">Delete</a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                                {% endif %}
+                                <td>
+                                    <a class="host-delete-link" href="#"
+                                        host-type="region"
+                                        delete-host="{{ region.name }}"
+                                        delete-url="{{ url_for('region_delete', region_name = region.name) }}">Delete</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <!-- /tab-content -->
+                <!-- Required to be a privilege user -->
+                <div id="managed-servers" class="tab-pane fade">
+                    <div class="pull-right">
+                        <a id="browse-server-button" href="javascript://"><img src="{{ url_for('static', filename='browse_server.png') }}">Browse Repository</a>
+                    </div>
+                    <table cellspacing="0" class="display table" id="managed-server-datatable">
+                        <thead>
+                            <tr>
+                                <th>Server Repository</th>
+                                <th>Server Type</th>
+                                <th>Server Information</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for server in servers %}
+                            <tr>
+                                <td><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></td>
+                                <td>{{ server.server_type }}</td>
+                                <td>
+                                    <span style="color: Gray;"><b>URL:</b></span> {{ server.server_url }}<br/>
+                                    {% if server.vrf %}
+                                        <span style="color: Gray;"><b>VRF:</b></span> {{ server.vrf }}<br/>
+                                    {% endif %}
+
+                                    {% if server.server_directory %}
+                                        <span style="color: Gray;">
+                                        {% if server.server_type == "FTP" or server.server_type == "SFTP" %}
+                                            <b>Remote Directory:</b>
+                                        {% else %}
+                                            <b>File Directory:</b>
+                                        {% endif %}
+                                        </span>
+                                        {{ server.server_directory }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a class="host-delete-link" href="#"
+                                        host-type="server"
+                                        delete-host="{{ server.hostname }}"
+                                        delete-url="{{ url_for('server_delete', hostname = server.hostname) }}">Delete</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
+            <!-- /tab-content -->
         </div>
     </div>
     <!-- /upper section -->
