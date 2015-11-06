@@ -54,7 +54,7 @@ from au.utils.decorators import repository
 from au.utils.decorators import pkg_file
 from au.utils.decorators import turbo_boot
 from au.utils.decorators import issu
-from au.utils.decorators import best_effort_config
+from au.utils.decorators import best_effort_config, config_filename
 from au.utils import pkglist
 
 from au.workqueue.WorkQueue import WorkQueue
@@ -89,6 +89,7 @@ def _prepare_plugin(func):
         turbo_boot = get_label(func, 'turbo_boot')
         issu = get_label(func, 'issu')
         best_effort_config = get_label(func, 'best_effort_config')
+        config_filename = get_label(func, 'config_filename')
         log_options = get_label(func, 'log_to')
         pre_upgrade = get_label(func, 'pre_upgrade')
         upgrade = get_label(func, 'upgrade')
@@ -106,6 +107,8 @@ def _prepare_plugin(func):
             kwargs.update(issu)
         if best_effort_config:
             kwargs.update(best_effort_config)
+        if config_filename:
+            kwargs.update(config_filename)
         kwargs.update(turbo_boot)
 
         if log_options is not None:
@@ -569,6 +572,9 @@ class Manager(object):
         if hasattr(self.options,'best_effort_config'):
             best_effort_config_decorator = best_effort_config(self.options.best_effort_config)
 
+        if hasattr(self.options, 'config_filename'):
+            config_filename_decorator = config_filename(self.options.config_filename)
+
         plugins_types = "ALL"
            
         if hasattr(self.options,'addset') and self.options.addset:
@@ -617,6 +623,8 @@ class Manager(object):
                 function = issu_decorator(function)
             if hasattr(self.options,'best_effort_config'):
                 function = best_effort_config_decorator(function)
+            if hasattr(self.options,'config_filename'):
+                function = config_filename_decorator(function)
 
             self._run(
                 plugin,

@@ -221,12 +221,20 @@
 
             $('#on-submit').click(function (e) {
 
+                if (validateSelectHost() == false) {
+                    return false;
+                }
+                if (validateSelectPackages() == false) {
+                    return false;
+                }
+
                 if (has_one_of_these($('#install_action').val(), [POST_MIGRATE])) {
                     if (!$('[name="config-handling"]')[0].checked && !$('[name="config-handling"]')[1].checked) {
                         bootbox.alert("Please select one option.");
                         return false;
                     }
                 }
+
                 on_submit();
 
 
@@ -242,6 +250,7 @@
                 $('#hidden_server').val($('#server_dialog_server').val());
                 $('#hidden_server_name').val($('#server_dialog_server option:selected').text());
                 $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
+                $('#hidden_config_filename').val($('#config_filename').val());
 
                 if ($('[name="config-handling"]')[0].checked) {
                     $('#hidden_best_effort_config').val($('[name="config-handling"]')[0].value);
@@ -266,24 +275,6 @@
                 return false;
             });
 
-
-            function on_final_submit(current_form, hostname) {
-                var validate_object = {
-                    form: current_form,
-                    hostname: hostname,
-                    server_id: $('#hidden_server').val(),
-                    server_directory: $('#hidden_server_directory').val(),
-                    software_packages: $('#software-packages').val(),
-                    spinner: submit_spinner,
-                    install_actions: $('#install_action').val(),
-                    check_missing_file_on_server: $('#hidden_server').val() > -1,
-                    callback: on_finish_validate,
-                    pending_downloads: null
-                };
-
-                // If hostname is null, this method is called by Batch Installs
-                current_form.submit();
-            }
 
 
             function submit_form_on_successfully_download_config_conversion_tool() {
@@ -332,6 +323,8 @@
                             $('#server_dialog_server_directory'),
                             $('#server_dialog_server_directory').val());
                 }
+
+                $('#config_filename').val($('#hidden_config_filename').val());
 
                 console.log("hidden = " + $('#hidden_best_effort_config').val())
 
@@ -408,6 +401,8 @@
                            class="form-control" type="hidden">
                     <input id="hidden_best_effort_config" name="{{ form.hidden_best_effort_config.name }}"
                            value="{{ form.hidden_best_effort_config.data }}" class="form-control" type="hidden">
+                    <input id="hidden_config_filename" name="{{ form.hidden_config_filename.name }}"
+                           value="{{ form.hidden_config_filename.data }}" class="form-control" type="hidden">
 
                     <div class="btn col-sm-offset-5">
 

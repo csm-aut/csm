@@ -182,6 +182,10 @@ class InstallContext(ImageContext):
     @property
     def post_migrate_config_handling_option(self):
         return self.install_job.best_effort_config_applying
+
+    @property
+    def pre_migrate_config_filename(self):
+        return self.install_job.config_filename
     
     def post_status(self, message):
         if self.db_session is not None and \

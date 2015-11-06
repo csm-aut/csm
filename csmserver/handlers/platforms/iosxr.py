@@ -58,7 +58,7 @@ class BaseInventoryHandler(BaseHandler):
     def execute(self, ctx):
 
         global AUT_PATH
-        
+
         csm_au_module = import_module('au.csm_au', AUT_PATH)
         if csm_au_module is not None:
             status = csm_au_module.execute(ctx)

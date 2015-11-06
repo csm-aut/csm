@@ -25,6 +25,9 @@ def execute(context,testing_csm = False):
     if hasattr(ctx,'post_migrate_config_handling_option'):
         options.best_effort_config = ctx.post_migrate_config_handling_option
 
+    if hasattr(ctx,'pre_migrate_config_filename'):
+        options.config_filename = ctx.pre_migrate_config_filename
+
     options.logdir = context.log_directory
     options.outdir = context.log_directory
     options.migdir = context.migration_directory
@@ -56,19 +59,19 @@ def execute(context,testing_csm = False):
         try :
             os.makedirs(options.outdir)
         except IOError, e:
-            parser.error(str(e))
+            oparser.error(str(e))
 
     if not os.path.exists(options.logdir) :
         try :
             os.makedirs(options.logdir)
         except IOError, e:
-            parser.error(str(e))
+            oparser.error(str(e))
 
     if not os.path.exists(options.migdir) :
         try :
             os.makedirs(options.migdir)
         except IOError, e:
-            parser.error(str(e))
+            oparser.error(str(e))
 
     options.stdoutfile = open(os.path.join(options.logdir,'aut_output'),"w")
     print "="*80

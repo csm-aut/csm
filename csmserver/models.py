@@ -459,6 +459,9 @@ class InstallJob(Base):
     # only for install action post-migrate
     best_effort_config_applying = Column(Integer)
 
+    # only for install action pre-migrate
+    config_filename = Column(String(300))
+
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -484,6 +487,8 @@ class InstallJobHistory(Base):
     host_id = Column(Integer, ForeignKey('host.id'))
 
     best_effort_config_applying = Column(Integer)
+
+    config_filename = Column(String(300))
     
     def set_status(self, status):
         self.status = status        

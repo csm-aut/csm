@@ -71,13 +71,17 @@ FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
 MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.0'
 
 
-XR_CONFIG_NAME_IN_CSM = "xr.cfg"
-xr_config_name_in_csm = "xr.cfg"
-BREAKOUT_CONFIG_NAME_IN_CSM = "breakout.cfg"
-breakout_config_name_in_csm = "breakout.cfg"
-ADMIN_CONFIG_NAME_IN_CSM = "admin.cfg"
-admin_config_name_in_csm = "admin.cfg"
+XR_CONFIG_IN_CSM = "xr.cfg"
+BREAKOUT_CONFIG_IN_CSM = "breakout.cfg"
+ADMIN_CONFIG_IN_CSM = "admin.cfg"
 
+CONVERTED_XR_CONFIG_IN_CSM = "xr.iox"
+CONVERTED_ADMIN_CAL_CONFIG_IN_CSM = "admin.cal"
+CONVERTED_ADMIN_XR_CONFIG_IN_CSM = "admin.iox"
+
+XR_CONFIG_ON_DEVICE = "iosxr.cfg"
+ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
+ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
 
 class PreMigratePlugin(IPlugin):
 
@@ -141,6 +145,20 @@ class PreMigratePlugin(IPlugin):
             except:
                 db_session.close()
                 self._disconnect_and_raise_error(device, "Exception was thrown while copying file " + sourcefiles[x] + " to " + server.server_directory + os.sep + destfilenames[x])
+        db_session.close()
+        return True
+
+    def _copy_file_from_tftp(self, device, sourcefile, repo_url, destfile):
+        db_session = DBSession()
+        server = db_session.query(Server).filter(Server.server_url == repo_url).first()
+        if not server:
+            self.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
+
+        try:
+            shutil.copy(server.server_directory + os.sep + sourcefile, destfile)
+        except:
+            db_session.close()
+            self._disconnect_and_raise_error(device, "Exception was thrown while copying file " + server.server_directory + os.sep + sourcefile + " to " + destfile)
         db_session.close()
         return True
 
@@ -229,7 +247,7 @@ class PreMigratePlugin(IPlugin):
 
         conversion_success = self._is_conversion_successful(nox_output)
 
-        if filename == ADMIN_CONFIG_NAME_IN_CSM:
+        if filename == ADMIN_CONFIG_IN_CSM:
             supported_log_name = "supported_config_in_admin_configuration"
             unsupported_log_name = "unsupported_config_in_admin_configuration"
         else:
@@ -488,7 +506,8 @@ class PreMigratePlugin(IPlugin):
                     msg = '\n \nPlease find original configuration ' + filename + ' in csm_data/migration/' + host_ip + '/' + filename + ' \n'
                     supp_log.write(msg)
                     unsupp_log.write(msg)
-                    msg2 = 'The final converted configuration is in csm_data/migration/' + host_ip + '/' + filename.split('.')[0] + '.iox'
+                    if filename.split('.')[0] == 'admin':
+                        msg2 = 'The final converted configuration is in csm_data/migration/' + host_ip + '/' + CONVERTED_ADMIN_CAL_CONFIG_IN_CSM + ' and csm_data/migration/' + host_ip + '/' + CONVERTED_ADMIN_XR_CONFIG_IN_CSM
                     supp_log.write(msg2)
                     unsupp_log.write(msg2)
                     csvfile.close()
@@ -497,13 +516,11 @@ class PreMigratePlugin(IPlugin):
         except:
             self._disconnect_and_raise_error(device, "Exception was thrown when writing diagnostic files - " + supported_config_log + " and " + unsupported_config_log + " after converting admin configuration using the NoX tool. . Disconnecting...")
 
-    def _handle_configs(self, device, host_ip, repo_str, fileloc, nox_to_use):
+    def _handle_configs(self, device, host_ip, repo_str, fileloc, nox_to_use, config_filename):
 
-        xr_config_name_in_repo = host_ip + "_" + XR_CONFIG_NAME_IN_CSM
+        xr_config_name_in_repo = host_ip + "_" + XR_CONFIG_IN_CSM
 
-        admin_config_name_in_repo = host_ip + "_" + ADMIN_CONFIG_NAME_IN_CSM
-
-
+        admin_config_name_in_repo = host_ip + "_" + ADMIN_CONFIG_IN_CSM
 
         self._post_status("Saving current configuration files on device into server repository and csm_data")
         self._copy_config_to_repo(device, repo_str, xr_config_name_in_repo)
@@ -515,32 +532,50 @@ class PreMigratePlugin(IPlugin):
             device.execute_command('exit')
 
 
-        self._copy_files_to_csm_data(device, repo_str, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + XR_CONFIG_NAME_IN_CSM, fileloc + os.sep + ADMIN_CONFIG_NAME_IN_CSM])
+        self._copy_files_to_csm_data(device, repo_str, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + XR_CONFIG_IN_CSM, fileloc + os.sep + ADMIN_CONFIG_IN_CSM])
 
 
 
         self._post_status("Converting admin configuration file with configuration migration tool")
-        self._run_migration_on_config(device, fileloc, ADMIN_CONFIG_NAME_IN_CSM, nox_to_use, host_ip)
+        self._run_migration_on_config(device, fileloc, ADMIN_CONFIG_IN_CSM, nox_to_use, host_ip)
         #self._run_migration_on_config(device, fileloc, "system.tech", NOX_FOR_MAC)
 
-        self._post_status("Converting IOS-XR configuration file with configuration migration tool")
-        self._run_migration_on_config(device, fileloc, XR_CONFIG_NAME_IN_CSM, nox_to_use, host_ip)
+        # ["admin.cal"]
+        config_files = [CONVERTED_ADMIN_CAL_CONFIG_IN_CSM]
+        # ["admin_calvados.cfg"]
+        config_names_on_device = [ADMIN_CAL_CONFIG_ON_DEVICE]
+        if not config_filename:
 
-        config_files = ["xr.iox", "admin.cal"]
+            self._post_status("Converting IOS-XR configuration file with configuration migration tool")
+            self._run_migration_on_config(device, fileloc, XR_CONFIG_IN_CSM, nox_to_use, host_ip)
 
-        if not self._take_out_breakout_config(device, fileloc + os.sep + XR_CONFIG_NAME_IN_CSM, fileloc + os.sep + BREAKOUT_CONFIG_NAME_IN_CSM):
-            config_files.append(BREAKOUT_CONFIG_NAME_IN_CSM)
+            # "xr.iox"
+            config_files.append(CONVERTED_XR_CONFIG_IN_CSM)
+            # "iosxr.cfg"
+            config_names_on_device.append(XR_CONFIG_ON_DEVICE)
 
-        if os.path.isfile(fileloc + os.sep + "admin.iox"):
-            config_files.append("admin.iox")
+            if not self._take_out_breakout_config(device, fileloc + os.sep + XR_CONFIG_IN_CSM, fileloc + os.sep + BREAKOUT_CONFIG_IN_CSM):
+                config_files.append(BREAKOUT_CONFIG_IN_CSM)
+                config_names_on_device.append(BREAKOUT_CONFIG_IN_CSM)
+
+        # admin.iox
+        if os.path.isfile(fileloc + os.sep + CONVERTED_ADMIN_XR_CONFIG_IN_CSM):
+            config_files.append(CONVERTED_ADMIN_XR_CONFIG_IN_CSM)
+            config_names_on_device.append(ADMIN_XR_CONFIG_ON_DEVICE)
 
         self._post_status("Uploading the migrated configuration files to server repository and device.")
 
         config_names_in_repo = [host_ip + "_" + config_name for config_name in config_files]
 
+
         if self._upload_files_to_tftp(device, [fileloc + os.sep + config_name for config_name in config_files], repo_str, config_names_in_repo):
 
-            self._copy_files_to_device(device, repo_str, config_names_in_repo, ["harddiskb:/" + config_name for config_name in config_files], TIMEOUT_FOR_COPY_CONFIG)
+            if config_filename:
+                config_names_in_repo.append(config_filename)
+                # iosxr.cfg
+                config_names_on_device.append(XR_CONFIG_ON_DEVICE)
+
+            self._copy_files_to_device(device, repo_str, config_names_in_repo, ["harddiskb:/" + config_name for config_name in config_names_on_device], TIMEOUT_FOR_COPY_CONFIG)
 
     def _copy_iso_to_device(self, device, packages, repo_str):
         found_iso = False
@@ -582,13 +617,18 @@ class PreMigratePlugin(IPlugin):
         if not packages:
             packages = []
 
+        config_filename = kwargs.get('config_filename', None)
+
         host_directory_name = device.name.strip().replace('.', '_').replace(':','-')
 
         fileloc = get_migration_directory() + host_directory_name
 
         self.log(self.NAME + " Plugin is running")
 
+        self.log("config_filename = " + str(config_filename))
+        print "config_filename = " + str(config_filename)
 
+        """
         self._post_status("Checking if migration requirements are met.")
         self._check_platform(device)
         self._check_release_version(device)
@@ -603,6 +643,7 @@ class PreMigratePlugin(IPlugin):
         self._post_status("Resizing eUSB partition.")
         self._resize_eusb(device, repo_str, packages)
 
+        """
 
         nox_to_use = get_migration_directory() + self._find_nox_to_use()
 
@@ -611,7 +652,9 @@ class PreMigratePlugin(IPlugin):
         if not os.path.isfile(nox_to_use):
             print nox_to_use
             self.error("The configuration conversion tool " + nox_to_use + " is missing. CSM should have downloaded it when this migration action was scheduled.")
-        self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use)
+        self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use, config_filename)
+
+        """
 
         self._post_status("Copying the eXR ISO image from server repository to device.")
         self._copy_iso_to_device(device, packages, repo_str)
@@ -620,6 +663,6 @@ class PreMigratePlugin(IPlugin):
         self._post_status("Checking FPD version...")
         self._ensure_updated_fpd(device, repo_str, packages)
 
-
+        """
         return True
 

@@ -9,6 +9,7 @@ $(document).ready(function(){
         'tabClass': 'nav nav-pills',
         'nextSelector': '.btn-next',
         'previousSelector': '.btn-previous',
+        'lastSelector': '.btn-finish',
          
          onInit : function(tab, navigation, index){
             
@@ -27,9 +28,9 @@ $(document).ready(function(){
         },
         onNext: function(tab, navigation, index){
             if ($('.nav-tabs .active').text() == "Select Host") {
-                return validateFirstStep();
+                return validateSelectHost();
             } else if ($('.nav-tabs .active').text() == "Pre-Migrate") {
-                return validateSecondStep();
+                return validateSelectPackages();
             }
               
         },
@@ -83,7 +84,7 @@ $(document).ready(function(){
     
 });
 
-function validateFirstStep(){
+function validateSelectHost(){
 
     console.log("Validating first step: ");
     if (host_selector.get_selected_items().length < 1) {
@@ -106,8 +107,8 @@ function validateFirstStep(){
 	return true;
 }
 
-function validateSecondStep(){
-   
+function validateSelectPackages(){
+
     //code here for second step
     console.log($('#server_dialog_server').val())
     if ($('#server_dialog_server').val() == -1) {
@@ -115,23 +116,42 @@ function validateSecondStep(){
         return false
     }
     var selected_ISO = false;
+    var selected_config = false;
     var selected_items = server_software_selector.get_selected_items();
+    var unselected_items = server_software_selector.get_unselected_items();
 
     for (var index in selected_items) {
         if (selected_items[index] == "asr9k-mini-x64.iso" || selected_items[index] == "asr9k-full-x64.iso") {
             selected_ISO = true;
+        }
+        if ($('#config_filename').val() != "" && selected_items[index] == $('#config_filename').val()) {
+            selected_config = true;
         }
     }
     if (!selected_ISO) {
         bootbox.alert("Please select at least the eXR ISO image 'asr9k-mini-x64.iso' or 'asr9k-full-x64.iso' before continuing. The FPD SMU is also needed if your release version is below 6.0.0.");
         return false
     }
+    if ($('#config_filename').val() != "") {
+        if (!selected_config) {
+            for (var index in unselected_items) {
+                if (unselected_items[index] == $('#config_filename').val()) {
+                    selected_config = true;
+                }
+            }
+        }
+        if (!selected_config) {
+            bootbox.alert("The config filename provided - '" + $('#config_filename').val() + "' - is not found in the selected directory in the server repository.");
+            return false
+        }
+
+    }
     $.cookie('region-' + region_id + '-server', $('#hidden_server').val(), { path: '/' });
     $.cookie('region-' + region_id + '-server-directory', $('#hidden_server_directory').val(), { path: '/' });
 
 
 	return true;
-    
+
 }
 
 

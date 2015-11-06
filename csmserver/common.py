@@ -259,7 +259,7 @@ def get_first_install_action(db_session, install_action):
 
 def create_or_update_install_job(
     db_session, host_id, install_action, scheduled_time, software_packages=None,
-    server=-1, server_directory='', dependency=0, pending_downloads=None, install_job=None, best_effort_config=0):
+    server=-1, server_directory='', dependency=0, pending_downloads=None, install_job=None, best_effort_config=0, config_filename=''):
 
     # This is a new install_job
     if install_job is None:
@@ -324,6 +324,10 @@ def create_or_update_install_job(
 
     # for post-migrate
     install_job.best_effort_config_applying = best_effort_config
+
+    # for pre-migrate
+    install_job.config_filename = config_filename
+    print "in create_and_update, install_job.config_filename = " + install_job.config_filename
 
     if install_job.install_action != InstallAction.UNKNOWN:
         db_session.commit()

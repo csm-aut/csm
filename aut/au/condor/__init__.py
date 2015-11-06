@@ -86,6 +86,9 @@ def make_connection_from_context(ctx):
                 for alt_port in alt_address[1:] :
                     urls.append(':'.join(url.split(":")[:-1]) + ":" + alt_port)
 
+    if len(urls) == 0:
+        urls = ctx.host.urls
+
     for url in urls:
         nodes.append(make_hop_info_from_url(url))
 

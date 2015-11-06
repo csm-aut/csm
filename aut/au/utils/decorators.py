@@ -89,3 +89,9 @@ def best_effort_config(integer):
         func = add_label(function, 'best_effort_config', best_effort_config=integer)
         return func
     return decorator
+
+def config_filename(filename):
+    def decorator(function):
+        func = add_label(function, 'config_filename', config_filename=filename)
+        return func
+    return decorator

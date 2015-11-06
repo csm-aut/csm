@@ -65,7 +65,7 @@ from constants import get_migration_directory
 from au.condor.platforms.generic import _INVALID_INPUT
 
 
-
+from premigrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE
 
 
 class PostMigratePlugin(IPlugin):
@@ -367,8 +367,8 @@ class PostMigratePlugin(IPlugin):
         cmd = 'admin'
         success, output = device.execute_command(cmd)
         if success:
-            self._copy_file_from_eusb_to_harddisk(device, "admin.cal")
-            self._load_admin_config(device, "admin.cal")
+            self._copy_file_from_eusb_to_harddisk(device, ADMIN_CAL_CONFIG_ON_DEVICE)
+            self._load_admin_config(device, ADMIN_CAL_CONFIG_ON_DEVICE)
             cmd = 'exit'
             device.execute_command(cmd)
         else:
@@ -377,9 +377,9 @@ class PostMigratePlugin(IPlugin):
 
 
         self._post_status("Loading the admin IOS-XR configuration on device.")
-        file_exists = self._copy_file_from_eusb_to_harddisk(device, "admin.iox", optional=True)
+        file_exists = self._copy_file_from_eusb_to_harddisk(device, ADMIN_XR_CONFIG_ON_DEVICE, optional=True)
         if file_exists:
-            self._load_nonadmin_config(device, "admin.iox", best_effort_config)
+            self._load_nonadmin_config(device, ADMIN_XR_CONFIG_ON_DEVICE, best_effort_config)
 
         # if os.path.isfile(fileloc + os.sep + filename + "_breakout"):
         #     self._post_status("Loading the breakout configuration on device.")
@@ -388,9 +388,9 @@ class PostMigratePlugin(IPlugin):
 
 
         self._post_status("Loading the IOS-XR configuration on device.")
-        file_exists = self._copy_file_from_eusb_to_harddisk(device, "xr.iox")
+        file_exists = self._copy_file_from_eusb_to_harddisk(device, XR_CONFIG_ON_DEVICE)
         if file_exists:
-            self._load_nonadmin_config(device, "xr.iox", best_effort_config)
+            self._load_nonadmin_config(device, XR_CONFIG_ON_DEVICE, best_effort_config)
 
         self._check_fpds_for_upgrade(device)
 
