@@ -2959,7 +2959,7 @@ def api_get_reload_list():
             smu_loader = SMUInfoLoader(platform, release)
             for package_name in package_list:
                 if 'mini' in package_name:
-                    rows.append({ 'entry' : package_name})
+                    rows.append({ 'entry' : package_name, 'description':''})
                 else:
                     # Strip the suffix
                     smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
