@@ -144,7 +144,7 @@
 
                     var icon_html = '';
                     if (status == 'failed') {
-                        icon_html = '<img src=\"{{ url_for('static', filename='error.png ') }}\" title="Install Error - Click to View Session Log">';
+                        icon_html = '<img src=\"{{ url_for('static', filename='error.png') }}\" title="Install Error - Click to View Session Log">';
                     } else if (status != null) {
                         icon_html = '<img src=\"{{ url_for('static', filename='spinner.gif') }}\" title="In Progress - Click to View Session Log">';
                     }
