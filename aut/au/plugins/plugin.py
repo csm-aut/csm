@@ -79,7 +79,8 @@ class IPlugin(object):
         raise NotImplementedError
 
     def error(self, message):
-        self.device.disconnect()
+        # (klstanie) commented below line as it was causing the issue disconneting other devices on failure.
+        # self.device.disconnect()
         self.log("Disconnected...")
         raise PluginError(message)
 
