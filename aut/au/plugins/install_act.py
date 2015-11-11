@@ -231,7 +231,7 @@ class InstallActivatePlugin(IPlugin):
            cmd = 'admin install activate {} prompt-level none async'.format(
             tobe_activated)
            install_cmd=cmd
-        success, output = device.execute_command(cmd)
+        success, output = device.execute_command(cmd, timeout=7200)
         if success and op_success in output:
             op_id = re.search('Install operation (\d+) \'', output).group(1)
             self._watch_operation(device, op_id, install_cmd)
