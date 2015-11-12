@@ -122,7 +122,7 @@ class WorkUnit(object):
         raise NotImplementedError("Children must override Process")
 
 if __name__ == "__main__":
-    pass
+    print('begin')
 
 
 

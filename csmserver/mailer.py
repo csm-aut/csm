@@ -25,13 +25,11 @@
 import smtplib
 import urllib
 
-from database import DBSession
 from constants import JobStatus
 from constants import SMTPSecureConnection
 
 from models import SMTPServer
 from models import User
-from models import logger
 from models import Host
 from models import SystemOption
 
@@ -44,8 +42,7 @@ from email.mime.text import MIMEText
 def get_session_log_link(host, install_job):
     return "hosts/{}/install_job_history/session_log/{}?file_path={}".format(urllib.quote(host.hostname), install_job.id, install_job.session_log)
                                                                  
-def send_install_status_email(install_job):
-    db_session = DBSession
+def send_install_status_email(db_session, logger, install_job):
     username = install_job.created_by
 
     system_option = SystemOption.get(db_session)
@@ -88,6 +85,7 @@ def send_install_status_email(install_job):
     message += '</body></head></html>'
     
     sendmail(
+        logger=logger,
         server=smtp_server.server, 
         server_port=smtp_server.server_port,
         sender=smtp_server.sender,
@@ -98,7 +96,7 @@ def send_install_status_email(install_job):
         password=smtp_server.password,
         secure_connection=smtp_server.secure_connection)
         
-def sendmail(server, server_port, sender, recipient, 
+def sendmail(logger, server, server_port, sender, recipient,
     message, use_authentication, username, password, secure_connection):
 
     try:

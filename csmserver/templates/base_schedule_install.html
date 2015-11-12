@@ -348,6 +348,8 @@ $(function() {
             check_need_reload(validate_object);
 
         } else {
+            // Turn on the spinner.  This will be useful for batch scheduling.
+            if (validate_object.spinner != null ) validate_object.spinner.show();
             current_form.submit();
         }
     }
