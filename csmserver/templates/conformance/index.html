@@ -64,11 +64,11 @@
         
         function export_conformance_report(id, include_host_packages) {
             $.ajax({
-                url: "/conformance/api/get_conformance_report_datetime/" + id,
+                url: "/conformance/api/get_conformance_report_datetime/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     $.each(response, function(index, element) {
-                        window.location.href = '/conformance/api/export_conformance_report/' + id + '?locale_datetime=' +
+                        window.location.href = '/conformance/api/export_conformance_report/report/' + id + '?locale_datetime=' +
                             convertToLocaleString(element[0].conformance_report_datetime) +
                             '&include_host_packages=' + include_host_packages;
                     });
@@ -256,14 +256,14 @@
         function display_conformance_report(id) {
             $.cookie('conformance-report-id', id); 
 
-            conformance_report_table.api().ajax.url("/conformance/api/get_conformance_report/" + id).load();
+            conformance_report_table.api().ajax.url("/conformance/api/get_conformance_report/report/" + id).load();
             display_conformance_report_summary(id);
             display_conformance_report_software_profile_packages(id)
         }
 
         function display_conformance_report_software_profile_packages(id) {
             $.ajax({
-                url: "/conformance/api/get_conformance_report_software_profile_packages/" + id,
+                url: "/conformance/api/get_conformance_report_software_profile_packages/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     var html_code = '<ul>';
@@ -286,7 +286,7 @@
         
         function display_conformance_report_summary(id) {          
             $.ajax({
-                url: "/conformance/api/get_conformance_report_summary/" + id,
+                url: "/conformance/api/get_conformance_report_summary/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     var html_code = '';
@@ -340,7 +340,7 @@
         
         function rerun_conformance_report(id) {
             $.ajax({
-                url: "/conformance/api/rerun_conformance_report/" + id,
+                url: "/conformance/api/rerun_conformance_report/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     if (response.status == 'OK') {

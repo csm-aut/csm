@@ -1120,7 +1120,7 @@ def api_get_host_dashboard_cookie(hostname):
         row = {}
         connection_param = host.connection_param[0]
         row['hostname'] = host.hostname
-        row['region'] = host.region.name
+        row['region'] = host.region.name if host.region is not None else 'Unknown'
         row['roles'] = host.roles
         row['platform'] = host.platform
         row['software'] = host.software_version

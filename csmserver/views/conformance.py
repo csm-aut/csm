@@ -239,7 +239,7 @@ def get_conformance_report_by_id(db_session, id):
     return db_session.query(ConformanceReport).filter(ConformanceReport.id == id).first()
 
 
-@conformance.route('/api/rerun_conformance_report/<int:id>')
+@conformance.route('/api/rerun_conformance_report/report/<int:id>')
 @login_required
 def api_rerun_conformance_report(id):
     db_session = DBSession()
@@ -390,7 +390,7 @@ def get_missing_packages(host_packages, software_profile_packages):
 
     return missing_packages
 
-@conformance.route('/api/export_conformance_report/<int:id>')
+@conformance.route('/api/export_conformance_report/report/<int:id>')
 @login_required
 def api_export_conformance_report(id):
     locale_datetime = request.args.get('locale_datetime')
@@ -408,7 +408,7 @@ def api_export_conformance_report(id):
     return send_file(filename, as_attachment=True)
 
 
-@conformance.route('/api/get_conformance_report_summary/<int:id>')
+@conformance.route('/api/get_conformance_report_summary/report/<int:id>')
 @login_required
 def api_get_conformance_report_summary(id):
     db_session = DBSession()
@@ -424,7 +424,7 @@ def api_get_conformance_report_summary(id):
         return jsonify({'status': 'Failed'})
 
 
-@conformance.route('/api/get_conformance_report_datetime/<int:id>')
+@conformance.route('/api/get_conformance_report_datetime/report/<int:id>')
 @login_required
 def api_get_conformance_report_datetime(id):
     conformance_report_datetime = None
@@ -439,7 +439,7 @@ def api_get_conformance_report_datetime(id):
     ]})
 
 
-@conformance.route('/api/get_conformance_report/<int:id>')
+@conformance.route('/api/get_conformance_report/report/<int:id>')
 @login_required
 def api_get_conformance_report(id):
     rows = []
@@ -461,7 +461,7 @@ def api_get_conformance_report(id):
 
     return jsonify(**{'data': rows})
 
-@conformance.route('/api/get_conformance_report_software_profile_packages/<int:id>')
+@conformance.route('/api/get_conformance_report_software_profile_packages/report/<int:id>')
 @login_required
 def api_get_conformance_report_software_profile_packages(id):
     rows = []
