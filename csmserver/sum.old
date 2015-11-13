@@ -40,8 +40,8 @@ from models import get_download_job_key_dict
 from constants import JobStatus
 from constants import InstallAction
 
-from threadpool import Pool
-from threadpool import WorkUnit
+from thread_pool import Pool
+from thread_pool import WorkUnit
 
 from handlers.loader import get_inventory_handler_class 
 from handlers.loader import get_install_handler_class 
