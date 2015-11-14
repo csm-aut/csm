@@ -44,7 +44,7 @@
         });
 
         $('#browse-cisco-button').on('click', function(e) {
-            display_cisco_software_dialog();
+            display_cisco_software_dialog([]);
         });
 
         $('#on-cisco-software-dialog-submit').click(function(e) {
@@ -120,6 +120,10 @@
     }
     a:link, a:visited {
         text-decoration:none;
+    }
+    th,
+    td {
+        white-space: nowrap;
     }
 </style>
   
