@@ -142,7 +142,7 @@ class PluginsManager(object):
             self.csm_ctx.success = False
             self.csm_ctx.post_status(e.message)
             return False
-        
+
         finally:
             device.disconnect()
 

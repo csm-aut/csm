@@ -145,7 +145,7 @@ def watch_install(manager, device, oper_id, install_cmd):
     watch_operation(manager, device, oper_id)
 
     output = device.send("admin show install log {} detail".format(oper_id))
-    manager.log(output)
+    # manager.log(output)
     if re.search(failed_oper, output):
         if re.search(failed_incr, output):
             manager.log("Retrying with parallel reload option")
