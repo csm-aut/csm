@@ -2966,7 +2966,7 @@ def api_get_reload_list():
                     if smu_info is not None:
                         if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
                             rows.append({ 'entry' : package_name, 'description': smu_info.description})
- 
+
     
     return jsonify( **{'data':rows} )
 

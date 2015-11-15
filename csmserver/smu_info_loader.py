@@ -118,7 +118,7 @@ class SMUInfoLoader(object):
                     # Delete the existing smu_meta and smu_info for this platform and release
                     db_session.delete(db_smu_meta)
             
-            if not same_as_db:    
+            if not same_as_db:
                 db_session.add(self.smu_meta)
             else:
                 db_smu_meta.retrieval_time = datetime.datetime.utcnow()
