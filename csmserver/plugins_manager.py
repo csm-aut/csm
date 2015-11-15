@@ -75,9 +75,6 @@ class PluginsManager(object):
 
     def run(self):
 
-        for key, value in self.csm_ctx.__dict__.iteritems():
-                print(key, value)
-
         phase = None
 
         # FIXME: Phases needs to be agreed with Alex
@@ -141,6 +138,11 @@ class PluginsManager(object):
             self.csm_ctx.post_status(e.message)
             return False
 
+        except condor.exceptions.ConnectionError as e:
+            self.csm_ctx.success = False
+            self.csm_ctx.post_status(e.message)
+            return False
+        
         finally:
             device.disconnect()
 

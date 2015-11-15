@@ -109,7 +109,7 @@ def wait_for_reload(manager, device):
     xr_run = "IOS XR RUN"
 
     cmd = "admin show platform"
-    manager.log("Waiting all nodes to come up")
+    manager.log("Waiting for all nodes to come up")
     time.sleep(100)
     while 1:
         # Wait till all nodes are in XR run state
@@ -124,6 +124,8 @@ def wait_for_reload(manager, device):
                 return True
 
     # Some nodes did not come to run state
+    manager.error("Not all nodes have came up: {}".format(output))
+    # this will never be executed
     return False
 
 def watch_install(manager, device, oper_id, install_cmd):
@@ -160,7 +162,7 @@ def watch_install(manager, device, oper_id, install_cmd):
         else:
             manager.error(output)
 
-    manager.log(output)
+    #manager.log(output)
     result = re.search(install_method, output)
     if result:
         restart_type = result.group(1).strip()

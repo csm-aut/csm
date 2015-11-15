@@ -112,7 +112,9 @@ class InstallActivatePlugin(IPlugin):
             if result:
                 op_id = result.group(1)
                 manager.log("Waiting to finish operation: {}".format(op_id))
-                watch_install(manager, device, op_id, cmd)
+                success = watch_install(manager, device, op_id, cmd)
+                if not success:
+                    manager.error("Reload or boot failure")
                 get_package(device)
                 return True
             else:

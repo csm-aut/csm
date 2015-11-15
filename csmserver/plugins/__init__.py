@@ -33,7 +33,7 @@ from collections import defaultdict
 
 # Add plugin classes below to be automatically imported
 from plugin import IPlugin
-from csmserver.plugins.not_migrated.device_connect import DeviceConnectPlugin
+#from csmserver.plugins.not_migrated.device_connect import DeviceConnectPlugin
 from version_check import SoftwareVersionPlugin
 from node_status import NodeStatusPlugin
 from ping_test import PingTestPlugin

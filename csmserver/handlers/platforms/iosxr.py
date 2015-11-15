@@ -35,10 +35,10 @@ from plugins_manager import PluginsManager
 import time
 
 
-import logging
-logging.basicConfig(
-        format='%(asctime)-15s %(levelname)8s: %(message)s',
-        level=logging.DEBUG)
+#import logging
+#logging.basicConfig(
+#        format='%(asctime)-15s %(levelname)8s: %(message)s',
+#        level=logging.DEBUG)
 
 
 class BaseConnectionHandler(BaseHandler):           
