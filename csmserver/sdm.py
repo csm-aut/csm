@@ -38,8 +38,8 @@ from server_helper import get_server_impl
 
 from constants import JobStatus
 
-from threadpool import Pool
-from threadpool import WorkUnit
+from thread_pool import Pool
+from thread_pool import WorkUnit
 
 from bsd_service import BSDServiceHandler
 from utils import untar

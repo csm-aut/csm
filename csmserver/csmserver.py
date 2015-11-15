@@ -1120,7 +1120,7 @@ def api_get_host_dashboard_cookie(hostname):
         row = {}
         connection_param = host.connection_param[0]
         row['hostname'] = host.hostname
-        row['region'] = host.region.name
+        row['region'] = host.region.name if host.region is not None else 'Unknown'
         row['roles'] = host.roles
         row['platform'] = host.platform
         row['software'] = host.software_version
@@ -2704,47 +2704,69 @@ def api_get_smu_list(platform, release):
     smu_loader = SMUInfoLoader(platform, release)
     if smu_loader.smu_meta is None:
         return jsonify( **{'data':[]} )
-    
+
+    hostname = request.args.get('hostname')
+    hide_installed_packages = request.args.get('hide_installed_packages')
+
     if request.args.get('filter') == 'Optimal':
-        return get_smu_or_sp_list(smu_loader.get_optimal_smu_list(), smu_loader.file_suffix)
+        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_optimal_smu_list(), smu_loader.file_suffix)
     else:
-        return get_smu_or_sp_list(smu_loader.get_smu_list(), smu_loader.file_suffix)
+        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_smu_list(), smu_loader.file_suffix)
 
 @app.route('/api/get_sp_list/platform/<platform>/release/<release>')
 @login_required
 def api_get_sp_list(platform, release):  
     smu_loader = SMUInfoLoader(platform, release)
     if smu_loader.smu_meta is None:
-        return jsonify( **{'data':[]} )
-    
-    if request.args.get('filter')  == 'Optimal':
-        return get_smu_or_sp_list(smu_loader.get_optimal_sp_list(), smu_loader.file_suffix)
-    else:     
-        return get_smu_or_sp_list(smu_loader.get_sp_list(), smu_loader.file_suffix)
- 
-def get_smu_or_sp_list(smu_info_list, file_suffix): 
+        return jsonify(**{'data':[]})
 
+    hostname = request.args.get('hostname')
+    hide_installed_packages = request.args.get('hide_installed_packages')
+
+    if request.args.get('filter') == 'Optimal':
+        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_optimal_sp_list(), smu_loader.file_suffix)
+    else:     
+        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_sp_list(), smu_loader.file_suffix)
+
+"""
+Return the SMU/SP list.  If hostname is given, compare its active packages.
+"""
+def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_suffix):
     file_list = get_file_list(get_repository_directory(), '.' + file_suffix)
+
+    host_packages = [] if hostname is None else get_host_active_packages(hostname)
     
     rows = []  
     for smu_info in smu_info_list:
-        row = {}
-        row['ST'] = 'True' if smu_info.name + '.' + file_suffix in file_list else 'False'
-        row['package_name'] = smu_info.name + '.' + file_suffix 
-        row['posted_date'] = smu_info.posted_date.split()[0]
-        row['ddts'] = smu_info.ddts
-        row['ddts_url'] = BUG_SEARCH_URL + smu_info.ddts
-        row['type'] = smu_info.type
-        row['description'] = smu_info.description
-        row['impact'] = smu_info.impact
-        row['functional_areas'] = smu_info.functional_areas
-        row['id'] = smu_info.id
-        row['name'] = smu_info.name
-        row['status'] = smu_info.status
-        row['package_bundles'] = smu_info.package_bundles
-        row['compressed_image_size'] = smu_info.compressed_image_size
-        row['uncompressed_image_size'] = smu_info.uncompressed_image_size
-        rows.append(row)
+
+        # Verify if the package has already been installed.
+        installed = False
+        for host_package in host_packages:
+            if smu_info.name in host_package:
+                installed = True
+                break
+
+        include = False if (hide_installed_packages == 'true' and installed) else True
+        if include:
+            row = {}
+            row['ST'] = 'True' if smu_info.name + '.' + file_suffix in file_list else 'False'
+            row['package_name'] = smu_info.name + '.' + file_suffix
+            row['posted_date'] = smu_info.posted_date.split()[0]
+            row['ddts'] = smu_info.ddts
+            row['ddts_url'] = BUG_SEARCH_URL + smu_info.ddts
+            row['type'] = smu_info.type
+            row['description'] = smu_info.description
+            row['impact'] = smu_info.impact
+            row['functional_areas'] = smu_info.functional_areas
+            row['id'] = smu_info.id
+            row['name'] = smu_info.name
+            row['status'] = smu_info.status
+            row['package_bundles'] = smu_info.package_bundles
+            row['compressed_image_size'] = smu_info.compressed_image_size
+            row['uncompressed_image_size'] = smu_info.uncompressed_image_size
+            row['installed'] = installed
+
+            rows.append(row)
     
     return jsonify( **{'data':rows} )
 

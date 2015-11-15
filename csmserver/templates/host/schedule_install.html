@@ -63,7 +63,7 @@ $('#browse-server-button').on('click', function(e) {
 });
 
 $('#browse-cisco-button').on('click', function(e) {
-    on_display_cisco_software_dialog(region_id);
+    on_display_cisco_software_dialog(region_id, ["{{ host.hostname }}"]);
 });
 
 {% endblock head_schedule_install %}

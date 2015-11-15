@@ -348,6 +348,8 @@ $(function() {
             check_need_reload(validate_object);
 
         } else {
+            // Turn on the spinner.  This will be useful for batch scheduling.
+            if (validate_object.spinner != null ) validate_object.spinner.show();
             current_form.submit();
         }
     }
@@ -407,10 +409,11 @@ $(function() {
 
     //----------------------------------------------------------------------------------------//
 
-    function on_display_cisco_software_dialog(region_id) {
+    function on_display_cisco_software_dialog(region_id, hostname_list) {
         var server_id = get_server_cookie(region_id);
         var server_directory = get_server_directory_cookie(region_id)
-        display_cisco_software_dialog(server_id, server_directory)
+
+        display_cisco_software_dialog(hostname_list, server_id, server_directory)
     }
 
     $('#on-cisco-software-dialog-submit').click(function(e) {

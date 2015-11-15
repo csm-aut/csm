@@ -10,34 +10,47 @@
  
 var cisco_software_dialog_spinner;
 var cisco_software_timer;
+var platform = '';
+var release = '';
+var smu_table;
+var sp_table;
+var filter_option;
 
 $(function() {
-
-    var platform = '';
-    var release = '';
     var cco_lookup_enabled = $('#cisco-software-dialog').attr('data-cco-lookup-enabled') == 'True' ? true : false;
 
     cisco_software_dialog_spinner = $('#cisco-software-dialog-browse-spinner');
     cisco_software_dialog_spinner.hide()
 
-    var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
+    filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
     $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
-
     
     $('#smu-list-tab').tab();
     $('#smu-list-tab a:first').tab('show');
     
-    var smu_table = $("#smu-datatable").dataTable({
+    smu_table = $("#smu-datatable").dataTable({
         "order": [
             [1, "desc"]
         ],
         "scrollX": true,
-        "scrollY": 400,
+        "scrollY": 250,
         "pageLength": 100,
         "fnCreatedRow": function(nRow, aData, iDataIndex) {
-            var date_diff = date_diff_in_days(new Date($('td:eq(1)', nRow).text()), new Date());
-            if (date_diff <= 7) {
-                $('td', nRow).css('background-color', '#FFFFCC');
+
+            $.each(aData, function (col, col_value) {
+                if (col == 'installed') {
+                    $(nRow).attr('installed', col_value);
+                }
+            });
+
+            if ($(nRow).attr('installed') == 'true') {
+                $('td', nRow).css('background-color', '#DFF0D8');
+            } else {
+                // Check if it needs to be highlighted as recently posted file
+                var date_diff = date_diff_in_days(new Date($('td:eq(1)', nRow).text()), new Date());
+                if (date_diff <= 7) {
+                    $('td', nRow).css('background-color', '#FFFFCC');
+                }
             }
         },
         "columnDefs": [{
@@ -91,19 +104,33 @@ $(function() {
 
         $('#badge-smu-list').html(rows);
         get_retrieval_elapsed_time();
+
+        cisco_software_dialog_spinner.hide();
     });
 
-    var sp_table = $("#sp-datatable").dataTable({
+    sp_table = $("#sp-datatable").dataTable({
         "order": [
             [1, "desc"]
         ],
         "scrollX": true,
-        "scrollY": 400,
+        "scrollY": 250,
         "pageLength": 100,
         "fnCreatedRow": function(nRow, aData, iDataIndex) {
-            var date_diff = date_diff_in_days(new Date($('td:eq(1)', nRow).text()), new Date());
-            if (date_diff <= 7) {
-                $('td', nRow).css('background-color', '#FFFFCC');
+
+            $.each(aData, function (col, col_value) {
+                if (col == 'installed') {
+                    $(nRow).attr('installed', col_value);
+                }
+            });
+
+            if ($(nRow).attr('installed') == 'true') {
+                $('td', nRow).css('background-color', '#DFF0D8');
+            } else {
+                // Check if it needs to be highlighted as recently posted file
+                var date_diff = date_diff_in_days(new Date($('td:eq(1)', nRow).text()), new Date());
+                if (date_diff <= 7) {
+                    $('td', nRow).css('background-color', '#FFFFCC');
+                }
             }
         },
         "columnDefs": [{
@@ -153,6 +180,8 @@ $(function() {
             rows = sp_table.api().ajax.json().data.length;
         }
         $('#badge-sp-list').html(rows);
+
+        cisco_software_dialog_spinner.hide();
     });
 
     smu_table.on("click", ".show-ddts-details", function() {
@@ -216,30 +245,6 @@ $(function() {
         release = $(this).attr('release');
         refresh_tables();
     });
-
-
-    function refresh_tables() {
-        if (platform.length > 0 && release.length > 0) {
-            $('#platform-and-release').html(beautify_platform(platform) + "-" + release + " > SMUs &nbsp;");
-            //cisco_software_dialog_spinner.show();
-            refresh_smu_list_table();
-            refresh_sp_list_table();
-        }
-    }
-
-    function refresh_smu_list_table() {
-        if (platform.length > 0 && release.length > 0) {
-            smu_table.api().ajax.url("/api/get_smu_list/platform/" + platform + "/release/" + release +
-                "?filter=" + filter_option).load();
-        }
-    }
-
-    function refresh_sp_list_table() {
-        if (platform.length > 0 && release.length > 0) {
-            sp_table.api().ajax.url("/api/get_sp_list/platform/" + platform + "/release/" + release +
-                "?filter=" + filter_option).load();
-        }
-    }
 
     // Sets the correct filter icon color
     toggle_filter_icon_color(filter_option);
@@ -348,21 +353,75 @@ $(function() {
     $('#smu-list-tab a[href="#sp-tab"]').click(function() {
         refresh_sp_list_table();
     });
-    
-      
+
+    $('#hide-installed-packages-checkbox').click(function() {
+        if ($(this).is(":checked")) {
+            $('#installed-packages-highlight-panel').hide();
+        } else {
+            $('#installed-packages-highlight-panel').show();
+        }
+
+        refresh_tables();
+    });
+
 });
 
-function display_cisco_software_dialog(server_id, server_directory) {
-    create_menu();
-      
+function display_cisco_software_dialog(hostname_list, server_id, server_directory) {
+
+    // Re-initialize variables and set the hostname only if there is one host selected.
+    if (hostname_list.length == 1) {
+        $('#cisco-software-dialog').data('hostname', hostname_list[0]);
+
+        $('#installed-packages-highlight-panel').hide();
+        $('#installed-packages-checkbox-panel').show();
+        $('#hide-installed-packages-checkbox').prop("checked", true);
+    } else {
+        $('#installed-packages-highlight-panel').hide();
+        $('#installed-packages-checkbox-panel').hide();
+        $('#hide-installed-packages-checkbox').prop("checked", false);
+    }
+
+    // Re-initialize checkboxes
     $('#smu-check-all').prop('checked', false)
     $('#sp-check-all').prop('checked', false);
-  
+
+    create_menu();
+
     $('#cisco-software-dialog').modal({show:true, backdrop:'static'})
     
     if (server_id && server_id != -1) {
         $('#cisco_dialog_server').val(server_id);
         retrieve_file_list(server_id, $('#cisco_dialog_server_directory'), server_directory);
+    }
+
+    // Refresh the tables especially for re-entrance
+    refresh_tables();
+}
+
+function refresh_tables() {
+    if (platform.length > 0 && release.length > 0) {
+        $('#platform-and-release').html(beautify_platform(platform) + "-" + release + " > SMUs &nbsp;");
+        cisco_software_dialog_spinner.show();
+        refresh_smu_list_table();
+        refresh_sp_list_table();
+    }
+}
+
+function refresh_smu_list_table() {
+    if (platform.length > 0 && release.length > 0) {
+        smu_table.api().ajax.url("/api/get_smu_list/platform/" + platform + "/release/" + release +
+            "?filter=" + filter_option +
+            "&hide_installed_packages=" + $('#hide-installed-packages-checkbox').is(":checked") +
+            "&hostname=" + $('#cisco-software-dialog').data('hostname')).load();
+    }
+}
+
+function refresh_sp_list_table() {
+    if (platform.length > 0 && release.length > 0) {
+        sp_table.api().ajax.url("/api/get_sp_list/platform/" + platform + "/release/" + release +
+            "?filter=" + filter_option +
+            "&hide_installed_packages=" + $('#hide-installed-packages-checkbox').is(":checked") +
+            "&hostname=" + $('#cisco-software-dialog').data('hostname')).load();
     }
 }
 
