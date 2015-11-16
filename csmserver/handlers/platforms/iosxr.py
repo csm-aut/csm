@@ -62,24 +62,23 @@ class BaseInventoryHandler(BaseHandler):
             ctx.post_status = e.message
             return
 
-        with open(os.path.join(ctx.log_directory, 'session.log'), "w") as session_fd:
-            try:
-                conn.connect(session_fd)
-                ctx.inactive_cli = conn.send('sh install inactive summary')
-                ctx.active_cli = conn.send('sh install active summary')
-                ctx.committed_cli = conn.send('sh install committed summary')
-                self.get_software(
-                    ctx.host,
-                    install_inactive_cli=ctx.inactive_cli,
-                    install_active_cli=ctx.active_cli,
-                    install_committed_cli=ctx.committed_cli)
-                ctx.success = True
+        try:
+            conn.connect()
+            ctx.inactive_cli = conn.send('sh install inactive summary')
+            ctx.active_cli = conn.send('sh install active summary')
+            ctx.committed_cli = conn.send('sh install committed summary')
+            self.get_software(
+                ctx.host,
+                install_inactive_cli=ctx.inactive_cli,
+                install_active_cli=ctx.active_cli,
+                install_committed_cli=ctx.committed_cli)
+            ctx.success = True
 
-            except condor.exceptions.ConnectionError as e:
-                ctx.post_status = e.message
+        except condor.exceptions.ConnectionError as e:
+            ctx.post_status = e.message
 
-            finally:
-                conn.disconnect()
+        finally:
+            conn.disconnect()
 
     def get_software(self, host, install_inactive_cli, install_active_cli, install_committed_cli):
         package_parser_class = get_package_parser_class(host.platform)
