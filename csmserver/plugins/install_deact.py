@@ -40,7 +40,8 @@ class InstallDeactivatePlugin(IPlugin):
     NAME = "INSTALL_DEACTIVATE"
     DESCRIPTION = "Deactivate Packages"
     TYPE = "DEACTIVATE"
-    VERSION = "0.0.1"
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
 
     @staticmethod

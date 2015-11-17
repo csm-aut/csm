@@ -41,6 +41,7 @@ class InstallActivatePlugin(IPlugin):
     DESCRIPTION = "Activate Packages"
     TYPE = "UPGRADE"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def _get_tobe_activated_pkg_list(manager, device):

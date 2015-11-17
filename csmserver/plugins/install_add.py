@@ -46,6 +46,7 @@ class InstallAddPlugin(IPlugin):
     DESCRIPTION = "Install Add Packages"
     TYPE = "ADD"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     # @staticmethod
     # def watch_operation(manager, device, op_id=0):

@@ -45,6 +45,7 @@ class InstallCommitPlugin(IPlugin):
     DESCRIPTION = "Install Commit Packages"
     TYPE = "COMMIT"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def start(manager, device, *args, **kwargs):

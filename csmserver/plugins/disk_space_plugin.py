@@ -47,6 +47,7 @@ class DiskSpacePlugin(IPlugin):
     DESCRIPTION = "Disk Space Check"
     TYPE = "PRE_UPGRADE"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def _get_pie_size(manager, device, package_url):

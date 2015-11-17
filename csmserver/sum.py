@@ -34,14 +34,14 @@ from models import Host
 from models import InstallJob
 from models import InstallJobHistory
 from models import SystemOption
-from models import logger
+from models import get_db_session_logger
 from models import get_download_job_key_dict
 
 from constants import JobStatus
 from constants import InstallAction
 
-from thread_pool import Pool
-from thread_pool import WorkUnit
+from process_pool import Pool
+from process_pool import WorkUnit
 
 from handlers.loader import get_inventory_handler_class 
 from handlers.loader import get_install_handler_class 
@@ -52,10 +52,9 @@ from utils import is_empty
 
 from mailer import send_install_status_email
 
-import traceback
+from multiprocessing import Manager
 
-lock = threading.RLock()
-in_progress_hosts = []
+import traceback
 
 class SoftwareManager(threading.Thread):
     def __init__(self, name, num_threads=None):
@@ -64,9 +63,11 @@ class SoftwareManager(threading.Thread):
         db_session = DBSession()
         if num_threads is None:
             num_threads = SystemOption.get(db_session).install_threads
-        
+
         # Set up the thread pool
-        self.pool = Pool(num_threads)
+        self.pool = Pool(num_workers=num_threads, name="Install-Job")
+        self.in_progress_hosts = Manager().list()
+        self.lock = Manager().Lock()
     
     def run(self):
         while 1:
@@ -87,6 +88,7 @@ class SoftwareManager(threading.Thread):
         
     def dispatch(self):
         db_session = DBSession()
+
         try:
             # Check if Scheduled Installs are allowed to run.
             if not db_session.query(SystemOption).first().can_install:
@@ -109,18 +111,20 @@ class SoftwareManager(threading.Thread):
                             if len(dependency_completed) == 0:
                                 continue
                         
-                        with lock:
+                        with self.lock:
                             # If another install job for the same host is already in progress,
                             # the install job will not be queued for processing
-                            if install_job.host_id in in_progress_hosts:
+                            if install_job.host_id in self.in_progress_hosts:
                                 continue
-                        
-                            in_progress_hosts.append(install_job.host_id)
+
+                            self.in_progress_hosts.append(install_job.host_id)
                         
                         # Allow the install job to proceed
-                        install_work_unit = InstallWorkUnit(install_job.id, install_job.host_id)
+                        install_work_unit = InstallWorkUnit(self.in_progress_hosts, self.lock,
+                                                            install_job.host_id, install_job.id)
                         self.pool.submit(install_work_unit)
         except:
+            # print(traceback.format_exc())
             # Purpose ignore.  Otherwise, it may generate continue exception
             pass
         finally:
@@ -138,11 +142,13 @@ class SoftwareManager(threading.Thread):
         return False
                 
 class InstallWorkUnit(WorkUnit):
-    def __init__(self, job_id, host_id):
-        self.job_id = job_id
+    def __init__(self, in_progress_hosts, lock, host_id, job_id):
+        self.in_progress_hosts = in_progress_hosts
+        self.lock = lock
         self.host_id = host_id
+        self.job_id = job_id
     
-    def get_software(self, db_session, ctx):
+    def get_software(self, ctx, logger):
         handler_class = get_inventory_handler_class(ctx.host.platform)
         if handler_class is None:
             logger.error('SoftwareManager: Unable to get handler for %s', ctx.host.platform)
@@ -152,65 +158,83 @@ class InstallWorkUnit(WorkUnit):
             # Update the time stamp
             ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
             
-    def process(self):
-        
-        db_session = DBSession()
+    def process(self, db_session, logger, process_name):
         ctx = None
-        try:                                  
-            install_job = db_session.query(InstallJob).filter(InstallJob.id == self.job_id).first()    
+
+        # print('processing', process_name, self.host_id, self.in_progress_hosts.__str__() )
+
+        try:
+            # print('processing 1', process_name, self.host_id, self.in_progress_hosts.__str__() )
+            install_job = db_session.query(InstallJob).filter(InstallJob.id == self.job_id).first()
+
+            # print('processing 1.1', process_name, self.host_id, self.in_progress_hosts.__str__() )
             if install_job is None:
+                # print('INSTALL JOB NONE', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 # This is normal because of race condition. It means the job is already deleted (completed).
                 return
-          
+
+            # print('processing 2', process_name, self.host_id, self.in_progress_hosts.__str__() )
             if not db_session.query(SystemOption).first().can_install:
                 # This will halt this host that has already been queued
+                # print('CAN INSTALL', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 return
-            
+
+            # print('processing 3', process_name, self.host_id, self.in_progress_hosts.__str__() )
             host = db_session.query(Host).filter(Host.id == self.host_id).first()
             if host is None:
                 logger.error('Unable to retrieve host %s', self.host_id)
                 return
-            
+
+            # print('processing 4', process_name, self.host_id, self.in_progress_hosts.__str__() )
             handler_class = get_install_handler_class(host.platform)
             if handler_class is None:
                 logger.error('Unable to get handler for %s, install job %s', host.platform, self.job_id)
-        
+
             install_job.start_time = datetime.datetime.utcnow()
             install_job.set_status(JobStatus.PROCESSING)            
             install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
            
             ctx = InstallContext(host, db_session, install_job)
             ctx.operation_id = self.get_last_operation_id(db_session, install_job)
-            
+
+            # print('processing 5', process_name, self.host_id, self.in_progress_hosts.__str__() )
             db_session.commit()
-           
+
+            # print('processing 6', process_name, self.host_id, self.in_progress_hosts.__str__() )
+
             handler = handler_class()
             handler.execute(ctx)
-            
-            if ctx.success:    
+
+            if ctx.success:
+                # print('processing 7', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 # Update the software
-                self.get_software(db_session, ctx)                
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.COMPLETED)
+                self.get_software(ctx, logger)
+                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.COMPLETED, process_name)
             else:
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED)
-                
-            # db_session.commit()
-            
-        except: 
+                # print('processing 8', process_name, self.host_id, self.in_progress_hosts.__str__() )
+                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name)
+
+        except:
+            # print('processing 9', process_name, self.host_id, self.in_progress_hosts.__str__() )
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, trace=traceback.format_exc())
-                # db_session.commit()
+                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
             except:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
             # Must remove the host from the in progress list
-            self.remove_host_from_in_progress(self.host_id)
-            db_session.close()     
+            try:
+                self.remove_host_from_in_progress(process_name)
+                db_session.close()
+            except:
+                logger.exception('InstallManager hit exception - install job = %s', self.job_id)
 
-    def remove_host_from_in_progress(self, host_id):
-        with lock:
-            if host_id is not None and host_id in in_progress_hosts: in_progress_hosts.remove(host_id)
+    def remove_host_from_in_progress(self, process_name):
+        # print('before removing', process_name, self.host_id, self.in_progress_hosts.__str__() )
+        with self.lock:
+            if self.host_id in self.in_progress_hosts: self.in_progress_hosts.remove(self.host_id)
+
+        # print('after removing', process_name, self.host_id, self.in_progress_hosts.__str__() )
         
     def get_last_operation_id(self, db_session, install_activate_job, trace=None):
         
@@ -234,7 +258,7 @@ class InstallWorkUnit(WorkUnit):
             filter((InstallJobHistory.host_id == host_id), and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
             order_by(InstallJobHistory.status_time.desc()).first()
     
-    def archive_install_job(self, db_session, logger, ctx, install_job, job_status, trace=None):
+    def archive_install_job(self, db_session, logger, ctx, install_job, job_status, process_name, trace=None):
     
         install_job_history = InstallJobHistory()
         install_job_history.install_job_id = install_job.id
@@ -260,12 +284,13 @@ class InstallWorkUnit(WorkUnit):
             if trace is not None:
                 install_job.trace = trace
         
-        
         db_session.add(install_job_history)
         db_session.commit()
     
         # Send notification error
+        # print('before email', process_name, self.host_id, self.in_progress_hosts.__str__() )
         send_install_status_email(db_session, logger, install_job_history)
+        # print('after email', process_name, self.host_id, self.in_progress_hosts.__str__() )
     
 if __name__ == '__main__': 
     pass

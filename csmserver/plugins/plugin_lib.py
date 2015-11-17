@@ -33,8 +33,6 @@ import time
 
 import pkg_utils
 
-
-
 def watch_operation(manager, device, op_id=0):
         """
         Function to keep watch on progress of operation

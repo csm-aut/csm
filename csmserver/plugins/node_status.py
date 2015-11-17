@@ -40,6 +40,7 @@ class NodeStatusPlugin(IPlugin):
     DESCRIPTION = "Node Status Check"
     TYPE = "PRE_UPGRADE_AND_POST_UPGRADE"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def _parse_show_platform(device, output):

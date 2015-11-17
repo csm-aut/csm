@@ -39,9 +39,10 @@ class DevicePackageSatePlugin(IPlugin):
     DESCRIPTION = "Connect to device and get package state"
     TYPE = "POLL"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
-    def start(self, device, *args, **kwargs):
+    def start(manager, device, *args, **kwargs):
         """
         """
         get_package(device)

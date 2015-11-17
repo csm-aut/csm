@@ -42,7 +42,8 @@ class SoftwareVersionPlugin(IPlugin):
     NAME = "SOFTWARE_VERSION"
     DESCRIPTION = "Software Version Check"
     TYPE = "PRE_UPGRADE"
-    VERSION = "0.1.1"
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def start(manager, device, *args, **kwargs):

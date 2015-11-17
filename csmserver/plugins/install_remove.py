@@ -42,6 +42,7 @@ class InstallRemovePlugin(IPlugin):
     DESCRIPTION = "Install Remove Packages"
     TYPE = "REMOVE"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def start(manager, device, *args, **kwargs):

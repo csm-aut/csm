@@ -41,6 +41,7 @@ class NodeRedundancyPlugin(IPlugin):
     DESCRIPTION = "Node Redundancy Check"
     TYPE = "PRE_UPGRADE"
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def start(manager, device, *args, **kwargs):

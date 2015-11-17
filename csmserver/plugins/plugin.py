@@ -41,6 +41,7 @@ class IPlugin(object):
     DESCRIPTION = "Generic Plugin Template"
     TYPE = None
     VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def save_to_file(data, outfile):
