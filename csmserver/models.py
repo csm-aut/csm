@@ -248,47 +248,7 @@ class Host(Base):
         order_by="desc(InstallJobHistory.created_time)",
         backref="host",
         cascade="all, delete, delete-orphan")
-        
-    @property
-    def urls(self):
-        _urls = []
-        
-        if len(self.connection_param) > 0:
-            connection = self.connection_param[0]
-            db_session = DBSession()
-            # Checks if there is a jump server
-            if connection.jump_host_id is not None:
-                try:
-                    jump_host = db_session.query(JumpHost).filter(JumpHost.id == connection.jump_host_id).first()
-                    if jump_host is not None:
-                        _urls.append(make_url(
-                            connection_type=jump_host.connection_type,
-                            username=jump_host.username,
-                            password=jump_host.password,
-                            host_or_ip=jump_host.host_or_ip,
-                            port_number=jump_host.port_number))
-                except:
-                    logger.exception('Host.urls() hits exception')
-            
-            default_username=None
-            default_password=None
-            system_option = SystemOption.get(db_session)
-            
-            if system_option.enable_default_host_authentication:
-                default_username=system_option.default_host_username
-                default_password=system_option.default_host_password
-                
-            _urls.append(make_url(
-                connection_type=connection.connection_type,
-                username=connection.username,
-                password=connection.password,
-                host_or_ip=connection.host_or_ip,
-                port_number=connection.port_number,
-                default_username=default_username,
-                default_password=default_password))
-        
-        return _urls
-    
+
     def get_json(self):
         result = {}
         result['hostname'] = self.hostname

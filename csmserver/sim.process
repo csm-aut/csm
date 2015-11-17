@@ -121,7 +121,7 @@ class InventoryWorkUnit(WorkUnit):
             inventory_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, inventory_job.id)
             db_session.commit()         
 
-            ctx = InventoryContext(host, db_session, inventory_job)
+            ctx = InventoryContext(db_session, host, inventory_job)
 
             handler = handler_class()
             handler.execute(ctx)

@@ -194,7 +194,7 @@ class InstallWorkUnit(WorkUnit):
             install_job.set_status(JobStatus.PROCESSING)            
             install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
            
-            ctx = InstallContext(host, db_session, install_job)
+            ctx = InstallContext(db_session, host, install_job)
             ctx.operation_id = self.get_last_operation_id(db_session, install_job)
 
             # print('processing 5', process_name, self.host_id, self.in_progress_hosts.__str__() )
