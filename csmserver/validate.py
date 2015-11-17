@@ -30,8 +30,8 @@ from constants import ConnectionType
 import socket
 import time
 
-def is_connection_valid(platform, urls):
-    ctx = ConnectionContext(urls)
+def is_connection_valid(db_session, platform, urls):
+    ctx = ConnectionContext(db_session, urls)
     
     try:
         handler_class = get_connection_handler_class(platform)

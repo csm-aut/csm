@@ -2454,7 +2454,7 @@ def check_host_reachability():
         default_password=default_password)
     urls.append(url)
     
-    return jsonify({'status':'OK'}) if is_connection_valid(platform, urls) else jsonify({'status':'Failed'})
+    return jsonify({'status':'OK'}) if is_connection_valid(db_session, platform, urls) else jsonify({'status':'Failed'})
     
 @app.route('/api/get_software_package_upgrade_list/hosts/<hostname>/release/<target_release>')
 @login_required
