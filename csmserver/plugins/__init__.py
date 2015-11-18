@@ -52,7 +52,7 @@ from install_deact import InstallDeactivatePlugin
 from install_remove import InstallRemovePlugin
 from install_commit import InstallCommitPlugin
 # from cfg_consistency import ConfigConsistencyPlugin
-# from err_core_check import ErrorCorePlugin
+from err_core_check import ErrorCorePlugin
 # from device_pkg_poll import DevicePackageSatePlugin
 #from au.plugins.isis_setoverload import isisSetOverloadPrePlugin
 #from au.plugins.isis_unsetoverload import isisunSetOverloadPostPlugin
@@ -79,7 +79,7 @@ plugin_classes = [
 #     ConfigConsistencyPlugin,
 #     OspfIsisPostPlugin,
 # #    isisunSetOverloadPostPlugin,
-#     ErrorCorePlugin,
+    ErrorCorePlugin,
 #     DevicePackageSatePlugin,
     InstallCommitPlugin,
 ]
