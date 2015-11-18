@@ -45,13 +45,12 @@ class ConfigBackupPlugin(IPlugin):
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
+        output = device.send("show running", timeout=2200)
         ctx = device.get_property("ctx")
         if ctx:
             store_dir = ctx.log_directory
-
-        name = "{}.log".format(ConfigBackupPlugin.NAME.lower())
-        file_name = os.path.join(store_dir, name)
-        output = device.send("show running", timeout=2200)
-        IPlugin.save_to_file(output, file_name)
-        manager.log("Config stored to: {}".format(file_name))
+            name = "{}.log".format(ConfigBackupPlugin.NAME.lower())
+            file_name = os.path.join(store_dir, name)
+            IPlugin.save_to_file(output, file_name)
+            manager.log("Config stored to: {}".format(file_name))
         return True
