@@ -40,7 +40,7 @@ class NodeStatusPlugin(IPlugin):
     DESCRIPTION = "Node Status Check"
     TYPE = "PRE_UPGRADE_AND_POST_UPGRADE"
     VERSION = "1.0.0"
-    FAMILY = ["ASR9K", "CSR"]
+    FAMILY = ["ASR9K", "CRS"]
 
     @staticmethod
     def _parse_show_platform(manager, device, output):
@@ -49,9 +49,10 @@ class NodeStatusPlugin(IPlugin):
         #platform = device.get_property('platform')
         family = device.family
 
+        # FIXME: This will not be needed when platform will be used by plugins manager
         if family not in NodeStatusPlugin.FAMILY:
-            manager.warning("Platform {} not supported".format(family))
-            return
+            manager.warning("Router family {} not supported. Skipping.".format(family))
+            return inventory
 
         for line in lines:
             line = line.strip()
@@ -64,7 +65,7 @@ class NodeStatusPlugin(IPlugin):
                 elif family == 'ASR9K':
                     node, node_type, state, config_state = states
                 else:
-                    manager.log("Unsupported platform")
+                    manager.log("Unsupported router family: {}".family)
                     break
                 entry = {
                     'type': node_type,
@@ -90,7 +91,7 @@ class NodeStatusPlugin(IPlugin):
             'DISABLED',
             'UNPOWERED',
             'ADMIN DOWN',
-            'NOT ALLOW ONLIN',
+            'NOT ALLOW ONLIN', # This is not spelling error
         ]
         for key, value in inventory.items():
             if 'CPU' in key:
