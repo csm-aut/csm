@@ -79,7 +79,7 @@ class NodeStatusPlugin(IPlugin):
         """
         """
         output = device.send("admin show platform")
-        inventory = NodeStatusPlugin._parse_show_platform(device, output)
+        inventory = NodeStatusPlugin._parse_show_platform(manager, device, output)
 
         valid_state = [
             'IOS XR RUN',
