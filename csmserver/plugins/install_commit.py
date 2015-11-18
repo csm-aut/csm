@@ -64,7 +64,7 @@ class InstallCommitPlugin(IPlugin):
             op_id = result.gropup(1)
             watch_operation(manager, device, op_id)
         else:
-            manager.log("Operation ID not found")
+            manager.error("Operation ID not found")
 
         cmd = "admin show install log {} detail".format(int(op_id))
         output = device.send(cmd)
@@ -73,9 +73,10 @@ class InstallCommitPlugin(IPlugin):
             manager.error("Install operation failed")
 
         if re.search(completed_with_failure, output):
-            manager.log("Completed with failure but failure was after PONR")
+            manager.log("Completed with failure but failure was after Point of No Return")
 
         elif re.search(success_oper, output):
             manager.log("Install Commit was Successful")
-            get_package(device)
+
+        get_package()
 
