@@ -71,7 +71,7 @@ class PluginsManager(object):
         self.logger.addHandler(handler)
         self.logger.setLevel(log_level)
 
-        self.current_plugin = "Plugin Manager"
+        self.current_plugin = None
 
     def run(self):
 
@@ -133,7 +133,7 @@ class PluginsManager(object):
                 self.log("Executing plugin: {}".format(plugin_desc))
                 self.current_plugin = plugin_desc
                 plugin.__class__.start(self, device)
-                self.current_plugin = "Plugin Manager"
+                self.current_plugin = None
                 self.log("Plugin finished: {}".format(plugin_desc))
 
         except PluginError as e:
@@ -152,13 +152,17 @@ class PluginsManager(object):
         self.csm_ctx.success = True
         return True
 
+    def _log_msg(self, message):
+        return "[{}] <b>{}</b>".format(self.current_plugin, message) if self.current_plugin else "{}".format(message)
+
     def log(self, message):
-        self.logger.info("[{}] {}".format(self.current_plugin, message))
+
+        self.logger.info(self._log_msg(message))
         self.csm_ctx.post_status(message)
 
     def error(self, message):
-        self.logger.error("[{}] {}".format(self.current_plugin, message))
+        self.logger.error(self._log_msg(message))
         raise PluginError(message)
 
     def warning(self, message):
-        self.logger.warning("[{}] {}".format(self.current_plugin, message))
+        self.logger.warning(self._log_msg(message))
