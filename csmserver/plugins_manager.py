@@ -153,7 +153,7 @@ class PluginsManager(object):
         return True
 
     def _log_msg(self, message):
-        return "[{}] <b>{}</b>".format(self.current_plugin, message) if self.current_plugin else "{}".format(message)
+        return "[{}] {}".format(self.current_plugin, message) if self.current_plugin else "{}".format(message)
 
     def log(self, message):
 
