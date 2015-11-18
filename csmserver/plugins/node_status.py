@@ -40,23 +40,32 @@ class NodeStatusPlugin(IPlugin):
     DESCRIPTION = "Node Status Check"
     TYPE = "PRE_UPGRADE_AND_POST_UPGRADE"
     VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
+    FAMILY = ["ASR9K", "CSR"]
 
     @staticmethod
-    def _parse_show_platform(device, output):
+    def _parse_show_platform(manager, device, output):
         inventory = {}
         lines = output.split('\n')
-        platform = device.get_property('platform')
+        #platform = device.get_property('platform')
+        family = device.family
+
+        if family not in NodeStatusPlugin.FAMILY:
+            manager.warning("Platform {} not supported".format(family))
+            return
+
         for line in lines:
             line = line.strip()
             if len(line) > 0 and line[0].isdigit():
                 states = re.split('\s\s+', line)
                 if not re.search('CPU\d+$', states[0]):
                     continue
-                if platform == 'crs':
+                if family == 'CRS':
                     node, node_type, plim, state, config_state = states
-                else:
+                elif family == 'ASR9K':
                     node, node_type, state, config_state = states
+                else:
+                    manager.log("Unsupported platform")
+                    break
                 entry = {
                     'type': node_type,
                     'state': state,
@@ -69,7 +78,6 @@ class NodeStatusPlugin(IPlugin):
     def start(manager, device, *args, **kwargs):
         """
         """
-
         output = device.send("admin show platform")
         inventory = NodeStatusPlugin._parse_show_platform(device, output)
 
