@@ -38,7 +38,7 @@ class ErrorCorePlugin(IPlugin):
     This pluging checks for errors, traceback or any core dump
     """
     NAME = "ERROR_TRACEBACK_CRASH_CHECK"
-    DESCRIPTION = "Device log check"
+    DESCRIPTION = "Device Log Check"
     TYPE = "POST_UPGRADE"
     VERSION = "1.0.0"
     FAMILY = "ASR9K"
@@ -51,6 +51,7 @@ class ErrorCorePlugin(IPlugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
+        # FIXME: Consider optimization
         # The log may be large
         # Maybe better run sh logging | i "Error|error|ERROR|Traceback|Core for pid" directly on the device
         output = device.send("show logging last 500", timeout=300)
