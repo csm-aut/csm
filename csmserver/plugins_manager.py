@@ -96,12 +96,15 @@ class PluginsManager(object):
         if self.csm_ctx.requested_action == "Commit":
             phase = "COMMIT"
 
+        if self.csm_ctx.requested_action == "Post-Upgrade":
+            phase = "POST_UPGRADE"
+
         if phase is None:
             self.csm_ctx.success = False
             self.csm_ctx.post_status("Action not supported")
             self.log("Action {} not supported".format(self.csm_ctx.requested_action))
 
-        device = condor.Connection(self.csm_ctx.host.hostname, self.csm_ctx.host.urls,
+        device = condor.Connection(self.csm_ctx.host.hostname, self.csm_ctx.host_urls,
                                  log_dir=self.csm_ctx.log_directory)
         try:
             self.log("Device Discovery Pending")
