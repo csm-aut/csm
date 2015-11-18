@@ -51,7 +51,9 @@ class ErrorCorePlugin(IPlugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-        output = device.send("show logging", timeout=300)
+        # The log may be large
+        # Maybe better run sh logging | i "Error|error|ERROR|Traceback|Core for pid" directly on the device
+        output = device.send("show logging last 500", timeout=300)
         ctx = device.get_property("ctx")
         if ctx:
             store_dir = ctx.log_directory
