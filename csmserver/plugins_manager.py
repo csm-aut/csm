@@ -107,7 +107,7 @@ class PluginsManager(object):
             self.log("Device Discovery Pending")
             device.detect_platform()
         except condor.exceptions.ConnectionError as e:
-            device.post_status(e.message)
+            self.csm_ctx.post_status(e.message)
             return False
 
         self.log("Platform detected: {}".format(device.family))

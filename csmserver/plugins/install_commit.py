@@ -61,7 +61,7 @@ class InstallCommitPlugin(IPlugin):
         output = device.send(cmd)
         result = re.search('Install operation (\d+) \'', output)
         if result:
-            op_id = result.gropu(1)
+            op_id = result.gropup(1)
             watch_operation(manager, device, op_id)
         else:
             manager.log("Operation ID not found")
