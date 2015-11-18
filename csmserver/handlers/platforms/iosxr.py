@@ -55,7 +55,7 @@ class BaseConnectionHandler(BaseHandler):
         
 class BaseInventoryHandler(BaseHandler):           
     def execute(self, ctx):
-        conn = condor.Connection(ctx.host.hostname, ctx.host.urls, log_dir=ctx.log_directory)
+        conn = condor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
         try:
             conn.detect_platform()
         except condor.exceptions.ConnectionError as e:
