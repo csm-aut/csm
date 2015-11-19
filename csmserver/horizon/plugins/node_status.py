@@ -26,8 +26,9 @@
 # =============================================================================
 
 
-from plugin import IPlugin
 import re
+
+from plugin import IPlugin
 
 
 class NodeStatusPlugin(IPlugin):

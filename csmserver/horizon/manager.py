@@ -1,5 +1,5 @@
 # =============================================================================
-# plugins_manager.py
+# manager.py
 #
 # Copyright (c)  2015, Cisco Systems
 # All rights reserved.
@@ -27,16 +27,23 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import plugins
-import condor
 import logging
 import os
+import condoor
 
-#from plugins import get_plugins_of_phase
+import plugins
+
+
+# decorator adding the current plugin name to the log message if plugin is executed
+def plugin_log(func):
+    def log_wrapper(self, message):
+        func(self, "[{}] {}".format(self.current_plugin, message) if self.current_plugin else "{}".format(message))
+    return log_wrapper
 
 
 class PluginError(Exception):
     pass
+
 
 class PluginsManager(object):
     def __init__(self, csm_ctx):
@@ -74,7 +81,6 @@ class PluginsManager(object):
         self.current_plugin = None
 
     def run(self):
-
         phase = None
 
         # FIXME: Phases needs to be agreed with Alex
@@ -104,12 +110,16 @@ class PluginsManager(object):
             self.csm_ctx.post_status("Action not supported")
             self.log("Action {} not supported".format(self.csm_ctx.requested_action))
 
-        device = condor.Connection(self.csm_ctx.host.hostname, self.csm_ctx.host_urls,
-                                 log_dir=self.csm_ctx.log_directory)
+        device = condoor.Connection(
+            self.csm_ctx.host.hostname,
+            self.csm_ctx.host_urls,
+            log_dir=self.csm_ctx.log_directory
+        )
+
         try:
             self.log("Device Discovery Pending")
             device.detect_platform()
-        except condor.exceptions.ConnectionError as e:
+        except condoor.exceptions.ConnectionError as e:
             self.csm_ctx.post_status(e.message)
             return False
 
@@ -119,7 +129,7 @@ class PluginsManager(object):
         try:
             self.log("Device Connection Pending")
             device.connect()
-        except condor.exceptions.ConnectionError as e:
+        except condoor.exceptions.ConnectionError as e:
             self.csm_ctx.post_status(e.message)
             return False
         self.log("Device Connected Successfully")
@@ -129,19 +139,17 @@ class PluginsManager(object):
 
         try:
             for plugin in plugins.get_plugins_of_phase(phase):
-                plugin_desc = (plugin.DESCRIPTION[:45] + '..') if len(plugin.DESCRIPTION) > 35 else plugin.DESCRIPTION
-                self.log("Executing: {}".format(plugin_desc))
-                self.current_plugin = plugin_desc
+                self.log("Executing: {}".format(plugin.descrption))
+                self.current_plugin = plugin.NAME
                 plugin.__class__.start(self, device)
                 self.current_plugin = None
-                #self.log("Finished: {}".format(plugin_desc))
 
         except PluginError as e:
             self.csm_ctx.success = False
             self.csm_ctx.post_status(e.message)
             return False
 
-        except condor.exceptions.ConnectionError as e:
+        except condoor.exceptions.ConnectionError as e:
             self.csm_ctx.success = False
             self.csm_ctx.post_status(e.message)
             return False
@@ -155,14 +163,18 @@ class PluginsManager(object):
     def _log_msg(self, message):
         return "[{}] {}".format(self.current_plugin, message) if self.current_plugin else "{}".format(message)
 
+    @plugin_log
     def log(self, message):
-
-        self.logger.info(self._log_msg(message))
+        self.logger.info(message)
         self.csm_ctx.post_status(message)
 
+    @plugin_log
     def error(self, message):
-        self.logger.error(self._log_msg(message))
+        self.logger.error(message)
         raise PluginError(message)
 
+    @plugin_log
     def warning(self, message):
         self.logger.warning(self._log_msg(message))
+
+

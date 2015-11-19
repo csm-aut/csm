@@ -30,11 +30,7 @@
 import re
 
 from plugin import IPlugin
-from plugin_lib import get_package, watch_operation
-
-
-STAGING_DEVICE = "."
-COPY_CMD = "cp"
+from ..plugin_lib import get_package, watch_operation
 
 
 class InstallCommitPlugin(IPlugin):

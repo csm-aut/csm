@@ -1,7 +1,6 @@
 # =============================================================================
-# plugin.py - Generic Plugin Class
 #
-# Copyright (c) 2014, Cisco Systems
+# Copyright (c) 2015, Cisco Systems
 # All rights reserved.
 #
 # Author: Klaudiusz Staniek
@@ -27,39 +26,22 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
+import os
+import sys
 from inspect import isclass
 from collections import defaultdict
 
-# Add plugin classes below to be automatically imported
-from plugin import IPlugin
-#from csmserver.plugins.not_migrated.device_connect import DeviceConnectPlugin
-from version_check import SoftwareVersionPlugin
-from node_status import NodeStatusPlugin
-from ping_test import PingTestPlugin
-from disk_space_plugin import DiskSpacePlugin
-# from package_check_plugin_act import ActivePackagesPlugin
-# from package_check_plugin_inact import InactivePackagesPlugin
-# from package_check_plugin_committed import CommittedPackagesPlugin
-from redundancy_check import NodeRedundancyPlugin
-# from ospf_isis_nei_precheck import OspfIsisPrePlugin
-# from ospf_isis_nei_postcheck import OspfIsisPostPlugin
-from cfg_backup import ConfigBackupPlugin
-# from cmd_snapshot_backup import CommandSnapshotPlugin
-from install_add import InstallAddPlugin
-from install_act import InstallActivatePlugin
-from install_deact import InstallDeactivatePlugin
-from install_remove import InstallRemovePlugin
-from install_commit import InstallCommitPlugin
-# from cfg_consistency import ConfigConsistencyPlugin
-from err_core_check import ErrorCorePlugin
-# from device_pkg_poll import DevicePackageSatePlugin
-#from au.plugins.isis_setoverload import isisSetOverloadPrePlugin
-#from au.plugins.isis_unsetoverload import isisunSetOverloadPostPlugin
+# loading all the classes from the modules dynamically
+path = os.path.dirname(os.path.abspath(__file__))
+for py in [f[:-3] for f in os.listdir(path) if f.endswith('.py') and f != '__init__.py']:
+    mod = __import__('.'.join([__name__, py]), fromlist=[py])
+    classes = [getattr(mod, x) for x in dir(mod) if isinstance(getattr(mod, x), type)]
+    for cls in classes:
+        setattr(sys.modules[__name__], cls.__name__, cls)
+
 
 # Added manually to preserve the order
 plugin_classes = [
-#    DeviceConnectPlugin,
     SoftwareVersionPlugin,
     InstallDeactivatePlugin,
     InstallRemovePlugin,
@@ -67,24 +49,17 @@ plugin_classes = [
     NodeStatusPlugin,
     DiskSpacePlugin,
     PingTestPlugin,
-#     ActivePackagesPlugin,
-#     InactivePackagesPlugin,
-#     CommittedPackagesPlugin,
     NodeRedundancyPlugin,
-#     CommandSnapshotPlugin,
-#     OspfIsisPrePlugin,
-# #    isisSetOverloadPrePlugin,
     InstallAddPlugin,
     InstallActivatePlugin,
-#     ConfigConsistencyPlugin,
-#     OspfIsisPostPlugin,
-# #    isisunSetOverloadPostPlugin,
     ErrorCorePlugin,
-#     DevicePackageSatePlugin,
     InstallCommitPlugin,
 ]
-plugins = []
+
+plugin_list = []
 plugin_map = defaultdict(list)
+
+plugin_platform_map = defaultdict(defaultdict)
 
 plugin_types = ["DEACTIVATE", "REMOVE", "ADD", "UPGRADE", "PRE_UPGRADE", "PRE_UPGRADE_AND_POST_UPGRADE",
                 "PRE_UPGRADE_AND_UPGRADE", "TURBOBOOT", "POST_UPGRADE", "COMMIT"]
@@ -122,14 +97,13 @@ def is_plugin(o):
     return isclass(o) and issubclass(o, IPlugin) and o is not IPlugin
 
 
-def add_plugin(cls):
-    plugin = cls()
+def add_plugin(plugin_class):
+    plugin_cls = plugin_class()
     # plugin_classes.append(cls)
-    plugins.append(plugin)
+    plugin_list.append(plugin_cls)
     for phase in phases:
-        # Connecting the device should be in all phase of operation
-        if plugin.TYPE in phases[phase] or plugin.NAME == "CONNECTION":         
-            plugin_map[phase].append(plugin)
+        if plugin_cls.TYPE in phases[phase]:
+            plugin_map[phase].append(plugin_cls)
 
 
 def get_plugins_of_phase(phase):
@@ -138,3 +112,7 @@ def get_plugins_of_phase(phase):
 for obj in plugin_classes:
     if is_plugin(obj):
         add_plugin(obj)
+
+# for debug only
+for plugin in get_plugins_of_phase("ALL"):
+    print plugin.description

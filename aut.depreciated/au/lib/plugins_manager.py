@@ -1,5 +1,5 @@
 # =============================================================================
-# plugins_manager.py - plugin manager
+# manager.py - plugin manager
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.

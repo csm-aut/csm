@@ -25,12 +25,10 @@
 
 from base import BaseHandler
 from parsers.loader import get_package_parser_class 
-from utils import import_module
 
-import condor
-import os
+import condoor
 
-from plugins_manager import PluginsManager
+from horizon.manager import PluginsManager
 
 import time
 
@@ -45,20 +43,20 @@ class BaseConnectionHandler(BaseHandler):
     def execute(self, ctx):
 
         # would be nice to get the hostname in context
-        conn = condor.Connection('host', ctx.host_urls, log_dir=ctx.log_directory)
+        conn = condoor.Connection('host', ctx.host_urls, log_dir=ctx.log_directory)
         try:
             conn.detect_platform()
             ctx.success = True
-        except condor.exceptions.ConnectionError as e:
+        except condoor.exceptions.ConnectionError as e:
             ctx.post_status = e.message
 
         
 class BaseInventoryHandler(BaseHandler):           
     def execute(self, ctx):
-        conn = condor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
+        conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
         try:
             conn.detect_platform()
-        except condor.exceptions.ConnectionError as e:
+        except condoor.exceptions.ConnectionError as e:
             ctx.post_status = e.message
             return
 
@@ -74,7 +72,7 @@ class BaseInventoryHandler(BaseHandler):
                 install_committed_cli=ctx.committed_cli)
             ctx.success = True
 
-        except condor.exceptions.ConnectionError as e:
+        except condoor.exceptions.ConnectionError as e:
             ctx.post_status = e.message
 
         finally:
@@ -92,6 +90,13 @@ class BaseInventoryHandler(BaseHandler):
 
 class BaseInstallHandler(BaseHandler):                         
     def execute(self, ctx):
+
         pm = PluginsManager(ctx)
-        pm.run()
+        try:
+            pm.run()
+        except condoor.exceptions.ConnectionError as e:
+            ctx.post_status = e.message
+            ctx.success = False
+
+
 

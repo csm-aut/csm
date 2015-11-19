@@ -43,7 +43,7 @@ class PackageClass(object):
     def __init__(self, org_package=""):
         # Platform or domain
         self.platform = None
-        # Packge name
+        # Package name
         self.pkg = None
         # Architecture
         self.arch = None
@@ -52,11 +52,11 @@ class PackageClass(object):
         self.subversion = None
         # Package format
         self.format = None
-        # Patch/maintenece version
+        # Patch/maintenance version
         self.patch_ver = None
         # Requires or depends on
         self.requires = None
-        #Supersedes or overrides
+        # Supersedes or overrides
         self.supersedes = None
         # Partition where package exists
         self.partition = None
@@ -67,8 +67,6 @@ class PackageClass(object):
         return self.org_package.replace(".SIT_IMAGE", "", 1)
 
     __repr__ = __str__
-
-
 
 
 class NewPackage():

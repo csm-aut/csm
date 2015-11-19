@@ -30,12 +30,9 @@ import os
 import re
 
 from plugin import IPlugin
-#from au.utils import pkglist
+
 from pexpect import TIMEOUT
 
-from condor.controllers.fsm import FSM
-
-from condor.exceptions import CommandTimeoutError
 
 class DiskSpacePlugin(IPlugin):
 

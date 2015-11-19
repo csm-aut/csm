@@ -1,8 +1,9 @@
 # =============================================================================
-# device_connect.py - Plugin for checking version of running
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2015, Cisco Systems
 # All rights reserved.
+#
+# Author: Prasad S R
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,37 +26,43 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+import os
+import re
 
 from plugin import IPlugin
-from plugin_lib import get_package
 
-class DeviceConnectPlugin(IPlugin):
 
+class ErrorCorePlugin(IPlugin):
     """
-    This is a plugin maintaining the initial device connection
+    ASR9k Post-upgrade check
+    This pluging checks for errors, traceback or any core dump
     """
-    NAME = "CONNECTION"
-    DESCRIPTION = "Device Connection Check"
-    TYPE = "PRE_UPGRADE"
-    VERSION = "0.1.0"
+    NAME = "ERROR_TRACEBACK_CRASH_CHECK"
+    DESCRIPTION = "Device Log Check"
+    TYPE = "POST_UPGRADE"
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
+
+    # matching any errors, core and tracebacks
+    _string_to_check_re = re.compile(
+        "^(.*(?:[Ee][Rr][Rr][Oo][Rr]|Core for pid|Traceback).*)$", re.MULTILINE
+    )
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        """
-        """
-        success = None
-        try:
-            success = device.connect()
-        except DeviceError:
-            print("Device Error: {}".format(device.error_code))
 
-        if success:
-            device.log_event(
-                "Device {} connected successfully.".format(device.name)
-            )
-            get_package(device)
-            return True
+        # FIXME: Consider optimization
+        # The log may be large
+        # Maybe better run sh logging | i "Error|error|ERROR|Traceback|Core for pid" directly on the device
+        output = device.send("show logging last 500", timeout=300)
+        ctx = device.get_property("ctx")
+        if ctx:
+            store_dir = ctx.log_directory
+            file_name = os.path.join(store_dir, "post_upgrade_log.log")
+            IPlugin.save_to_file(output, file_name)
+            manager.log("Device log stored to: {}".format(file_name))
 
-        manager.error(
-            "Can not connect to device {}".format(device.name)
-        )
+        for match in re.finditer(ErrorCorePlugin._string_to_check_re, output):
+            manager.warning(match.group())
+
+        return True

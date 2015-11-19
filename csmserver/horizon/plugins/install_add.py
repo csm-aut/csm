@@ -31,7 +31,7 @@
 import re
 
 from plugin import IPlugin
-from plugin_lib import watch_operation, get_package
+from ..plugin_lib import watch_operation, get_package
 
 
 class InstallAddPlugin(IPlugin):
@@ -47,38 +47,6 @@ class InstallAddPlugin(IPlugin):
     TYPE = "ADD"
     VERSION = "1.0.0"
     FAMILY = ["ASR9K"]
-
-    # @staticmethod
-    # def watch_operation(manager, device, op_id=0):
-    #     """
-    #     Function to keep watch on progress of operation
-    #     and report KB downloaded.
-    #
-    #     """
-    #     inst_op = "downloaded: Download in progress"
-    #     pat_no_install = r'There are no install requests in operation'
-    #     failed_oper = r'Install operation (\d+) failed'
-    #     cmd = "admin show install request "
-    #
-    #     while 1:
-    #         time.sleep(10)
-    #         output = device.send(cmd)
-    #         if inst_op in output:
-    #             downloaded = re.search('(.*)KB downloaded: Download in progress', output).group(0)
-    #             print downloaded
-    #             continue
-    #         elif pat_no_install in output:
-    #             break
-    #
-    #     if op_id:
-    #         # Ensure operation was success
-    #         cmd = "admin show install log {} detail".format(op_id)
-    #         output = device.send(cmd)
-    #         if re.search(failed_oper, output):
-    #             manager.error(output)
-    #
-    #     return True
-
 
     @staticmethod
     def start(manager, device, *args, **kwargs):

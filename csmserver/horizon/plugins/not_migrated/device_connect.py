@@ -1,5 +1,5 @@
 # =============================================================================
-# version_check.py - Plugin for checking version of running
+# device_connect.py - Plugin for checking version of running
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.
@@ -26,48 +26,36 @@
 # =============================================================================
 
 
+from csmserver.horizon.plugins.plugin import IPlugin
+from csmserver.horizon.plugin_lib import get_package
 
-from plugin import IPlugin
-
-import re
-
-
-class SoftwareVersionPlugin(IPlugin):
+class DeviceConnectPlugin(IPlugin):
 
     """
-    ASR9k Pre-upgrade check
-    This plugin checks if version of all inputs packages are same.
-    If input package contains SMUs only , ensure that box is running same ver.
+    This is a plugin maintaining the initial device connection
     """
-    NAME = "SOFTWARE_VERSION"
-    DESCRIPTION = "Software Version Check"
+    NAME = "CONNECTION"
+    DESCRIPTION = "Device Connection Check"
     TYPE = "PRE_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
+    VERSION = "0.1.0"
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
         """
         """
+        success = None
+        try:
+            success = device.connect()
+        except DeviceError:
+            print("Device Error: {}".format(device.error_code))
 
-        output = device.send("show version brief")
-
-        match = re.search('Version (\d+\.\d+\.\d+)', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search(
-            'Version (\d+\.\d+\.\d+\.\d+[a-zA-Z])', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search('cisco (\w+)', output)
-        if match:
-            platform = match.group(1).lower()
-            device.store_property('platform', platform)
-            manager.log("Platform detected: {}".format(platform))
+        if success:
+            device.log_event(
+                "Device {} connected successfully.".format(device.name)
+            )
+            get_package(device)
             return True
 
-        manager.error("Can not determine software version")
+        manager.error(
+            "Can not connect to device {}".format(device.name)
+        )

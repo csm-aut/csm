@@ -26,11 +26,10 @@
 # =============================================================================
 
 import re
+
 from plugin import IPlugin
-
-from plugin_lib import get_package, watch_operation
-import pkg_utils
-
+from ..plugin_lib import get_package, watch_operation
+import horizon.package_lib as package_lib
 
 
 class InstallRemovePlugin(IPlugin):
@@ -49,10 +48,6 @@ class InstallRemovePlugin(IPlugin):
         """
         Performs install remove operation
         """
-        SMU_RE = r'CSC\D\D\d\d\d'
-        FP_RE = r'fp\d+'
-        SP_RE = r'sp\d+'
-
         ctx = device.get_property("ctx")
 
         try:
@@ -60,11 +55,11 @@ class InstallRemovePlugin(IPlugin):
         except AttributeError:
             manager.error("No package list provided")
 
-        deact_pkgs = pkg_utils.NewPackage(packages)
+        deact_pkgs = package_lib.NewPackage(packages)
         installed_inact = device.send("admin show install inactive summary")
-        inactive_pkgs = pkg_utils.OnboxPackage(installed_inact, "Inactive Packages")
+        inactive_pkgs = package_lib.OnboxPackage(installed_inact, "Inactive Packages")
 
-        packages_to_remove = pkg_utils.package_intersection(deact_pkgs.pkg_list, inactive_pkgs.pkg_list)
+        packages_to_remove = package_lib.package_intersection(deact_pkgs.pkg_list, inactive_pkgs.pkg_list)
         if not packages_to_remove:
             manager.log("Packages already removed. Nothing to be removed")
             get_package(device)

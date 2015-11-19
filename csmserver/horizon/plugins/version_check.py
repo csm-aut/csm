@@ -1,9 +1,8 @@
 # =============================================================================
+# version_check.py - Plugin for checking version of running
 #
-# Copyright (c)  2015, Cisco Systems
+# Copyright (c)  2013, Cisco Systems
 # All rights reserved.
-#
-# Author: Prasad S R
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,43 +25,47 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import os
 import re
 
 from plugin import IPlugin
 
 
-class ErrorCorePlugin(IPlugin):
-    """
-    ASR9k Post-upgrade check
-    This pluging checks for errors, traceback or any core dump
-    """
-    NAME = "ERROR_TRACEBACK_CRASH_CHECK"
-    DESCRIPTION = "Device Log Check"
-    TYPE = "POST_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = "ASR9K"
+class SoftwareVersionPlugin(IPlugin):
 
-    # matching any errors, core and tracebacks
-    _string_to_check_re = re.compile(
-        "^(.*(?:[Ee][Rr][Rr][Oo][Rr]|Core for pid|Traceback).*)$", re.MULTILINE
-    )
+    """
+    ASR9k Pre-upgrade check
+    This plugin checks if version of all inputs packages are same.
+    If input package contains SMUs only , ensure that box is running same ver.
+    """
+    NAME = "SOFTWARE_VERSION"
+    DESCRIPTION = "Software Version Check"
+    TYPE = "PRE_UPGRADE"
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
+        """
+        """
 
-        # FIXME: Consider optimization
-        # The log may be large
-        # Maybe better run sh logging | i "Error|error|ERROR|Traceback|Core for pid" directly on the device
-        output = device.send("show logging last 500", timeout=300)
-        ctx = device.get_property("ctx")
-        if ctx:
-            store_dir = ctx.log_directory
-            file_name = os.path.join(store_dir, "post_upgrade_log.log")
-            IPlugin.save_to_file(output, file_name)
-            manager.log("Device log stored to: {}".format(file_name))
+        output = device.send("show version brief")
 
-        for match in re.finditer(ErrorCorePlugin._string_to_check_re, output):
-            manager.warning(match.group())
+        match = re.search('Version (\d+\.\d+\.\d+)', output)
+        if match:
+            version = match.group(1)
+            device.store_property('version', version)
+            manager.log("Software version detected: {}".format(version))
+        match = re.search(
+            'Version (\d+\.\d+\.\d+\.\d+[a-zA-Z])', output)
+        if match:
+            version = match.group(1)
+            device.store_property('version', version)
+            manager.log("Software version detected: {}".format(version))
+        match = re.search('cisco (\w+)', output)
+        if match:
+            platform = match.group(1).lower()
+            device.store_property('platform', platform)
+            manager.log("Platform detected: {}".format(platform))
+            return True
 
-        return True
+        manager.error("Can not determine software version")

@@ -26,10 +26,9 @@
 # =============================================================================
 
 
-#from au.lib.global_constants import *
-from plugin import IPlugin
-
 from urlparse import urlparse
+
+from plugin import IPlugin
 
 
 class PingTestPlugin(IPlugin):

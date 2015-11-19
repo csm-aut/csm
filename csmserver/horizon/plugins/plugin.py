@@ -50,10 +50,13 @@ class IPlugin(object):
         return
 
     @staticmethod
-    def start(self, device, *args, **kwargs):
+    def start(manger, device, *args, **kwargs):
         """
         Start the plugin
         Must be overridden by the plugin class child implementation
         """
         raise NotImplementedError
 
+    @property
+    def description(self):
+        return (self.DESCRIPTION[:35] + '..') if len(self.DESCRIPTION) > 37 else self.DESCRIPTION

@@ -1,5 +1,6 @@
 # =============================================================================
-# redundancy_check.py -- plugin to parse and check show redundancy
+# cfg_backup.py  - Plugin to capture(show running)
+# configurations present on the system.
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.
@@ -26,38 +27,31 @@
 # =============================================================================
 
 
-#from au.lib.global_constants import *
+import os
 
 from plugin import IPlugin
 
 
-class NodeRedundancyPlugin(IPlugin):
+class ConfigBackupPlugin(IPlugin):
 
     """
-    ASR9k Pre-upgrade check
-    This plugin checks Standby state
+    Pre-upgrade check
+    This plugin checks and record active packages
     """
-    NAME = "NODE_REDUNDANCY"
-    DESCRIPTION = "Node Redundancy Check"
+    NAME = "CONFIG_BACKUP"
+    DESCRIPTION = "Configuration Backup"
     TYPE = "PRE_UPGRADE"
     VERSION = "1.0.0"
     FAMILY = ["ASR9K"]
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        """
-        """
-        output = device.send("admin show redundancy location all")
-
-        lines = output.split("\n", 50)
-
-        if len(lines) < 6:
-            manager.error("Show redundancy output is insufficient.")
-
-        for ln, line in enumerate(lines[:6]):
-            if "is in STANDBY role" in line:
-                if "is ready" in lines[ln + 1]:
-                    manager.log("Redundancy level OK")
-                    return True
-                else:
-                    manager.error("Standby is not ready. Upgrade can not proceed.")
+        output = device.send("show running", timeout=2200)
+        ctx = device.get_property("ctx")
+        if ctx:
+            store_dir = ctx.log_directory
+            name = "{}.log".format(ConfigBackupPlugin.NAME.lower())
+            file_name = os.path.join(store_dir, name)
+            IPlugin.save_to_file(output, file_name)
+            manager.log("Config stored to: {}".format(file_name))
+        return True

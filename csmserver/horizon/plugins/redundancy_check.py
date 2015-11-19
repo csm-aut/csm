@@ -1,5 +1,5 @@
 # =============================================================================
-# device_connect.py - Plugin for checking version of running
+# redundancy_check.py -- plugin to parse and check show redundancy
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.
@@ -27,17 +27,17 @@
 
 
 from plugin import IPlugin
-from plugin_lib import get_package
 
 
-class DevicePackageSatePlugin(IPlugin):
+class NodeRedundancyPlugin(IPlugin):
 
     """
-    This is a plugin maintaining the initial device connection
+    ASR9k Pre-upgrade check
+    This plugin checks Standby state
     """
-    NAME = "Polling Package State"
-    DESCRIPTION = "Connect to device and get package state"
-    TYPE = "POLL"
+    NAME = "NODE_REDUNDANCY"
+    DESCRIPTION = "Node Redundancy Check"
+    TYPE = "PRE_UPGRADE"
     VERSION = "1.0.0"
     FAMILY = ["ASR9K"]
 
@@ -45,5 +45,17 @@ class DevicePackageSatePlugin(IPlugin):
     def start(manager, device, *args, **kwargs):
         """
         """
-        get_package(device)
+        output = device.send("admin show redundancy location all")
 
+        lines = output.split("\n", 50)
+
+        if len(lines) < 6:
+            manager.error("Show redundancy output is insufficient.")
+
+        for ln, line in enumerate(lines[:6]):
+            if "is in STANDBY role" in line:
+                if "is ready" in lines[ln + 1]:
+                    manager.log("Redundancy level OK")
+                    return True
+                else:
+                    manager.error("Standby is not ready. Upgrade can not proceed.")

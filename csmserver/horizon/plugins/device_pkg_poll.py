@@ -1,6 +1,5 @@
 # =============================================================================
-# cfg_backup.py  - Plugin to capture(show running)
-# configurations present on the system.
+# device_connect.py - Plugin for checking version of running
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.
@@ -28,29 +27,23 @@
 
 
 from plugin import IPlugin
-import os
+from ..plugin_lib import get_package
 
 
-class ConfigBackupPlugin(IPlugin):
+class DevicePackageSatePlugin(IPlugin):
 
     """
-    Pre-upgrade check
-    This plugin checks and record active packages
+    This is a plugin maintaining the initial device connection
     """
-    NAME = "CONFIG_BACKUP"
-    DESCRIPTION = "Configuration Backup"
-    TYPE = "PRE_UPGRADE"
+    NAME = "Polling Package State"
+    DESCRIPTION = "Connect to device and get package state"
+    TYPE = "POLL"
     VERSION = "1.0.0"
     FAMILY = ["ASR9K"]
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        output = device.send("show running", timeout=2200)
-        ctx = device.get_property("ctx")
-        if ctx:
-            store_dir = ctx.log_directory
-            name = "{}.log".format(ConfigBackupPlugin.NAME.lower())
-            file_name = os.path.join(store_dir, name)
-            IPlugin.save_to_file(output, file_name)
-            manager.log("Config stored to: {}".format(file_name))
-        return True
+        """
+        """
+        get_package(device)
+

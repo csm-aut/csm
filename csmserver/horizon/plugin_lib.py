@@ -1,5 +1,4 @@
 # =============================================================================
-# plugin_lib
 #
 # Copyright (c)  2015, Cisco Systems
 # All rights reserved.
@@ -31,7 +30,8 @@ import re
 import itertools
 import time
 
-import pkg_utils
+import package_lib
+
 
 def watch_operation(manager, device, op_id=0):
         """
@@ -117,14 +117,15 @@ def wait_for_reload(manager, device):
         time.sleep(poll_time)
         output = device.send(cmd)
         if xr_run in output:
-            inventory = pkg_utils.parse_xr_show_platform(output)
-            if pkg_utils.validate_xr_node_state(inventory, device):
+            inventory = package_lib.parse_xr_show_platform(output)
+            if package_lib.validate_xr_node_state(inventory, device):
                 return True
 
     # Some nodes did not come to run state
     manager.error("Not all nodes have came up: {}".format(output))
     # this will never be executed
     return False
+
 
 def watch_install(manager, device, oper_id, install_cmd):
     # FIXME: Add description

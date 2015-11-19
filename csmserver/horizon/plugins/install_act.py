@@ -28,9 +28,8 @@
 import re
 
 from plugin import IPlugin
-from plugin_lib import get_package, clear_cfg_inconsistency, watch_install
-import pkg_utils
-
+from ..plugin_lib import get_package, clear_cfg_inconsistency, watch_install
+import horizon.package_lib as package_lib
 
 class InstallActivatePlugin(IPlugin):
 
@@ -54,20 +53,20 @@ class InstallActivatePlugin(IPlugin):
         except AttributeError:
             manager.error("No packages selected")
 
-        added_pkgs = pkg_utils.NewPackage(packages)
+        added_pkgs = package_lib.NewPackage(packages)
         installed_inact = device.send("admin show install inactive summary")
         installed_act = device.send("admin show install active summary")
 
-        inactive_pkgs = pkg_utils.OnboxPackage(installed_inact, "Inactive Packages")
-        active_pkgs = pkg_utils.OnboxPackage(installed_act, "Active Packages")
+        inactive_pkgs = package_lib.OnboxPackage(installed_inact, "Inactive Packages")
+        active_pkgs = package_lib.OnboxPackage(installed_act, "Active Packages")
 
         # Skip operation if to be activated packages are already active
-        package_to_activate = pkg_utils.extra_pkgs(
+        package_to_activate = package_lib.extra_pkgs(
             active_pkgs.pkg_list, added_pkgs.pkg_list)
 
         if package_to_activate:
             # Test If there is anything added but not inactive
-            pkg_to_activate = pkg_utils.package_intersection(
+            pkg_to_activate = package_lib.package_intersection(
                 added_pkgs.pkg_list, inactive_pkgs.pkg_list)
             if not pkg_to_activate:
                 # "explicit is better than implicit" being one of the mottos in "The Zen of Python"

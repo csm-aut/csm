@@ -27,9 +27,10 @@
 
 
 import re
+
 from plugin import IPlugin
-from plugin_lib import get_package, clear_cfg_inconsistency, watch_install
-import pkg_utils
+from ..plugin_lib import get_package, clear_cfg_inconsistency, watch_install
+import horizon.package_lib as package_lib
 
 
 class InstallDeactivatePlugin(IPlugin):
@@ -55,17 +56,17 @@ class InstallDeactivatePlugin(IPlugin):
         except AttributeError:
             manager.error("No packages selected")
 
-        added_pkgs = pkg_utils.NewPackage(packages)
+        added_pkgs = package_lib.NewPackage(packages)
         installed_inact = device.send("admin show install inactive summary")
         installed_act = device.send("admin show install active summary")
 
-        inactive_pkgs = pkg_utils.OnboxPackage(installed_inact, "Inactive Packages")
-        active_pkgs = pkg_utils.OnboxPackage(installed_act, "Active Packages")
+        inactive_pkgs = package_lib.OnboxPackage(installed_inact, "Inactive Packages")
+        active_pkgs = package_lib.OnboxPackage(installed_act, "Active Packages")
 
-        package_to_deactivate = pkg_utils.extra_pkgs(inactive_pkgs.pkg_list, added_pkgs.pkg_list)
+        package_to_deactivate = package_lib.extra_pkgs(inactive_pkgs.pkg_list, added_pkgs.pkg_list)
 
         if package_to_deactivate:
-            pkg_to_deactivate = pkg_utils.package_intersection(added_pkgs.pkg_list, active_pkgs.pkg_list)
+            pkg_to_deactivate = package_lib.package_intersection(added_pkgs.pkg_list, active_pkgs.pkg_list)
             if not pkg_to_deactivate:
                 to_deactivate = " ".join(map(str, added_pkgs.pkg_list))
                 state_of_packages = "\nTo deactivate :{} \nInactive: {} \nActive: {}".format(
