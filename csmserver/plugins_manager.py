@@ -130,11 +130,11 @@ class PluginsManager(object):
         try:
             for plugin in plugins.get_plugins_of_phase(phase):
                 plugin_desc = (plugin.DESCRIPTION[:45] + '..') if len(plugin.DESCRIPTION) > 35 else plugin.DESCRIPTION
-                self.log("Executing plugin: {}".format(plugin_desc))
+                self.log("Executing: {}".format(plugin_desc))
                 self.current_plugin = plugin_desc
                 plugin.__class__.start(self, device)
                 self.current_plugin = None
-                self.log("Plugin finished: {}".format(plugin_desc))
+                #self.log("Finished: {}".format(plugin_desc))
 
         except PluginError as e:
             self.csm_ctx.success = False
