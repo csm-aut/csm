@@ -139,7 +139,7 @@ class PluginsManager(object):
 
         try:
             for plugin in plugins.get_plugins_of_phase(phase):
-                self.log("Executing: {}".format(plugin.descrption))
+                self.log("Executing: {}".format(plugin.description))
                 self.current_plugin = plugin.NAME
                 plugin.__class__.start(self, device)
                 self.current_plugin = None
