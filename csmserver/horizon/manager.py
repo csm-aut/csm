@@ -118,7 +118,7 @@ class PluginsManager(object):
 
         try:
             self.log("Device Discovery Pending")
-            device.detect_platform()
+            device.discovery()
         except condoor.exceptions.ConnectionError as e:
             self.csm_ctx.post_status(e.message)
             return False

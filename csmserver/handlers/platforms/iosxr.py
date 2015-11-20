@@ -45,7 +45,7 @@ class BaseConnectionHandler(BaseHandler):
         # would be nice to get the hostname in context
         conn = condoor.Connection('host', ctx.host_urls, log_dir=ctx.log_directory)
         try:
-            conn.detect_platform()
+            conn.discovery()
             ctx.success = True
         except condoor.exceptions.ConnectionError as e:
             ctx.post_status = e.message
@@ -55,7 +55,7 @@ class BaseInventoryHandler(BaseHandler):
     def execute(self, ctx):
         conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
         try:
-            conn.detect_platform()
+            conn.discovery()
         except condoor.exceptions.ConnectionError as e:
             ctx.post_status = e.message
             return
