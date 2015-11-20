@@ -31,7 +31,8 @@ import re
 
 from plugin import IPlugin
 
-from pexpect import TIMEOUT
+#this needs to be done in different way
+from condoor import TIMEOUT
 
 
 class DiskSpacePlugin(IPlugin):

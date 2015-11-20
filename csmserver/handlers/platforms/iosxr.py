@@ -47,7 +47,7 @@ class BaseConnectionHandler(BaseHandler):
         try:
             conn.discovery()
             ctx.success = True
-        except condoor.exceptions.ConnectionError as e:
+        except condoor.ConnectionError as e:
             ctx.post_status = e.message
 
         
@@ -56,7 +56,7 @@ class BaseInventoryHandler(BaseHandler):
         conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
         try:
             conn.discovery()
-        except condoor.exceptions.ConnectionError as e:
+        except condoor.GeneralError as e:
             ctx.post_status = e.message
             return
 
@@ -72,7 +72,7 @@ class BaseInventoryHandler(BaseHandler):
                 install_committed_cli=ctx.committed_cli)
             ctx.success = True
 
-        except condoor.exceptions.ConnectionError as e:
+        except condoor.GeneralError as e:
             ctx.post_status = e.message
 
         finally:
@@ -82,10 +82,12 @@ class BaseInventoryHandler(BaseHandler):
         package_parser_class = get_package_parser_class(host.platform)
         package_parser = package_parser_class()
         
-        return package_parser.get_packages_from_cli(host,
-            install_inactive_cli=install_inactive_cli, 
-            install_active_cli=install_active_cli, 
-            install_committed_cli=install_committed_cli)       
+        return package_parser.get_packages_from_cli(
+            host,
+            install_inactive_cli=install_inactive_cli,
+            install_active_cli=install_active_cli,
+            install_committed_cli=install_committed_cli
+        )
 
 
 class BaseInstallHandler(BaseHandler):                         
@@ -94,9 +96,7 @@ class BaseInstallHandler(BaseHandler):
         pm = PluginsManager(ctx)
         try:
             pm.run()
-        except condoor.exceptions.ConnectionError as e:
+        except condoor.GeneralError as e:
             ctx.post_status = e.message
             ctx.success = False
-
-
 
