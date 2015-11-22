@@ -114,5 +114,5 @@ for obj in plugin_classes:
         add_plugin(obj)
 
 # for debug only
-for plugin in get_plugins_of_phase("ALL"):
-    print plugin.description
+#for plugin in get_plugins_of_phase("ALL"):
+#    print plugin.description

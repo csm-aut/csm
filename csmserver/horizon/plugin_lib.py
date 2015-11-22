@@ -31,6 +31,7 @@ import itertools
 import time
 
 import package_lib
+import condoor
 
 
 def watch_operation(manager, device, op_id=0):
@@ -51,8 +52,18 @@ def watch_operation(manager, device, op_id=0):
         last_status = None
 
         propeller = itertools.cycle(["|", "/", "-", "\\", "|", "/", "-", "\\"])
-        while 1:
-            time.sleep(15)
+
+        success = "Install operation {} completed successfully".format(op_id)
+
+        finish = False
+
+        while not finish:
+            try:
+                device.send("", wait_for_string=success, timeout=15)
+                finish = True
+            except condoor.CommandTimeoutError:
+                pass
+
             output = device.send(cmd_show_install_request)
             if op_id in output:
                 # FIXME reconsider the logic here
