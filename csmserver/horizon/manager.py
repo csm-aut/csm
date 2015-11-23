@@ -37,7 +37,8 @@ import plugins
 # decorator adding the current plugin name to the log message if plugin is executed
 def plugin_log(func):
     def log_wrapper(self, message):
-        func(self, "[{}] {}".format(self.current_plugin, message) if self.current_plugin else "{}".format(message))
+        func(self, message, "[{}] {}".format(
+            self.current_plugin, message) if self.current_plugin else "{}".format(message))
     return log_wrapper
 
 
@@ -142,8 +143,9 @@ class PluginsManager(object):
                 self.log("Launching: {}".format(plugin.description))
                 self.current_plugin = plugin.NAME
                 plugin.__class__.start(self, device)
-                self.log("Finished: {}".format(plugin.description))
                 self.current_plugin = None
+                self.log("Finished: {}".format(plugin.description))
+                
 
         except PluginError as e:
             self.csm_ctx.success = False
@@ -161,21 +163,18 @@ class PluginsManager(object):
         self.csm_ctx.success = True
         return True
 
-    def _log_msg(self, message):
-        return "[{}] {}".format(self.current_plugin, message) if self.current_plugin else "{}".format(message)
-
     @plugin_log
-    def log(self, message):
-        self.logger.info(message)
+    def log(self, message, log_message):
+        self.logger.info(log_message)
         self.csm_ctx.post_status(message)
 
     @plugin_log
-    def error(self, message):
-        self.logger.error(message)
+    def error(self, message, log_message):
+        self.logger.error(log_message)
         raise PluginError(message)
 
     @plugin_log
-    def warning(self, message):
-        self.logger.warning(self._log_msg(message))
+    def warning(self, message, log_message):
+        self.logger.warning(log_message)
 
 
