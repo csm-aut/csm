@@ -137,6 +137,7 @@ from utils import remove_extra_spaces
 from server_helper import get_server_impl
 from wtforms.validators import Required
 
+from smu_utils import SMU_INDICATOR
 from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
@@ -2764,11 +2765,38 @@ def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_su
             row['package_bundles'] = smu_info.package_bundles
             row['compressed_image_size'] = smu_info.compressed_image_size
             row['uncompressed_image_size'] = smu_info.uncompressed_image_size
-            row['installed'] = installed
+            row['is_installed'] = installed
+
+            if SMU_INDICATOR in smu_info.name:
+                row['is_applicable'] = is_smu_applicable(host_packages, smu_info.package_bundles)
+            else:
+                row['is_applicable'] = True
 
             rows.append(row)
     
     return jsonify( **{'data':rows} )
+
+"""
+Only SMU should go through this logic
+  The package_bundles defined must be satisfied for the SMU to be applicable.
+  However,asr9k-fpd-px can be excluded.
+"""
+def is_smu_applicable(host_packages, required_package_bundles):
+    if not is_empty(required_package_bundles):
+        package_bundles = required_package_bundles.split(',')
+        package_bundles = [p for p in package_bundles if p != 'asr9k-fpd-px']
+
+        count = 0
+        for package_bundle in package_bundles:
+            for host_package in host_packages:
+                if package_bundle in host_package:
+                    count += 1
+                    break
+
+        if count != len(package_bundles):
+            return False
+
+    return True
 
 @app.route('/api/get_smu_details/smu_id/<smu_id>')
 @login_required

@@ -38,13 +38,17 @@ $(function() {
         "fnCreatedRow": function(nRow, aData, iDataIndex) {
 
             $.each(aData, function (col, col_value) {
-                if (col == 'installed') {
-                    $(nRow).attr('installed', col_value);
+                if (col == 'is_installed') {
+                    $(nRow).attr('is_installed', col_value);
+                } else if (col == 'is_applicable') {
+                    $(nRow).attr('is_applicable', col_value);
                 }
             });
 
-            if ($(nRow).attr('installed') == 'true') {
+            if ($(nRow).attr('is_installed') == 'true') {
                 $('td', nRow).css('background-color', '#DFF0D8');
+            } else if ($(nRow).attr('is_applicable') != 'true') {
+                $('td', nRow).css('background-color', '#D3D3D3');
             } else {
                 // Check if it needs to be highlighted as recently posted file
                 var date_diff = date_diff_in_days(new Date($('td:eq(1)', nRow).text()), new Date());
@@ -118,12 +122,12 @@ $(function() {
         "fnCreatedRow": function(nRow, aData, iDataIndex) {
 
             $.each(aData, function (col, col_value) {
-                if (col == 'installed') {
-                    $(nRow).attr('installed', col_value);
+                if (col == 'is_installed') {
+                    $(nRow).attr('is_installed', col_value);
                 }
             });
 
-            if ($(nRow).attr('installed') == 'true') {
+            if ($(nRow).attr('is_installed') == 'true') {
                 $('td', nRow).css('background-color', '#DFF0D8');
             } else {
                 // Check if it needs to be highlighted as recently posted file
@@ -371,11 +375,13 @@ function display_cisco_software_dialog(hostname_list, server_id, server_director
     // Re-initialize variables and set the hostname only if there is one host selected.
     if (hostname_list.length == 1) {
         $('#cisco-software-dialog').data('hostname', hostname_list[0]);
+        $('#not-applicable-panel').show();
 
-        $('#installed-packages-highlight-panel').hide();
         $('#installed-packages-checkbox-panel').show();
         $('#hide-installed-packages-checkbox').prop("checked", true);
+        $('#installed-packages-highlight-panel').hide();
     } else {
+        $('#not-applicable-panel').hide();
         $('#installed-packages-highlight-panel').hide();
         $('#installed-packages-checkbox-panel').hide();
         $('#hide-installed-packages-checkbox').prop("checked", false);
