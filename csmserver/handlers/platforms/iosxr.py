@@ -33,10 +33,10 @@ from horizon.manager import PluginsManager
 import time
 
 
-#import logging
-#logging.basicConfig(
-#        format='%(asctime)-15s %(levelname)8s: %(message)s',
-#        level=logging.DEBUG)
+import logging
+logging.basicConfig(
+        format='%(asctime)-15s %(levelname)8s: %(message)s',
+        level=logging.DEBUG)
 
 
 class BaseConnectionHandler(BaseHandler):           
@@ -45,7 +45,7 @@ class BaseConnectionHandler(BaseHandler):
         # would be nice to get the hostname in context
         conn = condoor.Connection('host', ctx.host_urls, log_dir=ctx.log_directory)
         try:
-            conn.discovery()
+            conn.connect()
             ctx.success = True
         except condoor.ConnectionError as e:
             ctx.post_status = e.message
