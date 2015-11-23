@@ -65,17 +65,19 @@ class ImageContext(Context):
 
         if len(self.host.connection_param) > 0:
             connection = self.host.connection_param[0]
+            jump_host_url = ''
+
             # Checks if there is a jump server
             if connection.jump_host_id is not None:
                 try:
                     jump_host = self.db_session.query(JumpHost).filter(JumpHost.id == connection.jump_host_id).first()
                     if jump_host is not None:
-                        urls.append(make_url(
+                        jump_host_url = make_url(
                             connection_type=jump_host.connection_type,
                             username=jump_host.username,
                             password=jump_host.password,
                             host_or_ip=jump_host.host_or_ip,
-                            port_number=jump_host.port_number))
+                            port_number=jump_host.port_number)
                 except:
                     pass
 
@@ -87,14 +89,22 @@ class ImageContext(Context):
                 default_username=system_option.default_host_username
                 default_password=system_option.default_host_password
 
-            urls.append(make_url(
-                connection_type=connection.connection_type,
-                username=connection.username,
-                password=connection.password,
-                host_or_ip=connection.host_or_ip,
-                port_number=connection.port_number,
-                default_username=default_username,
-                default_password=default_password))
+            for host_or_ip in connection.host_or_ip.split(','):
+                for port_number in connection.port_number.split(','):
+                    host_urls = []
+                    if not is_empty(jump_host_url):
+                        host_urls.append(jump_host_url)
+
+                    host_urls.append(make_url(
+                        connection_type=connection.connection_type,
+                        username=connection.username,
+                        password=connection.password,
+                        host_or_ip=host_or_ip,
+                        port_number=port_number,
+                        default_username=default_username,
+                        default_password=default_password))
+
+                    urls.append(host_urls)
 
         return urls
 
