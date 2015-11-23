@@ -137,7 +137,6 @@ from utils import remove_extra_spaces
 from server_helper import get_server_impl
 from wtforms.validators import Required
 
-from smu_utils import SMU_INDICATOR
 from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
@@ -2304,6 +2303,7 @@ def api_get_servers_by_hostname(hostname):
 
     return jsonify(**{'data': []})
 
+
 @app.route('/api/get_servers/region/<int:region_id>')
 @login_required
 def api_get_servers_by_region(region_id):
@@ -2320,16 +2320,142 @@ def api_get_servers_by_region(region_id):
 
     return jsonify(**{'data':result_list})
 
+
+@app.route('/api/get_distinct_host_platforms')
+@login_required
+def api_get_distinct_host_platforms():
+    rows = []
+    db_session = DBSession()
+
+    platforms = db_session.query(Host.software_platform).order_by(Host.software_platform.asc()).distinct()
+    for platform in platforms:
+        if platform[0] is not None:
+            rows.append({'platform': platform[0]})
+
+    return jsonify(**{'data':rows})
+
+
+@app.route('/api/get_distinct_host_software_versions/platform/<platform>')
+@login_required
+def api_get_distinct_host_software_versions(platform):
+    db_session = DBSession()
+
+    software_versions = db_session.query(Host.software_version).filter(Host.software_platform == platform).\
+        order_by(Host.software_version.asc()).distinct()
+
+    rows = []
+    for software_version in software_versions:
+        if software_version[0] is not None:
+            rows.append({'software_version': software_version[0]})
+
+    return jsonify(**{'data':rows})
+
+"""
+software_versions may equal to 'ALL' or multiple software versions
+"""
+@app.route('/api/get_distinct_host_regions/platform/<platform>/software_versions/<software_versions>')
+@login_required
+def api_get_distinct_host_regions(platform, software_versions):
+    clauses = []
+    db_session = DBSession()
+
+    clauses.append(Host.software_platform == platform)
+    if 'ALL' not in software_versions:
+        clauses.append(Host.software_version.in_(software_versions.split(',')))
+
+    region_ids = db_session.query(Host.region_id).filter(and_(*clauses)).distinct()
+
+    # Change a list of tuples to a list
+    region_ids_list = [region_id[0] for region_id in region_ids]
+
+    rows = []
+    if not is_empty(region_ids):
+        regions = db_session.query(Region).filter(Region.id.in_(region_ids_list)). \
+            order_by(Region.name.asc()).all()
+
+        for region in regions:
+            rows.append({'region_id': region.id, 'region_name': region.name})
+
+    return jsonify(**{'data':rows})
+
+"""
+software_versions may equal to 'ALL' or multiple software versions
+region_ids may equal to 'ALL' or multiple region ids
+"""
+@app.route('/api/get_distinct_host_roles/platform/<platform>/software_versions/<software_versions>/region_ids/<region_ids>')
+@login_required
+def api_get_distinct_host_roles(platform, software_versions, region_ids):
+    clauses = []
+    db_session = DBSession()
+
+    clauses.append(Host.software_platform == platform)
+    if 'ALL' not in software_versions:
+        clauses.append(Host.software_version.in_(software_versions.split(',')))
+    if 'ALL' not in region_ids:
+        clauses.append(Host.region_id.in_(region_ids.split(',')))
+
+    host_roles = db_session.query(Host.roles).filter(and_(*clauses)).distinct()
+
+    # Change a list of tuples to a list
+    # Example of roles_list  = [u'PE Router', u'PE1,R0', u'PE1,PE4', u'PE2,R1', u'Core']
+    roles_list = [roles[0] for roles in host_roles if not is_empty(roles[0])]
+
+    # Collapses the comma delimited strings to list
+    roles_list = ",".join(roles_list).split(',')
+
+    # Make the list unique, then sort it
+    roles_list = sorted(list(set(roles_list)))
+
+    rows = []
+    for role in roles_list:
+        rows.append({'role': role})
+
+    return jsonify(**{'data':rows})
+
+
+@app.route('/api/get_hosts/platform/<platform>/software_versions/<software_versions>/region_ids/<region_ids>/roles/<roles>')
+@login_required
+def api_get_hosts_by_platform(platform, software_versions, region_ids, roles):
+    clauses = []
+    db_session = DBSession()
+
+    clauses.append(Host.software_platform == platform)
+    if 'ALL' not in software_versions:
+        clauses.append(Host.software_version.in_(software_versions.split(',')))
+
+    if 'ALL' not in region_ids:
+        clauses.append(Host.region_id.in_(region_ids.split(',')))
+
+    # Retrieve relevant hosts
+    hosts = db_session.query(Host).filter(and_(*clauses)).all()
+
+    roles_list = [] if 'ALL' in roles else roles.split(',')
+
+    rows = []
+    for host in hosts:
+        # Match on selected roles given by the user
+        if not is_empty(roles_list):
+            if not is_empty(host.roles):
+                for role in host.roles.split(','):
+                    if role in roles_list:
+                        rows.append({'hostname': host.hostname})
+                        break
+        else:
+            rows.append({'hostname': host.hostname})
+
+    return jsonify(**{'data':rows})
+
+
 @app.route('/api/get_hosts/region/<int:region_id>/role/<role>/software/<software>')
 @login_required
 def api_get_hosts_by_region(region_id, role, software):
     selected_roles = []
     selected_software = []
 
-    if 'all' not in role.lower():
+    if 'ALL' not in role:
         selected_roles = role.split(',')
 
-    if 'all' not in software.lower():
+    if 'ALL' not in software:
         selected_software = software.split(',')
 
     rows = []
@@ -2765,38 +2891,11 @@ def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_su
             row['package_bundles'] = smu_info.package_bundles
             row['compressed_image_size'] = smu_info.compressed_image_size
             row['uncompressed_image_size'] = smu_info.uncompressed_image_size
-            row['is_installed'] = installed
-
-            if SMU_INDICATOR in smu_info.name:
-                row['is_applicable'] = is_smu_applicable(host_packages, smu_info.package_bundles)
-            else:
-                row['is_applicable'] = True
+            row['installed'] = installed
 
             rows.append(row)
     
     return jsonify( **{'data':rows} )
-
-"""
-Only SMU should go through this logic
-  The package_bundles defined must be satisfied for the SMU to be applicable.
-  However,asr9k-fpd-px can be excluded.
-"""
-def is_smu_applicable(host_packages, required_package_bundles):
-    if not is_empty(required_package_bundles):
-        package_bundles = required_package_bundles.split(',')
-        package_bundles = [p for p in package_bundles if p != 'asr9k-fpd-px']
-
-        count = 0
-        for package_bundle in package_bundles:
-            for host_package in host_packages:
-                if package_bundle in host_package:
-                    count += 1
-                    break
-
-        if count != len(package_bundles):
-            return False
-
-    return True
 
 @app.route('/api/get_smu_details/smu_id/<smu_id>')
 @login_required
@@ -3016,7 +3115,7 @@ def api_get_reload_list():
                     if smu_info is not None:
                         if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
                             rows.append({ 'entry' : package_name, 'description': smu_info.description})
-
+ 
     
     return jsonify( **{'data':rows} )
 
