@@ -1,7 +1,7 @@
 # =============================================================================
 # redundancy_check.py -- plugin to parse and check show redundancy
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2015, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

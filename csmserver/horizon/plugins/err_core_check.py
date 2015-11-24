@@ -64,5 +64,4 @@ class ErrorCorePlugin(IPlugin):
 
         for match in re.finditer(ErrorCorePlugin._string_to_check_re, output):
             manager.warning(match.group())
-
-        return True
+        return
