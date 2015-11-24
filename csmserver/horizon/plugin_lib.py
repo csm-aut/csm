@@ -88,19 +88,29 @@ def watch_operation(manager, device, op_id=0):
 
 
 def get_package(device):
-    # FIXME: This needs to be checked againx exception or get_property must be harden
     csm_ctx = device.get_property('ctx')
-    if not csm_ctx:
-        return
-    if hasattr(csm_ctx, 'active_cli'):
-        output = device.send("admin show install active summary")
-        csm_ctx.active_cli = output
-    if hasattr(csm_ctx, 'inactive_cli'):
-        output = device.send("admin show install inactive summary")
-        csm_ctx.inactive_cli = output
-    if hasattr(csm_ctx, 'committed_cli'):
-        output = device.send("admin show install committed summary")
-        csm_ctx.committed_cli = output
+    if csm_ctx:
+        if device.os_type == "XR":
+            if hasattr(csm_ctx, 'active_cli'):
+                output = device.send("admin show install active summary")
+                csm_ctx.active_cli = output
+            if hasattr(csm_ctx, 'inactive_cli'):
+                output = device.send("admin show install inactive summary")
+                csm_ctx.inactive_cli = output
+            if hasattr(csm_ctx, 'committed_cli'):
+                output = device.send("admin show install committed summary")
+                csm_ctx.committed_cli = output
+
+        if device.os_type == "eXR":
+            if hasattr(csm_ctx, 'active_cli'):
+                output = device.send("admin show install active")
+                csm_ctx.active_cli = output
+            if hasattr(csm_ctx, 'inactive_cli'):
+                output = device.send("admin show install inactive")
+                csm_ctx.inactive_cli = output
+            if hasattr(csm_ctx, 'committed_cli'):
+                output = device.send("admin show install committed")
+                csm_ctx.committed_cli = output
 
 
 def wait_for_reload(manager, device):
