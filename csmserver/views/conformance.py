@@ -77,6 +77,7 @@ conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 @conformance.route('/')
 @login_required
 def home():
+    conformance_form = ConformanceForm(request.form)
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
     make_conform_dialog_form = MakeConformDialogForm(request.form)
     select_server_form = SelectServerForm(request.form)
@@ -84,10 +85,9 @@ def home():
     export_conformance_report_form = ExportConformanceReportForm(request.form)
     export_conformance_report_form.include_host_packages.data = True
 
-    fill_regions(conformance_report_dialog_form.region.choices)
-
     return render_template('conformance/index.html',
-                           form=conformance_report_dialog_form,
+                           conformance_form=conformance_form,
+                           conformance_report_dialog_form=conformance_report_dialog_form,
                            install_actions=[InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                                             InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
                                             InstallAction.INSTALL_COMMIT, InstallAction.ALL],
@@ -573,21 +573,23 @@ class SoftwareProfileForm(Form):
     description = StringField('Description', [required(), Length(max=100)])
     software_packages = TextAreaField('Software Packages', [required()])
 
+class ConformanceForm(Form):
+    conformance_reports = SelectField('Previously Run Reports', coerce=int, choices=[(-1, '')])
 
 class ConformanceReportDialogForm(Form):
-    conformance_reports = SelectField('Previously Run Reports', coerce=int, choices=[(-1, '')])
-    conformance_report_dialog_software_profile = SelectField('Software Profile', coerce=str, choices=[('', '')])
+    software_profile = SelectField('Software Profile', coerce=str, choices=[('', '')])
     match_criteria = RadioField('Match Criteria',
                                 choices=[('inactive', 'Packages that have not been activated'),
                                          ('active', 'Packages that are currently in active state')], default='active')
-    region = SelectField('Region', coerce=int, choices=[(-1, '')])
-    role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
+
+    platform = SelectField('Platform', coerce=str, choices=[('', '')])
     software = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
+    region = SelectField('Region', coerce=int, choices=[(-1, 'ALL')])
+    role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
 
 
 class ExportConformanceReportForm(Form):
     include_host_packages = HiddenField("Include Host packages on the report")
-
 
 class MakeConformDialogForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])

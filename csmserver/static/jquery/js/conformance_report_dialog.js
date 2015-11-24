@@ -14,7 +14,7 @@ var software_profile_selector;
 var saved_software_profile;
  
 $(function() {
-    software_profile_selector = $('#conformance_report_dialog_software_profile');
+    software_profile_selector = $('#software_profile');
     
     software_profile_selector.on('change', function(e) {
         saved_software_profile = software_profile_selector.val();

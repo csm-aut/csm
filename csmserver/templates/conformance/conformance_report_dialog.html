@@ -3,13 +3,13 @@ This HTML file requires a corresponding conformance_report_dialog.js file
 
 Caller must provide the following WTForms elements with the following IDs
 
-    form.conformance_report_dialog_software_profile
+    form.software_profile
 -->
 
 {% from 'host/common.html' import edit_field %}
-{% from 'share/select_region_hosts.html' import select_region_hosts %}
+{% from 'share/select_hosts_by_platform.html' import select_hosts_by_platform %}
 
-{% macro conformance_report_dialog(conformance_report_dialog_software_profile, match_criteria, region, role, software) %}
+{% macro conformance_report_dialog(conformance_report_dialog_form) %}
 
 <div id="conformance-report-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -31,20 +31,20 @@ Caller must provide the following WTForms elements with the following IDs
                         <div class="tab-content">
                             <div class="tab-pane" id="dialog_software_profile">
                                 <div class="row">
-                                    {{ edit_field(conformance_report_dialog_software_profile, label_field_width="col-sm-3", field_width="col-sm-5", class="form-control") }}   
+                                    {{ edit_field(conformance_report_dialog_form.software_profile, label_field_width="col-sm-4", field_width="col-sm-5", class="form-control") }}
                                 </div>
                                 <hr>
                                 <div class="row">
                                     <div class="form-group ">
-                                        <label class="col-sm-3 control-label" id="label_match_criteria" for="match_criteria">Match Criteria</label>
+                                        <label class="col-sm-4 control-label" id="label_match_criteria">Match Criteria</label>
                                         <div class=col-sm-7>
-                                            {{ match_criteria }}
+                                            {{ conformance_report_dialog_form.match_criteria }}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="tab-pane" id="dialog_target_hosts">
-                                {{ select_region_hosts(region, role, software) }}
+                                {{ select_hosts_by_platform(conformance_report_dialog_form.platform, conformance_report_dialog_form.software, conformance_report_dialog_form.region, conformance_report_dialog_form.role) }}
                             </div>
                         </div>
                         <div class="wizard-footer">
