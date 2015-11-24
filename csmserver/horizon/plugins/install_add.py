@@ -93,20 +93,29 @@ class InstallAddPlugin(IPlugin):
 
         cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
         output = device.send(cmd, timeout=7200)
-        if error_str not in output:
-            # FIXME: wrong pattern for re.search - generates exceptions if not found
-            op_id = re.search('Install operation (\d+) \'', output).group(1)
-            output = watch_operation(manager, device, op_id)
-            if re.search("Install operation (\d+) failed", output):
-                manager.error(output)
 
-            if hasattr(ctx, 'operation_id'):
-                if has_tar is True:
-                    ctx.operation_id = op_id
-                    manager.log("Update Install Add ID to CSMx")
-                else:
-                    ctx.operation_id = None
+        result = re.search('Install operation (\d+) \'', output)
+        if result:
+            op_id = result.group(1)
+            output = watch_operation(manager, device, op_id)
+            if error_str not in output:
+                if re.search("Install operation (\d+) failed", output):
+                    manager.error(output)
+
+                if hasattr(ctx, 'operation_id'):
+                    if has_tar is True:
+                        ctx.operation_id = op_id
+                        manager.log("The operation {} stored".format(op_id))
+                    else:
+                        ctx.operation_id = None
+            else:
+                pattern = re.compile("^Error:    (.*)$", re.MULTILINE)
+                errors = re.findall(pattern, output)
+                for line in errors:
+                    manager.warning(line)
+
+                manager.error("Operation {} failed".format(op_id))
         else:
-            manager.error("Command :{} \n{}".format(cmd, output))
+                manager.error("Operation ID not found")
 
         get_package(device)
