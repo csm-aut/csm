@@ -28,7 +28,7 @@
 import re
 
 from plugin import IPlugin
-from ..plugin_lib import get_package, clear_cfg_inconsistency, watch_install
+from ..plugin_lib import clear_cfg_inconsistency, install_activate_deactivate
 import horizon.package_lib as package_lib
 
 class InstallActivatePlugin(IPlugin):
@@ -61,8 +61,7 @@ class InstallActivatePlugin(IPlugin):
         active_pkgs = package_lib.OnboxPackage(installed_act, "Active Packages")
 
         # Skip operation if to be activated packages are already active
-        package_to_activate = package_lib.extra_pkgs(
-            active_pkgs.pkg_list, added_pkgs.pkg_list)
+        package_to_activate = package_lib.extra_pkgs(active_pkgs.pkg_list, added_pkgs.pkg_list)
 
         if package_to_activate:
             # Test If there is anything added but not inactive
@@ -87,13 +86,11 @@ class InstallActivatePlugin(IPlugin):
         clear_cfg_inconsistency(manager, device)
 
         operation_id = None
-        op_success = "The install operation will continue asynchronously"
         csm_ctx = device.get_property('ctx')
         if csm_ctx:
             if hasattr(csm_ctx, 'operation_id'):
                 operation_id = csm_ctx.operation_id
 
-        # FIXME: To complex logic
         if operation_id is None or operation_id == -1:
             tobe_activated = InstallActivatePlugin._get_tobe_activated_pkg_list(manager, device)
             if not tobe_activated:
@@ -106,21 +103,5 @@ class InstallActivatePlugin(IPlugin):
             cmd = 'admin install activate {} prompt-level none async'.format(tobe_activated)
 
         manager.log("Activate Package(s) Pending")
-        output = device.send(cmd, timeout=7200)
-        if op_success in output:
-            result = re.search('Install operation (\d+) \'', output)
-            if result:
-                op_id = result.group(1)
-                manager.log("Waiting to finish operation: {}".format(op_id))
-                success = watch_install(manager, device, op_id, cmd)
-                if not success:
-                    manager.error("Reload or boot failure")
-                get_package(device)
-                return True
-            else:
-                manager.error("Operation ID not found")
-        else:
-            manager.error("Operation failed")
-
-
-
+        install_activate_deactivate(manager, device, cmd)
+        manager.log("Activate Package(s) Done")

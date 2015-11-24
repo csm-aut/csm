@@ -59,7 +59,7 @@ def watch_operation(manager, device, op_id=0):
 
         while not finish:
             try:
-                device.send("", wait_for_string=success, timeout=15)
+                device.send("", wait_for_string=success, timeout=20)
                 finish = True
             except condoor.CommandTimeoutError:
                 pass
@@ -140,6 +140,7 @@ def wait_for_reload(manager, device):
         if xr_run in output:
             inventory = package_lib.parse_xr_show_platform(output)
             if package_lib.validate_xr_node_state(inventory, device):
+                manager.log("All nodes in desired state")
                 return True
 
     # Some nodes did not come to run state
@@ -157,7 +158,7 @@ def watch_install(manager, device, oper_id, install_cmd):
     success_oper = r'Install operation (\d+) completed successfully'
     completed_with_failure = 'Install operation (\d+) completed with failure'
     failed_oper = r'Install operation (\d+) failed'
-    failed_incr=r'incremental.*parallel'
+    failed_incr= r'incremental.*parallel'
     # restart = r'Parallel Process Restart'
     install_method = r'Install [M|m]ethod: (.*)'
     op_success = "The install operation will continue asynchronously"
@@ -165,7 +166,6 @@ def watch_install(manager, device, oper_id, install_cmd):
     watch_operation(manager, device, oper_id)
 
     output = device.send("admin show install log {} detail".format(oper_id))
-    # manager.log(output)
     if re.search(failed_oper, output):
         if re.search(failed_incr, output):
             manager.log("Retrying with parallel reload option")
@@ -178,11 +178,12 @@ def watch_install(manager, device, oper_id, install_cmd):
                     watch_operation(manager, device, op_id)
                     output = device.send("admin show install log {} detail".format(oper_id))
                 else:
+                    manager.log_install_errors(output)
                     manager.error("Operation ID not found")
         else:
+            manager.log_install_errors(output)
             manager.error(output)
 
-    #manager.log(output)
     result = re.search(install_method, output)
     if result:
         restart_type = result.group(1).strip()
@@ -196,7 +197,31 @@ def watch_install(manager, device, oper_id, install_cmd):
         elif restart_type == "Parallel Process Restart":
             return True
 
+    manager.log_install_errors(output)
     return False
+
+
+def install_activate_deactivate(manager, device, cmd):
+    op_success = "The install operation will continue asynchronously"
+    output = device.send(cmd, timeout=7200)
+    result = re.search('Install operation (\d+) \'', output)
+    if result:
+        op_id = result.group(1)
+    else:
+        manager.log_install_errors(output)
+        manager.error("Operation failed")
+
+    if op_success in output:
+        manager.log("Waiting for operation {} to finish".format(op_id))
+        success = watch_install(manager, device, op_id, cmd)
+        if not success:
+            manager.error("Reload or boot failure")
+        get_package(device)
+        manager.log("Operation {} finished successfully".format(op_id))
+        return
+    else:
+        manager.log_install_errors(output)
+        manager.error("Operation {} failed".format(op_id))
 
 
 def clear_cfg_inconsistency(manager, device):

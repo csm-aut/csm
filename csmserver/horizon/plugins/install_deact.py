@@ -29,7 +29,7 @@
 import re
 
 from plugin import IPlugin
-from ..plugin_lib import get_package, clear_cfg_inconsistency, watch_install
+from ..plugin_lib import clear_cfg_inconsistency, install_activate_deactivate
 import horizon.package_lib as package_lib
 
 
@@ -87,20 +87,16 @@ class InstallDeactivatePlugin(IPlugin):
         clear_cfg_inconsistency(manager, device)
 
         operation_id = None
-        op_success = "The install operation will continue asynchronously"
         csm_ctx = device.get_property('ctx')
         if csm_ctx:
             if hasattr(csm_ctx, 'operation_id'):
                 operation_id = csm_ctx.operation_id
 
-
-        # FIXME: To complex logic
         if operation_id is None or operation_id == -1:
             tobe_deactivated = InstallDeactivatePlugin._get_tobe_deactivated_pkg_list(manager, device)
             if not tobe_deactivated:
                 manager.log("The packages are already inactive, nothing to be deactivated.")
                 return True
-
 
         if operation_id is not None and operation_id != -1:
             cmd = 'admin install deactivate id {} prompt-level none async'.format(operation_id)
@@ -108,17 +104,5 @@ class InstallDeactivatePlugin(IPlugin):
             cmd = 'admin install deactivate {} prompt-level none async'.format(tobe_deactivated)
 
         manager.log("Deactivate Package(s) Pending")
-        output = device.send(cmd, timeout=7200)
-        if op_success in output:
-            result = re.search('Install operation (\d+) \'', output)
-            if result:
-                op_id = result.group(1)
-                manager.log("Waiting to finish operation: {}".format(op_id))
-                watch_install(manager, device, op_id, cmd)
-                get_package(device)
-                return True
-            else:
-                manager.error("Operation ID not found")
-        else:
-            manager.error("Operation failed")
-
+        install_activate_deactivate(manager, device, cmd)
+        manager.log("Deactivate Package(s) Done")
