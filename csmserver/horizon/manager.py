@@ -145,7 +145,6 @@ class PluginsManager(object):
                 plugin.__class__.start(self, device)
                 self.current_plugin = None
                 self.log("Finished: {}".format(plugin.description))
-                
 
         except PluginError as e:
             self.csm_ctx.success = False
