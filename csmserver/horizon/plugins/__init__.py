@@ -54,6 +54,7 @@ plugin_classes = [
     InstallActivatePlugin,
     ErrorCorePlugin,
     InstallCommitPlugin,
+    CfgFiledStartupCheckPlugin,
 ]
 
 plugin_list = []
