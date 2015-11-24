@@ -2401,7 +2401,7 @@ def api_get_distinct_host_roles(platform, software_versions, region_ids):
     roles_list = [roles[0] for roles in host_roles if not is_empty(roles[0])]
 
     # Collapses the comma delimited strings to list
-    roles_list = ",".join(roles_list).split(',')
+    roles_list = [] if is_empty(roles_list) else ",".join(roles_list).split(',')
 
     # Make the list unique, then sort it
     roles_list = sorted(list(set(roles_list)))
