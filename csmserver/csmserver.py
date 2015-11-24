@@ -1324,7 +1324,7 @@ def get_files_from_csm_repository():
             statinfo = os.stat(get_repository_directory() + filename)
             row = {}
             row['image_name'] = filename
-            row['image_size'] = '{} bytes'.format(statinfo.st_size)
+            row['image_size'] = str(statinfo.st_size)
             row['downloaded_time'] = datetime.datetime.fromtimestamp(statinfo.st_mtime).strftime("%m/%d/%Y %I:%M %p")
             rows.append(row)
     
