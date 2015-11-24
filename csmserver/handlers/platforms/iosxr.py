@@ -62,9 +62,15 @@ class BaseInventoryHandler(BaseHandler):
 
         try:
             conn.connect()
-            ctx.inactive_cli = conn.send('sh install inactive summary')
-            ctx.active_cli = conn.send('sh install active summary')
-            ctx.committed_cli = conn.send('sh install committed summary')
+            if conn.os_type == "XR":
+                ctx.inactive_cli = conn.send('sh install inactive summary')
+                ctx.active_cli = conn.send('sh install active summary')
+                ctx.committed_cli = conn.send('sh install committed summary')
+            elif conn.os_type == "eXR":
+                ctx.inactive_cli = conn.send('sh install inactive')
+                ctx.active_cli = conn.send('sh install active')
+                ctx.committed_cli = conn.send('sh install committed')
+
             self.get_software(
                 ctx.host,
                 install_inactive_cli=ctx.inactive_cli,
