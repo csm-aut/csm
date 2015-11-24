@@ -93,29 +93,24 @@ class InstallAddPlugin(IPlugin):
 
         cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
         output = device.send(cmd, timeout=7200)
-
         result = re.search('Install operation (\d+) \'', output)
         if result:
             op_id = result.group(1)
-            output = watch_operation(manager, device, op_id)
-            if error_str not in output:
-                if re.search("Install operation (\d+) failed", output):
-                    manager.error(output)
-
-                if hasattr(ctx, 'operation_id'):
-                    if has_tar is True:
-                        ctx.operation_id = op_id
-                        manager.log("The operation {} stored".format(op_id))
-                    else:
-                        ctx.operation_id = None
-            else:
-                pattern = re.compile("^Error:    (.*)$", re.MULTILINE)
-                errors = re.findall(pattern, output)
-                for line in errors:
-                    manager.warning(line)
-
-                manager.error("Operation {} failed".format(op_id))
+            if hasattr(ctx, 'operation_id'):
+                if has_tar is True:
+                    ctx.operation_id = op_id
+                    manager.log("The operation {} stored".format(op_id))
         else:
-                manager.error("Operation ID not found")
+            manager.log_install_errors(output)
+            manager.error("Operation failed.")
 
+        if error_str not in output:
+            output = watch_operation(manager, device, op_id)
+            if re.search("Install operation (\d+) failed", output):
+                manager.error(output)
+        else:
+            manager.log_install_errors(output)
+            manager.error("Operation {} failed".format(op_id))
+
+        manager.log("Operation {} succeeded.".format(op_id))
         get_package(device)

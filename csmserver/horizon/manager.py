@@ -29,6 +29,7 @@
 
 import logging
 import os
+import re
 import condoor
 
 import plugins
@@ -47,6 +48,8 @@ class PluginError(Exception):
 
 
 class PluginsManager(object):
+    error_pattern = re.compile("^Error:    (.*)$", re.MULTILINE)
+
     def __init__(self, csm_ctx):
         self.csm_ctx = csm_ctx
         self.logger = logging.getLogger("{}.plugin_manager".format(csm_ctx.host.hostname))
@@ -176,4 +179,7 @@ class PluginsManager(object):
     def warning(self, message, log_message):
         self.logger.warning(log_message)
 
-
+    def log_install_errors(self, output):
+        errors = re.findall(PluginsManager.error_pattern, output)
+        for line in errors:
+            self.warning(line)
