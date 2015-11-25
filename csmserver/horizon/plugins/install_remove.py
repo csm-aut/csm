@@ -28,7 +28,7 @@
 import re
 
 from plugin import IPlugin
-from ..plugin_lib import get_package, watch_operation
+from ..plugin_lib import get_package, install_add_remove
 import horizon.package_lib as package_lib
 
 
@@ -61,27 +61,14 @@ class InstallRemovePlugin(IPlugin):
 
         packages_to_remove = package_lib.package_intersection(deact_pkgs.pkg_list, inactive_pkgs.pkg_list)
         if not packages_to_remove:
-            manager.log("Packages already removed. Nothing to be removed")
+            manager.warning("Packages already removed. Nothing to be removed")
             get_package(device)
             return True
 
         to_remove = " ".join(packages_to_remove)
 
-        op_success = "The install operation will continue asynchronously"
-
         cmd = 'admin install remove {} prompt-level none async'.format(to_remove)
 
         manager.log("Remove Package(s) Pending")
-        output = device.send(cmd, timeout=7200)
-        if op_success in output:
-            result = re.search('Install operation (\d+) \'', output)
-            if result:
-                op_id = result.group(1)
-                manager.log("Waiting to finish operation: {}".format(op_id))
-                watch_operation(manager, device, op_id)
-                get_package(device)
-                return True
-            else:
-                manager.error("Operation ID not found")
-        else:
-            manager.error("Operation failed")
+        install_add_remove(manager, device, cmd)
+        manager.log("Package(s) Removed Successfully")

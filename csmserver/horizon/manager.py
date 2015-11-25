@@ -48,7 +48,7 @@ class PluginError(Exception):
 
 
 class PluginsManager(object):
-    error_pattern = re.compile("^Error:    (.*)$", re.MULTILINE)
+    error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
     def __init__(self, csm_ctx):
         self.csm_ctx = csm_ctx
@@ -138,13 +138,13 @@ class PluginsManager(object):
             return False
         self.log("Device Connected Successfully")
 
-        list_of_plugins = ",".join(plugin.NAME for plugin in plugins.get_plugins_of_phase(phase))
+        list_of_plugins = ", ".join(plugin.description for plugin in plugins.get_plugins_of_phase(phase))
         self.log("Plugins to be executed: {}".format(list_of_plugins))
 
         try:
             for plugin in plugins.get_plugins_of_phase(phase):
                 self.log("Launching: {}".format(plugin.description))
-                self.current_plugin = plugin.NAME
+                self.current_plugin = plugin.description
                 plugin.__class__.start(self, device)
                 self.current_plugin = None
                 self.log("Finished: {}".format(plugin.description))

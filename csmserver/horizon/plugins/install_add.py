@@ -31,7 +31,7 @@
 import re
 
 from plugin import IPlugin
-from ..plugin_lib import watch_operation, get_package
+from ..plugin_lib import install_add_remove
 
 
 class InstallAddPlugin(IPlugin):
@@ -53,7 +53,6 @@ class InstallAddPlugin(IPlugin):
         """
         It performs add operation of the pies listed in given file
         """
-        error_str = "Error:  "
         ctx = device.get_property("ctx")
 
         server_repository_url = None
@@ -92,25 +91,8 @@ class InstallAddPlugin(IPlugin):
         s_packages = " ".join(v_packages)
 
         cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
-        output = device.send(cmd, timeout=7200)
-        result = re.search('Install operation (\d+) \'', output)
-        if result:
-            op_id = result.group(1)
-            if hasattr(ctx, 'operation_id'):
-                if has_tar is True:
-                    ctx.operation_id = op_id
-                    manager.log("The operation {} stored".format(op_id))
-        else:
-            manager.log_install_errors(output)
-            manager.error("Operation failed.")
 
-        if error_str not in output:
-            output = watch_operation(manager, device, op_id)
-            if re.search("Install operation (\d+) failed", output):
-                manager.error(output)
-        else:
-            manager.log_install_errors(output)
-            manager.error("Operation {} failed".format(op_id))
+        manager.log("Add Package(s) Pending")
+        install_add_remove(manager, device, cmd, has_tar=has_tar)
+        manager.log("Package(s) Removed Successfully")
 
-        manager.log("Operation {} succeeded.".format(op_id))
-        get_package(device)

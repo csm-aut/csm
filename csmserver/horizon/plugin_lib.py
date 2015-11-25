@@ -47,7 +47,7 @@ def watch_operation(manager, device, op_id=0):
 
         cmd_show_install_request = "admin show install request"
 
-        manager.log("Waiting for install request to complete")
+        manager.log("Watching the operation {} to complete".format(op_id))
         ctx = device.get_property("ctx")
         last_status = None
 
@@ -56,14 +56,15 @@ def watch_operation(manager, device, op_id=0):
         success = "Install operation {} completed successfully".format(op_id)
 
         finish = False
-
         while not finish:
             try:
+                # this is to catch the successful operation as soon as possible
                 device.send("", wait_for_string=success, timeout=20)
                 finish = True
             except condoor.CommandTimeoutError:
                 pass
 
+            message = ""
             output = device.send(cmd_show_install_request)
             if op_id in output:
                 # FIXME reconsider the logic here
@@ -203,6 +204,7 @@ def watch_install(manager, device, oper_id, install_cmd):
 
 def install_activate_deactivate(manager, device, cmd):
     op_success = "The install operation will continue asynchronously"
+    manager.log("Waiting the install operation to continue asynchronously")
     output = device.send(cmd, timeout=7200)
     result = re.search('Install operation (\d+) \'', output)
     if result:
@@ -212,7 +214,6 @@ def install_activate_deactivate(manager, device, cmd):
         manager.error("Operation failed")
 
     if op_success in output:
-        manager.log("Waiting for operation {} to finish".format(op_id))
         success = watch_install(manager, device, op_id, cmd)
         if not success:
             manager.error("Reload or boot failure")
@@ -223,6 +224,40 @@ def install_activate_deactivate(manager, device, cmd):
         manager.log_install_errors(output)
         manager.error("Operation {} failed".format(op_id))
 
+
+def install_add_remove(manager, device, cmd, has_tar=False):
+    ctx = device.get_property("ctx")
+    manager.log("Waiting the install operation to continue asynchronously")
+    output = device.send(cmd, timeout=7200)
+    result = re.search('Install operation (\d+) \'', output)
+    if result:
+        op_id = result.group(1)
+        # this needs to be clarified
+        if hasattr(ctx, 'operation_id'):
+            if has_tar is True:
+                ctx.operation_id = op_id
+                manager.log("The operation {} stored".format(op_id))
+    else:
+        manager.log_install_errors(output)
+        manager.error("Operation failed")
+        return  # for sake of clarity
+
+    op_success = "The install operation will continue asynchronously"
+    failed_oper = r'Install operation {} failed'.format(op_id)
+    if op_success in output:
+        watch_operation(manager, device, op_id)
+        output = device.send("admin show install log {} detail".format(op_id))
+        if re.search(failed_oper, output):
+            manager.log_install_errors(output)
+            manager.error("Operation {} failed".format(op_id))
+            return  # for same of clarity
+
+        get_package(device)
+        manager.log("Operation {} finished successfully".format(op_id))
+        return  # for sake of clarity
+    else:
+        manager.log_install_errors(output)
+        manager.error("Operation {} failed".format(op_id))
 
 def clear_cfg_inconsistency(manager, device):
     """
