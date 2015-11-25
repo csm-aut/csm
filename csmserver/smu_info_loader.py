@@ -99,6 +99,7 @@ class SMUInfoLoader(object):
             self.get_smu_info_from_db(platform, release)
     
     def get_smu_info_from_db(self, platform, release):
+        # self.smu_meta is set to None if the requested platform and release are not in the database.
         self.smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
         if not self.smu_meta is None:
             self.smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU)
@@ -136,7 +137,9 @@ class SMUInfoLoader(object):
 
         except IntegrityError:
             db_session.rollback()
-    
+        except Exception:
+            db_session.rollback()
+            logger.exception('get_smu_info_from_cco hit exception')
         
     def get_smus_by_package_type(self, smu_list, package_type):
         result_dict = {}
@@ -156,32 +159,36 @@ class SMUInfoLoader(object):
 #        return result_dict
 
     @property
+    def is_valid(self):
+        return True if self.smu_meta is not None else False
+
+    @property
     def creation_date(self):
-        return self.smu_meta.created_time
+        return None if self.smu_meta is None else self.smu_meta.created_time
     
     @property
     def smu_software_type_id(self):
-        return self.smu_meta.smu_software_type_id
+        return None if self.smu_meta is None else self.smu_meta.smu_software_type_id
     
     @property
     def sp_software_type_id(self):
-        return self.smu_meta.sp_software_type_id
+        return None if self.smu_meta is None else self.smu_meta.sp_software_type_id
 
     @property
     def tar_software_type_id(self):
-        return self.smu_meta.tar_software_type_id
+        return None if self.smu_meta is None else self.smu_meta.tar_software_type_id
     
     @property
     def pid(self):
-        return self.smu_meta.pid
+        return None if self.smu_meta is None else self.smu_meta.pid
     
     @property
     def file_suffix(self):
-        return self.smu_meta.file_suffix
+        return None if self.smu_meta is None else self.smu_meta.file_suffix
     
     @property
     def mdf_id(self):
-        return self.smu_meta.mdf_id
+        return None if self.smu_meta is None else self.smu_meta.mdf_id
         
     def get_int_value(self, s):
         try:

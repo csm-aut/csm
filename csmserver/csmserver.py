@@ -1775,6 +1775,7 @@ def api_create_download_jobs():
         except:
             import traceback
             print traceback.format_exc()
+
         return jsonify({'status':'Failed'})
     finally:
         return jsonify({'status':'OK'})
@@ -2284,11 +2285,12 @@ def api_get_install_history(hostname):
             order_by(InstallJobHistory.status_time.desc())
         
         for install_job in install_jobs:
-            row = {}
-            row['packages'] = install_job.packages
-            row['status_time'] = install_job.status_time
-            row['created_by'] = install_job.created_by
-            rows.append(row)
+            if not is_empty(install_job.packages):
+                row = {}
+                row['packages'] = install_job.packages
+                row['status_time'] = install_job.status_time
+                row['created_by'] = install_job.created_by
+                rows.append(row)
     
     return jsonify(**{'data':rows})
 
@@ -3182,15 +3184,16 @@ def api_get_reload_list():
         platform, release = get_platform_and_release(package_list)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
-            for package_name in package_list:
-                if 'mini' in package_name:
-                    rows.append({ 'entry' : package_name, 'description':''})
-                else:
-                    # Strip the suffix
-                    smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
-                    if smu_info is not None:
-                        if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
-                            rows.append({ 'entry' : package_name, 'description': smu_info.description})
+            if smu_loader.is_valid:
+                for package_name in package_list:
+                    if 'mini' in package_name:
+                        rows.append({ 'entry' : package_name, 'description':''})
+                    else:
+                        # Strip the suffix
+                        smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
+                        if smu_info is not None:
+                            if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
+                                rows.append({ 'entry' : package_name, 'description': smu_info.description})
  
     
     return jsonify( **{'data':rows} )
