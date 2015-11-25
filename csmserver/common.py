@@ -27,7 +27,7 @@ from database import DBSession
 from filters import get_datetime_string
 from filters import time_difference_UTC
 
-from smu_utils import SP_INDICATOR
+from smu_utils import SP_INDICATOR, TAR_INDICATOR
 from utils import is_empty, get_datetime
 
 def fill_servers(choices, servers, include_local=True):
@@ -314,6 +314,8 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
                 # multiple pie file. Thus, we check if it has a "sp" substring.
                 if SP_INDICATOR in cco_filename:
                     software_type_id = smu_meta.sp_software_type_id
+                elif TAR_INDICATOR in cco_filename:
+                    software_type_id = smu_meta.tar_software_type_id
                 else:
                     software_type_id = smu_meta.smu_software_type_id
 

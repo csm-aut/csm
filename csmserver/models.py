@@ -593,19 +593,20 @@ class SMUMeta(Base):
     created_time = Column(String(30)) # Use string instead of timestamp
     smu_software_type_id = Column(String(20))
     sp_software_type_id = Column(String(20))
+    tar_software_type_id = Column(String(20))
     file_suffix = Column(String(10))
     pid = Column(String(200))
     mdf_id = Column(String(200))
     retrieval_time = Column(DateTime)
-    
+
     smu_info = relationship("SMUInfo",
         backref="smu_meta",
         cascade="all, delete, delete-orphan")
-    
+
 class SMUInfo(Base):
     __tablename__ = 'smu_info'
 
-    id = Column(String(15), primary_key=True)
+    id = Column(String(100), primary_key=True)
     name = Column(String(50))
     status = Column(String(20))
     type = Column(String(20)) # Recommended, Optional, PSIRT
@@ -649,7 +650,19 @@ class SystemVersion(Base):
     @classmethod
     def get(cls, db_session):
         return db_session.query(SystemVersion).first()
-    
+
+class DeviceUDI(Base):
+    __tablename__ = 'device_udi'
+    id = Column(Integer, primary_key=True)
+    platform = Column(String(50))
+    pid = Column(String(50))
+    version = Column(String(50))
+    serial_number = Column(String(50))
+
+    @classmethod
+    def get(cls, db_session):
+        return db_session.query(DeviceUDI).first()
+
 class SystemOption(Base):
     __tablename__ = 'system_option'
 

@@ -30,7 +30,9 @@ sql_statements = [
     'alter table system_option add cco_lookup_time DATETIME',
     'alter table smu_meta drop column downloaded_time',
     'alter table server add vrf VARCHAR(100)',
-    'alter table smu_meta add retrieval_time DATETIME'
+    'alter table smu_meta add retrieval_time DATETIME',
+    'alter table smu_meta add tar_software_type_id VARCHAR(20)',
+    'alter table smu_info modify id VARCHAR(100)'
     ]
 
 class SchemaMigrate(BaseMigrate):
@@ -43,4 +45,5 @@ class SchemaMigrate(BaseMigrate):
             try:
                 db_session.execute(sql)
             except:
-                pass 
+                import traceback
+                print(traceback.format_exc())

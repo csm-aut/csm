@@ -25,6 +25,7 @@
             spinner.show();
             refresh_smu_list_table();
             refresh_sp_list_table();
+            refresh_tar_list_table();
 
             toggle_filter_icon_color(filter_option);
         });
@@ -37,6 +38,11 @@
             refresh_sp_list_table();
         });
 
+        // The Software Tar table has problem with the table layout
+        $('#smu-list-tab a[href="#tar-tab"]').click(function() {
+            refresh_tar_list_table();
+        });
+       
         var smu_table = $("#smu-datatable").dataTable({
             "order": [
                 [2, "desc"]
@@ -188,12 +194,64 @@
             $('#badge-sp-list').html(rows);
         });
 
+        var tar_table = $("#tar-datatable").dataTable({
+            "order": [
+                [2, "desc" ]
+            ],
+            "pageLength": 100,
+            "scrollY": 450,
+            "fnCreatedRow": function( nRow, aData, iDataIndex ) {
+                var date_diff = date_diff_in_days(new Date($('td:eq(2)', nRow).text()), new Date() );
+                if (date_diff <= 7) {
+                    $('td', nRow).css('background-color', '#FFFFCC');
+                }
+            },
+            "columnDefs": [{
+                "sortable": false,
+                "targets": 0,
+                "data": 'name',
+                "render": function ( data, type, row ) {
+                    return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
+                }
+            }, {
+                "sortable": false,
+                "targets": 1,
+                "data":'ST',
+                "render": function(data, type, row) {
+                    if (data == 'True') {
+                        return '<center><img src="/static/circle_check.png" title="Found in CSM Server Repository"></center>';
+                    } else {
+                        return '<center><img src="/static/exclamation.png" title="Missing in CSM Server Repository"></center>';
+                    }
+                }
+            }, {
+                "targets": 2,
+                "data":'name'
+            }, {
+                "targets": 3,
+                "data": 'compressed_size'
+            }, {
+                "targets": 4,
+                "data": 'description'
+            }, ],
+            "ajax": {
+                "url": "{{ url_for('api_get_tar_list', platform=platform, release=release) }}"
+            }
+        }).on('draw.dt', function ( e, settings, json ) {
+            var rows = tar_table.api().ajax.json().data.length;
+            $('#badge-tar-list').html(rows);
+        });
+      
         $('#smu-check-all').click(function() {
             toggle_check_all(smu_table, this);
         });
 
         $('#sp-check-all').click(function() {
             toggle_check_all(sp_table, this);
+        });
+
+        $('#tar-check-all').click(function () {
+          toggle_check_all(tar_table, this);
         });
 
         function toggle_check_all(data_table, this_instance) {
@@ -227,6 +285,11 @@
         function refresh_sp_list_table() {
             sp_table.api().ajax.url("{{ url_for('api_get_sp_list', platform=platform, release=release) }}" +
                 "?filter=" + filter_option).load();
+        }
+
+        function refresh_tar_list_table() {
+          tar_table.api().ajax.url("{{ url_for('api_get_tar_list', platform=platform, release=release) }}" +
+            "?filter=" + filter_option).load();
         }
 
         smu_table.on("click", ".show-ddts-details", function() {
@@ -264,14 +327,17 @@
             }
             // Re-initialize the package list
             software_packages = "";
+            var all_are_tars = true;
 
             $('.check').each(function(index) {
                 if (this.checked) {
                     software_packages += $(this).val() + '\n';
+                    if ($(this).val().indexOf("iosxr") < 0) {
+                        all_are_tars = false;
+                    }
                 }
             });
-
-            if (software_packages.length > 0) {
+            if (!all_are_tars && software_packages.length > 0){
                 $('#select-server-dialog').modal({
                     show: true,
                     backdrop: 'static'
@@ -281,8 +347,25 @@
                 var preferred_server_directory = $.cookie('server_directory') == null ? "" : $.cookie('server_directory');
 
                 retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), preferred_server_directory, null)
-            } else {
-                bootbox.alert("No files was selected.");
+            }
+            else if (software_packages.length > 0) {
+                var validate_object = {
+                    form: null,
+                    hostname: null,
+                    server_id: -1,
+                    server_directory: null,
+                    software_packages: software_packages,
+                    spinner: browse_spinner,
+                    install_actions: null,
+                    check_missing_file_on_server: false,
+                    callback: on_finish_validate,
+                    pending_downloads: null,
+                    all_are_tars: true
+                };
+                on_validate_prerequisites_and_files_on_server(validate_object);
+            }
+            else {
+                bootbox.alert("No file was selected.");
             }
         });
 
@@ -336,7 +419,8 @@
                             check_missing_file_on_server: server_id > -1,
                             callback: on_finish_validate,
                             pending_downloads: null,
-                            cco_lookup_enabled: cco_lookup_enabled
+                            cco_lookup_enabled: cco_lookup_enabled,
+                            all_are_tars: false
                         };
 
                         on_validate_prerequisites_and_files_on_server(validate_object);
@@ -364,7 +448,10 @@
                         bootbox.alert("Unable to create download jobs.");
                     } else {
                         var download_dashboard_url = "{{ url_for('download_dashboard') }}";
-                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view download status.");
+                        var create_tar_url = "{{ url_for('tools.create_tar_file') }}";
+                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>" +
+                            "NOTE: Software Tar files will not be automatically unpacked and uploaded to the server repository like SMUs or Service Packs. Once the Software Tar file is downloaded, go to Tools -> Create Tar File and follow the wizard" +
+                            ". The wizard will allow you to customize a tar file from the contents of previously downloaded Software Tar files and upload it to a server repository.");
                     }
                     validate_object.spinner.hide();
                 },
@@ -549,6 +636,12 @@
                     <span id="badge-sp-list" class="badge alert-success">0</span>
                     </a>
                 </li>
+                <li>
+                    <a data-toggle="tab"  href="#tar-tab">
+                    Software Tar &nbsp;
+                    <span id="badge-tar-list" class="badge alert-success">0</span>
+                    </a>
+                </li>
             </ul>
             <div class="tab-content" style="margin-top:20px;">
                 <div id="smu-tab" class="tab-pane fade in active">
@@ -588,6 +681,21 @@
                                 <th>Functional Areas</th>
                                 <th>Status</th>
                                 <th>Package Bundles</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div id="tar-tab" class="tab-pane">
+                    <table cellspacing="0" class="display table" id="tar-datatable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <center><input type='checkbox' id='tar-check-all'></center>
+                                </th>
+                                <th>Status</th>
+                                <th>Name</th>
+                                <th>Compressed Size</th>
+                                <th>Description</th>
                             </tr>
                         </thead>
                     </table>

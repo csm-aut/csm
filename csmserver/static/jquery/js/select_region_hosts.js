@@ -30,7 +30,6 @@ $(function() {
 
                 var roles = []
                 var platform_software = []
-                var available_hosts = []
                 $.each(data, function(index, element) {
                     for (i = 0; i < element.length; i++) {
                         available_hosts.push({
@@ -58,7 +57,6 @@ $(function() {
                         }
                     }
                 });
-
                 host_selector.initialize(available_hosts);
 
                 // Populate the role selector with newly selected region.
