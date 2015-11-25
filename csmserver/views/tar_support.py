@@ -24,6 +24,7 @@ import errno
 import stat
 import datetime
 import tarfile
+import re
 
 tar_support = Blueprint('tools', __name__, url_prefix='/tools')
 
@@ -47,8 +48,8 @@ def api_create_tar_file():
     sps = request.args.getlist('sps[]')
     new_tar_name = request.args.get('new_tar_name')
 
-    if not new_tar_name:
-        return jsonify({'status': 'New File Name must be specified.'})
+    if not new_tar_name or re.search(r'[^A-Za-z0-9_\-\\]',new_tar_name):
+        return jsonify({'status': 'Invalid file name.'})
     else:
         date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
 
