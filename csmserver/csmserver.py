@@ -1423,7 +1423,7 @@ def get_download_job_json_dict(db_session, download_jobs):
             
             server = get_server_by_id(db_session, download_job.server_id)
             if download_job.server_id == -1:
-                row['server_repository'] = 'N/A'
+                row['server_repository'] = 'Not Applicable'
             elif server is not None:
                 row['server_repository'] = server.hostname
                 if not is_empty(download_job.server_directory):
