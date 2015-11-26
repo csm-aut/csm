@@ -139,15 +139,15 @@ class PluginsManager(object):
         self.log("Device Connected Successfully")
 
         list_of_plugins = ", ".join(plugin.description for plugin in plugins.get_plugins_of_phase(phase))
-        self.log("Plugins to be executed: {}".format(list_of_plugins))
+        self.log("Plugins to be launched: {}".format(list_of_plugins))
 
         try:
             for plugin in plugins.get_plugins_of_phase(phase):
-                self.log("Launching: {}".format(plugin.description))
+                self.log("Launching {} Plugin".format(plugin.description))
                 self.current_plugin = plugin.description
                 plugin.__class__.start(self, device)
                 self.current_plugin = None
-                self.log("Finished: {}".format(plugin.description))
+                self.log("Finished {} Plugin".format(plugin.description))
 
         except PluginError as e:
             self.csm_ctx.success = False

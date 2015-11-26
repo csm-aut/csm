@@ -204,7 +204,7 @@ def watch_install(manager, device, oper_id, install_cmd):
 
 def install_activate_deactivate(manager, device, cmd):
     op_success = "The install operation will continue asynchronously"
-    manager.log("Waiting the install operation to continue asynchronously")
+    manager.log("Waiting the operation to continue asynchronously")
     output = device.send(cmd, timeout=7200)
     result = re.search('Install operation (\d+) \'', output)
     if result:
@@ -227,7 +227,7 @@ def install_activate_deactivate(manager, device, cmd):
 
 def install_add_remove(manager, device, cmd, has_tar=False):
     ctx = device.get_property("ctx")
-    manager.log("Waiting the install operation to continue asynchronously")
+    manager.log("Waiting the operation to continue asynchronously")
     output = device.send(cmd, timeout=7200)
     result = re.search('Install operation (\d+) \'', output)
     if result:
