@@ -45,5 +45,6 @@ class SchemaMigrate(BaseMigrate):
             try:
                 db_session.execute(sql)
             except:
-                import traceback
-                print(traceback.format_exc())
+                # import traceback
+                # print(traceback.format_exc())
+                pass
