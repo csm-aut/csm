@@ -31,6 +31,7 @@ from smu_advisor import get_dict_from_list
 
 SMU_INDICATOR = 'CSC'
 SP_INDICATOR = '.sp'
+TAR_INDICATOR = 'iosxr'
     
 """
 Returns the package type.  Available package types are defined in PackageType.
@@ -44,6 +45,8 @@ def get_package_type(name):
         return PackageType.SMU
     elif name.find(SP_INDICATOR) != -1:
         return PackageType.SERVICE_PACK
+    elif name.find(TAR_INDICATOR) != -1:
+        return PackageType.SOFTWARE
     else:
         return PackageType.PACKAGE
     

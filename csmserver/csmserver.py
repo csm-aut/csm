@@ -64,6 +64,8 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
+from models import DeviceUDI
+from models import SystemVersion
 from models import Package
 from models import Preferences
 from models import SMUMeta
@@ -137,10 +139,13 @@ from utils import remove_extra_spaces
 from server_helper import get_server_impl
 from wtforms.validators import Required
 
+from smu_utils import SMU_INDICATOR 
 from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import get_platform_and_release
+from smu_utils import SP_INDICATOR
+from smu_utils import SMU_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
 from bsd_service import BSDServiceHandler
@@ -150,6 +155,7 @@ from restful import restful_api
 
 from views.exr_migrate import exr_migrate
 from views.conformance import conformance
+from views.tar_support import tar_support
 from views.host_import import host_import
 
 import os
@@ -169,6 +175,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 app.register_blueprint(restful_api)
 app.register_blueprint(exr_migrate)
 app.register_blueprint(conformance)
+app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
 
 #hook up the filters
@@ -1416,7 +1423,9 @@ def get_download_job_json_dict(db_session, download_jobs):
             row['scheduled_time'] = download_job.scheduled_time
             
             server = get_server_by_id(db_session, download_job.server_id)
-            if server is not None:
+            if download_job.server_id == -1:
+                row['server_repository'] = 'N/A'
+            elif server is not None:
                 row['server_repository'] = server.hostname
                 if not is_empty(download_job.server_directory):
                     row['server_repository'] = row['server_repository'] + '<br><span style="color: Gray;"><b>Sub-directory:</b></span> ' + download_job.server_directory
@@ -1752,17 +1761,22 @@ def api_create_download_jobs():
     try:
         server_id = request.args.get("server_id")
         server_directory = request.args.get("server_directory")
-        smu_list = request.args.get("smu_list").split() 
-        pending_downloads = request.args.get("pending_downloads").split() 
+        smu_list = request.args.get("smu_list").split()
+        pending_downloads = request.args.get("pending_downloads").split()
     
         # Derives the platform and release using the first SMU name.
         if len(smu_list) > 0 and len(pending_downloads) > 0:
             platform = get_platform(smu_list[0])
             release = get_release(smu_list[0])
-          
+
             create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
     except:
-        logger.exception('api_create_download_jobs hit exception')
+        try:
+            logger.exception('api_create_download_jobs hit exception')
+        except:
+            import traceback
+            print traceback.format_exc()
+
         return jsonify({'status':'Failed'})
     finally:
         return jsonify({'status':'OK'})
@@ -1877,6 +1891,7 @@ def admin_console():
     
     smtp_server = get_smtp_server(db_session)
     system_option = SystemOption.get(db_session)
+    device_udi = DeviceUDI.get(db_session)
     
     if request.method == 'POST' and \
         smtp_form.validate() and \
@@ -2271,11 +2286,12 @@ def api_get_install_history(hostname):
             order_by(InstallJobHistory.status_time.desc())
         
         for install_job in install_jobs:
-            row = {}
-            row['packages'] = install_job.packages
-            row['status_time'] = install_job.status_time
-            row['created_by'] = install_job.created_by
-            rows.append(row)
+            if not is_empty(install_job.packages):
+                row = {}
+                row['packages'] = install_job.packages
+                row['status_time'] = install_job.status_time
+                row['created_by'] = install_job.created_by
+                rows.append(row)
     
     return jsonify(**{'data':rows})
 
@@ -2731,7 +2747,7 @@ def shutdown_session(exception=None):
 if not app.debug:
     app.logger.addHandler(logging.StreamHandler()) # Log to stderr.
     app.logger.setLevel(logging.INFO)
- 
+
 
 def event_stream():
     return 'data: testing\n\n'
@@ -2852,9 +2868,28 @@ def api_get_sp_list(platform, release):
 
     if request.args.get('filter') == 'Optimal':
         return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_optimal_sp_list(), smu_loader.file_suffix)
-    else:     
+    else:
         return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_sp_list(), smu_loader.file_suffix)
 
+@app.route('/api/get_tar_list/platform/<platform>/release/<release>')
+@login_required
+def api_get_tar_list(platform, release):
+    smu_loader = SMUInfoLoader(platform, release)
+    file_list = get_file_list(get_repository_directory(), '.tar')
+
+    if smu_loader.smu_meta is None:
+        return jsonify( **{'data':[]} )
+    else:
+        tars_list = smu_loader.get_tar_list()
+        rows = []
+        for tar_info in tars_list:
+            row = {}
+            row['ST'] = 'True' if tar_info.name in file_list else 'False'
+            row['name'] = tar_info.name
+            row['compressed_size'] = tar_info.compressed_size
+            row['description'] = ""
+            rows.append(row)
+    return jsonify( **{'data':rows} )
 """
 Return the SMU/SP list.  If hostname is given, compare its active packages.
 """
@@ -2891,11 +2926,39 @@ def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_su
             row['package_bundles'] = smu_info.package_bundles
             row['compressed_image_size'] = smu_info.compressed_image_size
             row['uncompressed_image_size'] = smu_info.uncompressed_image_size
-            row['installed'] = installed
+            row['is_installed'] = installed
+
+            if not is_empty(hostname) and SMU_INDICATOR in smu_info.name:
+                row['is_applicable'] = is_smu_applicable(host_packages, smu_info.package_bundles)
+            else:
+                row['is_applicable'] = True
 
             rows.append(row)
-    
+
     return jsonify( **{'data':rows} )
+
+"""
+Only SMU should go through this logic
+  The package_bundles defined must be satisfied for the SMU to be applicable.
+  However,asr9k-fpd-px can be excluded.
+"""
+def is_smu_applicable(host_packages, required_package_bundles):
+    if not is_empty(required_package_bundles):
+        package_bundles = required_package_bundles.split(',')
+        package_bundles = [p for p in package_bundles if p != 'asr9k-fpd-px']
+
+        count = 0
+        for package_bundle in package_bundles:
+            for host_package in host_packages:
+                if package_bundle in host_package:
+                    count += 1
+                    break
+
+        if count != len(package_bundles):
+            return False
+
+    return True
+
 
 @app.route('/api/get_smu_details/smu_id/<smu_id>')
 @login_required
@@ -3013,9 +3076,9 @@ Given a SMU list, return the ones that are missing in the server repository.
 @login_required
 def api_get_missing_files_on_server(server_id):
     rows = []    
-    smu_list = request.args.get('smu_list').split() 
+    smu_list = request.args.get('smu_list').split()
     server_directory = request.args.get('server_directory')
-   
+
     server_file_dict, is_reachable = get_server_file_dict(server_id, server_directory)
 
     # Identify if the SMUs are downloadable on CCO or not. 
@@ -3034,7 +3097,28 @@ def api_get_missing_files_on_server(server_id):
                     rows.append({'smu_entry':smu_name, 'description': description, 'is_downloadable':False})
     else:
         return jsonify({'status':'Failed'}) 
-    
+
+    return jsonify( **{'data':rows} )
+
+@app.route('/api/check_is_tar_downloadable')
+def check_is_tar_downloadable():
+    rows = []
+    smu_list = request.args.get('smu_list').split()
+
+    # Identify if the SMUs are downloadable on CCO or not.
+    # If they are engineering SMUs, they cannot be downloaded.
+    download_info_dict, smu_loader = get_download_info_dict(smu_list)
+
+    for smu_name, cco_filename in download_info_dict.items():
+        smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
+        description = '' if smu_info is None else smu_info.description
+        # If selected TAR on CCO
+        if cco_filename is not None:
+            rows.append({'smu_entry':smu_name, 'description': description, 'cco_filename': cco_filename, 'is_downloadable':True})
+        else:
+            rows.append({'smu_entry':smu_name, 'description': description, 'is_downloadable':False})
+
+
     return jsonify( **{'data':rows} )
 
 def is_smu_on_server_repository(server_file_dict, smu_name):
@@ -3050,6 +3134,29 @@ def api_refresh_all_smu_info():
         return jsonify({'status':'OK'})
     else:
         return jsonify({'status':'Failed'})
+
+"""
+Returns udi info for a platform
+"""
+@app.route('/api/get_udi')
+@login_required
+def api_get_udi():
+    db_session = DBSession()
+    udis = get_udi(db_session)
+
+    rows = []
+    if udis is not None:
+        for udi in udis:
+            row = {}
+            row['platform'] = udi.platform
+            row['pid'] = udi.pid
+            row['version'] = udi.version
+            row['serial_number'] = udi.serial_number
+
+            rows.append(row)
+
+    return jsonify( **{'data':rows} )
+
 
 @app.route('/api/get_cco_lookup_time')
 @login_required
@@ -3087,7 +3194,7 @@ def api_get_missing_prerequisite_list():
                 smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
                 description = '' if smu_info is None else smu_info.description
                 rows.append({'smu_entry':smu_name, 'description':description})
-    
+
     return jsonify( **{'data':rows} )
 
 """
@@ -3106,15 +3213,16 @@ def api_get_reload_list():
         platform, release = get_platform_and_release(package_list)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
-            for package_name in package_list:
-                if 'mini' in package_name:
-                    rows.append({ 'entry' : package_name, 'description':''})
-                else:
-                    # Strip the suffix
-                    smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
-                    if smu_info is not None:
-                        if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
-                            rows.append({ 'entry' : package_name, 'description': smu_info.description})
+            if smu_loader.is_valid:
+                for package_name in package_list:
+                    if 'mini' in package_name:
+                        rows.append({ 'entry' : package_name, 'description':''})
+                    else:
+                        # Strip the suffix
+                        smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
+                        if smu_info is not None:
+                            if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
+                                rows.append({ 'entry' : package_name, 'description': smu_info.description})
  
     
     return jsonify( **{'data':rows} )
