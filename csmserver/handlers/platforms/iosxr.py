@@ -22,93 +22,87 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+
 from base import BaseHandler
 from parsers.loader import get_package_parser_class 
-from utils import import_module
 
-try:
-    import condor 
-except ImportError:
-    pass
+import condoor
+
+from horizon.manager import PluginsManager
 
 import time
 
-AUT_PATH = '../aut'
+
+#import logging
+#logging.basicConfig(
+#        format='%(asctime)-15s %(levelname)8s: %(message)s',
+#        level=logging.DEBUG)
+
 
 class BaseConnectionHandler(BaseHandler):           
     def execute(self, ctx):
-        global AUT_PATH
-        
-        csm_au_module = import_module('au.csm_au', AUT_PATH)
-        if csm_au_module is not None:
-            status = csm_au_module.execute(ctx)
-            if status == 0 :
-                ctx.success = True
-        else:    
-            try:
-                conn = condor.make_connection_from_urls('host', ctx.urls)
-                conn.connect()
-                conn.disconnect()
-                ctx.success = True        
-            except:
-                pass
+
+        # would be nice to get the hostname in context
+        conn = condoor.Connection('host', ctx.host_urls, log_dir=ctx.log_directory)
+        try:
+            conn.connect()
+            ctx.success = True
+        except condoor.ConnectionError as e:
+            ctx.post_status = e.message
+
         
 class BaseInventoryHandler(BaseHandler):           
     def execute(self, ctx):
-        global AUT_PATH
-        
-        csm_au_module = import_module('au.csm_au', AUT_PATH)
-        if csm_au_module is not None:
-            status = csm_au_module.execute(ctx)
-            if status == 0 :
-                self.get_software(ctx.host,
-                    install_inactive_cli=ctx.inactive_cli, 
-                    install_active_cli=ctx.active_cli, 
-                    install_committed_cli=ctx.committed_cli)
-                ctx.success = True
-        else:
-            try:
-                conn = condor.make_connection_from_context(ctx)
-                conn.connect()
+        conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
+        try:
+            conn.discovery()
+        except condoor.GeneralError as e:
+            ctx.post_status = e.message
+            return
+
+        try:
+            conn.connect()
+            if conn.os_type == "XR":
                 ctx.inactive_cli = conn.send('sh install inactive summary')
                 ctx.active_cli = conn.send('sh install active summary')
-                ctx.committed_cli = conn.send('sh install committed summary')       
-                conn.disconnect()
- 
-                self.get_software(ctx.host,
-                    install_inactive_cli=ctx.inactive_cli, 
-                    install_active_cli=ctx.active_cli, 
-                    install_committed_cli=ctx.committed_cli)
-                ctx.success = True
-            except:
-                pass
+                ctx.committed_cli = conn.send('sh install committed summary')
+            elif conn.os_type == "eXR":
+                ctx.inactive_cli = conn.send('sh install inactive')
+                ctx.active_cli = conn.send('sh install active')
+                ctx.committed_cli = conn.send('sh install committed')
+
+            self.get_software(
+                ctx.host,
+                install_inactive_cli=ctx.inactive_cli,
+                install_active_cli=ctx.active_cli,
+                install_committed_cli=ctx.committed_cli)
+            ctx.success = True
+
+        except condoor.GeneralError as e:
+            ctx.post_status = e.message
+
+        finally:
+            conn.disconnect()
 
     def get_software(self, host, install_inactive_cli, install_active_cli, install_committed_cli):
         package_parser_class = get_package_parser_class(host.platform)
         package_parser = package_parser_class()
         
-        return package_parser.get_packages_from_cli(host,
-            install_inactive_cli=install_inactive_cli, 
-            install_active_cli=install_active_cli, 
-            install_committed_cli=install_committed_cli)       
-       
+        return package_parser.get_packages_from_cli(
+            host,
+            install_inactive_cli=install_inactive_cli,
+            install_active_cli=install_active_cli,
+            install_committed_cli=install_committed_cli
+        )
+
+
 class BaseInstallHandler(BaseHandler):                         
     def execute(self, ctx):
-        global AUT_PATH
-        
-        csm_au_module = import_module('au.csm_au', AUT_PATH)
-        if csm_au_module is not None:
-            status = csm_au_module.execute(ctx)
-            if status == 0 :
-                ctx.success = True   
-        else:
-            try:
-                time.sleep(10)
-                ctx.post_status('Copying files from TFTP server to host...')
-                time.sleep(10)
-                ctx.success = True
-            except:
-                pass
-    
 
-    
+        pm = PluginsManager(ctx)
+        try:
+            pm.run()
+        except condoor.GeneralError as e:
+            ctx.post_status = e.message
+            ctx.success = False
+
