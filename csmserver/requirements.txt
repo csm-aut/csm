@@ -17,3 +17,4 @@ paramiko==1.15.1
 pycrypto==2.6.1
 pysftp==0.2.8
 xlutils==1.7.1
+condoor>=0.0.4
