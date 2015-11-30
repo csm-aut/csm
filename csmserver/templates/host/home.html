@@ -2,592 +2,556 @@
 
 {% from 'host/common.html' import edit_field %}
 
-{% macro check_field(field, catch_kwargs=true) %}
-  <div class="col-sm-offset-4 col-sm-3 checkbox">
-    <label>
-      {{ field(**kwargs) }} {{ field.label() }}
-    </label>
-  </div>
-
-{% endmacro %}
-
-
 {% block extra_head %}
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
-  <script src="/static/jquery/js/browse_server_dialog.js"></script>
-  <script charset="utf-8">
+<script src="/static/jquery/js/browse_server_dialog.js"></script>
+<script charset="utf-8">
     $(function() {
 
-      var browse_spinner = $('#browse-spinner');  
-      browse_spinner.hide();    
-      
-      $('#search-region-selector').select2({
-        placeholder: "Filter Hosts by Region",
-        allowClear: true,  
-        ajax: {
-          url: "/api/get_regions/",
-          dataType: 'json',           
-          processResults: function (data, page) {
-            return { results: data.data };
-          },
-          data: function (params) {
-            return {
-              q: params.term, // search term
-              page: params.page
-           };
-          },
-        },        
-      }); 
+        var browse_spinner = $('#browse-spinner');
+        browse_spinner.hide();
 
-      $('#search-region-selector').on('change', function (e) {       
-        on_refresh_host_table($(this).val());
-      });         
-      
-      $(".host-delete-link").on("click", function() {
-        var delete_url = $(this).attr('delete-url');
-        var delete_host = $(this).attr('delete-host');
-        var host_type = $(this).attr('host-type');
+        $('#search-region-selector').select2({
+            placeholder: "Filter Hosts by Region",
+            allowClear: true,
+            ajax: {
+                url: "/api/get_regions/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                },
+            },
+        });
 
-        bootbox.confirm("You are about to delete \'" + delete_host + "\'.  OK to proceed?", function(result) {
-          if (result) {
-            $.ajax({
-              url: delete_url,
-              type: 'DELETE',
-              success: function(result) {
-                if (result.status == 'OK') {
-                  window.location = "{{ url_for('home') }}";
-                } else {
-                   display_delete_error(delete_host, host_type);
+        $('#search-region-selector').on('change', function(e) {
+            on_refresh_host_table($(this).val());
+        });
+
+        $(".host-delete-link").on("click", function() {
+            var delete_url = $(this).attr('delete-url');
+            var delete_host = $(this).attr('delete-host');
+            var host_type = $(this).attr('host-type');
+
+            bootbox.confirm("You are about to delete \'" + delete_host + "\'.  OK to proceed?", function(result) {
+                if (result) {
+                    $.ajax({
+                        url: delete_url,
+                        type: 'DELETE',
+                        success: function(result) {
+                            if (result.status == 'OK') {
+                                window.location = "{{ url_for('home') }}";
+                            } else {
+                                display_delete_error(delete_host, host_type);
+                            }
+                        },
+                        error: function(XMLHttpRequest, textStatus, errorThrown) {
+                            display_delete_error(delete_host, host_type);
+                        }
+                    });
                 }
-              },
-              error: function(XMLHttpRequest, textStatus, errorThrown) { 
-                 display_delete_error(delete_host, host_type);
-              }  
-           });
-          }
-        }); 
-      });
-      
-      var host_platform_table = $("#host-platform-table").dataTable({
-        "order": [[ 0, "asc"], [ 1, "asc" ]],
-        "bLengthChange": false,
-        "paging": false, 
-        "info": false,
-        "filter": false,
-        "columnDefs": [ 
-          {
-            "targets": 0, 
-            "data" : 'platform',
-          },
-          {
-            "targets": 1,
-            "data" : 'software',
-          },
-          {
-            "targets": 2, 
-            "data" : 'host_count',
-          }
-        ]
-      });
+            });
+        });
 
-      function display_delete_error(name, host_type) {
-        var message = "Unable to delete \'" + name + "\'";
-        
-        if (host_type == 'jump_host') {
-          message = "Unable to delete jump host \'" + name + "\'.  Verify that it is not used by other hosts.";
-        } else if (host_type == 'region') {
-          message = "Unable to delete region \'" + name + "\'.  Verify that it is not used by other hosts.";
-        } else if (host_type == 'server') {
-          message = "Unable to delete server repository \'" + name + "\'.  Verify that it is not used by other regions.";
-        }
-        
-        bootbox.alert(message);
-      }
-  
-      var host_table = $("#managed-host-datatable").dataTable({
-        "order": [
-          [0, "asc"]
-        ],
-        "columnDefs": [{
-          "targets": 0,
-          "data": 'hostname',
-          "render": function(data, type, row) {
-             return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
-          }
-        }, 
-        {
-          "targets": 1,
-          "data": 'region'
-        }, {
-          "targets": 2,
-          "data": 'host_or_ip',
-          "render": function(data, type, row) {
-            return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
-          }
-        }, {
-          "targets": 3,
-          "data": 'platform'
-        }, {
-          "targets": 4,
-          "data": 'software'
-        }, {
-          "targets": 5,
-          "data": 'last_successful_retrieval',
-          "render": function(data, type, row) {
-            if (row['inventory_status'] == 'failed') {
-              return '<span style="color:red;">' + data + '</span>';
-            } else {
-              return data;
+        var host_platform_table = $("#host-platform-table").dataTable({
+            "order": [
+                [0, "asc"],
+                [1, "asc"]
+            ],
+            "bLengthChange": false,
+            "paging": false,
+            "info": false,
+            "filter": false,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'platform',
+            }, {
+                "targets": 1,
+                "data": 'software',
+            }, {
+                "targets": 2,
+                "data": 'host_count',
+            }]
+        });
+
+        function display_delete_error(name, host_type) {
+            var message = "Unable to delete \'" + name + "\'";
+
+            if (host_type == 'jump_host') {
+                message = "Unable to delete jump host \'" + name + "\'.  Verify that it is not used by other hosts.";
+            } else if (host_type == 'region') {
+                message = "Unable to delete region \'" + name + "\'.  Verify that it is not used by other hosts.";
+            } else if (host_type == 'server') {
+                message = "Unable to delete server repository \'" + name + "\'.  Verify that it is not used by other regions.";
             }
-          }
-        }, {
-          "targets": 6,
-          "data": 'hostname',
-          "render": function(data, type, row) {
-            return '<a href="/hosts/' + data + '/schedule_install/">Install</a>';
-          }
-        },],
-      }).on('draw.dt', function ( e, settings, json ) {
-        $('#region_hosts_count').html(host_table.api().page.info().recordsTotal);
-      });
 
-      var selected_region_id = $.cookie('main-selected-region') == null ? 0 : $.cookie('main-selected-region');
-      on_refresh_host_table(selected_region_id);
-      
-      function on_refresh_host_table(region_id) {
-        $.ajax({
-          url: "/api/get_region_host_count/region/" + region_id,
-          dataType: 'json',
-          success: function (data) {
-            $.each(data, function(index, element) {             
-              var region_host_count = element[0].region_host_count;
-              if (region_host_count >= 2000) { 
-                bootbox.confirm('The selected region has ' + region_host_count + ' hosts and may cause longer time to load. Continue?' , function(result) {
-                  if (result) {
-                    refresh_host_table(region_id);
-                  }
-                });
-              } else {
-                refresh_host_table(region_id);
-              }     
+            bootbox.alert(message);
+        }
+
+        var host_table = $("#managed-host-datatable").dataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'region'
+            }, {
+                "targets": 2,
+                "data": 'host_or_ip',
+                "render": function(data, type, row) {
+                    return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
+                }
+            }, {
+                "targets": 3,
+                "data": 'platform'
+            }, {
+                "targets": 4,
+                "data": 'software'
+            }, {
+                "targets": 5,
+                "data": 'last_successful_retrieval',
+                "render": function(data, type, row) {
+                    if (row['inventory_status'] == 'failed') {
+                        return '<span style="color:red;">' + data + '</span>';
+                    } else {
+                        return data;
+                    }
+                }
+            }, {
+                "targets": 6,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a href="/hosts/' + data + '/schedule_install/">Install</a>';
+                }
+            }, ],
+        }).on('draw.dt', function(e, settings, json) {
+            $('#region_hosts_count').html(host_table.api().page.info().recordsTotal);
+        });
+
+        var selected_region_id = $.cookie('main-selected-region') == null ? 0 : $.cookie('main-selected-region');
+        on_refresh_host_table(selected_region_id);
+
+        function on_refresh_host_table(region_id) {
+            $.ajax({
+                url: "/api/get_region_host_count/region/" + region_id,
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        var region_host_count = element[0].region_host_count;
+                        if (region_host_count >= 2000) {
+                            bootbox.confirm('The selected region has ' + region_host_count + ' hosts and may cause longer time to load. Continue?', function(result) {
+                                if (result) {
+                                    refresh_host_table(region_id);
+                                }
+                            });
+                        } else {
+                            refresh_host_table(region_id);
+                        }
+                    });
+                }
             });
-          } 
-        });         
-      } 
-      
-      function refresh_host_table(region_id) {
-        $.cookie('main-selected-region', region_id);     
-        host_table.api().ajax.url("/api/get_managed_hosts/region/" + region_id).load();      
-        host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + region_id).load();
-        
-        $.ajax({
-          url: "/api/get_region_name/region/" + region_id,
-          dataType: 'json',
-          success: function (data) {
-            $.each(data, function(index, element) {               
-              $('#selected-region').html(element[0].region_name)                    
+        }
+
+        function refresh_host_table(region_id) {
+            $.cookie('main-selected-region', region_id);
+            host_table.api().ajax.url("/api/get_managed_hosts/region/" + region_id).load();
+            host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + region_id).load();
+
+            $.ajax({
+                url: "/api/get_region_name/region/" + region_id,
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        $('#selected-region').html(element[0].region_name)
+                    });
+                }
             });
-          } 
-        });    
-      }    
+        }
 
-      $("#managed-jump-host-datatable").dataTable({
-        "iDisplayLength" : 10
-      });
-      
-      $("#managed-region-datatable").dataTable({
-        "iDisplayLength" : 10
-      });
-      
-      $("#managed-server-datatable").dataTable({
-        "iDisplayLength" : 10
-      });
-      
-      var selected_tab = $.cookie('main-dashboard-tab') == null ? '#managed-hosts' : $.cookie('main-dashboard-tab');
-      $('a[href=' + selected_tab + ']').tab('show');
+        $("#managed-jump-host-datatable").dataTable({
+            "iDisplayLength": 10
+        });
 
-      $('#main-dashboard-tab').on('shown.bs.tab', function () {
-        $.cookie('main-dashboard-tab', $('.nav-tabs .active > a').attr('href'));
-      });
-      
-      get_server_time();
-      
-      function get_server_time() {
-        $.ajax({
-          url: "/api/get_server_time",
-          dataType: 'json',
-          success: function (data) {
-            $.each(data, function(index, element) {
-              $('#server-time').html(convertToLocaleString(element.server_time));
+        $("#managed-region-datatable").dataTable({
+            "iDisplayLength": 10
+        });
+
+        $("#managed-server-datatable").dataTable({
+            "iDisplayLength": 10
+        });
+
+        var selected_tab = $.cookie('main-dashboard-tab') == null ? '#managed-hosts' : $.cookie('main-dashboard-tab');
+        $('a[href=' + selected_tab + ']').tab('show');
+
+        $('#main-dashboard-tab').on('shown.bs.tab', function() {
+            $.cookie('main-dashboard-tab', $('.nav-tabs .active > a').attr('href'));
+        });
+
+        get_server_time();
+
+        function get_server_time() {
+            $.ajax({
+                url: "/api/get_server_time",
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        $('#server-time').html(convertToLocaleString(element.server_time));
+                    });
+                },
+                error: function(xhr, status, error) {
+                    $('#server-time').html('<img src=\"{{ url_for('static', filename='error.png') }}\" title="Lost Connection">');
+                }
             });
-          },
-          error: function(xhr, status, error) { 
-            $('#server-time').html('<img src=\"{{ url_for('static', filename='error.png') }}\" title="Lost Connection">');
-          }  
-        });    
-      }
-      
-      setInterval( function () {
-        get_server_time()
-      }, 10000 ); 
+        }
 
-      var file_list_table = $("#file-list-table").dataTable({
-        "scrollY": "250px",
-        "bSort" : false,
-        "iDisplayLength": 5000,
-        "sDom": 'ift',      
-      });
-      
-      <!-- hide the table header to preserve space -->
-      $(".hide-header").hide();
-      
-      $('#browse-server-button').on('click', function () {
-        // Initializes the variables
-        $('#dialog_server').val(-1);  
-        $('#dialog_server_directory').html('');    
-        file_list_table.api().clear().draw();
+        setInterval(function() {
+            get_server_time()
+        }, 10000);
 
-        $('#select-server-dialog').modal({show:true}) 
-      });
-      
-      $('#dialog_server').on('change', function (e) {
-        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), '', file_list_table);
-      });
-                
-      $('#dialog_server_directory').on('change', function (e) {        
-        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), file_list_table)
-      });
-      
-      $('#dialog-move-up').on('click', function (e) {
-        retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()), file_list_table );
-      }); 
-      
-      $('#dialog-reset-server-directory').on('click', function (e) {
-        reset_server_directory(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), file_list_table);
-      });    
-      
+        var file_list_table = $("#file-list-table").dataTable({
+            "scrollY": "250px",
+            "bSort": false,
+            "iDisplayLength": 5000,
+            "sDom": 'ift',
+        });
+
+        <!-- hide the table header to preserve space -->
+        $(".hide-header").hide();
+
+        $('#browse-server-button').on('click', function() {
+            // Initializes the variables
+            $('#dialog_server').val(-1);
+            $('#dialog_server_directory').html('');
+            file_list_table.api().clear().draw();
+
+            $('#select-server-dialog').modal({
+                show: true
+            })
+        });
+
+        $('#dialog_server').on('change', function(e) {
+            retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), '', file_list_table);
+        });
+
+        $('#dialog_server_directory').on('change', function(e) {
+            retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), file_list_table)
+        });
+
+        $('#dialog-move-up').on('click', function(e) {
+            retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), get_parent_folder($('#dialog_server_directory').val()), file_list_table);
+        });
+
+        $('#dialog-reset-server-directory').on('click', function(e) {
+            reset_server_directory(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), $('#dialog_server_directory').val(), file_list_table);
+        });
+
     });
-  </script>
-  
-  <style>
-    .modal-dialog {
-      /* new custom width */
-      width: 700px;
-    }
-    .btn-select
-    {
-      line-height: 10px;
-    }
-  </style>
+</script>
 
+<style>
+    .modal-dialog {
+        /* new custom width */
+
+        width: 700px;
+    }
+    .btn-select {
+        line-height: 10px;
+    }
+    /*
+    .input-group > .input-group-btn:last-child > .select-picker {
+        border-top-right-radius: 5px;
+        border-bottom-right-radius: 5px;
+    }
+
+    .input-group > .input-group-btn:first-child > .select-picker {
+        border-top-left-radius: 5px;
+        border-bottom-left-radius: 5px;
+    }
+    */
+</style>
 {% endblock extra_head %}
 
 {% block main %}
-
 <div id="select-server-dialog" class="modal" role="dialog">
-  <div class="modal-dialog">
-    <form method="post" class="form-horizontal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal">x</button>
-          <h4>Browse Server Repository
-          <img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></h4>
-        </div>
-        <div class="modal-body">          
-        
-          <div class="form-group ">
-            <label class="col-sm-4 control-label"></label>
-            <div class="col-sm-8"><label class="col-sm-4 control-label"></label></div>
-          </div>
-                 
-          {{ edit_field(form.dialog_server, field_width="col-sm-8", class="form-control") }}  
-          
-          <div class="form-group ">
-            <label class="col-sm-4 control-label" id="label_dialog_server_directory" for="dialog_server_directory">Server Directory</label>
-            <div class=col-sm-6>
-              <select class="form-control" id="dialog_server_directory" name="dialog_server_directory"><option value=""></option></select>
-            </div>    
-            <a href="javascript://">
-              <img id='dialog-move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
-              <img id='dialog-reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
-            </a>           
-          </div>    
-          <hr>
-          <table class="display table" id="file-list-table">    
-            <thead class="hide-header"> 
-              <tr> 
-                <th>&nbsp;</th>  
-              </tr>  
-            </thead>   
-          </table>          
-        </div>
-        
-      </div>
-    </form>
-  </div>
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Browse Server Repository
+                        <img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group ">
+                        <label class="col-sm-4 control-label"></label>
+                        <div class="col-sm-8"><label class="col-sm-4 control-label"></label></div>
+                    </div>
+                    {{ edit_field(form.dialog_server, field_width="col-sm-8", class="form-control") }}
+                    <div class="form-group ">
+                        <label class="col-sm-4 control-label" id="label_dialog_server_directory" for="dialog_server_directory">Server Directory</label>
+                        <div class=col-sm-6>
+                            <select class="form-control" id="dialog_server_directory" name="dialog_server_directory">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <a href="javascript://">
+                        <img id='dialog-move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
+                        <img id='dialog-reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
+                        </a>
+                    </div>
+                    <hr>
+                    <table class="display table" id="file-list-table">
+                        <thead class="hide-header">
+                            <tr>
+                                <th>&nbsp;</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
-
 <!-- Main -->
 <div class="container">
-  
-  <!-- upper section -->
-  <div class="row">
-
-    <div class="col-sm-3">
-      <span><strong>Region:&nbsp;</strong></span><span id='selected-region'></span>
-      <hr>
-
-      <div class="panel panel-info">
-        <div class="panel-heading">CSM Server</div>
-          <table class="table table-striped">
-            <tbody>
-              <tr>
-                <td>Server Time</td><td id="server-time" ></td>
-              </tr>
-              <tr>
-                <td>Build Date</td><td>{{ build_date }}</td>
-              </tr>
-              <tr>
-                <td>Login User</td><td>{{ current_user.username }}</td>
-              </tr>
-              <tr>
-                <td>Privilege</td><td>{{ current_user.privilege }}</td>
-              </tr>
-            </tbody>
-          </table>
-      </div>
-
-      <div class="panel panel-info">
-        <div class="panel-heading">Summary</div>
-          <table class="table table-striped">
-            <tbody>
-              <tr>
-                <td>Total Regions</td><td>{{ total_region_count }}</td>
-              </tr>
-              <tr>
-                <td>Total Hosts</td><td>{{ total_host_count }}</td>
-              </tr>
-            </tbody>
-          </table>
-      </div>
-
-      <div class="panel panel-info">
-        <div class="panel-heading">
-          Region Hosts:
-          <span id="region_hosts_count"></span></div>
-          <table class="display table" id="host-platform-table">
-            <thead>  
-              <tr>  
-                <th>Platform</th>
-                <th>Software</th>   
-                <th>Host</th>  
-              </tr>  
-            </thead> 
-          </table>       
-      </div>
-    </div>      
-
-    <div class="col-sm-9">
-      <!-- left -->
-      <div class="row">
-        <span>
-          <input type="hidden" class="select2" id="search-region-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
-          </select>
-        </span>
-        <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;
-          <a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a>
-        </span><hr>
-      </div>
-
-      <div class="row">
-        <ul class="nav nav-tabs" id="main-dashboard-tab">
-          <li><a data-toggle="tab" href="#managed-hosts">Managed Hosts</a>  </li>
-          <li><a data-toggle="tab" href="#managed-jump-hosts">Jump Servers</a></li>
-          <li><a data-toggle="tab" href="#managed-regions">Regions</a></li>
-          
-          <!-- Required to be a privilege user -->
-          <li><a data-toggle="tab" href="#managed-servers">Server Repositories</a></li>
-          
-          <li class="dropdown">
-            <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
-            <ul class="dropdown-menu">
-                <li><a data-toggle="main-tab" href="{{ url_for('host_create') }}">Host</a></li>
-                <li><a data-toggle="main-tab" href="{{ url_for('jump_host_create') }}">Jump Server</a></li>
-                
-                <li class="divider"></li>
-                <li><a data-toggle="main-tab" href="{{ url_for('region_create') }}">Region</a></li>
-                
-                <!-- Required to be a privilege user -->
-                <li><a data-toggle="main-tab" href="{{ url_for('server_create') }}">Server Repository</a></li>
-                
-            </ul>
-          </li>
-        </ul> 
-        <div class="tab-content" style="margin-top:20px;">
-          <div id="managed-hosts" class="tab-pane fade in active">
-            <table cellspacing="0" class="display table" id="managed-host-datatable">    
-              <thead>  
-                <tr>  
-                  <th>Hostname</th>
-                  <th>Region</th>
-                  <th>TS or IP</th>   
-                  <th>Platform</th>  
-                  <th>Software</th>  
-                  <th>Last<br> Successful<br> Retrieval</th>   
-                  <th>Action</th> 
-                </tr>  
-              </thead>  
-            </table>
-
-          </div>
-          
-          <div id="managed-jump-hosts" class="tab-pane fade">
-
-            <table cellspacing="0" class="display table" id="managed-jump-host-datatable">   
-              <thead>  
-                <tr>  
-                  <th>Jump Server</th>  
-                  <th>Name or IP</th>  
-                  <th>Username</th>  
-                  <th>Connection</th> 
-                  <th>Port</th>
-                  <th>Action</th>
-                </tr>  
-              </thead>  
-              <tbody> 
-
-                {% for jump_host in jump_hosts %}
-                <tr>  
-                  <td><a href="{{ url_for('jump_host_edit', hostname = jump_host.hostname) }}">{{ jump_host.hostname }}</a></td> 
-                  <td>{{ jump_host.host_or_ip }}</td>  
-                  <td>{{ jump_host.username }}</td>  
-                  <td>{{ jump_host.connection_type }}
-
-                  {% if jump_host.port_number %}
-                    <td>{{ jump_host.port_number }}</td> 
-                  {% else %}
-                    <td>Default</td>
-                  {% endif %}
-
-                  <td>           
-                    <a class="host-delete-link" href="#" 
-                      host-type="jump_host"
-                      delete-host="{{ jump_host.hostname }}"
-                      delete-url="{{ url_for('jump_host_delete', hostname = jump_host.hostname) }}">Delete</a>                  
-                  </td>
-                </tr>   
-                {% endfor %}
-
-              </tbody> 
-            </table>
-          
-          </div>
-          
-          <div id="managed-regions" class="tab-pane fade">
-
-            <table cellspacing="0" class="display table" id="managed-region-datatable">   
-              <thead>  
-                <tr>  
-                  <th>Region</th>  
-                  <th>Server Repository</th>  
-                  <th>Action</th>
-                </tr>  
-              </thead>  
-              <tbody> 
-                {% for region in regions %}
-                <tr>  
-                  <td><a href="{{ url_for('region_edit', region_name = region.name) }}">{{ region.name }}</a></td> 
-                  {% if region.servers %}
-                      <td>
-                        <ul style="list-style-type:square;margin:0;">
-                          {% for server in region.servers %}
-                           <li><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></li>
-                          {% endfor %}
-                        </ul>
-                      </td>
-                  {% else %}
-                    <td>&nbsp;</td>  
-                  {% endif %}
-
-                  <td>           
-                    <a class="host-delete-link" href="#" 
-                      host-type="region"
-                      delete-host="{{ region.name }}"
-                      delete-url="{{ url_for('region_delete', region_name = region.name) }}">Delete</a>              
-                  </td>
-                </tr>   
-                {% endfor %}
-
-              </tbody> 
-            </table>
-          
-          </div>
-          
-          <!-- Required to be a privilege user -->
-          <div id="managed-servers" class="tab-pane fade">
-            <div class="pull-right">
-              <a id="browse-server-button" href="javascript://"><img src="{{ url_for('static', filename='browse_server.png') }}">Browse Repository</a>
+    <!-- upper section -->
+    <div class="row">
+        <div class="col-sm-3">
+            <span><strong>Region:&nbsp;</strong></span><span id='selected-region'></span>
+            <hr>
+            <div class="panel panel-info">
+                <div class="panel-heading">CSM Server</div>
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <td>Server Time</td>
+                            <td id="server-time" ></td>
+                        </tr>
+                        <tr>
+                            <td>Build Date</td>
+                            <td>{{ build_date }}</td>
+                        </tr>
+                        <tr>
+                            <td>Login User</td>
+                            <td>{{ current_user.username }}</td>
+                        </tr>
+                        <tr>
+                            <td>Privilege</td>
+                            <td>{{ current_user.privilege }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-      
-            <table cellspacing="0" class="display table" id="managed-server-datatable">   
-              <thead>  
-                <tr>  
-                  <th>Server Repository</th>  
-                  <th>Server Type</th>  
-                  <th>Server Information</th>  
-                  <th>Action</th>
-                </tr>  
-              </thead>  
-              <tbody> 
+            <div class="panel panel-info">
+                <div class="panel-heading">Summary</div>
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <td>Total Regions</td>
+                            <td>{{ total_region_count }}</td>
+                        </tr>
+                        <tr>
+                            <td>Total Hosts</td>
+                            <td>{{ total_host_count }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    Region Hosts:
+                    <span id="region_hosts_count"></span>
+                </div>
+                <table class="display table" id="host-platform-table">
+                    <thead>
+                        <tr>
+                            <th>Platform</th>
+                            <th>Software</th>
+                            <th>Host</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+        <div class="col-sm-9">
+            <!-- left -->
+            <div class="input-group">
+                <span title="Filter Hosts" class="input-group-addon glyphicon glyphicon-filter"></span>
+                <input type="hidden" class="select2" id="search-region-selector">
+                <span class="DodgerBlue pull-right"><img src="{{ url_for('static', filename='date_time.png') }}">&nbsp;
+                <a href="/hosts/schedule_install/?return_url=install_dashboard">Schedule Batch Installs</a>
+                </span>
+            </div>
+            <hr style="margin-top:12px;">
+            <ul class="nav nav-tabs" id="main-dashboard-tab">
+                <li><a data-toggle="tab" href="#managed-hosts">Managed Hosts</a>  </li>
+                <li><a data-toggle="tab" href="#managed-jump-hosts">Jump Servers</a></li>
+                <li><a data-toggle="tab" href="#managed-regions">Regions</a></li>
+                <!-- Required to be a privilege user -->
+                <li><a data-toggle="tab" href="#managed-servers">Server Repositories</a></li>
+                <li class="dropdown">
+                    <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a data-toggle="main-tab" href="{{ url_for('host_create') }}">Host</a></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('jump_host_create') }}">Jump Server</a></li>
+                        <li class="divider"></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('region_create') }}">Region</a></li>
+                        <!-- Required to be a privilege user -->
+                        <li><a data-toggle="main-tab" href="{{ url_for('server_create') }}">Server Repository</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="tab-content" style="margin-top:20px;">
+                <div id="managed-hosts" class="tab-pane fade in active">
+                    <table cellspacing="0" class="display table" id="managed-host-datatable">
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>Region</th>
+                                <th>TS or IP</th>
+                                <th>Platform</th>
+                                <th>Software</th>
+                                <th>Last<br> Successful<br> Retrieval</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div id="managed-jump-hosts" class="tab-pane fade">
+                    <table cellspacing="0" class="display table" id="managed-jump-host-datatable">
+                        <thead>
+                            <tr>
+                                <th>Jump Server</th>
+                                <th>Name or IP</th>
+                                <th>Username</th>
+                                <th>Connection</th>
+                                <th>Port</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for jump_host in jump_hosts %}
+                            <tr>
+                                <td><a href="{{ url_for('jump_host_edit', hostname = jump_host.hostname) }}">{{ jump_host.hostname }}</a></td>
+                                <td>{{ jump_host.host_or_ip }}</td>
+                                <td>{{ jump_host.username }}</td>
+                                <td>{{ jump_host.connection_type }}</td>
+                                {% if jump_host.port_number %}
+                                    <td>{{ jump_host.port_number }}</td>
+                                {% else %}
+                                    <td>Default</td>
+                                {% endif %}
+                                <td>
+                                    <a class="host-delete-link" href="#"
+                                        host-type="jump_host"
+                                        delete-host="{{ jump_host.hostname }}"
+                                        delete-url="{{ url_for('jump_host_delete', hostname = jump_host.hostname) }}">Delete</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div id="managed-regions" class="tab-pane fade">
+                    <table cellspacing="0" class="display table" id="managed-region-datatable">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Server Repository</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for region in regions %}
+                            <tr>
+                                <td><a href="{{ url_for('region_edit', region_name = region.name) }}">{{ region.name }}</a></td>
+                                {% if region.servers %}
+                                    <td>
+                                        <ul style="list-style-type:square;margin:0;">
+                                            {% for server in region.servers %}
+                                            <li><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </td>
+                                {% else %}
+                                    <td>&nbsp;</td>
+                                {% endif %}
+                                <td>
+                                    <a class="host-delete-link" href="#"
+                                        host-type="region"
+                                        delete-host="{{ region.name }}"
+                                        delete-url="{{ url_for('region_delete', region_name = region.name) }}">Delete</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Required to be a privilege user -->
+                <div id="managed-servers" class="tab-pane fade">
+                    <div class="pull-right">
+                        <a id="browse-server-button" href="javascript://"><img src="{{ url_for('static', filename='browse_server.png') }}">Browse Repository</a>
+                    </div>
+                    <table cellspacing="0" class="display table" id="managed-server-datatable">
+                        <thead>
+                            <tr>
+                                <th>Server Repository</th>
+                                <th>Server Type</th>
+                                <th>Server Information</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for server in servers %}
+                            <tr>
+                                <td><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></td>
+                                <td>{{ server.server_type }}</td>
+                                <td>
+                                    <span style="color: Gray;"><b>URL:</b></span> {{ server.server_url }}<br/>
+                                    {% if server.vrf %}
+                                        <span style="color: Gray;"><b>VRF:</b></span> {{ server.vrf }}<br/>
+                                    {% endif %}
 
-                {% for server in servers %}
-                <tr>  
-                  <td><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></td> 
-                  <td>{{ server.server_type }}</td>  
-                  <td>
-                    <span style="color: Gray;"><b>URL:</b></span> {{ server.server_url }}<br/>
-                    
-                    {% if server.vrf %}
-                      <span style="color: Gray;"><b>VRF:</b></span> {{ server.vrf }}<br/>
-                    {% endif %}
-                    
-                    {% if server.server_directory %}
-                    
-                      <span style="color: Gray;">
-                      {% if server.server_type == "FTP" or server.server_type == "SFTP" %}
-                        <b>Remote Directory:</b>
-                      {% else %}
-                        <b>File Directory:</b>
-                      {% endif %}
-                      </span>
-                      
-                      {{ server.server_directory }}
-                    {% endif %}
-                  </td>   
-
-                  <td>           
-                    <a class="host-delete-link" href="#" 
-                      host-type="server"
-                      delete-host="{{ server.hostname }}"
-                      delete-url="{{ url_for('server_delete', hostname = server.hostname) }}">Delete</a>                
-                  </td>
-                </tr>   
-                {% endfor %}
-
-              </tbody> 
-            </table>
-          
-          </div>
-          
-        </div> <!-- /tab-content -->
-      </div>
+                                    {% if server.server_directory %}
+                                        <span style="color: Gray;">
+                                        {% if server.server_type == "FTP" or server.server_type == "SFTP" %}
+                                            <b>Remote Directory:</b>
+                                        {% else %}
+                                            <b>File Directory:</b>
+                                        {% endif %}
+                                        </span>
+                                        {{ server.server_directory }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a class="host-delete-link" href="#"
+                                        host-type="server"
+                                        delete-host="{{ server.hostname }}"
+                                        delete-url="{{ url_for('server_delete', hostname = server.hostname) }}">Delete</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- /tab-content -->
+        </div>
     </div>
-
-  </div> <!-- /upper section -->
- 
-
-</div> <!-- Main -->
-
-
+    <!-- /upper section -->
+</div>
+<!-- Main -->
 {% endblock main %}

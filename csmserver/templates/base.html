@@ -43,36 +43,46 @@
 {% endmacro %}
 
 <head>
+    <title>Cisco Software Manager Server</title>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>Cisco Software Manager Server</title>
-
+    <!-- Application icon -->
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <!-- jquery -->
+    <link rel="stylesheet" type="text/css" href="/static/jquery/css/base.css">
+    <link rel="stylesheet" type="text/css" href="/static/jquery/css/smoothness/jquery-ui-1.10.4.custom.min.css">
     <script src="/static/jquery/js/jquery-1.10.2.js"></script>
     <script src="/static/jquery/js/jquery-ui-1.10.4.min.js"></script>
+    <!-- standard CSM Server jquery -->
     <script type="text/javascript" src="/static/jquery/js/datetime-utils.js"></script>
     <script type="text/javascript" src="/static/jquery/js/common-utils.js"></script>
-
-    <!-- DateTimePicker CSS -->
-    <link rel="stylesheet" type="text/css" href="/static/jquery/css/smoothness/jquery-ui-1.10.4.custom.min.css">
-
+    <!-- DateTimePicker (http://www.malot.fr/bootstrap-datetimepicker) -->
+    <link rel="stylesheet" href="/static/datetimepicker/css/bootstrap-datetimepicker.min.css">
+    <script src="/static/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
     <!-- Bootstrap -->
     <script src="/static/bootstrap/3.1.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="/static/bootstrap/3.1.1/css/bootstrap.min.css">
-
-    <!-- DataTables -->
+    <!-- DataTables (https://www.datatables.net) -->
     <link rel="stylesheet" type="text/css" href="/static/datatables-1.10.4/media/css/dataTables.bootstrap.css">
     <link rel="stylesheet" type="text/css" href="/static/datatables-1.10.4/media/css/jquery.dataTables.min.css">
     <script type="text/javascript" src="/static/datatables-1.10.4/media/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="/static/datatables-1.10.4/media/js/dataTables.bootstrap.js"></script>
-
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-
-    <script src="/static/select2-4.0.0/dist/js/select2.min.js"></script>
-    <script src="/static/underscorejs/underscore.min.js"></script>
+    <!-- Select2 (https://select2.github.io) -->
     <link rel="stylesheet" href="/static/select2-4.0.0/dist/css/select2.css">
-    <link rel="stylesheet" type="text/css" href="/static/jquery/css/base.css">
-
+    <script src="/static/select2-4.0.0/dist/js/select2.min.js"></script>
+    <!-- (http://underscorejs.org) -->
+    <script src="/static/underscorejs/underscore.min.js"></script>
+    <!-- bootbox (http://bootboxjs.com) -->
+    <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+    <!-- dual-list-box (https://github.com/Geodan/DualListBox) It has been modified -->
+    <script src="/static/duallistbox/dist/dual-list-box.js"></script>
+    <!-- cookie -->
+    <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+    <!-- wizard (http://www.creative-tim.com/product/bootstrap-wizard) -->
+    <link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet" />
+    <script src="/static/x-wizard-1.1/assets/js/jquery.bootstrap.wizard.js" type="text/javascript"></script>
+    <!-- show/hide password (https://github.com/wenzhixin/bootstrap-show-password) -->
+    <script src="/static/showhidepassword-1.0.0/js/password.js"></script>
     <script>
         $(function() {
 
@@ -147,11 +157,10 @@
 
         });
     </script>
-
     {% block extra_head %}{% endblock extra_head %}
+</head>
 
-  </head>
-  <body>
+<body>
     <!-- Fixed navbar -->
     <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
         <div class="container">
@@ -166,7 +175,6 @@
                 <a class="navbar-brand" href="javascript://">&nbsp;</a>
                 <a class="navbar-brand" href="{{ url_for('about') }}">CSM Server</a>
             </div>
-
             <div class="navbar-collapse collapse">
                 <ul class="nav navbar-nav">
                     {% if current_user.is_authenticated() %}
@@ -188,7 +196,6 @@
                     <li><a href="{{ url_for('conformance.home') }}">Conformance</a></li>
                     {% endif %}
                 </ul>
-
                 {% if current_user.is_authenticated() %}
                 <ul class="nav navbar-nav navbar-right">
                     <li class="dropdown">
@@ -200,7 +207,6 @@
                     <!--              <li><a href="{{ url_for('static', filename='user_guide.pdf') }}" target="_blank"><img title="Help Information" src="{{ url_for('static', filename='information.png') }}"></a></li>  -->
                     <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
                 </ul>
-
                 <ul class="nav navbar-nav navbar-right">
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
@@ -237,15 +243,12 @@
             <!--/.nav-collapse -->
         </div>
     </div>
-
     <div class="row">
         <div class="col-sm-12">
             {% block title %}{% endblock title %}
         </div>
     </div>
-
     {% block main %}{% endblock main %}
-
     <div class="container">
         <hr>
         <center>

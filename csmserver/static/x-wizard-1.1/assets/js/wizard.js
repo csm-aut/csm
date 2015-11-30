@@ -146,6 +146,7 @@ function validateSelectPackages(){
         }
 
     }
+    region_id = $('#region option:selected').val()
     $.cookie('region-' + region_id + '-server', $('#hidden_server').val(), { path: '/' });
     $.cookie('region-' + region_id + '-server-directory', $('#hidden_server_directory').val(), { path: '/' });
 

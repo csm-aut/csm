@@ -12,54 +12,49 @@ Caller must provide the following WTForms elements with the following IDs
 {% macro server_software_dialog(server, server_directory, target_software) %}
 
 <div id="server-software-dialog" class="modal" role="dialog">
-  <div class="modal-dialog">
-    <form method="post" class="form-horizontal">
-      <div class="modal-content">
-        <div class="modal-header">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Select Software Packages <span id="server-dialog-title"></span></h4>
 
-          <button type="button" class="close" data-dismiss="modal">x</button> 
-                    
-          <h4>Select Software Packages <span id="server-dialog-title"><span></h4>
-                               
-          {{ edit_field(server, field_width="col-sm-7", class="form-control") }}   
-          
-          {% set extra_field =
-            '<a href="javascript://">
-            <img id="server-dialog-move-up" src="/static/up_arrow.png" title="Go to Parent Folder">
-            <img id="server-dialog-reset-server-directory" src="/static/remove.png" title="Reset Server Directory">
-            </a>' 
-          %}
-            
-          {{ edit_field(server_directory, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}
-                    
-        </div>
-        <div class="modal-body">
-        
-          <div id="server-dialog-auto-select-software-panel">        
-            {% set extra_field =
-              '<button id="server-dialog-auto-select-software" class="btn btn-primary">Auto Select</button>' 
-            %}       
-            {{ edit_field(target_software, field_width="col-sm-6", class="form-control", placeholder="Software Upgrade Only (enter X.X.X format)", extra_field=extra_field) }}  
-          </div>
-        
-          <div class="form-group">           
-            <select id="server-software-selector" name="server-software-selector" multiple="multiple" data-title="Packages" data-json=false></select>
-          </div>
-        </div>
-        <span id="server-software-dialog-browse-spinner">
-          <center><img src="{{ url_for('static', filename='spinner.gif') }}"></center>
-        </span>
-        <div class="modal-footer">
-          <div class="form-actions">
-            <div class="btn col-sm-offset-4">   
-              <button id="on-server-software-dialog-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
-              <button class="btn" data-dismiss="modal">Cancel</button>
+                    {{ edit_field(server, field_width="col-sm-7", class="form-control") }}
+                    {% set extra_field =
+                        '<a href="javascript://">
+                            <img id="server-dialog-move-up" src="/static/up_arrow.png" title="Go to Parent Folder">
+                            <img id="server-dialog-reset-server-directory" src="/static/remove.png" title="Reset Server Directory">
+                        </a>'
+                    %}
+
+                    {{ edit_field(server_directory, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}
+                </div>
+                <div class="modal-body">
+                    <div id="server-dialog-auto-select-software-panel">
+                        {% set extra_field =
+                            '<button id="server-dialog-auto-select-software" class="btn btn-primary">Auto Select</button>'
+                        %}
+
+                        {{ edit_field(target_software, field_width="col-sm-6", class="form-control", placeholder="Software Upgrade Only (enter X.X.X format)", extra_field=extra_field) }}
+                    </div>
+                    <div class="form-group">
+                        <select id="server-software-selector" name="server-software-selector" multiple="multiple" data-title="Packages" data-json=false></select>
+                    </div>
+                </div>
+                <span id="server-software-dialog-browse-spinner">
+                    <center><img src="{{ url_for('static', filename='spinner.gif') }}"></center>
+                </span>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-server-software-dialog-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </form>
-  </div>
+        </form>
+    </div>
 </div>
 
 {% endmacro %}

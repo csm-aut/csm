@@ -219,7 +219,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         form.hidden_pending_downloads.data = ''
         form.hidden_edit.data = install_job is not None
 
-        print("host.region is " + str(host.region.name))
         form.hidden_region.data = str(host.region.name)
         fill_default_region(form.region.choices, host.region)
         form.hidden_hosts.data = hostname

@@ -93,12 +93,6 @@
 
 {% block extra_head %}
 
-<link rel="stylesheet" href="/static/datetimepicker/css/bootstrap-datetimepicker.min.css">
-<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-<script src="/static/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
-<script src="/static/duallistbox/dist/dual-list-box.js"></script>
-
-<script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
 <script src="/static/jquery/js/smu_info_dialog.js"></script>
 <script src="/static/jquery/js/auto_select_software.js"></script>
 <script src="/static/jquery/js/cisco_software_dialog.js"></script>
@@ -340,7 +334,8 @@ $(function() {
             install_actions: $('#install_action').val(),
             check_missing_file_on_server: $('#hidden_server').val() > -1,
             callback: on_finish_validate,
-            pending_downloads: null
+            pending_downloads: null,
+            cco_lookup_enabled: "{{ system_option.enable_cco_lookup }}" == 'True'
         };
 
         // If hostname is null, this method is called by Batch Installs

@@ -61,6 +61,8 @@ TIMEOUT_FOR_COPY_CONFIG = 1000
 TIMEOUT_FOR_COPY_ISO = 1000
 ISO_FULL_IMAGE_NAME = "asr9k-full-x64.iso"
 ISO_MINI_IMAGE_NAME = "asr9k-mini-x64.iso"
+BZIMAGE = "bzImage"
+INITRD = "initrd.img"
 
 GRUB_EFI_NAME = "grub.efi"
 GRUB_CFG_NAME = "grub.cfg"
@@ -175,7 +177,9 @@ class PreMigratePlugin(IPlugin):
 
             success, output = device.execute_command('\r', timeout=timeout)
 
-            if re.search('[Ee]rror', output):
+            if re.search('copied in', output):
+                return True
+            else:
                 self.error("Failed to copy file " + repository + '/' + source_filenames[x] + " to " + dest_files[x] + " to device. Please check session.log.")
 
     def _disconnect_and_raise_error(self, device, msg):
@@ -579,17 +583,29 @@ class PreMigratePlugin(IPlugin):
 
     def _copy_iso_to_device(self, device, packages, repo_str):
         found_iso = False
+        found_bzimage = False
+        found_initrd = False
         for package in packages:
             if ".iso" in package:
                 if package == ISO_FULL_IMAGE_NAME or package == ISO_MINI_IMAGE_NAME:
                     found_iso = True
-                    self._copy_files_to_device(device, repo_str, [package], ['harddiskb:/'+ package], TIMEOUT_FOR_COPY_ISO)
+                    self._copy_files_to_device(device, repo_str, [package], ['harddiskb:/' + package], TIMEOUT_FOR_COPY_ISO)
                 else:
                     self.error("Please make sure that the only ISO image you select on your server repository is asr9k-full-x64.iso. This is the only ISO image supported so far.")
+            if BZIMAGE in package:
+                found_bzimage = True
+                self._copy_files_to_device(device, repo_str, [package], ['harddiskb:/' + BZIMAGE], TIMEOUT_FOR_COPY_ISO)
 
+            if INITRD in package:
+                found_initrd = True
+                self._copy_files_to_device(device, repo_str, [package], ['harddiskb:/' + INITRD], TIMEOUT_FOR_COPY_ISO)
 
         if not found_iso:
-            self.error("Please make sure that you select asr9k-full-x64.iso on your server repository. This ISO image is required for migration.")
+            self.error("Please make sure that you select " + ISO_FULL_IMAGE_NAME + " or " + ISO_MINI_IMAGE_NAME + " on your server repository. This ISO image is required for migration.")
+        #if not found_bzimage:
+        #    self.error("Please make sure that you select " + BZIMAGE + " on your server repository. This image is required for migration.")
+        #if not found_initrd:
+        #    self.error("Please make sure that you select " + INITRD + " on your server repository. This image is required for migration.")
 
     def _find_nox_to_use(self):
 
@@ -628,7 +644,7 @@ class PreMigratePlugin(IPlugin):
         self.log("config_filename = " + str(config_filename))
         print "config_filename = " + str(config_filename)
 
-        """
+
         self._post_status("Checking if migration requirements are met.")
         self._check_platform(device)
         self._check_release_version(device)
@@ -639,11 +655,11 @@ class PreMigratePlugin(IPlugin):
             node_status.start(device)
         except PluginError:
             raise PluginError("Not all nodes are in valid IOS-XR final states. Pre-Migrate fails. Please check session.log to trouble-shoot.")
-
+        
         self._post_status("Resizing eUSB partition.")
         self._resize_eusb(device, repo_str, packages)
 
-        """
+
 
         nox_to_use = get_migration_directory() + self._find_nox_to_use()
 
@@ -654,7 +670,7 @@ class PreMigratePlugin(IPlugin):
             self.error("The configuration conversion tool " + nox_to_use + " is missing. CSM should have downloaded it when this migration action was scheduled.")
         self._handle_configs(device, host_directory_name, repo_str, fileloc, nox_to_use, config_filename)
 
-        """
+
 
         self._post_status("Copying the eXR ISO image from server repository to device.")
         self._copy_iso_to_device(device, packages, repo_str)
@@ -663,6 +679,6 @@ class PreMigratePlugin(IPlugin):
         self._post_status("Checking FPD version...")
         self._ensure_updated_fpd(device, repo_str, packages)
 
-        """
+
         return True
 

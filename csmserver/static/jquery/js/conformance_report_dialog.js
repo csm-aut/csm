@@ -72,6 +72,8 @@ function display_conformance_report_dialog() {
     // Go to the first page especially when the dialog is re-used.
     $('a[href="#dialog_software_profile"]').tab('show');
 
+    // Initialize the software profiles
+
     $('#conformance-report-dialog').modal({
         show: true,
         backdrop: 'static'
