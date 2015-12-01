@@ -1,6 +1,9 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+#
+# Copyright (c)  2015, Cisco Systems
 # All rights reserved.
+#
+# Author: Prasad S R
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -22,22 +25,43 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
+import os
+import re
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+from plugin import IPlugin
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+class ErrorCorePlugin(IPlugin):
+    """
+    ASR9k Post-upgrade check
+    This pluging checks for errors, traceback or any core dump
+    """
+    NAME = "ERROR_TRACEBACK_CRASH_CHECK"
+    DESCRIPTION = "Device Log Check"
+    TYPE = "POST_UPGRADE"
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
+
+    # matching any errors, core and tracebacks
+    _string_to_check_re = re.compile(
+        "^(.*(?:[Ee][Rr][Rr][Oo][Rr]|Core for pid|Traceback).*)$", re.MULTILINE
+    )
+
+    @staticmethod
+    def start(manager, device, *args, **kwargs):
+
+        # FIXME: Consider optimization
+        # The log may be large
+        # Maybe better run sh logging | i "Error|error|ERROR|Traceback|Core for pid" directly on the device
+        output = device.send("show logging last 500", timeout=300)
+        ctx = device.get_property("ctx")
+        if ctx:
+            store_dir = ctx.log_directory
+            file_name = os.path.join(store_dir, "post_upgrade_log.log")
+            IPlugin.save_to_file(output, file_name)
+            manager.log("Device log stored to: {}".format(file_name))
+
+        for match in re.finditer(ErrorCorePlugin._string_to_check_re, output):
+            manager.warning(match.group())
+        return

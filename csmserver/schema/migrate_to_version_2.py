@@ -32,6 +32,7 @@ sql_statements = [
     'alter table server add vrf VARCHAR(100)',
     'alter table smu_meta add retrieval_time DATETIME',
     'alter table smu_meta add tar_software_type_id VARCHAR(20)',
+    'update smu_meta set `tar_software_type_id`="280805694"',
     'alter table smu_info modify id VARCHAR(100)'
     ]
 

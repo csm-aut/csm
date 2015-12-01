@@ -56,7 +56,6 @@ XML_TAG_SMU_SOFTWARE_TYPE_ID = 'smuSoftwareTypeID'
 XML_TAG_SP_SOFTWARE_TYPE_ID = 'spSoftwareTypeID'
 XML_TAG_TAR_SOFTWARE_TYPE_ID = 'tarSoftwareTypeID'
 XML_TAG_ID = 'id'
-XML_TAG_SMU = 'smu'
 XML_TAG_NAME = 'name'
 XML_TAG_SMU_TYPE = 'smuType'
 XML_TAG_DESCRIPTION = 'description'
@@ -74,7 +73,7 @@ XML_TAG_STATUS = 'status'
 XML_TAG_COMPRESSED_IMAGE_SIZE = 'compressedImageSize'
 XML_TAG_UNCOMPRESSED_IMAGE_SIZE = 'unCompressedImageSize'
 XML_TAG_CCO_FILE_NAME = 'ccoFileName'
-XML_TAG_COMPOSITE_DDTS = "compositeDDTS";  # Only SP has this attribute
+XML_TAG_COMPOSITE_DDTS = "compositeDDTS"  # Only SP has this attribute
 XML_TAG_SMU = 'smu'
 XML_TAG_SP = 'sp'
 XML_TAG_SMU_INTRANSIT = 'smuIntransit'
@@ -124,7 +123,7 @@ class SMUInfoLoader(object):
                     # Delete the existing smu_meta and smu_info for this platform and release
                     db_session.delete(db_smu_meta)
 
-            if not same_as_db:    
+            if not same_as_db:
                 db_session.add(self.smu_meta)
             else:
                 db_smu_meta.retrieval_time = datetime.datetime.utcnow()

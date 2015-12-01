@@ -1,5 +1,7 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# device_connect.py - Plugin for checking version of running
+#
+# Copyright (c)  2013, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,22 +24,40 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+from au.lib.global_constants import *
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
+from au.plugins.plugin import IPlugin
+from au.device import DeviceError
+from au.plugins.package_state import get_package
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+class DeviceConnectPlugin(IPlugin):
+
+    """
+    This is a plugin maintaining the initial device connection
+    """
+    NAME = "CONNECTION"
+    DESCRIPTION = "Device Connection Check"
+    TYPE = "PRE_UPGRADE"
+    VERSION = "0.1.0"
+
+    def start(self, device, *args, **kwargs):
+        """
+        """
+        success = None
+        try:
+            success = device.connect()
+        except DeviceError:
+            print("Device Error: {}".format(device.error_code))
+
+        if success:
+            device.log_event(
+                "Device {} connected successfully.".format(device.name)
+            )
+            get_package(device)
+            return True
+
+        self.error(
+            "Can not connect to device {}".format(device.name)
+        )

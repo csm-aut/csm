@@ -1,6 +1,10 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# cmd_snapshot_backup.py - Plugin for taking command backups.
+#
+# Copyright (c)  2013, Cisco Systems
 # All rights reserved.
+#
+# Suryakant Kewat
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -22,22 +26,38 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+from au.lib.global_constants import *
+from au.plugins.plugin import IPlugin
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
+import codecs
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+INVALID = '% Invalid input detected at'
+
+
+class CommandSnapshotPlugin(IPlugin):
+
+    """
+    Pre-upgrade and Post-upgrade check
+    This plugin collects all CLI provided in file
+    """
+    NAME = "CMD_SNAPSHOT"
+    DESCRIPTION = "Backup Command Snapshots"
+    TYPE = "PRE_UPGRADE_AND_POST_UPGRADE"
+    VERSION = "0.0.1"
+
+    def start(self, device, *args, **kwargs):
+
+        cmd_file = kwargs.get('cmd_file', None)
+        if not cmd_file:
+            return True
+
+        with codecs.open(cmd_file, 'r', "utf-8") as f:
+            for line in f:
+                cmd = line.strip()
+                success, output = device.execute_command(cmd)
+                if not success:
+                    print("CMD execution error: {}".format(cmd))
+
+        return

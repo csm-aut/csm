@@ -1,5 +1,7 @@
-# =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+#==============================================================
+# node_status.py  - Plugin for checking Node states.
+#
+# Copyright (c)  2013, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,22 +24,40 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+from au.plugins import IPlugin
+import re
+#import condor
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+class isisSetOverloadPrePlugin(IPlugin):
+
+    """
+    XR Pre-upgrade check
+    This plugin configures set-overload-bit on all isis instance
+    """
+    NAME = "ISIS_SET_OVERLOAD_BIT_PRE"
+    DESCRIPTION = "ISIS set overload bit precheck "
+    TYPE = "PRE_UPGRADE"
+    VERSION = "0.0.1"
+
+    def start(self, device, *args, **kwargs):
+        """
+        """
+
+        cmd = "show running-config | in router isis"
+        success, output = device.execute_command(cmd)
+        if not success:
+            self.error("show run | in router isis command failed {}\n{}".format(cmd, output))
+
+	output = output.split('\n')
+	output1 = device.session.send('configure', wait_for_string="(config)#")
+
+	for line in output:
+	    if re.search("router isis", line):
+		val = line + " set-overload-bit"
+		output1 = device.session.send(val, wait_for_string="(config)#")
+
+	output1 = device.session.send('commit', wait_for_string="(config)#")
+	output1 = device.session.send('end')

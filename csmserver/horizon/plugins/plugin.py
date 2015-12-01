@@ -1,6 +1,10 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# plugin.py - Generic Plugin Class
+#
+# Copyright (c) 2015, Cisco Systems
 # All rights reserved.
+#
+# Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -22,22 +26,37 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+class PluginError(Exception):
+    pass
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+class IPlugin(object):
+
+    """
+    This is a main Plugin template class providing interface to other plugins
+    """
+    NAME = "GENERIC"
+    DESCRIPTION = "Generic Plugin Template"
+    TYPE = None
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
+
+    @staticmethod
+    def save_to_file(data, outfile):
+        with open(outfile, "w") as f:
+            f.write(data)
+        return
+
+    @staticmethod
+    def start(manger, device, *args, **kwargs):
+        """
+        Start the plugin
+        Must be overridden by the plugin class child implementation
+        """
+        raise NotImplementedError
+
+    @property
+    def description(self):
+        return (self.DESCRIPTION[:35] + '..') if len(self.DESCRIPTION) > 37 else self.DESCRIPTION

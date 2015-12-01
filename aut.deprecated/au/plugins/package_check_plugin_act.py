@@ -1,5 +1,8 @@
-# =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+#==============================================================================
+# package_check_plugin_act.py - plugin for saving active packages
+# from target system
+#
+# Copyright (c)  2013, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,22 +25,39 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+from au.lib.global_constants import *
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
+from au.plugins.plugin import IPlugin
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+
+class ActivePackagesPlugin(IPlugin):
+
+    """
+    Pre-upgrade check
+    This pluging checks and record active packages
+    """
+    NAME = "ACTIVE_PACKAGES"
+    DESCRIPTION = "Active Packages Check"
+    TYPE = "PRE_UPGRADE"
+    VERSION = "0.0.1"
+
+    def save_packages(self, data, outfile):
+        with open(outfile, "w") as f:
+            f.write(data)
+        return
+
+    def start(self, device, *args, **kwargs):
+        if device:
+            success, output = device.execute_command(
+                "admin show install active summary")
+            if success:
+                csm_ctx = device.get_property('ctx')
+                if csm_ctx and hasattr(csm_ctx, 'active_cli'):
+                    csm_ctx.active_cli = output
+                self.log("Active packages retrieved")
+                device.packages.init_from_show_install(output)
+                return
+
+        self.error("Can not get list of active packages.")

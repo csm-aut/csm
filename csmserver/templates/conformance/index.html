@@ -201,7 +201,7 @@
                 "data": 'missing_packages',
                 "render": function(data, type, row) {                   
                     if (data.length > 0) {
-                        return comma2br(data);
+                        return '<span style="color:red;">' + comma2br(data) + '</span>';
                     } else {
                         return '';
                     }

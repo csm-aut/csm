@@ -1,5 +1,8 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# package_check_plugin_inact.py  - Plugin to capture
+# inactive packages on the system.
+#
+# Copyright (c)  2013, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,22 +25,38 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+from au.lib.global_constants import *
+from au.plugins import IPlugin
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+class InactivePackagesPlugin(IPlugin):
+
+    """
+    ASR9k Pre-upgrade check
+    This plugin checks the packages state
+    """
+    NAME = "INACTIVE_PACKAGES"
+    DESCRIPTION = "Inactive Package Check"
+    TYPE = "PRE_UPGRADE"
+    VERSION = "0.1.1"
+
+    def save_packages(self, data, outfile):
+        with open(outfile, "w") as f:
+            f.write(data)
+        return
+
+    def start(self, device, *args, **kwargs):
+        if device:
+            success, output = device.execute_command(
+                "admin show install inactive summary")
+            if success:
+                csm_ctx = device.get_property('ctx')
+                if csm_ctx and hasattr(csm_ctx, 'inactive_cli'):
+                    csm_ctx.inactive_cli = output
+                self.log("Inactive packages retrieved")
+                device.store_property('install_inactive', output)
+                return
+
+        self.error("Can not get list of inactive packages.")

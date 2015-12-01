@@ -1,5 +1,7 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# redundancy_check.py -- plugin to parse and check show redundancy
+#
+# Copyright (c)  2015, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,22 +24,38 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+from plugin import IPlugin
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+class NodeRedundancyPlugin(IPlugin):
+
+    """
+    ASR9k Pre-upgrade check
+    This plugin checks Standby state
+    """
+    NAME = "NODE_REDUNDANCY"
+    DESCRIPTION = "Node Redundancy Check"
+    TYPE = "PRE_UPGRADE"
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
+
+    @staticmethod
+    def start(manager, device, *args, **kwargs):
+        """
+        """
+        output = device.send("admin show redundancy location all")
+
+        lines = output.split("\n", 50)
+
+        if len(lines) < 6:
+            manager.error("Show redundancy output is insufficient.")
+
+        for ln, line in enumerate(lines[:6]):
+            if "is in STANDBY role" in line:
+                if "is ready" in lines[ln + 1]:
+                    manager.log("Redundancy level OK")
+                    return True
+                else:
+                    manager.error("Standby is not ready. Upgrade can not proceed.")

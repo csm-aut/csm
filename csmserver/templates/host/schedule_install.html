@@ -6,6 +6,7 @@
 {% block head_schedule_install %}
 
 region_id = "{{ host.region.id }}";
+host_software_version = "{{ host.software_version }}";
 
 $('#form').submit(function() {
     on_final_submit(this, "{{ host.hostname }}");

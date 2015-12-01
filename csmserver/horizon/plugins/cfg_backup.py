@@ -1,5 +1,8 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# cfg_backup.py  - Plugin to capture(show running)
+# configurations present on the system.
+#
+# Copyright (c)  2013, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,22 +25,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
+import os
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
+from plugin import IPlugin
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+
+class ConfigBackupPlugin(IPlugin):
+
+    """
+    Pre-upgrade check
+    This plugin checks and record active packages
+    """
+    NAME = "CONFIG_BACKUP"
+    DESCRIPTION = "Configuration Backup"
+    TYPE = "PRE_UPGRADE"
+    VERSION = "1.0.0"
+    FAMILY = ["ASR9K"]
+
+    @staticmethod
+    def start(manager, device, *args, **kwargs):
+        output = device.send("show running", timeout=2200)
+        ctx = device.get_property("ctx")
+        if ctx:
+            store_dir = ctx.log_directory
+            name = "{}.log".format(ConfigBackupPlugin.NAME.lower())
+            file_name = os.path.join(store_dir, name)
+            IPlugin.save_to_file(output, file_name)
+            manager.log("Config stored to: {}".format(file_name))
+        return True
