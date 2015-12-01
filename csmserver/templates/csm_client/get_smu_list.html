@@ -38,7 +38,7 @@
             refresh_sp_list_table();
         });
 
-        // The Software Tar table has problem with the table layout
+        // The Release Software table has problem with the table layout
         $('#smu-list-tab a[href="#tar-tab"]').click(function() {
             refresh_tar_list_table();
         });
@@ -327,17 +327,14 @@
             }
             // Re-initialize the package list
             software_packages = "";
-            var all_are_tars = true;
 
             $('.check').each(function(index) {
                 if (this.checked) {
                     software_packages += $(this).val() + '\n';
-                    if ($(this).val().indexOf("iosxr") < 0) {
-                        all_are_tars = false;
-                    }
                 }
             });
-            if (!all_are_tars && software_packages.length > 0){
+
+            if (software_packages.length > 0) {
                 $('#select-server-dialog').modal({
                     show: true,
                     backdrop: 'static'
@@ -347,25 +344,8 @@
                 var preferred_server_directory = $.cookie('server_directory') == null ? "" : $.cookie('server_directory');
 
                 retrieve_directory_and_file_list(browse_spinner, $('#dialog_server').val(), $('#dialog_server_directory'), preferred_server_directory, null)
-            }
-            else if (software_packages.length > 0) {
-                var validate_object = {
-                    form: null,
-                    hostname: null,
-                    server_id: -1,
-                    server_directory: null,
-                    software_packages: software_packages,
-                    spinner: browse_spinner,
-                    install_actions: null,
-                    check_missing_file_on_server: false,
-                    callback: on_finish_validate,
-                    pending_downloads: null,
-                    all_are_tars: true
-                };
-                on_validate_prerequisites_and_files_on_server(validate_object);
-            }
-            else {
-                bootbox.alert("No file was selected.");
+            } else {
+                bootbox.alert("No files was selected.");
             }
         });
 
@@ -419,8 +399,7 @@
                             check_missing_file_on_server: server_id > -1,
                             callback: on_finish_validate,
                             pending_downloads: null,
-                            cco_lookup_enabled: cco_lookup_enabled,
-                            all_are_tars: false
+                            cco_lookup_enabled: cco_lookup_enabled
                         };
 
                         on_validate_prerequisites_and_files_on_server(validate_object);
@@ -448,10 +427,9 @@
                         bootbox.alert("Unable to create download jobs.");
                     } else {
                         var download_dashboard_url = "{{ url_for('download_dashboard') }}";
-                        var create_tar_url = "{{ url_for('tools.create_tar_file') }}";
-                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>" +
-                            "NOTE: Software Tar files will not be automatically unpacked and uploaded to the server repository like SMUs or Service Packs. Once the Software Tar file is downloaded, go to Tools -> Create Tar File and follow the wizard" +
-                            ". The wizard will allow you to customize a tar file from the contents of previously downloaded Software Tar files and upload it to a server repository.");
+                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
+                        //+
+                        //    "To create a customize tar file, go to Tools - Create Tar File");
                     }
                     validate_object.spinner.hide();
                 },
@@ -638,7 +616,7 @@
                 </li>
                 <li>
                     <a data-toggle="tab"  href="#tar-tab">
-                    Software Tar &nbsp;
+                    Release Software &nbsp;
                     <span id="badge-tar-list" class="badge alert-success">0</span>
                     </a>
                 </li>

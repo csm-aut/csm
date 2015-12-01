@@ -5,6 +5,7 @@ from flask.ext.login import login_required
 from database import DBSession
 
 from models import Server
+from models import logger
 
 from wtforms import Form
 from wtforms import StringField
@@ -46,56 +47,53 @@ def api_create_tar_file():
     source_tars = request.args.getlist('source_tars[]')
     contents = request.args.get('tar_contents')
     sps = request.args.getlist('sps[]')
-    new_tar_name = request.args.get('new_tar_name')
+    new_tar_name = request.args.get('new_tar_name').strip('.tar')
 
-    if not new_tar_name or re.search(r'[^A-Za-z0-9_\-\\]',new_tar_name):
-        return jsonify({'status': 'Invalid file name.'})
-    else:
-        date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
+    date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
 
-        repo_dir = get_repository_directory()
-        temp_path = get_temp_directory() + str(date_string)
-        new_tar_path = os.path.join(temp_path, str(date_string))
+    repo_dir = get_repository_directory()
+    temp_path = get_temp_directory() + str(date_string)
+    new_tar_path = os.path.join(temp_path, str(date_string))
 
-        try:
-            if not os.path.exists(temp_path):
-                os.makedirs(temp_path)
-                os.makedirs(new_tar_path, 7777)
+    try:
+        if not os.path.exists(temp_path):
+            os.makedirs(temp_path)
+            os.makedirs(new_tar_path, 7777)
 
-            # Untar source tars into the temp/timestamp directory
-            if source_tars:
-                for source in source_tars:
-                    with tarfile.open(os.path.join(repo_dir, source)) as tar:
-                        tar.extractall(temp_path)
+        # Untar source tars into the temp/timestamp directory
+        if source_tars:
+            for source in source_tars:
+                with tarfile.open(os.path.join(repo_dir, source)) as tar:
+                    tar.extractall(temp_path)
 
-            # Copy the selected contents from the temp/timestamp directory
-            # to the new tar directory
-            if contents:
-                for f in contents.strip().split('\n'):
-                    _, filename = os.path.split(f)
-                    shutil.copy2(os.path.join(temp_path, filename), new_tar_path)
+        # Copy the selected contents from the temp/timestamp directory
+        # to the new tar directory
+        if contents:
+            for f in contents.strip().split('\n'):
+                _, filename = os.path.split(f)
+                shutil.copy2(os.path.join(temp_path, filename), new_tar_path)
 
-            # Copy the selected sp files from the repository to the new tar directory
-            for sp in sps:
-                shutil.copy2(os.path.join(repo_dir, sp), new_tar_path)
+        # Copy the selected sp files from the repository to the new tar directory
+        for sp in sps:
+            shutil.copy2(os.path.join(repo_dir, sp), new_tar_path)
 
-            tarname = os.path.join(temp_path, new_tar_name)
-            shutil.make_archive(tarname, format='tar', root_dir=new_tar_path)
-            make_file_writable(os.path.join(new_tar_path, tarname) + '.tar')
+        tarname = os.path.join(temp_path, new_tar_name)
+        shutil.make_archive(tarname, format='tar', root_dir=new_tar_path)
+        make_file_writable(os.path.join(new_tar_path, tarname) + '.tar')
 
-            server = db_session.query(Server).filter(Server.id == server_id).first()
-            if server is not None:
-                server_impl = get_server_impl(server)
-                server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory)
+        server = db_session.query(Server).filter(Server.id == server_id).first()
+        if server is not None:
+            server_impl = get_server_impl(server)
+            server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory)
 
-            shutil.rmtree(temp_path, onerror=handleRemoveReadonly)
-            return jsonify({'status': 'OK'})
+        shutil.rmtree(temp_path, onerror=handleRemoveReadonly)
+        return jsonify({'status': 'OK'})
 
-        except Exception as e:
-            shutil.rmtree(temp_path, onerror=handleRemoveReadonly)
-            print e
+    except Exception as e:
+        shutil.rmtree(temp_path, onerror=handleRemoveReadonly)
+        logger.exception(e)
 
-        return jsonify({'status': e})
+    return jsonify({'status': e})
 
 def handleRemoveReadonly(func, path, exc):
     excvalue = exc[1]

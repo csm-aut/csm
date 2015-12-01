@@ -5,12 +5,6 @@
 
 {% block extra_head %}
 
-<script src="/static/x-wizard-1.1/assets/js/jquery.bootstrap.wizard.js" type="text/javascript"></script>
-<link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet" />
-
-<script src="/static/duallistbox/dist/dual-list-box.js"></script>
-<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-<script src="/static/jquery/js/common-utils.js"></script>
 <script src="/static/jquery/js/select_files.js"></script>
 <script src="/static/jquery/js/select_server.js"></script>
 
@@ -105,6 +99,19 @@ $(function() {
         var sps = sp_file_selector.get_selected_items();
         var source_tars = file_selector.get_selected_items();
         var new_tar_name = $('#new_tar_name').val();
+        var acceptable_string = get_acceptable_string(new_tar_name);
+
+
+        if (acceptable_string != new_tar_name) {
+            var message = get_acceptable_string_message('Filename', new_tar_name, acceptable_string);
+            bootbox.confirm(message, function(result) {
+                if (result) {
+                    $('#new_tar_name').val(acceptable_string);
+                }
+            });
+            browse_spinner.hide();
+            return false;
+        }
 
         $.ajax({
             url: "/tools/api/create_tar_file",
@@ -177,7 +184,7 @@ $(function() {
                         </h3>
                     </div>
                     <ul>
-                        <li><a href="#tar_file_list" data-toggle="tab">TAR FILES</a></li>
+                        <li><a href="#tar_file_list" data-toggle="tab">RELEASE SOFTWARE</a></li>
                         <li><a href="#tar_contents_list" data-toggle="tab">TAR CONTENTS</a></li>
                         <li><a href="#sp_file_list" data-toggle="tab">ADDITIONAL FILES</a></li>
                         <li><a href="#select_server_tab" data-toggle="tab">SERVER REPOSITORY</a></li>
@@ -186,7 +193,7 @@ $(function() {
                         <div class="tab-pane" id="tar_file_list">
                             <div class="col-sm-12">
                                 <div class="form-group row">
-                                    <h4 class="info-text">Listed below are all Software Tar files in csm_data/repository.</h4>
+                                    <h4 class="info-text">Listed below are all Release Software tar files in csm_data/repository.</h4>
                                     <select id="file-selector" name="file-selector" multiple="multiple" data-title="Tar-Files" data-json=false></select>
                                 </div>
                             </div>

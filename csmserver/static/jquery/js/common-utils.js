@@ -162,11 +162,7 @@ function convert_list_to_lines(list) {
  };
 */
 function on_validate_prerequisites_and_files_on_server(validate_object) {
-    if (validate_object.server_id > -1){
-        check_missing_prerequisite(validate_object);
-    } else {
-        check_tars_downloadable(validate_object, validate_object.software_packages, validate_object.software_packages);
-    }
+    check_missing_prerequisite(validate_object);
 }
 
 function check_missing_prerequisite(validate_object) {
@@ -365,7 +361,6 @@ function check_missing_files_on_server(validate_object) {
 
                 // There is no missing files, go ahead and submit
                 if (missing_file_count == 0) {
-                    console.log("missing_file_count is 0");
                     validate_object.callback(validate_object);
                     // Scheduled Install will not reach the message below as the above function will cause a form submission.
                     // This message is intended for the Platforms menu since there is no form submission (i.e. form == null).
@@ -441,30 +436,6 @@ function display_unable_to_download_dialog(validate_object, missing_file_list) {
                 callback: function() {
                     if (validate_object.spinner != null ) validate_object.spinner.hide();
                     validate_object.callback(validate_object);
-                }
-            },
-            main: {
-                label: "Cancel",
-                className: "btn-default",
-                callback: function() {
-                    if (validate_object.spinner != null ) validate_object.spinner.hide();
-                }
-            }
-        }
-    });
-}
-
-function display_downloadable_tar_files(validate_object, missing_file_list, downloadable_file_list) {
-    bootbox.dialog({
-        message: missing_file_list,
-        title: "The following Software Tar files have been selected for download.",
-        buttons: {
-            primary: {
-                label: "Download",
-                className: "btn-primary",
-                callback: function() {
-                    validate_object.pending_downloads = downloadable_file_list
-                    check_cisco_authentication(validate_object)
                 }
             },
             main: {

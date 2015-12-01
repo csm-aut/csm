@@ -312,7 +312,7 @@ class SMUInfoLoader(object):
         # For Service Packs that have been posted.
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SP), self.service_packs, PackageType.SERVICE_PACK);
 
-        # For Software Tar Files that have been posted.
+        # For Release Software far files that have been posted.
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_TAR), self.software, PackageType.SOFTWARE)
         
     """
