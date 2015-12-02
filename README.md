@@ -38,7 +38,7 @@ $ vi /usr/local/csm-master/csmserver/database.ini
 
 ## Switch to the latest code
 
-Rename the current CSM Server directory to csm_old and the csm-master to csm.  
+Rename the current CSM Server directory to csm_old and the csm-x.x to csm.  
 
 ```shell
 $ cd /usr/local
