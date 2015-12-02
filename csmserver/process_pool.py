@@ -130,7 +130,7 @@ class Pool(object):
     
 class WorkUnit(object):
 
-    def process(self, db_session):
+    def process(self, db_session, logger, process_name):
         """Do the work. Shouldn't raise any exception"""
         raise NotImplementedError("Children must override Process")
 

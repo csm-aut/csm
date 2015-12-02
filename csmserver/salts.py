@@ -57,10 +57,10 @@ def shuffling(encrypt, input, operation):
     return output
 
 def encode(encrypt, password):
-    return shuffling(encrypt, password, ENCRYPT)
+    return None if password is None else shuffling(encrypt, password, ENCRYPT)
 
 def decode(encrypt, password):
-    return shuffling(encrypt, password, DECRYPT)
+    return None if password is None else shuffling(encrypt, password, DECRYPT)
 
 import base64
 
