@@ -22,7 +22,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
 import threading
 import time 
 import datetime
@@ -93,37 +92,35 @@ class SoftwareManager(threading.Thread):
             if not db_session.query(SystemOption).first().can_install:
                 return
                 
-            install_jobs = db_session.query(InstallJob).filter(
-                and_(InstallJob.status != JobStatus.FAILED,
-                     InstallJob.scheduled_time <= datetime.datetime.utcnow())).all()
-
+            install_jobs = db_session.query(InstallJob).filter(InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
             download_job_key_dict = get_download_job_key_dict()
 
-            if len(install_jobs) > 0:
+            if len(install_jobs)> 0:
                 for install_job in install_jobs:
-                    # If there is pending download, don't submit the install job
-                    if self.is_pending_on_download(download_job_key_dict, install_job):
-                        continue
-
-                    # This install job has a dependency, check if the expected criteria is met
-                    if install_job.dependency is not None:
-                        dependency_completed = self.get_install_job_dependency_completed(db_session, install_job)
-                        # If the dependency has not been completed, don't proceed
-                        if len(dependency_completed) == 0:
+                    if install_job.status != JobStatus.FAILED:
+                        # If there is pending download, don't submit the install job
+                        if self.is_pending_on_download(download_job_key_dict, install_job):
                             continue
 
-                    with self.lock:
-                        # If another install job for the same host is already in progress,
-                        # the install job will not be queued for processing
-                        if install_job.host_id in self.in_progress_hosts:
-                            continue
+                        # This install job has a dependency, check if the expected criteria is met
+                        if install_job.dependency is not None:
+                            dependency_completed = self.get_install_job_dependency_completed(db_session, install_job)
+                            # If the dependency has not been completed, don't proceed
+                            if len(dependency_completed) == 0:
+                                continue
 
-                        self.in_progress_hosts.append(install_job.host_id)
+                        with self.lock:
+                            # If another install job for the same host is already in progress,
+                            # the install job will not be queued for processing
+                            if install_job.host_id in self.in_progress_hosts:
+                                continue
 
-                    # Allow the install job to proceed
-                    install_work_unit = InstallWorkUnit(self.in_progress_hosts, self.lock,
-                                                        install_job.host_id, install_job.id)
-                    self.pool.submit(install_work_unit)
+                            self.in_progress_hosts.append(install_job.host_id)
+
+                        # Allow the install job to proceed
+                        install_work_unit = InstallWorkUnit(self.in_progress_hosts, self.lock,
+                                                            install_job.host_id, install_job.id)
+                        self.pool.submit(install_work_unit)
         except:
             # print(traceback.format_exc())
             # Purpose ignore.  Otherwise, it may generate continue exception

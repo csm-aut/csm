@@ -773,7 +773,23 @@ class ConformanceReportEntry(Base):
     comments = Column(String(50))
 
     conformance_report_id = Column(Integer, ForeignKey('conformance_report.id'))
+    
+"""
+class EmailJob(Base):
+    __tablename__ = 'email_job'
 
+    id = Column(Integer, primary_key=True)
+    recipients = Column(String(200))
+    message = Column(Text)
+    scheduled_time = Column(DateTime, default=datetime.datetime.utcnow)
+    status = Column(String(200))
+    status_time = Column(DateTime)
+    created_by = Column(String(50))
+
+    def set_status(self, status):
+        self.status = status
+        self.status_time = datetime.datetime.utcnow()
+"""
 
 Base.metadata.create_all(engine)
         
