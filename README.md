@@ -27,6 +27,13 @@ $ cd /usr/local/csm/csmserver
 $ ./csmserver stop
 ```
 
+## Install New Python Modules
+
+```shell
+$ sudo pip install condoor
+$ sudo pip install xlutils==1.7.1
+```
+
 ## Edit csmserver launch script and database.ini
 
 If you have previously made modifications to csmserver launch script (e.g. use a different python interpreter) or database.ini (e.g. use different username and password to connect to the database), you will need to make the same changes here.
