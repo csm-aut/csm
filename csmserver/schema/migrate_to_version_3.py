@@ -26,7 +26,9 @@ from schema.base import BaseMigrate
 from database import DBSession
 
 sql_statements = [
-
+    'alter table smu_meta add tar_software_type_id VARCHAR(20)',
+    'update smu_meta set `tar_software_type_id`="280805694"',
+    'alter table smu_info modify id VARCHAR(100)'
     ]
 
 class SchemaMigrate(BaseMigrate):
