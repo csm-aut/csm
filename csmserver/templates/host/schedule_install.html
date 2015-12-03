@@ -4,132 +4,121 @@
 {% from 'host/common.html' import trace_icon %}
 
 {% block head_schedule_install %}
-     
-  $('#form').submit(function() {
+
+region_id = "{{ host.region.id }}";
+host_software_version = "{{ host.software_version }}";
+
+$('#form').submit(function() {
     on_final_submit(this, "{{ host.hostname }}");
-    
+
     // prevent the form from closing 
     return false;
-  }); 
-    
-  $('.UTCDate').val(function(index, currentValue) {
+});
+
+$('.UTCDate').val(function(index, currentValue) {
     // Invalid date would be less than 15 characters
     if ($(this).text().length > 15) {
-      $(this).text(convertToLocaleString($(this).text() ));
+        $(this).text(convertToLocaleString($(this).text()));
     }
-  });
-      
-  $("#dependency option").each(function()
-  {
+});
+
+$("#dependency option").each(function() {
     var option = $(this).text();
     var n = option.indexOf(' - ');
     if (n > -1) {
-      // Information is rendered as, for example, Install Add - 07/08/2014 04:16 PM
-      $(this).html(option.substring(0, n) + ' - ' + convertToLocaleString(option.substring(n + 3)) );
+        // Information is rendered as, for example, Install Add - 07/08/2014 04:16 PM
+        $(this).html(option.substring(0, n) + ' - ' + convertToLocaleString(option.substring(n + 3)));
     }
-  });
-  
-  // In edit mode.
-  if ($('#hidden_edit').val() == 'True') {
+});
+
+// In edit mode.
+if ($('#hidden_edit').val() == 'True') {
     $("#install_action").prop("disabled", true);
-  } else {
+} else {
     $("#install_action").prop("disabled", false);
-  }
-     
-  $('#browse-install-history-button').on('click', function (e) {
-   display_install_history_dialog(["{{ host.hostname }}"]);
-  });  
-              
-  $('#browse-inactive-software-button').on('click', function (e) {   
+}
+
+$('#browse-install-history-button').on('click', function(e) {
+    on_display_install_history_dialog(["{{ host.hostname }}"]);
+});
+
+$('#browse-inactive-software-button').on('click', function(e) {
     invoke_host_software_dialog(FILTER_ACTIVATE);
-  }); 
-    
-  $('#browse-remove-software-button').on('click', function (e) {   
+});
+
+$('#browse-remove-software-button').on('click', function(e) {
     invoke_host_software_dialog(FILTER_REMOVE);
-  }); 
-  
-  $('#browse-deactivate-software-button').on('click', function (e) {   
+});
+
+$('#browse-deactivate-software-button').on('click', function(e) {
     invoke_host_software_dialog(FILTER_DEACTIVATE);
-  });
-  
-  function invoke_host_software_dialog(filter) {
-    display_host_software_dialog("{{ host.region.id }}", ["{{ host.hostname }}"], filter, true);
-  }
-  
-  $('#browse-server-button').on('click', function(e) {                  
+});
+
+function invoke_host_software_dialog(filter) {
+    on_display_host_software_dialog(region_id, ["{{ host.hostname }}"], filter);
+}
+
+$('#browse-server-button').on('click', function(e) {
+    on_display_server_software_dialog(region_id, ["{{ host.hostname }}"]);
     $('#server-dialog-title').html('> Host: <span style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span>');
-    $('#server-dialog-auto-select-software-panel').show();
-    display_server_repository_dialog("{{ host.region.id }}");
-  });
-    
-  $('#browse-cisco-button').on('click', function(e) {
-    display_cisco_software_dialog("{{ host.region.id }}");
-  });
-  
-  $('#server-dialog-auto-select-software').on('click', function(e) {
-    // Cancel default behavior
-    e.preventDefault(); 
-    auto_select_software("{{ host.hostname }}", server_software_selector, $('#server_dialog_target_software').val(), false);
-  });
-  
-  $('#host-software-dialog-auto-select-software').on('click', function(e) {
-    // Cancel default behavior
-    e.preventDefault(); 
-    auto_select_software("{{ host.hostname }}", host_software_selector, $('#host_software_dialog_target_software').val(), true);
-  });
-  
+});
+
+$('#browse-cisco-button').on('click', function(e) {
+    on_display_cisco_software_dialog(region_id, ["{{ host.hostname }}"]);
+});
+
 {% endblock head_schedule_install %}
 
 {% block main_schedule_install %}
 
 <!-- Push the form down so the datetimepicker can be displayed unobstructed. -->
 <div class="row">
-  <h4>&nbsp;</h4>
+    <h4>&nbsp;</h4>
 </div>
 
 <div class="row">
-  <div class="well col-sm-offset-2 col-sm-8">
-    <form id="form" method="post"  class="form-horizontal">
-      <legend>
-        <h4>Schedule Install > Region: <span style="color: Gray;">{{ host.region.name }}</span> > Host: <span style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span> </h4>
+    <div class="well col-sm-offset-2 col-sm-8">
+        <form id="form" method="post"  class="form-horizontal">
+            <legend>
+                <h4>Schedule Install > Region: <span style="color: Gray;">{{ host.region.name }}</span> > Host: <span style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span> </h4>
+            </legend>
             
-      </legend>
-      
-      {% if install_job.status == 'failed' %}   
-        <div class="alert alert-danger">
-          <strong>NOTE:&nbsp;</strong>
-          This scheduled install failed on <span class="UTCDate">{{ install_job.status_time | datetime_string }}</span>
-          
-          {% if install_job.session_log %}
-            <a href="{{ url_for('host_session_log', hostname=host.hostname, table='install_job', id=install_job.id) }}?file_path={{ install_job.session_log }}">{{ log_icon('Session Log') }}</a>
-          {% endif %}
-          {% if install_job.trace %} 
-            <a href="{{ url_for('host_trace', hostname=host.hostname, table='install_job', id=install_job.id) }}">{{ trace_icon() }}</a>
-          {% endif %}
-        </div>
-      {% endif %}
-      
-      {{ common_schedule_install_gui() }}
-      
-      <input id="hidden_edit" name="{{ form.hidden_edit.name }}" value="{{ form.hidden_edit.data }}" class="form-control" type="hidden">
-     
-      <div class="form-actions">
-        <div class="btn col-sm-offset-5">
-          <button id="on-submit" type="submit" class="btn btn-primary">
-          
-          {% if install_job.status == 'failed' %}
-            Re-Submit
-          {% else %}
-            Schedule
-          {% endif %}
-          
-          </button>
-          <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
-          <img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
-        </div>
-      </div>
-    </form>
-  </div>
+            {% if install_job.status == 'failed' %}   
+            <div class="alert alert-danger">
+                <strong>NOTE:&nbsp;</strong>
+                This scheduled install failed on <span class="UTCDate">{{ install_job.status_time | datetime_string }}</span>
+               
+                {% if install_job.session_log %}
+                    <a href="{{ url_for('host_session_log', hostname=host.hostname, table='install_job', id=install_job.id) }}?file_path={{ install_job.session_log }}">{{ log_icon('Session Log') }}</a>
+                {% endif %}
+                
+                {% if install_job.trace %} 
+                    <a href="{{ url_for('host_trace', hostname=host.hostname, table='install_job', id=install_job.id) }}">{{ trace_icon() }}</a>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {{ common_schedule_install_gui() }}
+            
+            <input id="hidden_edit" name="{{ form.hidden_edit.name }}" value="{{ form.hidden_edit.data }}" class="form-control" type="hidden">
+            <div class="form-actions">
+                <div class="btn col-sm-offset-5">
+                    <button id="on-submit" type="submit" class="btn btn-primary">
+                    
+                    {% if install_job.status == 'failed' %}
+                        Re-Submit
+                    {% else %}
+                        Schedule
+                    {% endif %}
+                    
+                    </button>
+                    
+                    <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
+                    <img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 {% endblock main_schedule_install %}

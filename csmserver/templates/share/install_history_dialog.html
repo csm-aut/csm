@@ -1,0 +1,45 @@
+<!--
+This HTML file requires a corresponding install_history_dialog.js file
+
+Caller must provide the following WTForms elements with the following IDs
+    form.install_history_dialog_host (id = install_history_dialog_host)
+-->
+
+{% from 'host/common.html' import edit_field %}
+
+{% macro install_history_dialog(host_selector) %}
+<div id="install-history-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Select from Install History</h4>
+
+                    {{ edit_field(host_selector, field_width="col-sm-6", class="form-control") }}
+                </div>
+                <div class="modal-body">
+                    <table class="display table" id="install-history-datatable">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Packages</th>
+                                <th>Installed Time</th>
+                                <th>Installed By</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-install-history-submit" class="btn btn-primary" data-dismiss="modal">Save</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endmacro %}

@@ -3,707 +3,674 @@
 {% from 'host/common.html' import trace_icon %}
 
 {% block extra_head %}
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
-
-  <script>
-     
+<script>
     $(function() {
-      
-      var auto_refresh = false;
-      function insert_slider(packages, install_job_id) {
-        if (packages != null && packages.length > 0) {
-          var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + install_job_id + '">' + 
-                        '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
-                     '</a>' +
-                     '<!-- Collapsible Element HTML -->' +
-                     '<div id="toggle' + install_job_id + '" class="collapse">' +
-                       '<div class="package-slider">' +
-                          packages.replace(/,/g,"<br/>") +
-                       '</div>' +
-                     '</div>';
-            return html;
-        } else {
-            return '&nbsp;';
-        }
-      }
-      
-      function get_log_icon(hostname, table, id, session_log, trace) {
-        if (trace || session_log) {
-          data = "<center>";
-           
-          if (session_log) {
-            data += "<a href='/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
-            data += "<img src='/static/file.png' title='Session Log'></a>";
-          }
 
-          if (trace) {
-            data += "<a href='/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
-            data += "<img src='/static/error.png' title='debug trace'></a>";
-          }
-          
-          data += "</center>";
-          return data;
+        var auto_refresh = false;
 
-        } else {
-          return '&nbsp;';
-        }
-      }
-      
-      var active_committed_table = $("#active-committed").dataTable({
-        "scrollY": "250px",
-        "bSort" : false, 
-        "iDisplayLength": 100,
-        "sDom": 'ft',
-        "columnDefs": [ { "targets": 0, "data" : 'package' } ],         
-        "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='active-committed') }}",          
-        }
-      }).on('draw.dt', function ( e, settings, json ) {
-        if (active_committed_table.api().ajax.json().data.length > 0) {
-          $("#panel-active-committed").show();
-        } else {
-          $("#panel-active-committed").hide();
-        }
-      }); 
-      
-      var active_table = $("#active").dataTable({
-        "scrollY": "250px",
-        "bSort" : false,
-        "iDisplayLength": 100,
-        "sDom": 'ft',
-        "columnDefs": [ { "targets": 0, "data" : 'package' } ],         
-        "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='active') }}",          
-        }
-      }).on('draw.dt', function ( e, settings, json ) {
-        if (active_table.api().ajax.json().data.length > 0) {
-          $("#panel-active").show();
-        } else {
-          $("#panel-active").hide();
-        }
-      }); 
-      
-      var inactive_table = $("#inactive").dataTable({
-        "scrollY": "250px",
-        "bSort" : false,
-        "iDisplayLength": 100,
-        "sDom": 'ft',
-        "columnDefs": [ { "targets": 0, "data" : 'package' } ],         
-        "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive') }}",          
-        }
-      }).on('draw.dt', function ( e, settings, json ) {
-        if (inactive_table.api().ajax.json().data.length > 0) {
-          $("#panel-inactive").show();
-        } else {
-          $("#panel-inactive").hide();
-        }
-      }); 
-      
-      var inactive_committed_table = $("#inactive-committed").dataTable({
-        "scrollY": "250px",
-        "bSort" : false,
-        "iDisplayLength": 100,
-        "sDom": 'ft',
-        "columnDefs": [ { "targets": 0, "data" : 'package' } ],         
-        "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive-committed') }}",          
-        }
-      }).on('draw.dt', function ( e, settings, json ) {
-        if (inactive_committed_table.api().ajax.json().data.length > 0) {
-          $("#panel-inactive-committed").show();
-        } else {
-          $("#panel-inactive-committed").hide();
-        }
-      }); 
-
-      var scheduled_install_table = $("#scheduled-install-datatable").dataTable({
-        "order": [[ 1, "asc" ]],
-        "bLengthChange": false,
-        "paging": false, 
-        "info": false,
-        "filter": false,
-        "columnDefs": [ 
-          {
-            "targets": 0, 
-            "data" : 'install_action',
-            "render": function ( data, type, row ) {
-              var status = row['status'];
-              var session_log = row['session_log']
-              
-              var icon_html = '';
-              if (status == 'failed') {
-                icon_html = '<img src=\"{{ url_for('static', filename='error.png') }}\" title="Install Error - Click to View Session Log">';
-              } else if (status != null) {
-                icon_html = '<img src=\"{{ url_for('static', filename='spinner.gif') }}\" title="In Progress - Click to View Session Log">';
-              }
-              
-              if (session_log) {
-                 icon_html = "<a href='/hosts/" + row['hostname'] + "/install_job/session_log/" + row['install_job_id'] + "?file_path=" + session_log + "'>" + icon_html + "</a>";
-              }
-              
-              return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit/">' +  data + '</a>' + icon_html;
-            } 
-          },
-          {
-            "targets": 1,
-            "data" : 'scheduled_time',
-            "render": function ( data, type, row ) {
-              return convertToLocaleString(data);
+        function insert_slider(packages, id) {
+            if (packages != null && packages.length > 0) {
+                var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' +
+                    '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
+                    '</a>' +
+                    '<!-- Collapsible Element HTML -->' +
+                    '<div id="toggle' + id + '" class="collapse">' +
+                    '<div style="white-space: nowrap;">' +
+                    packages.replace(/,/g, "<br/>") +
+                    '</div>' +
+                    '</div>';
+                return html;
+            } else {
+                return '&nbsp;';
             }
-          },
-          {
-            "targets": 2, 
-            "data" : 'install_job_id',
-            "render": function ( data, type, row ) {
-               return '<a class="install-delete" href="javascript://"  \
+        }
+
+        function get_log_icon(hostname, table, id, session_log, trace) {
+            if (trace || session_log) {
+                data = "<center>";
+
+                if (session_log) {
+                    data += "<a href='/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
+                    data += "<img src='/static/file.png' title='Session Log'></a>";
+                }
+
+                if (trace) {
+                    data += "<a href='/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
+                    data += "<img src='/static/error.png' title='debug trace'></a>";
+                }
+
+                data += "</center>";
+                return data;
+
+            } else {
+                return '&nbsp;';
+            }
+        }
+
+        var active_committed_table = $("#active-committed").dataTable({
+            "scrollY": "250px",
+            "bSort": false,
+            "iDisplayLength": 100,
+            "sDom": 'ft',
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'package'
+            }],
+            "ajax": {
+                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='active-committed') }}",
+            }
+        }).on('draw.dt', function(e, settings, json) {
+            if (active_committed_table.api().ajax.json().data.length > 0) {
+                $("#panel-active-committed").show();
+            } else {
+                $("#panel-active-committed").hide();
+            }
+        });
+
+        var active_table = $("#active").dataTable({
+            "scrollY": "250px",
+            "bSort": false,
+            "iDisplayLength": 100,
+            "sDom": 'ft',
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'package'
+            }],
+            "ajax": {
+                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='active') }}",
+            }
+        }).on('draw.dt', function(e, settings, json) {
+            if (active_table.api().ajax.json().data.length > 0) {
+                $("#panel-active").show();
+            } else {
+                $("#panel-active").hide();
+            }
+        });
+
+        var inactive_table = $("#inactive").dataTable({
+            "scrollY": "250px",
+            "bSort": false,
+            "iDisplayLength": 100,
+            "sDom": 'ft',
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'package'
+            }],
+            "ajax": {
+                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive') }}",
+            }
+        }).on('draw.dt', function(e, settings, json) {
+            if (inactive_table.api().ajax.json().data.length > 0) {
+                $("#panel-inactive").show();
+            } else {
+                $("#panel-inactive").hide();
+            }
+        });
+
+        var inactive_committed_table = $("#inactive-committed").dataTable({
+            "scrollY": "250px",
+            "bSort": false,
+            "iDisplayLength": 100,
+            "sDom": 'ft',
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'package'
+            }],
+            "ajax": {
+                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive-committed') }}",
+            }
+        }).on('draw.dt', function(e, settings, json) {
+            if (inactive_committed_table.api().ajax.json().data.length > 0) {
+                $("#panel-inactive-committed").show();
+            } else {
+                $("#panel-inactive-committed").hide();
+            }
+        });
+
+        var scheduled_install_table = $("#scheduled-install-datatable").dataTable({
+            "order": [
+                [1, "asc"]
+            ],
+            "bLengthChange": false,
+            "paging": false,
+            "info": false,
+            "filter": false,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'install_action',
+                "render": function(data, type, row) {
+                    var status = row['status'];
+                    var session_log = row['session_log']
+
+                    var icon_html = '';
+                    if (status == 'failed') {
+                        icon_html = '<img src=\"{{ url_for('static', filename='error.png') }}\" title="Install Error - Click to View Session Log">';
+                    } else if (status != null) {
+                        icon_html = '<img src=\"{{ url_for('static', filename='spinner.gif') }}\" title="In Progress - Click to View Session Log">';
+                    }
+
+                    if (session_log) {
+                        icon_html = "<a href='/hosts/" + row['hostname'] + "/install_job/session_log/" + row['install_job_id'] + "?file_path=" + session_log + "'>" + icon_html + "</a>";
+                    }
+
+                    return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit/">' + data + '</a>' + icon_html;
+                }
+            }, {
+                "targets": 1,
+                "data": 'scheduled_time',
+                "render": function(data, type, row) {
+                    return convertToLocaleString(data);
+                }
+            }, {
+                "targets": 2,
+                "data": 'install_job_id',
+                "render": function(data, type, row) {
+                    return '<a class="install-delete" href="javascript://"  \
                 install-action="' + row['install_action'] + '" \
                 install-delete-url="/hosts/' + data + '/delete_install_job/" \
                 return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete</a>';
-            } 
-          }
-        ],
-        "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_scheduled_install', hostname=host.hostname) }}",
-        }
-      });
-      
-      var last_install_job_history_count = 0;
-      var new_last_install_job_history_count = 0;
-      
-      var install_job_history_table = $("#install-job-history-datatable").dataTable({
-        "order": [[ 5, "desc" ]],
-        "columnDefs": [ 
-          {
-            "targets": 0, 
-            "data" : 'install_action'
-          },
-          {
-            "targets": 1,
-            "data" : 'scheduled_time',
-            "render": function ( data, type, row ) {
-              return convertToLocaleString(data);
-            }
-          },
-          {
-            "targets": 2,
-            "data" : 'start_time',
-            "render": function ( data, type, row ) {
-              return convertToLocaleString(data);
-            }
-          },
-          {
-            "targets": 3, 
-            "data" : 'packages',
-            "render": function ( data, type, row ) {
-              return insert_slider(data, row['install_job_id']);
-            }
-          },
-          {
-            "targets": 4,
-            "data" : 'status',
-            "render": function ( data, type, row ) {
-              if (row['status'] == 'failed') {
-                  return '<span style="color:red">' + data + '</span>';
-              } else {
-                  return data;
-              }          
-            } 
-          },
-          {
-            "targets": 5,
-            "data" : 'status_time',
-            "render": function ( data, type, row ) {
-              return convertToLocaleString(data);
-            }
-          },
-          {
-            "targets": 6,
-            "render": function ( data, type, row ) {
-              return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace']);
-            }
-          },
-          {
-            "targets": 7,
-            "data" : 'created_by'
-          },
-        ],
-        "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}",
-        }
-      }).on('draw.dt', function ( e, settings, json ) {
-        last_install_job_history_count = new_last_install_job_history_count;
-      });
-      
-      function refresh_install_job_history_table() {
-        install_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}").load();
-      }
-      
-      function refresh_inventory_job_history_table() {
-        inventory_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}").load();
-      }
-      
-      var inventory_job_history_table = $("#inventory-job-history-datatable").dataTable({
-        "order": [[ 2, "desc" ]],
-        "columnDefs": [ 
-          {
-            "targets": 0, 
-            "data" : 'status',
-            "render": function ( data, type, row ) {
-              return (data == 'completed' ? 'Software retrieved successfully' : 'Failed retrieving software');
-            }
-          },
-          {
-            "targets": 1,
-            "data" : 'status',
-            "render": function ( data, type, row ) {
-              if (row['status'] == 'failed') {
-                  return '<span style="color:red">' + data + '</span>';
-              } else {
-                  return data;
-              }          
-            } 
-          },
-          {
-            "targets": 2,
-            "data" : 'status_time',
-            "render": function ( data, type, row ) {
-              return convertToLocaleString(data);
-            }
-          },
-          {
-            "targets": 3,
-            "data" : 'elapsed_time'
-          },
-          {
-            "targets": 4, 
-            "render": function ( data, type, row ) {
-              return get_log_icon(row['hostname'], 'inventory_job_history', row['inventory_job_id'], row['session_log'], row['trace']);
-            }
-          },
-        ],
-        "ajax": {
-          "url": "{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}",
-        }
-      });
-
-      
-      $(".install-delete-all").on("click", function() {
-        var delete_url = $(this).attr('install-delete-url');
-        var return_url = $(this).attr('return-url');
-        var status = $(this).attr('status');
-        
-        var message = "";
-        if (status == 'failed') {
-          message="Delete All failed installs?<br>(Notice: Any scheduled installs dependent on the failed installs will also be deleted.)"
-        } else {
-          message="Delete All scheduled installs?";
-        }
-
-        bootbox.confirm(message, function(result) {
-          if (result) {
-            $.ajax({
-              url: delete_url,
-              type: 'DELETE',
-              success: function(xhr) {
-                handle_ajax_success(window, xhr, return_url);
-              }
-           });
-          }
-        }); 
-      });      
-
-      // Use delegate pattern for event
-      $("#scheduled-install-datatable").on("click", ".install-delete", function() {
-        var delete_url = $(this).attr('install-delete-url');
-        var return_url = $(this).attr('return-url');
-        var install_action = $(this).attr('install-action');
-
-        bootbox.confirm("Delete the selected scheduled install, '<b>" + install_action + "</b>'?<br>" +
-          "(Notice: Any scheduled installs dependent on this item will also be deleted.)", function(result) {
-          if (result) {
-            $.ajax({
-              url: delete_url,
-              type: 'DELETE',
-              success: function(xhr) {
-                handle_ajax_success(window, xhr, return_url);
-              },
-              error: function(xhr, status, error) { 
-                handle_ajax_error(window, xhr, error, return_url);
-             }  
-           });
-          }
-        }); 
-      });
-    
-     function handle_ajax_error(window, xhr, error, return_url) {
-       var obj = $.parseJSON(xhr.responseText);
-       if (typeof obj.error != "undefined") {
-          bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> Error=" + xhr.status + ": " + obj.error, function() {
-            window.location = return_url;
-          });
-       } else {
-          bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> Error=" + xhr.status + ": " + error, function() {
-            window.location = return_url;
-          });
-       } 
-     }
-     
-     function handle_ajax_success(window, xhr, return_url) {
-       if (xhr.status == 'OK') {
-         window.location = return_url;
-       } else {
-         if (xhr.status == null) {
-           // Not authorized
-           bootbox.alert('Unable to delete.');
-         }
-         else {
-           bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">" + xhr.status, function() {
-             window.location = return_url;
-           });
-         }
-       }
-     }
-     
-     $("#retrieve-software").on("click", function() {
-        var retrieve_software_url = $(this).attr('retrieve-software-url');
-        var return_url = $(this).attr('return-url');
-
-        bootbox.confirm("If the host is reachable and CSM Server is not busy retrieving software for other hosts, " +
-            "the Software Packages on this page should be refreshed within 30 seconds." +
-            "The Last Software Retrieval timestamp will be updated accordingly.  OK to proceed?", function(result) {
-          if (result) {
-            $.ajax({
-              url: retrieve_software_url,
-              success: function(response) {
-                if (response.status == 'OK') {
-                  window.location = return_url;
-                } else {
-                  bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">A similar request may be in progress or you are not an authorized user.');
                 }
-              }
-           });
-          }
-        }); 
-      });
-      
-      <!-- hide the table header to preserve space -->
-      $(".hide-header").hide();
-      
-      $('#install-history-button').on("click", function() {
-        $('a[href="#install-job-history"]').tab('show');
-        window.location.href = "#host-tabs";
-      });
-      
-      $('#inventory-history-button').on("click", function() {
-        $('a[href="#software-inventory-history"]').tab('show');
-        window.location.href = "#host-tabs";
-      });
-
-      $('.UTCDate').val(function(index, currentValue) {
-        // Invalid date would be less than 15 characters
-        if ($(this).text().length > 15) {
-          $(this).html(convertToLocaleString($(this).text() ));
-        }
-      });
-      
-      var last_successful_inventory_time = '';
-      var new_last_successful_inventory_time = '';
-      
-      get_host_dashboard_cookie();
-      
-      function get_host_dashboard_cookie() {
-        $.ajax({
-          url: "{{ url_for('api_get_host_dashboard_cookie', hostname=host.hostname) }}",
-          dataType: 'json',
-          success: function(data) {
-            $.each(data, function(index, element) {
-              var html = '';
-              html += create_html_table_row('Region', element[0].region);
-              html += create_html_table_row('Roles', element[0].roles);
-              html += create_html_table_row('Platform', element[0].platform);
-              html += create_html_table_row('Software', element[0].software);
-              html += create_html_table_row('Host or IP', element[0].host_or_ip);
-              html += create_html_table_row('Username', element[0].username);
-              html += create_html_table_row('Connection', element[0].connection);
-              html += create_html_table_row('Port Number', element[0].port_number);
-              html += create_html_table_row('Jump Server', element[0].jump_host);
-              html += create_html_table_row('Created By', element[0].created_by);
-             
-              $('#host-info-table').html(html); 
-              
-              last_successful_inventory_elapsed_time = element[0].last_successful_inventory_elapsed_time;   
-  
-              if (last_successful_inventory_elapsed_time.indexOf("Pending") > -1) {
-                $('#last_successful_inventory_elapsed_time').html(
-                  '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">' + last_successful_inventory_elapsed_time);
-              } else {
-                if (element[0].status == 'failed') {
-                  $('#last_successful_inventory_elapsed_time').css('color','red');
-                } else {
-                  $('#last_successful_inventory_elapsed_time').removeAttr('style');
-                }
-                $('#last_successful_inventory_elapsed_time').html(last_successful_inventory_elapsed_time);
-              }
-              
-              new_last_successful_inventory_time = element[0].last_successful_inventory_time;  
-              if (new_last_successful_inventory_time != last_successful_inventory_time) {
-                refresh_packages_tables();
-                last_successful_inventory_time = new_last_successful_inventory_time 
-              }
-                            
-              new_last_install_job_history_count = element[0].last_install_job_history_count;
-              if (auto_refresh && last_install_job_history_count != new_last_install_job_history_count) {
-                refresh_install_job_history_table();
-              }
-              
-              // Always refresh as the elapsed time needs to be updated
-              refresh_inventory_job_history_table();
-              
-              display_alert(element[0].can_schedule);
-            });
-          }
+            }],
+            "ajax": {
+                "url": "{{ url_for('api_get_host_dashboard_scheduled_install', hostname=host.hostname) }}",
+            }
         });
-      }
-      
-      function refresh_packages_tables() {
-        active_committed_table.api().ajax.reload();
-        active_table.api().ajax.reload();
-        inactive_committed_table.api().ajax.reload();
-        inactive_table.api().ajax.reload();
-      }
-      
-      setInterval( function () {   
-        auto_refresh = true;
-        get_host_dashboard_cookie(); 
-        scheduled_install_table.api().ajax.reload();                           
-      }, 10000 ); 
-      
-      function display_alert(can_schedule) { 
-        if (can_schedule) {
-          $("#schedule-install-menu-item").removeClass("disabled");
-          $('#alerts').html('');
-        } else {
-          $("#schedule-install-menu-item").addClass("disabled");
-          
-          $('#alerts').html(
-            '<div class="alert alert-danger"> ' +
-            '<strong>NOTICE:&nbsp;</strong>  ' + 
-            'The system administrator has halted the capability to schedule any install.  Contact the system administrator for more information.' +        
-            '</div>');
-        } 
-      }
-     
+
+        var last_install_job_history_count = 0;
+        var new_last_install_job_history_count = 0;
+
+        var install_job_history_table = $("#install-job-history-datatable").dataTable({
+            "order": [
+                [5, "desc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'install_action'
+            }, {
+                "targets": 1,
+                "data": 'scheduled_time',
+                "render": function(data, type, row) {
+                    return convertToLocaleString(data);
+                }
+            }, {
+                "targets": 2,
+                "data": 'start_time',
+                "render": function(data, type, row) {
+                    return convertToLocaleString(data);
+                }
+            }, {
+                "targets": 3,
+                "data": 'packages',
+                "render": function(data, type, row) {
+                    return insert_slider(data, row['install_job_id']);
+                }
+            }, {
+                "targets": 4,
+                "data": 'status',
+                "render": function(data, type, row) {
+                    if (row['status'] == 'failed') {
+                        return '<span style="color:red">' + data + '</span>';
+                    } else {
+                        return data;
+                    }
+                }
+            }, {
+                "targets": 5,
+                "data": 'status_time',
+                "render": function(data, type, row) {
+                    return convertToLocaleString(data);
+                }
+            }, {
+                "targets": 6,
+                "render": function(data, type, row) {
+                    return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace']);
+                }
+            }, {
+                "targets": 7,
+                "data": 'created_by'
+            }, ],
+            "ajax": {
+                "url": "{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}",
+            }
+        }).on('draw.dt', function(e, settings, json) {
+            last_install_job_history_count = new_last_install_job_history_count;
+        });
+
+        function refresh_install_job_history_table() {
+            install_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}").load();
+        }
+
+        function refresh_inventory_job_history_table() {
+            inventory_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}").load();
+        }
+
+        var inventory_job_history_table = $("#inventory-job-history-datatable").dataTable({
+            "order": [
+                [2, "desc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'status',
+                "render": function(data, type, row) {
+                    return (data == 'completed' ? 'Software retrieved successfully' : 'Failed retrieving software');
+                }
+            }, {
+                "targets": 1,
+                "data": 'status',
+                "render": function(data, type, row) {
+                    if (row['status'] == 'failed') {
+                        return '<span style="color:red">' + data + '</span>';
+                    } else {
+                        return data;
+                    }
+                }
+            }, {
+                "targets": 2,
+                "data": 'status_time',
+                "render": function(data, type, row) {
+                    return convertToLocaleString(data);
+                }
+            }, {
+                "targets": 3,
+                "data": 'elapsed_time'
+            }, {
+                "targets": 4,
+                "render": function(data, type, row) {
+                    return get_log_icon(row['hostname'], 'inventory_job_history', row['inventory_job_id'], row['session_log'], row['trace']);
+                }
+            }, ],
+            "ajax": {
+                "url": "{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}",
+            }
+        });
+
+
+        $(".install-delete-all").on("click", function() {
+            var delete_url = $(this).attr('install-delete-url');
+            var return_url = $(this).attr('return-url');
+            var status = $(this).attr('status');
+
+            var message = "";
+            if (status == 'failed') {
+                message = "Delete All failed installs?<br>(Notice: Any scheduled installs dependent on the failed installs will also be deleted.)"
+            } else {
+                message = "Delete All scheduled installs?";
+            }
+
+            bootbox.confirm(message, function(result) {
+                if (result) {
+                    $.ajax({
+                        url: delete_url,
+                        type: 'DELETE',
+                        success: function(xhr) {
+                            handle_ajax_success(window, xhr, return_url);
+                        }
+                    });
+                }
+            });
+        });
+
+        // Use delegate pattern for event
+        $("#scheduled-install-datatable").on("click", ".install-delete", function() {
+            var delete_url = $(this).attr('install-delete-url');
+            var return_url = $(this).attr('return-url');
+            var install_action = $(this).attr('install-action');
+
+            bootbox.confirm("Delete the selected scheduled install, '<b>" + install_action + "</b>'?<br>" +
+                "(Notice: Any scheduled installs dependent on this item will also be deleted.)",
+                function(result) {
+                    if (result) {
+                        $.ajax({
+                            url: delete_url,
+                            type: 'DELETE',
+                            success: function(xhr) {
+                                handle_ajax_success(window, xhr, return_url);
+                            },
+                            error: function(xhr, status, error) {
+                                handle_ajax_error(window, xhr, error, return_url);
+                            }
+                        });
+                    }
+                });
+        });
+
+        function handle_ajax_error(window, xhr, error, return_url) {
+            var obj = $.parseJSON(xhr.responseText);
+            if (typeof obj.error != "undefined") {
+                bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> Error=" + xhr.status + ": " + obj.error, function() {
+                    window.location = return_url;
+                });
+            } else {
+                bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> Error=" + xhr.status + ": " + error, function() {
+                    window.location = return_url;
+                });
+            }
+        }
+
+        function handle_ajax_success(window, xhr, return_url) {
+            if (xhr.status == 'OK') {
+                window.location = return_url;
+            } else {
+                if (xhr.status == null) {
+                    // Not authorized
+                    bootbox.alert('Unable to delete.');
+                } else {
+                    bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">" + xhr.status, function() {
+                        window.location = return_url;
+                    });
+                }
+            }
+        }
+
+        $("#retrieve-software").on("click", function() {
+            var retrieve_software_url = $(this).attr('retrieve-software-url');
+            var return_url = $(this).attr('return-url');
+
+            bootbox.confirm("If the host is reachable and CSM Server is not busy retrieving software for other hosts, " +
+                "the Software Packages on this page should be refreshed within 30 seconds." +
+                "The Last Software Retrieval timestamp will be updated accordingly.  OK to proceed?",
+                function(result) {
+                    if (result) {
+                        $.ajax({
+                            url: retrieve_software_url,
+                            success: function(response) {
+                                if (response.status == 'OK') {
+                                    window.location = return_url;
+                                } else {
+                                    bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">A similar request may be in progress or you are not an authorized user.');
+                                }
+                            }
+                        });
+                    }
+                });
+        });
+
+        <!-- hide the table header to preserve space -->
+        $(".hide-header").hide();
+
+        $('#install-history-button').on("click", function() {
+            $('a[href="#install-job-history"]').tab('show');
+            window.location.href = "#host-tabs";
+        });
+
+        $('#inventory-history-button').on("click", function() {
+            $('a[href="#software-inventory-history"]').tab('show');
+            window.location.href = "#host-tabs";
+        });
+
+        $('.UTCDate').val(function(index, currentValue) {
+            // Invalid date would be less than 15 characters
+            if ($(this).text().length > 15) {
+                $(this).html(convertToLocaleString($(this).text()));
+            }
+        });
+
+        var last_successful_inventory_time = '';
+        var new_last_successful_inventory_time = '';
+
+        get_host_dashboard_cookie();
+
+        function get_host_dashboard_cookie() {
+            $.ajax({
+                url: "{{ url_for('api_get_host_dashboard_cookie', hostname=host.hostname) }}",
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        var html = '';
+                        html += create_html_table_row('Region', element[0].region);
+                        html += create_html_table_row('Roles', element[0].roles);
+                        html += create_html_table_row('Platform', element[0].platform);
+                        html += create_html_table_row('Software', element[0].software);
+                        html += create_html_table_row('Host or IP', element[0].host_or_ip);
+                        html += create_html_table_row('Username', element[0].username);
+                        html += create_html_table_row('Connection', element[0].connection);
+                        html += create_html_table_row('Port Number', element[0].port_number);
+                        html += create_html_table_row('Jump Server', element[0].jump_host);
+                        html += create_html_table_row('Created By', element[0].created_by);
+
+                        $('#host-info-table').html(html);
+
+                        last_successful_inventory_elapsed_time = element[0].last_successful_inventory_elapsed_time;
+
+                        if (last_successful_inventory_elapsed_time.indexOf("Pending") > -1) {
+                            $('#last_successful_inventory_elapsed_time').html(
+                                '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">' + last_successful_inventory_elapsed_time);
+                        } else {
+                            if (element[0].status == 'failed') {
+                                $('#last_successful_inventory_elapsed_time').css('color', 'red');
+                            } else {
+                                $('#last_successful_inventory_elapsed_time').removeAttr('style');
+                            }
+                            $('#last_successful_inventory_elapsed_time').html(last_successful_inventory_elapsed_time);
+                        }
+
+                        new_last_successful_inventory_time = element[0].last_successful_inventory_time;
+                        if (new_last_successful_inventory_time != last_successful_inventory_time) {
+                            refresh_packages_tables();
+                            last_successful_inventory_time = new_last_successful_inventory_time
+                        }
+
+                        new_last_install_job_history_count = element[0].last_install_job_history_count;
+                        if (auto_refresh && last_install_job_history_count != new_last_install_job_history_count) {
+                            refresh_install_job_history_table();
+                        }
+
+                        // Always refresh as the elapsed time needs to be updated
+                        refresh_inventory_job_history_table();
+
+                        display_alert(element[0].can_schedule);
+                    });
+                }
+            });
+        }
+
+        function refresh_packages_tables() {
+            active_committed_table.api().ajax.reload();
+            active_table.api().ajax.reload();
+            inactive_committed_table.api().ajax.reload();
+            inactive_table.api().ajax.reload();
+        }
+
+        setInterval(function() {
+            auto_refresh = true;
+            get_host_dashboard_cookie();
+            scheduled_install_table.api().ajax.reload();
+        }, 10000);
+
+        function display_alert(can_schedule) {
+            if (can_schedule) {
+                $("#schedule-install-menu-item").removeClass("disabled");
+                $('#alerts').html('');
+            } else {
+                $("#schedule-install-menu-item").addClass("disabled");
+
+                $('#alerts').html(
+                    '<div class="alert alert-danger"> ' +
+                    '<strong>NOTICE:&nbsp;</strong>  ' +
+                    'The system administrator has halted the capability to schedule any install.  Contact the system administrator for more information.' +
+                    '</div>');
+            }
+        }
+
     });
+</script>
 
-  </script>
-
-  <style>
-    .package-slider {
-      white-space: nowrap;
-    }
+<style>
     .btn-select {
-      line-height: 10px;
+        line-height: 10px;
     }
     a {
-      outline: 0;
+        outline: 0;
     }
-    .dropdown-menu > .disabled{
-      cursor: not-allowed; 
+    .dropdown-menu > .disabled {
+        cursor: not-allowed;
     }
- 
     /* The real magic ;) */
-    .dropdown-menu > .disabled > a{
-      pointer-events: none;
+
+    .dropdown-menu > .disabled > a {
+        pointer-events: none;
     }
-  </style>
-  
+</style>
 {% endblock extra_head %}
 
 {% block main %}
-
 <!-- Main -->
 <div class="container">
-
-  <!-- upper section -->
-  <div class="row">
-    <div id="alerts"></div>
-    <div class="col-sm-3">
-      <!-- left -->
-      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-signal"></i> Host: {{ host.hostname }}</strong></span>
-      <hr>
-
-      <div class="panel panel-info">
-        <div class="panel-heading">General</div>
-        <div class="panel-body">
-          <table id="host-info-table" class="table table-striped" >   
-          </table>
-        </div>
-      </div>
-      
-    </div>
- 
-    <div class="col-sm-9">
-        
-      <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-briefcase"></i> Last Successful Retrieval: <span id="last_successful_inventory_elapsed_time"></span></strong></span>
-
-      <div class="btn-group pull-right"> 
-        <button id="install-history-button" type="button" class="btn btn-default">Install History</button>
-        <button id="inventory-history-button" type="button" class="btn btn-default">Software Inventory History</button>
-      
-        <div class="btn-group"> 
-          <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">        
-            Action
-            <span class="glyphicon glyphicon-link"> 
-            <span class="caret"></span>
-          </button>
-          <ul class="dropdown-menu">
-            <li id="schedule-install-menu-item"><a href="{{ url_for('host_schedule_install', hostname = host.hostname) }}?return_url=host_dashboard">Schedule an Install</a></li>
-            <li class="divider"></li>
-            <li><a href="javascript://" class="install-delete-all" status="" install-delete-url="{{ url_for('delete_all_scheduled_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Scheduled Installs</a></li>
-            <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('delete_all_failed_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Failed Installs</a></li>
-            <li class="divider"></li>
-            <li><a href="javascript://" id="retrieve-software" retrieve-software-url="{{ url_for('get_software', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Retrieve Latest Software</a></li>
-            <li class="divider"></li>
-            <li><a href="{{ url_for('host_edit', hostname = host.hostname) }}?return_url=host_dashboard">Edit Host</a></li>
-          </ul>
-        </div>
-      </div>
-      
-      <hr>
-
-      <div class="row">
-
-        <!-- center left-->	
-        <div class="col-sm-6">         
-          <div class="panel-group" id="accordion" >
-
-            {% for package_state in package_states %}
-
-              <div id="panel-{{ package_state }}" class="panel panel-info">
-                <div class="panel-heading">
-                  <div class="panel-title">
-                    <a href="#collapse{{ package_state }}" data-toggle="collapse" data-parent="#accordion">
-                      <span style="font-size:14px;">{{ package_state }}</span>
-                      <i class="glyphicon glyphicon-plus-sign pull-right"></i>
-	                </a>
-                  </div>
+    <!-- upper section -->
+    <div class="row">
+        <div id="alerts"></div>
+        <div class="col-sm-3">
+            <!-- left -->
+            <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-signal"></i> Host: {{ host.hostname }}</strong></span>
+            <hr>
+            <div class="panel panel-info">
+                <div class="panel-heading">General</div>
+                <div class="panel-body">
+                    <table id="host-info-table" class="table table-striped" >
+                    </table>
                 </div>
- 
-                <div class="panel-collapse collapse {% if loop.index == 1 %} in {% endif %}" id="collapse{{ package_state }}">
-                  <div class="panel-body">
-
-                   <table  class="display table" id="{{ package_state }}">    
-                     <thead class="hide-header">  
-                       <tr> 
-                         <th>&nbsp;</th>  
-                       </tr>  
-                     </thead>  
-                  </table>
-                  
-                 </div>
-               </div>
-
-             </div> <!-- /panel-info -->
- 
-           {% endfor %}
-
-          </div> <!-- /accordion -->
-
-        </div> <!-- /center left-->
-
-        <!--center right-->
-        <div class="col-sm-6">
-
-          <div class="panel panel-info">
-            <div class="panel-heading">
-              <div class="panel-title">
-                <span style="font-size:14px;"> <center>&nbsp; Scheduled/Failed Installations</center>
-              </div>
             </div>
-            <div class="panel-body">
-
-            <table class="display table" id="scheduled-install-datatable" >
-              <thead>  
-                <tr> 
-                  <th>Install Action</th>
-                  <th>Scheduled Time</th>
-                  <th>Action</th>
-                </tr>  
-              </thead>  
-            </table>
-                     
-            </div><!--/panel body-->
-
-          </div><!--/panel-->
-          
-        </div> <!-- /center right -->
-
-      </div> <!-- /row -->
-      
-    </div>
-
-  </div> <!-- /upper section -->
-  
-  <div id="host-tabs" class="row">    
-    <div class="col-sm-12">
-      <hr>
-      <a href="#" class="pull-right">
-        Return to Top
-      </a>
-    </div>
-
-  </div> <!-- /row -->
-  
-  <div class="container">
-  <div class="row">
-    <ul class="nav nav-tabs" id="host-dashboard-tab">
-      <li><a data-toggle="tab" href="#install-job-history">Install History</a></li>
-      <li><a data-toggle="tab" href="#software-inventory-history">Software Inventory History</a></li>
-    </ul>
-    
-    <div class="tab-content">
-      <div id="install-job-history" class="tab-pane fade in active">    
-        <div class="container col-sm-12" style="margin-top: 10px">
-          <table cellspacing="0" class="display table" id="install-job-history-datatable">    
-            <thead>  
-              <tr> 
-                <th>Install Action</th>  
-                <th>Scheduled Time</th>
-                <th>Start Time</th>
-                <th>Packages</th>
-                <th>Status</th>
-                <th>Status Time</th>
-                <th>Log</th>
-                <th>Created By</th>
-              </tr>  
-            </thead>   
-          </table>
         </div>
-      </div>
-      
-      <div id="software-inventory-history" class="tab-pane fade">     
-        <div class="col-sm-12" style="margin-top: 10px">
-
-        <!-- Inventory Job History Table -->
-          <table cellspacing="0" class="display table" id="inventory-job-history-datatable">    
-            <thead>  
-              <tr> 
-                <th>Description</th>
-                <th>Status</th>
-                <th>Status Time</th>
-                <th>Elapsed Time</th>
-                <th>Log</th>
-              </tr>  
-            </thead>  
-          </table>
-        </div> <!-- /Inventory Job History Table -->    
-      </div>
-    </div>  
-  </div>   
- </div> 
-          
-</div> <!-- Main -->
-
+        <div class="col-sm-9">
+            <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-briefcase"></i> Last Successful Retrieval: <span id="last_successful_inventory_elapsed_time"></span></strong></span>
+            <div class="btn-group pull-right">
+                <button id="install-history-button" type="button" class="btn btn-default">Install History</button>
+                <button id="inventory-history-button" type="button" class="btn btn-default">Software Inventory History</button>
+                <div class="btn-group">
+                    <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                    Action
+                    <span class="glyphicon glyphicon-link">
+                    <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li id="schedule-install-menu-item"><a href="{{ url_for('host_schedule_install', hostname = host.hostname) }}?return_url=host_dashboard">Schedule an Install</a></li>
+                        <li class="divider"></li>
+                        <li><a href="javascript://" class="install-delete-all" status="" install-delete-url="{{ url_for('delete_all_scheduled_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Scheduled Installs</a></li>
+                        <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('delete_all_failed_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Failed Installs</a></li>
+                        <li class="divider"></li>
+                        <li><a href="javascript://" id="retrieve-software" retrieve-software-url="{{ url_for('get_software', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Retrieve Latest Software</a></li>
+                        <li class="divider"></li>
+                        <li><a href="{{ url_for('host_edit', hostname = host.hostname) }}?return_url=host_dashboard">Edit Host</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <!-- center left-->
+                <div class="col-sm-6">
+                    <div class="panel-group" id="accordion" >
+                        {% for package_state in package_states %}
+                        <div id="panel-{{ package_state }}" class="panel panel-info">
+                            <div class="panel-heading">
+                                <div class="panel-title">
+                                    <a href="#collapse{{ package_state }}" data-toggle="collapse" data-parent="#accordion">
+                                    <span style="font-size:14px;">{{ package_state }}</span>
+                                    <i class="glyphicon glyphicon-plus-sign pull-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="panel-collapse collapse {% if loop.index == 1 %} in {% endif %}" id="collapse{{ package_state }}">
+                                <div class="panel-body">
+                                    <table  class="display table" id="{{ package_state }}">
+                                        <thead class="hide-header">
+                                            <tr>
+                                                <th>&nbsp;</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /panel-info -->
+                        {% endfor %}
+                    </div>
+                    <!-- /accordion -->
+                </div>
+                <!-- /center left-->
+                <!--center right-->
+                <div class="col-sm-6">
+                    <div class="panel panel-info">
+                        <div class="panel-heading">
+                            <div class="panel-title">
+                                <span style="font-size:14px;">
+                                <center>&nbsp; Scheduled/Failed Installations</center>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <table class="display table" id="scheduled-install-datatable" >
+                                <thead>
+                                    <tr>
+                                        <th>Install Action</th>
+                                        <th>Scheduled Time</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <!--/panel body-->
+                    </div>
+                    <!--/panel-->
+                </div>
+                <!-- /center right -->
+            </div>
+            <!-- /row -->
+        </div>
+    </div>
+    <!-- /upper section -->
+    <div id="host-tabs" class="row">
+        <div class="col-sm-12">
+            <hr>
+            <a href="#" class="pull-right">
+            Return to Top
+            </a>
+        </div>
+    </div>
+    <!-- /row -->
+    <div class="container">
+        <div class="row">
+            <ul class="nav nav-tabs" id="host-dashboard-tab">
+                <li><a data-toggle="tab" href="#install-job-history">Install History</a></li>
+                <li><a data-toggle="tab" href="#software-inventory-history">Software Inventory History</a></li>
+            </ul>
+            <div class="tab-content">
+                <div id="install-job-history" class="tab-pane fade in active">
+                    <div class="container col-sm-12" style="margin-top: 10px">
+                        <table cellspacing="0" class="display table" id="install-job-history-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Install Action</th>
+                                    <th>Scheduled Time</th>
+                                    <th>Start Time</th>
+                                    <th>Packages</th>
+                                    <th>Status</th>
+                                    <th>Status Time</th>
+                                    <th>Log</th>
+                                    <th>Created By</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div id="software-inventory-history" class="tab-pane fade">
+                    <div class="col-sm-12" style="margin-top: 10px">
+                        <!-- Inventory Job History Table -->
+                        <table cellspacing="0" class="display table" id="inventory-job-history-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Status Time</th>
+                                    <th>Elapsed Time</th>
+                                    <th>Log</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <!-- /Inventory Job History Table -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Main -->
 {% endblock main %}

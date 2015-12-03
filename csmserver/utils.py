@@ -32,7 +32,7 @@ import stat
 import datetime 
 import importlib
 import tarfile
-import traceback
+import re
 
 from constants import get_autlogs_directory
 from __builtin__ import True
@@ -68,7 +68,17 @@ def create_directory(directory):
             os.makedirs(directory) 
         except:
             print('ERROR: Unable to create directory' + directory)      
-        
+
+
+"""
+Given a comma delimited string and remove extra spaces
+Example: 'x   x  ,   y,  z' becomes 'x x,y,z'
+"""
+def remove_extra_spaces(str):
+    if str is not None:
+        return ','.join([re.sub(r'\s+', ' ', x).strip() for x in str.split(',')])
+    return str
+
 """
 Converts a datetime string to internal python datetime.  
 Returns None if the string is not a valid date time.
@@ -87,7 +97,7 @@ def get_datetime_string(datetime, format):
 
 def make_file_writable(file_path):
     if os.path.isfile(file_path):
-        os.chmod(file_path, stat.S_IRWXU)  
+        os.chmod(file_path, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)  
         
 def get_tarfile_file_list(tar_file_path):
     file_list = []
@@ -164,18 +174,18 @@ def make_url(connection_type, username, password, host_or_ip, port_number, defau
     no_password = False
     
     # Set the default username and password only if both username and password have not been specified
-    if (username is None or len(username) == 0) and (password is None or len(password) == 0):
+    if is_empty(username) and is_empty(password):
         if default_username is not None:
             username = default_username
         if default_password is not None:
             password = default_password
     
-    if username is not None and len(username) > 0:
+    if not is_empty(username):
         url += '{}'.format(username)
     else:
         no_username = True
         
-    if password is not None and len(password) > 0:
+    if not is_empty(password):
         url += ':{}'.format(password)
     else:
         no_password = True
@@ -186,7 +196,7 @@ def make_url(connection_type, username, password, host_or_ip, port_number, defau
         url += '@{}'.format(host_or_ip)
     
     # It is possible there may be multiple ports separated by comma
-    if port_number is not None and len(port_number) > 0:
+    if not is_empty(port_number):
         url += ':{}'.format(port_number) 
   
     return url
@@ -204,11 +214,11 @@ def concatenate_dirs(dir1, dir2):
     
     return result_dir
 
-def trim_last_slash(str):
-    if str is not None:
-        if str.endswith('/'):
-            return str[:-1]
-    return str
+def trim_last_slash(s):
+    if s is not None:
+        if s.endswith('/'):
+            return s[:-1]
+    return s
 
 """
 Returns the base URL including the port numbetr
@@ -217,19 +227,33 @@ e.g. (localhost:50000)
 def get_base_url(url):
     url = url.replace('http://', '')
     return 'http://' + url[:url.find('/')] 
-    
+
+"""
+These conditions are considered empty
+   s = [], s = None, s = '', s = '    ', s = 'None'
+"""
 def is_empty(obj):
-    if obj is None or obj == 'None':
-        return True
-    elif isinstance(obj, list) and len(obj) == 0:
-        return True
-    else:
+    if isinstance(obj, str):
+        obj = obj.replace('None','').strip()
+
+    if obj:
         return False
-    
-def comma_delimited_str_to_array(comma_delimited_str):
-    if comma_delimited_str is None or len(comma_delimited_str) == 0:
+
+    return True
+
+"""
+Strips all unwanted characters except a-z, A-Z, 0-9, and '(). -_'
+"""
+def get_acceptable_string(input_string):
+    temp = re.sub("[^a-z0-9()-_.\s]",'', input_string, flags=re.I)
+    return re.sub("\s+", " ", temp).strip()
+
+
+def comma_delimited_str_to_list(comma_delimited_str):
+    if is_empty(comma_delimited_str):
         return []
     return comma_delimited_str.split(',')   
+
 
 def is_ldap_supported():
     try:
@@ -237,14 +261,6 @@ def is_ldap_supported():
     except:
         return False
     return True
-    
 
-"""
-Only retain alphanumeric, space, and "-"
-"""
-def strip_unwanted_characters(str):
-    pattern = re.compile('([^\s\w-])+')
-    return " ".join(pattern.sub('', str).split())
-  
 if __name__ == '__main__':
-    pass 
+    print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

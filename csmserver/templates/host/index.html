@@ -1,179 +1,179 @@
 {% extends 'base.html' %}
 
-{% block title %}<center><h4><b>Managed Hosts</b></center></h4>{% endblock title %}
-
+{% block title %}<center><h4><b>Managed Hosts</b></h4></center>{% endblock title %}
 
 {% block extra_head %}
 
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
-  <script>
+<script>
     $(function() {
-      
-      // Use delegate pattern for event
-      $("#host-datatable").on("click", ".host-delete-link", function() {
-        var delete_url = $(this).attr('data-delete-url');
-        var delete_host = $(this).attr('delete-host');
 
-        bootbox.confirm("You are about to delete host \'" + delete_host + "\'.  OK to proceed?", function(result) {
-          if (result) {
-            $.ajax({
-              url: delete_url,
-              type: 'DELETE',
-              success: function(result) {
-                if (result.status == 'OK') {
-                  window.location = "{{ url_for('host_list') }}";
-                } else {
-                   bootbox.alert('Delete failed.');
+        // Use delegate pattern for event
+        $("#host-datatable").on("click", ".host-delete-link", function() {
+            var delete_url = $(this).attr('data-delete-url');
+            var delete_host = $(this).attr('delete-host');
+
+            bootbox.confirm("You are about to delete host \'" + delete_host + "\'.  OK to proceed?", function(result) {
+                if (result) {
+                    $.ajax({
+                        url: delete_url,
+                        type: 'DELETE',
+                        success: function(result) {
+                            if (result.status == 'OK') {
+                                host_table.api().ajax.url("/api/get_managed_host_details/region/" + get_selected_region_cookie()).load();
+                            } else {
+                                bootbox.alert('Delete failed.');
+                            }
+                        }
+                    });
                 }
-              }
-           });
-          }
-        }); 
-      });
+            });
+        });
 
-      var host_table = $("#host-datatable").dataTable({
-        "order": [
-          [0, "asc"]
-        ],
-        "columnDefs": [{
-          "targets": 0,
-          "data": 'hostname',
-          "render": function(data, type, row) {
-             return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
-          }
-        }, 
-        {
-          "targets": 1,
-          "data": 'platform'
-        }, 
-        {
-          "targets": 2,
-          "data": 'connection'
-        }, 
-        {
-          "targets": 3,
-          "data": 'host_or_ip',
-          "render": function(data, type, row) {
-            return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
-          }
-        }, {
-          "targets": 4,
-          "data": 'port_number',
-          "render": function(data, type, row) {
-            return comma2br(data);
-          }
-        }, {
-          "targets": 5,
-          "data": 'jump_host'
-        }, {
-          "targets": 6,
-          "data": 'username',
-        }, {
-          "targets": 7,
-          "data": 'hostname',
-          "render": function(data, type, row) {
-            return '<a class="host-delete-link" href="javascript://"  \
+        var host_table = $("#host-datatable").dataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'platform'
+            }, {
+                "targets": 2,
+                "data": 'connection'
+            }, {
+                "targets": 3,
+                "data": 'host_or_ip',
+                "render": function(data, type, row) {
+                    return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
+                }
+            }, {
+                "targets": 4,
+                "data": 'port_number',
+                "render": function(data, type, row) {
+                    return comma2br(data);
+                }
+            }, {
+                "targets": 5,
+                "data": 'jump_host'
+            }, {
+                "targets": 6,
+                "data": 'username',
+            }, {
+                "targets": 7,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a class="host-delete-link" href="javascript://"  \
                 delete-host="' + data + '" \
                 data-delete-url="/hosts/' + data + '/delete/">Delete</a>';
-          }
-        },],
-      });
-      
-      $('#search-region-selector').select2({
-        placeholder: "Select Hosts by Region",     
-        allowClear: true,  
-        ajax: {
-          url: "/api/get_regions/",
-          dataType: 'json',           
-          processResults: function (data, page) {
-            return { results: data.data };
-          },
-          data: function (params) {
-            return {
-              q: params.term, // search term
-              page: params.page
-           };
-          },
-        },        
-      }); 
-      
-      $('#search-region-selector').on('change', function (e) {       
-        on_refresh_host_table($(this).val());
-      });      
-      
-      var selected_region_id = $.cookie('list-host-selected-region') == null ? 0 : $.cookie('list-host-selected-region');
-      on_refresh_host_table(selected_region_id);
-      
-      function on_refresh_host_table(region_id) {
-        $.ajax({
-          url: "/api/get_region_host_count/region/" + region_id,
-          dataType: 'json',
-          success: function (data) {
-            $.each(data, function(index, element) {             
-              var region_host_count = element[0].region_host_count;
-              if (region_host_count >= 2000) { 
-                bootbox.confirm('The selected region has ' + region_host_count + ' hosts and may cause longer time to load. Continue?' , function(result) {
-                  if (result) {
-                    refresh_host_table(region_id);
-                  }
-                });
-              } else {
-                refresh_host_table(region_id);
-              }     
-            });
-          } 
-        });         
-      } 
-      
-      function refresh_host_table(region_id) {
-        $.cookie('list-host-selected-region', region_id);     
-        host_table.api().ajax.url("/api/get_managed_host_details/region/" + region_id).load();      
+                }
+            }, ],
+        });
 
-        $.ajax({
-          url: "/api/get_region_name/region/" + region_id,
-          dataType: 'json',
-          success: function (data) {
-            $.each(data, function(index, element) {               
-              $('#selected-region').html(element[0].region_name)                    
+        $('#search-region-selector').select2({
+            placeholder: "Filter Hosts by Region",
+            allowClear: true,
+            ajax: {
+                url: "/api/get_regions/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                },
+            },
+        });
+
+        $('#search-region-selector').on('change', function(e) {
+            on_refresh_host_table($(this).val());
+        });
+
+        on_refresh_host_table(get_selected_region_cookie());
+
+        function on_refresh_host_table(region_id) {
+            $.ajax({
+                url: "/api/get_region_host_count/region/" + region_id,
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        var region_host_count = element[0].region_host_count;
+                        if (region_host_count >= 2000) {
+                            bootbox.confirm('The selected region has ' + region_host_count + ' hosts and may cause longer time to load. Continue?', function(result) {
+                                if (result) {
+                                    refresh_host_table(region_id);
+                                }
+                            });
+                        } else {
+                            refresh_host_table(region_id);
+                        }
+                    });
+                }
             });
-          } 
-        });    
-      }       
-      
+        }
+
+        function refresh_host_table(region_id) {
+            $.cookie('list-host-selected-region', region_id);
+            host_table.api().ajax.url("/api/get_managed_host_details/region/" + region_id).load();
+
+            $.ajax({
+                url: "/api/get_region_name/region/" + region_id,
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        $('#selected-region').html(element[0].region_name)
+                    });
+                }
+            });
+        }
+
+        function get_selected_region_cookie() {
+            return $.cookie('list-host-selected-region') == null ? 0 : $.cookie('list-host-selected-region');
+        }
     });
-  </script>
+</script>
+
 {% endblock extra_head %} 
 
 {% block main %}
 <div class="container" style="margin-top: 10px">
-  <div class="row">
-    <div class="col-sm-3">
-      <span class="DodgerBlue"><strong>Region:&nbsp;</strong><span id='selected-region'></span></span>
-    </div> 
-    <div class="col-sm-9">
-      <input type="hidden" class="select2" id="search-region-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
-      </select>
+    <div class="row">
+        <div class="col-sm-3">
+            <span><strong>Region:&nbsp;</strong></span><span id='selected-region'></span>
+        </div>
+        <div class="col-sm-9">
+            <div class="input-group">
+                <span title="Filter Hosts" class="input-group-addon glyphicon glyphicon-filter"></span>
+                <input type="hidden" class="select2" id="search-region-selector">
+                </span>
+            </div>
+        </div>
     </div>
-  </div>
-  
-  <hr>
-  
-  <div class="row">
-    <table cellspacing="0" class="display table" id="host-datatable">    
-      <thead>  
-        <tr>  
-          <th>Hostname</th>  
-          <th>Platform</th> 
-          <th>Connection</th> 
-          <th>TS or IP</th> 
-          <th>Port</th>
-          <th>Jump Server</th>
-          <th>Username</th>   
-          <th>Action</th> 
-        </tr>  
-      </thead>  
-    </table>
-  </div>
+    <hr>
+    <div class="row">
+        <table cellspacing="0" class="display table" id="host-datatable">
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th>Platform</th>
+                    <th>Connection</th>
+                    <th>TS or IP</th>
+                    <th>Port</th>
+                    <th>Jump Server</th>
+                    <th>Username</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
 </div>
 {% endblock main %}

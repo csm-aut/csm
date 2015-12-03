@@ -1,0 +1,26 @@
+<!--
+This HTML file requires a corresponding select_hosts_by_platform.js file
+
+Caller may provide the following WTForms elements with the following IDs
+
+-->
+
+{% from 'host/common.html' import edit_field %}
+
+{% macro select_hosts_by_platform(platform, software, region, role) %}
+
+{{ edit_field(platform, field_width="col-sm-5", class="form-control") }}
+{{ edit_field(software, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+{{ edit_field(region, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+{% set extra_field =
+    '<button id="retrieve-hosts-by-platform" class="btn btn-primary">Retrieve</button>'
+%}
+{{ edit_field(role, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control", extra_field=extra_field) }}
+
+<div class="col-sm-12">
+    <div class="form-group row">
+        <select id="host-selector" name="host-selector" multiple="multiple" data-title="Hosts" data-json=false></select>
+    </div>
+</div>
+
+{% endmacro %}

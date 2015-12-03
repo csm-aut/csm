@@ -28,6 +28,7 @@ from sqlalchemy.exc import IntegrityError
 from database import DBSession
 from models import SMUMeta
 from models import SMUInfo
+#from models import SoftwareTarInfo
 from models import CCOCatalog
 from models import logger
 from models import SystemOption
@@ -53,8 +54,8 @@ XML_TAG_PID = "pid"
 XML_TAG_MDF_ID = "mdfID"
 XML_TAG_SMU_SOFTWARE_TYPE_ID = 'smuSoftwareTypeID'
 XML_TAG_SP_SOFTWARE_TYPE_ID = 'spSoftwareTypeID'
+XML_TAG_TAR_SOFTWARE_TYPE_ID = 'tarSoftwareTypeID'
 XML_TAG_ID = 'id'
-XML_TAG_SMU = 'smu'
 XML_TAG_NAME = 'name'
 XML_TAG_SMU_TYPE = 'smuType'
 XML_TAG_DESCRIPTION = 'description'
@@ -72,10 +73,11 @@ XML_TAG_STATUS = 'status'
 XML_TAG_COMPRESSED_IMAGE_SIZE = 'compressedImageSize'
 XML_TAG_UNCOMPRESSED_IMAGE_SIZE = 'unCompressedImageSize'
 XML_TAG_CCO_FILE_NAME = 'ccoFileName'
-XML_TAG_COMPOSITE_DDTS = "compositeDDTS";  # Only SP has this attribute
+XML_TAG_COMPOSITE_DDTS = "compositeDDTS"  # Only SP has this attribute
 XML_TAG_SMU = 'smu'
 XML_TAG_SP = 'sp'
 XML_TAG_SMU_INTRANSIT = 'smuIntransit'
+XML_TAG_TAR = 'tar'
 
 class SMUInfoLoader(object):
     """
@@ -88,18 +90,21 @@ class SMUInfoLoader(object):
         self.smus = {}
         self.service_packs = {}
         self.in_transit_smus = {}
-        
+        self.software = {}
+
         if SystemOption.get(DBSession()).enable_cco_lookup or refresh:
             self.get_smu_info_from_cco(platform, release)
         else:
-            self.get_smu_info_from_db(platform, release)           
+            self.get_smu_info_from_db(platform, release)
     
     def get_smu_info_from_db(self, platform, release):
+        # self.smu_meta is set to None if the requested platform and release are not in the database.
         self.smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
         if not self.smu_meta is None:
             self.smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU)
             self.service_packs = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SERVICE_PACK)                
             self.in_transit_smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU_IN_TRANSIT)
+            self.software = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SOFTWARE)
         
     def get_smu_info_from_cco(self, platform, release):
         same_as_db = False
@@ -117,12 +122,12 @@ class SMUInfoLoader(object):
                 else:
                     # Delete the existing smu_meta and smu_info for this platform and release
                     db_session.delete(db_smu_meta)
-            
-            if not same_as_db:    
+
+            if not same_as_db:
                 db_session.add(self.smu_meta)
             else:
                 db_smu_meta.retrieval_time = datetime.datetime.utcnow()
-            
+
             # Use Flush to detect concurrent saving condition.  It is
             # possible that another process may perform the same save.
             # If this happens, Duplicate Key may result.
@@ -131,7 +136,9 @@ class SMUInfoLoader(object):
 
         except IntegrityError:
             db_session.rollback()
-    
+        except Exception:
+            db_session.rollback()
+            logger.exception('get_smu_info_from_cco hit exception')
         
     def get_smus_by_package_type(self, smu_list, package_type):
         result_dict = {}
@@ -141,30 +148,46 @@ class SMUInfoLoader(object):
                 result_dict[smu_info.name] = smu_info
                 
         return result_dict
-    
+
+#    def get_tars(self):
+#        result_dict = {}
+
+#        for tar in self.smu_meta.smu_info:
+#            result_dict[tar.name] = tar
+
+#        return result_dict
+
+    @property
+    def is_valid(self):
+        return True if self.smu_meta is not None else False
+
     @property
     def creation_date(self):
-        return self.smu_meta.created_time
+        return None if self.smu_meta is None else self.smu_meta.created_time
     
     @property
     def smu_software_type_id(self):
-        return self.smu_meta.smu_software_type_id
+        return None if self.smu_meta is None else self.smu_meta.smu_software_type_id
     
     @property
     def sp_software_type_id(self):
-        return self.smu_meta.sp_software_type_id
+        return None if self.smu_meta is None else self.smu_meta.sp_software_type_id
+
+    @property
+    def tar_software_type_id(self):
+        return None if self.smu_meta is None else self.smu_meta.tar_software_type_id
     
     @property
     def pid(self):
-        return self.smu_meta.pid
+        return None if self.smu_meta is None else self.smu_meta.pid
     
     @property
     def file_suffix(self):
-        return self.smu_meta.file_suffix
+        return None if self.smu_meta is None else self.smu_meta.file_suffix
     
     @property
     def mdf_id(self):
-        return self.smu_meta.mdf_id
+        return None if self.smu_meta is None else self.smu_meta.mdf_id
         
     def get_int_value(self, s):
         try:
@@ -180,31 +203,37 @@ class SMUInfoLoader(object):
     
     def load_smu_info(self, node_list, smu_dict, package_type):
         for node in node_list:
-            smu_info = SMUInfo(id=node.attributes[XML_TAG_ID].value)
-            
-            smu_info.status = node.attributes[XML_TAG_STATUS].value       
+            smu_name = self.getChildElementText(node, XML_TAG_NAME)
+
+            if package_type == PackageType.SMU or package_type == PackageType.SERVICE_PACK:
+                smu_info = SMUInfo(id=node.attributes[XML_TAG_ID].value)
+                smu_info.cco_filename = self.getChildElementText(node, XML_TAG_CCO_FILE_NAME)
+                smu_info.status = node.attributes[XML_TAG_STATUS].value
+            elif package_type == PackageType.SOFTWARE:
+                smu_info = SMUInfo(id=smu_name)
+                smu_info.cco_filename = smu_name
+            else:
+                return
+
+            smu_info.name = smu_name
             smu_info.name = self.getChildElementText(node, XML_TAG_NAME)
-            
             smu_info.type = self.getChildElementText(node, XML_TAG_SMU_TYPE)
             smu_info.posted_date = self.getChildElementText(node, XML_TAG_POSTED_DATE)
             smu_info.eta_date = self.getChildElementText(node, XML_TAG_ETA_DATE)
             smu_info.ddts = self.getChildElementText(node, XML_TAG_DDTS)
-            smu_info.description = self.getChildElementText(node, XML_TAG_DESCRIPTION) 
-            smu_info.impact = self.getChildElementText(node, XML_TAG_IMPACT) 
-            smu_info.cco_filename = self.getChildElementText(node, XML_TAG_CCO_FILE_NAME)
-   
+            smu_info.description = self.getChildElementText(node, XML_TAG_DESCRIPTION)
+            smu_info.impact = self.getChildElementText(node, XML_TAG_IMPACT)
             smu_info.supersedes = self.getChildElementText(node, XML_TAG_SUPERCEDES)
             smu_info.superseded_by = self.getChildElementText(node, XML_TAG_SUPERCEDED_BY)
             smu_info.prerequisites = self.getChildElementText(node, XML_TAG_PRE_REQUISITES)
-            smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)               
+            smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)
             smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
-            smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))              
+            smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
             smu_info.uncompressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE))
-            smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS);
+            smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS)
             smu_info.package_type = package_type
-                
+
             self.smu_meta.smu_info.append(smu_info)
-            
             smu_dict[smu_info.name] = smu_info
             
         """
@@ -217,7 +246,7 @@ class SMUInfoLoader(object):
                         prerequisite_smu_info = smu_dict[prerequisite_smu]
                         prerequisite_smu_info.prerequisite_to.append(smu_name)
         """               
-            
+
     def load(self):
         try:
             xmldoc = minidom.parseString(SMUInfoLoader.get_smu_meta_file(self.platform, self.release))
@@ -232,6 +261,7 @@ class SMUInfoLoader(object):
         self.smu_meta.file_suffix = self.getChildElementText(xmldoc, XML_TAG_SMU_SUFFIX)
         self.smu_meta.smu_software_type_id = self.getChildElementText(xmldoc, XML_TAG_SMU_SOFTWARE_TYPE_ID)
         self.smu_meta.sp_software_type_id = self.getChildElementText(xmldoc, XML_TAG_SP_SOFTWARE_TYPE_ID)
+        self.smu_meta.tar_software_type_id = self.getChildElementText(xmldoc, XML_TAG_TAR_SOFTWARE_TYPE_ID)
         
         node_list = xmldoc.getElementsByTagName(XML_TAG_PLATFORM_MDF_ID)
         if len(node_list) > 0:
@@ -244,10 +274,13 @@ class SMUInfoLoader(object):
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU), self.smus, PackageType.SMU)
         
         # For SMUs that have not been posted yet.
-        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU_INTRANSIT), self.in_transit_smus, PackageType.SMU_IN_TRANSIT);
+        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU_INTRANSIT), self.in_transit_smus, PackageType.SMU_IN_TRANSIT)
         
         # For Service Packs that have been posted.
-        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SP), self.service_packs, PackageType.SERVICE_PACK);
+        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SP), self.service_packs, PackageType.SERVICE_PACK)
+
+        # For Software Tar Files that have been posted.
+        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_TAR), self.software, PackageType.SOFTWARE)
         
     """
     Returns all the SMUs (posted and obsoleted).
@@ -265,7 +298,10 @@ class SMUInfoLoader(object):
     
     def get_optimal_sp_list(self):
         return get_smus_exclude_supersedes_include_prerequisites(self, self.get_sp_list())
-    
+
+    def get_tar_list(self):
+        return OrderedDict(sorted(self.software.items())).values()
+
     """
     Given a SMU/SP name, returns the SMUInfo.
     """
@@ -276,6 +312,8 @@ class SMUInfoLoader(object):
             return self.in_transit_smus[smu_name]
         elif smu_name in self.service_packs:
             return self.service_packs[smu_name]
+        elif smu_name in self.software:
+            return self.software[smu_name]
         else:
             return None
     
@@ -304,6 +342,7 @@ class SMUInfoLoader(object):
     def get_smu_meta_file_timestamp(cls, platform, release):
         try:
             url = IOSXR_URL + '/' + platform + '_' + release + '.lastPublishDate'
+
             r = requests.get(url)
             return r.text
         except:
@@ -373,7 +412,7 @@ class SMUInfoLoader(object):
                     
                         # Inserts release in reverse order (latest release first)
                         release_list.insert(0, release)
-                    
+
         return OrderedDict(sorted(catalog.items()))
     
     

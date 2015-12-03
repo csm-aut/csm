@@ -46,6 +46,8 @@ PLATFORM_TYPE_CRS_P_SMU = 6
 PLATFORM_TYPE_CRS_PX_PACKAGE = 7
 PLATFORM_TYPE_CRS_P_PACKAGE = 8
 
+PLATFORM_TYPE_ASR9K_PX_TAR = 13
+
 """
 Match NCS6K_SMU before NS6K_PACKAGE so a SMU won't 
 be treated as a package as they have a very similar format.
@@ -73,6 +75,10 @@ pattern_list[PLATFORM_TYPE_ASR9K_PX_PACKAGE] = pattern
 # disk0:asr9k-px-4.2.3.CSCtz89449
 pattern = re.compile("\\S*asr9k-px(-\\d+\\.\\d+\\.\\d+\\.)CSC\\S*")
 pattern_list[PLATFORM_TYPE_ASR9K_PX_SMU] = pattern
+
+# ASR9K-iosxr-px-k9-5.3.0.tar or ASR9K-iosxr-px-5.3.1-bridge_smus.tar
+pattern = re.compile("\\S*ASR9K-iosxr-px\\S*(-\\d+\\.\\d+\\.\\d+)\\S*\\.tar")
+pattern_list[PLATFORM_TYPE_ASR9K_PX_TAR] = pattern
 
 # disk0:asr9k-px-4.3.2.sp-1.0.0 or asr9k-px-4.3.2.k9-sp-1.0.0
 pattern = re.compile("\\S*asr9k-px(-\\d+\\.\\d+\\.\\d+\\.)\\S*sp\\S*")
@@ -110,32 +116,21 @@ pattern_list[PLATFORM_TYPE_NCS6K_SYSADMIN_SMU] = pattern
 pattern = re.compile("\\S*ncs6k-sysadmin-\\S*(-\\d+\\.\\d+\\.\\d+)\\S*")
 pattern_list[PLATFORM_TYPE_NCS6K_SYSADMIN_PACKAGE] = pattern
 
-"""
-For IOS XR, the release string is always after the architecture string  ("-p-" or "-px").
-
-Example,
-    input: asr9k-mini-px-4.2.3
-           asr9k-px-4.2.3.CSCua16764-1.0.0
-           hfr-mini-px-4.2.3
-           hfr-px-4.2.3.CSCti75606-1.0.0
-    output: 4.2.3
-"""
-def get_IOSXR_release(name, architecture):
-    pos = name.find(architecture)
-    if pos != -1:
-        partial = name[pos + len(architecture):]
-        tokens = partial.split('.')
-        if len(tokens) >= 3:
-            return tokens[0] + '.' + tokens[1] + '.' + tokens[2]
+def get_IOSXR_release(name):
+    matches = re.findall("\d+\.\d+\.\d+", name)
+    if matches != []:
+        return matches[0]
     return UNKNOWN;
-
 """
 Example,
     input: ncs6k-xr-5.0.1
            ncs6k-5.0.1.CSCul51055-0.0.2.i
            ncs6k-sysadmin-xr-5.0.1
            ncs6k-sysadmin-5.0.1.CSCul51055-0.0.2.i
+           ASR9K-iosxr-px-k9-5.0.1.tar
+           ASR9K-iosxr-px-5.0.1-bridge_smus.tar
     output: 5.0.1
+
 """
 def get_NCS6K_release(name, platform_type):
     if platform_type == PLATFORM_TYPE_NCS6K_PACKAGE:
@@ -166,13 +161,14 @@ ASR9K-PX, CRS-PX, NCS6K
 """
 def get_platform(name):
     platform_type = get_platform_type(name);
-    
+
     if platform_type == PLATFORM_TYPE_ASR9K_P_SMU or \
        platform_type == PLATFORM_TYPE_ASR9K_P_PACKAGE:
             return PLATFORM_ASR9K_P
     elif platform_type == PLATFORM_TYPE_ASR9K_PX_PACKAGE or \
          platform_type == PLATFORM_TYPE_ASR9K_PX_SMU or \
-         platform_type == PLATFORM_TYPE_ASR9K_PX_SP:
+         platform_type == PLATFORM_TYPE_ASR9K_PX_SP or \
+         platform_type == PLATFORM_TYPE_ASR9K_PX_TAR:
             return PLATFORM_ASR9K_PX
     elif platform_type == PLATFORM_TYPE_CRS_PX_SMU or \
          platform_type == PLATFORM_TYPE_CRS_PX_PACKAGE:
@@ -193,24 +189,37 @@ def get_release(name):
     platform_type = get_platform_type(name)   
 
     if platform_type == PLATFORM_TYPE_ASR9K_P_SMU or \
-       platform_type == PLATFORM_TYPE_ASR9K_P_PACKAGE or \
-       platform_type == PLATFORM_TYPE_CRS_P_SMU or \
-       platform_type == PLATFORM_TYPE_CRS_P_PACKAGE:
-        return get_IOSXR_release(name, "-p-")
+        platform_type == PLATFORM_TYPE_ASR9K_P_PACKAGE or \
+        platform_type == PLATFORM_TYPE_CRS_P_SMU or \
+        platform_type == PLATFORM_TYPE_CRS_P_PACKAGE or \
+        platform_type == PLATFORM_TYPE_ASR9K_PX_PACKAGE or \
+        platform_type == PLATFORM_TYPE_ASR9K_PX_SMU or \
+        platform_type == PLATFORM_TYPE_ASR9K_PX_SP or \
+        platform_type == PLATFORM_TYPE_CRS_PX_SMU or \
+        platform_type == PLATFORM_TYPE_CRS_PX_PACKAGE or \
+        platform_type == PLATFORM_TYPE_ASR9K_PX_TAR:
+        return get_IOSXR_release(name)
     elif platform_type == PLATFORM_TYPE_NCS6K_SMU or \
          platform_type == PLATFORM_TYPE_NCS6K_PACKAGE or \
          platform_type == PLATFORM_TYPE_NCS6K_SYSADMIN_SMU or \
          platform_type == PLATFORM_TYPE_NCS6K_SYSADMIN_PACKAGE:
-        return get_NCS6K_release(name, platform_type)
-    elif platform_type == PLATFORM_TYPE_ASR9K_PX_PACKAGE or \
-         platform_type == PLATFORM_TYPE_ASR9K_PX_SMU or \
-         platform_type == PLATFORM_TYPE_ASR9K_PX_SP or \
-         platform_type == PLATFORM_TYPE_CRS_PX_SMU or \
-         platform_type == PLATFORM_TYPE_CRS_PX_PACKAGE:
-        return get_IOSXR_release(name, "-px-")
+        return get_NCS6K_release(name)
     else:
         return UNKNOWN;
 
 if __name__ == '__main__':   
-    name = 'ncs6k-5.0.1.CSCul51055-0.0.2.i'
-    print(get_platform(name), get_release(name))
+    names = []
+    names.append('ASR9K-iosxr-px-k9-5.3.1.tar')
+    names.append('ASR9K-iosxr-px-5.3.1-bridge_smus.tar')
+    names.append('asr9k-px-5.3.1.CSCuv00898.pie')
+    names.append('ASR9K-iosxr-px-k9-5.1.3.tar')
+    names.append('asr9k-px-5.1.3.CSCuw01943.pie')
+    names.append('ASR9K-iosxr-px-k9-5.3.0.tar')
+    names.append('ASR9K-iosxr-px-5.3.0-turboboot.tar')
+    names.append('ASR9K-iosxr-px-5.30.0.tar')
+    names.append('asr9k-px-5.2.2.sp1.pie')
+
+    for name in names:
+      print name
+      print(get_platform(name), get_release(name))
+      print

@@ -2,64 +2,62 @@
 
 
 {% block title %}
-  <center><h4><b>System Logs&nbsp;</b>
+<center>
+    <h4><b>System Logs&nbsp;</b>
     <a href="{{ url_for('download_system_logs') }}">
-      <img title="Download System Logs" src="/static/download.png">
-    </a> 
-  </center></h4>
+        <img title="Download System Logs" src="/static/download.png">
+    </a></h4>
+</center>
 {% endblock title %}
 
 {% block extra_head %}
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  <script>
+<script>
     $(function() {
-      $("#datatable").dataTable();
 
-      $('.utcDate').val(function(index, currentValue) {
-        // Invalid date would be less than 15 characters
-        if ($(this).text().length > 15) {
-          $(this).html(convertToLocaleString($(this).text() ));
-        }
-      });
-    
+        $("#datatable").dataTable();
+
+        $('.utcDate').val(function(index, currentValue) {
+            // Invalid date would be less than 15 characters
+            if ($(this).text().length > 15) {
+                $(this).html(convertToLocaleString($(this).text()));
+            }
+        });
+
     });
-  </script>
+</script>
 {% endblock extra_head %}
 
 {% block main %}
 <div class="container" style="margin-top: 10px">
-  <table cellspacing="0" class="display table" id="datatable">    
-    <thead>  
-      <tr> 
-        <th>No.</th> 
-        <th>Severity</th>  
-        <th>Message</th>  
-        <th>Created Time</th>  
-        <th>Trace</th>  
-      </tr>  
-    </thead>  
-    <tbody> 
-    
-      {% for log in logs %}
- 
-        <tr>  
-
-          <td>{{ loop.index }}</td> 
-          <td>{{ log.level }}</td>  
-          <td>{{ log.msg }}</td>  
-          <td class="utcDate">{{ log.created_time | datetime_string }}</td>  
- 
-          {% if log.trace == None %}
-            <td>&nbsp;</td>
-          {% else %}
-            <td><a href="{{ url_for('log_trace', log_id = log.id) }}"><center><img title='Trace Log' src="{{ url_for('static', filename='file.png') }}"></center></a></td>
-          {% endif %}   
-
-        </tr>  
-      {% endfor %}
-
-    </tbody> 
-  </table>
-
+    <table cellspacing="0" class="display table" id="datatable">
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>Severity</th>
+                <th>Message</th>
+                <th>Created Time</th>
+                <th>Trace</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ log.level }}</td>
+                <td>{{ log.msg }}</td>
+                <td class="utcDate">{{ log.created_time | datetime_string }}</td>
+                {% if log.trace == None %}
+                    <td>&nbsp;</td>
+                {% else %}
+                    <td>
+                        <a href="{{ url_for('log_trace', log_id = log.id) }}">
+                            <center><img title='Trace Log' src="{{ url_for('static', filename='file.png') }}"></center>
+                        </a>
+                    </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock main %}

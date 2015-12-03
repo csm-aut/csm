@@ -31,6 +31,7 @@ from smu_advisor import get_dict_from_list
 
 SMU_INDICATOR = 'CSC'
 SP_INDICATOR = '.sp'
+TAR_INDICATOR = 'iosxr'
     
 """
 Returns the package type.  Available package types are defined in PackageType.
@@ -44,6 +45,8 @@ def get_package_type(name):
         return PackageType.SMU
     elif name.find(SP_INDICATOR) != -1:
         return PackageType.SERVICE_PACK
+    elif name.find(TAR_INDICATOR) != -1:
+        return PackageType.SOFTWARE
     else:
         return PackageType.PACKAGE
     
@@ -174,22 +177,25 @@ def get_download_info_dict(smu_list):
     return download_info_dict, smu_loader
     
 """
-Returns the optimize list given the SMU/SP list.
+Returns the validated list given the SMU/SP list.
 A smu_list may contain packages, SMUs, SPs, or junk texts.
-This method is used to support the SMU Optimize feature
 """
-def get_optimize_list(smu_list, include_annotation=True):
-    error_list = []
+def get_validated_list(smu_list):
+    unrecognized_list = []
+    package_list = []
     result_list = []
     
     # Identify the platform and release
     platform, release = get_platform_and_release(smu_list)
     
     if platform == UNKNOWN or release == UNKNOWN:
-        return result_list, error_list
+        for line in smu_list:
+            result_list.append({'smu_entry': line, 'is':'Unrecognized' })
+        return result_list
     
     # Load the SMU information
     smu_loader = SMUInfoLoader(platform, release)
+    
     file_suffix = smu_loader.file_suffix
     smu_info_list= []
     smu_name_set = set()
@@ -199,7 +205,11 @@ def get_optimize_list(smu_list, include_annotation=True):
         smu_info = smu_loader.get_smu_info(smu_name)
         
         if smu_info is None:
-            error_list.append(smu_name)
+            # Check if the entry is a package type
+            if get_platform(smu_name) == UNKNOWN:
+                unrecognized_list.append(smu_name)
+            else:
+                package_list.append(smu_name)
             continue
         
         if smu_name in smu_name_set:
@@ -217,21 +227,28 @@ def get_optimize_list(smu_list, include_annotation=True):
         
         missing_required_prerequisite_set = get_unique_set_from_dict(missing_required_prerequisite_dict)
         for pre_requisite_smu in missing_required_prerequisite_set:
-            if include_annotation:
-                result_list.append(pre_requisite_smu + '.' + file_suffix + ' (A Missing Pre-requisite)')
-            else:
-                result_list.append(pre_requisite_smu + '.' + file_suffix)
+            pre_requisite_smu_info = smu_loader.get_smu_info(pre_requisite_smu)
+            description = pre_requisite_smu_info.description if pre_requisite_smu_info is not None else ''
+            result_list.append({ 'smu_entry': pre_requisite_smu + '.' + file_suffix, 'is':'Pre-requisite', 'description':description })
                 
         excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
         
         for smu_info in smu_info_list:
             if smu_info.name not in excluded_supersede_dict:
-                if include_annotation:
-                    result_list.append(smu_info.name + '.' + file_suffix + ' (Superseded)')
+                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'Superseded', 'description':smu_info.description })
             else:
-                result_list.append(smu_info.name + '.' + file_suffix)
-                
-    return result_list, error_list
+                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'SMU/SP', 'description':smu_info.description })
+    
+    if len(package_list) > 0:
+        for entry in package_list:
+            result_list.append({'smu_entry': entry, 'is':'Package', 'description':'' })
+            
+    if len(unrecognized_list) > 0:
+        for entry in unrecognized_list:
+            result_list.append({'smu_entry': entry, 'is':'Unrecognized', 'description':'' })
+ 
+            
+    return result_list
 
 if __name__ == '__main__':
     pass

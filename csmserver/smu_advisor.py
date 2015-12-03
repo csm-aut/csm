@@ -22,7 +22,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from utils import comma_delimited_str_to_array
+from utils import comma_delimited_str_to_list
 
 """
 Returns a list of SMUInfo which has already excluded all the supersedes and included 
@@ -36,7 +36,7 @@ def get_smus_exclude_supersedes_include_prerequisites(smu_loader, smu_info_list)
         if smu_info.status != 'Posted':
             continue
         # Filter out all the superseded SMUs
-        superseded_by = comma_delimited_str_to_array(smu_info.superseded_by) 
+        superseded_by = comma_delimited_str_to_list(smu_info.superseded_by) 
         if len(superseded_by) == 0:
             resultant_smu_dict[smu_info.name] = smu_info
             
@@ -150,7 +150,7 @@ SMU name can be SMU/SP name.
 def get_all_prerequisites(smu_loader, prerequisite_set, smu_name):
     smu_info = smu_loader.get_smu_info(smu_name)
     if smu_info is not None:
-        prerequisites = comma_delimited_str_to_array(smu_info.prerequisites)
+        prerequisites = comma_delimited_str_to_list(smu_info.prerequisites)
         if len(prerequisites) > 0:
             for prerequisite in prerequisites:
                 if prerequisite not in prerequisite_set:
@@ -165,7 +165,7 @@ SMU name can be SMU/SP name.
 def get_all_superseded_bys(smu_loader, superseded_by_set, smu_name):
     smu_info = smu_loader.get_smu_info(smu_name)
     if smu_info is not None:
-        superseded_bys = comma_delimited_str_to_array(smu_info.superseded_by)    
+        superseded_bys = comma_delimited_str_to_list(smu_info.superseded_by)    
         if len(superseded_bys) > 0:
             for superseded_by in superseded_bys:
                 if superseded_by not in superseded_by_set:
@@ -181,7 +181,7 @@ def is_superseded(smu_loader, smu_name_list, smu_name):
     for name in smu_name_list:
         smu_info = smu_loader.get_smu_info(name)
         if smu_info is not None:
-            superseded_smus = comma_delimited_str_to_array(smu_info.supersedes)
+            superseded_smus = comma_delimited_str_to_list(smu_info.supersedes)
             for superseded_smu in superseded_smus:
                 if superseded_smu == smu_name:
                     return True
@@ -196,7 +196,7 @@ def get_excluded_supersede_list(smu_info_list):
     resultant_list = []
     
     for smu_info in smu_info_list:
-        superseded_by_smus = comma_delimited_str_to_array(smu_info.superseded_by)
+        superseded_by_smus = comma_delimited_str_to_list(smu_info.superseded_by)
         is_superseded = False
         for superseded_by_smu in superseded_by_smus:
             if superseded_by_smu in smu_info_dict:

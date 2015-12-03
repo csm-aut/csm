@@ -4,120 +4,110 @@
 {% from 'host/common.html' import alert_duplicate %}
 
 {% if request.endpoint.endswith('edit') %}
-  {% set title = 'Edit Region' %}
+    {% set title = 'Edit Region' %}
 {% else %}
-  {% set title = 'Create Region' %}
+    {% set title = 'Create Region' %}
 {% endif %}
 
 {% block extra_head %}
-  <script src="/static/duallistbox/dist/dual-list-box.js"></script>
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  
-  <script type="text/javascript">
+<script type="text/javascript">
     $(function() {
-      
-      var available_servers = [];
-      var selected_servers = [];
-      
-      {% if region %}
-        {% for server in region.servers %}
-            selected_servers.push({
-              'id'  : "{{ server.id }}",
-              'name': "{{ server.hostname }}"
-            });
-        {% endfor %}
-      {% endif %}
-      
-      function check_contains(selected_servers, server_id) {
-        for (j = 0; j < selected_servers.length; j++) {
-          if (selected_servers[j].id == server_id) {
-            return true;
-          }
-        }
-        return false;
-      }
-                        
-      var server_selector = $('#server-selector').DualListBox();
 
-      $.ajax({
-        url: "/api/get_servers",
-        dataType: 'json',
-        success: function (data) {
-          $.each(data, function(index, element) {
-            for (i = 0; i < element.length; i++) {
-            
-              var server_id = element[i].server_id;
-              var hostname = element[i].hostname;
-              
-              if (!check_contains(selected_servers, server_id) ) {
-                available_servers.push({
-                  'id'  : server_id,
-                  'name': hostname
-                });
-              }
+        var available_servers = [];
+        var selected_servers = [];
+
+        {% if region %}
+            {% for server in region.servers %}
+            selected_servers.push({
+                'id': "{{ server.id }}",
+                'name': "{{ server.hostname }}"
+            });
+            {% endfor %}
+        {% endif %}
+
+        function check_contains(selected_servers, server_id) {
+            for (j = 0; j < selected_servers.length; j++) {
+                if (selected_servers[j].id == server_id) {
+                    return true;
+                }
             }
-          });
-                  
-          server_selector.initialize(available_servers, selected_servers);
-        },
-        error: function(xhr, status, errorThrown) { 
-          bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
-        }  
-      });       
-      
-      
-      $('#form').submit(function() {
-        
-        var region_name = $('#region_name').val();
-        var acceptable_string = get_acceptable_string(region_name);
-        
-        if (acceptable_string != region_name) {
-          var message = get_acceptable_string_message('Region name', region_name, acceptable_string);
-          bootbox.confirm(message, function(result) {
-            if (result) {
-              $('#region_name').val(acceptable_string);
-            }
-          }); 
-        } else {
-          return true;
+            return false;
         }
-        
-        return false;
-      });
-  
+
+        var server_selector = $('#server-selector').DualListBox();
+
+        $.ajax({
+            url: "/api/get_servers",
+            dataType: 'json',
+            success: function(data) {
+                $.each(data, function(index, element) {
+                    for (i = 0; i < element.length; i++) {
+
+                        var server_id = element[i].server_id;
+                        var hostname = element[i].hostname;
+
+                        if (!check_contains(selected_servers, server_id)) {
+                            available_servers.push({
+                                'id': server_id,
+                                'name': hostname
+                            });
+                        }
+                    }
+                });
+
+                server_selector.initialize(available_servers, selected_servers);
+            },
+            error: function(xhr, status, errorThrown) {
+                bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
+            }
+        });
+
+        $('#form').submit(function() {
+
+            var region_name = $('#region_name').val();
+            var acceptable_string = get_acceptable_string(region_name);
+
+            if (acceptable_string != region_name) {
+                var message = get_acceptable_string_message('Region name', region_name, acceptable_string);
+                bootbox.confirm(message, function(result) {
+                    if (result) {
+                        $('#region_name').val(acceptable_string);
+                    }
+                });
+            } else {
+                return true;
+            }
+
+            return false;
+        });
+
     });
-  </script>
-  
+</script>
 {% endblock extra_head %}
  
  
 {% block main %}
 <div class="row">
-  <div class="well col-sm-offset-2 col-sm-8">
-  <form id="form" method="post" class="form-horizontal">
-
-    <legend>{{ title }}</legend>
-    {{ alert_duplicate(form.region_name.data, duplicate_error) }}
-
-    {{ edit_field(form.region_name, field_width="col-sm-4", class="form-control", 
-      placeholder="Unique Name on CSM Server") }}
-    
-    <legend>Server Repositories</legend>
-    
-    <div class="col-sm-12">
-      <div class="form-group">
-        <select id="server-selector" name="selected-servers" multiple="multiple" data-title="Servers" data-json=false>          
-        </select>
-      </div>
+    <div class="well col-sm-offset-2 col-sm-8">
+        <form id="form" method="post" class="form-horizontal">
+            <legend>{{ title }}</legend>
+            {{ alert_duplicate(form.region_name.data, duplicate_error) }}
+            {{ edit_field(form.region_name, field_width="col-sm-4", class="form-control",
+                placeholder="Unique Name on CSM Server") }}
+            <legend>Server Repositories</legend>
+            <div class="col-sm-12">
+                <div class="form-group">
+                    <select id="server-selector" name="selected-servers" multiple="multiple" data-title="Servers" data-json=false>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <div class="btn col-sm-offset-5">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
+                </div>
+            </div>
+        </form>
     </div>
- 
-    <div class="form-actions">
-      <div class="btn col-sm-offset-5">
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
-      </div>
-    </div>
-  </form>
-  </div>
 </div>
 {% endblock main %}

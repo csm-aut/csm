@@ -11,8 +11,9 @@ PyMySQL==0.6.3
 WTForms==2.0.2
 gunicorn==19.2.1
 ordereddict==1.1
-pexpect==3.3
 requests==2.5.1
 paramiko==1.15.1
 pycrypto==2.6.1
 pysftp==0.2.8
+xlutils==1.7.1
+condoor

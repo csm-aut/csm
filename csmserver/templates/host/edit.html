@@ -4,191 +4,273 @@
 {% from 'host/common.html' import alert_duplicate %}
 
 {% if request.endpoint.endswith('edit') %}
-  {% set isEdit = True %}
+    {% set isEdit = True %}
 {% else %}
-  {% set isEdit = False %}
+    {% set isEdit = False %}
 {% endif %}
 
 {% block extra_head %}  
-  <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
-  <script src="/static/showhidepassword-1.0.0/js/password.js"></script>
-  <script>
+<script>
     $(function() {
-      var spinner = $('#spinner');    
-      spinner.hide();
-      
-      {% if isEdit %}
-        var is_password_panel_visible = false;
-        var password_panel = $('#password-panel');
-        password_panel.hide();
-        
-        $('#modify-password').on("click", function() {
-          if (is_password_panel_visible) {
+        var spinner = $('#spinner');
+        spinner.hide();
+
+        {% if isEdit %}
+            var is_password_panel_visible = false;
+            var password_panel = $('#password-panel');
             password_panel.hide();
-            is_password_panel_visible = false;
-          } else {
-            password_panel.show();
-            is_password_panel_visible = true;
-          }
-        });    
-        
-        $('#remove-password').on("click", function() {
-          var message = "This operation will remove the host password on file.  Proceed?";
-          bootbox.confirm(message, function(result) {
-            if (result) {
-              $.ajax({
-                "url": "{{ url_for('api_remove_host_password', hostname=form.hostname.data) }}",
-                type: "POST",
-                dataType: 'json',
-                success: function (response) {              
-                  if (response.status == 'OK') {
-                    bootbox.alert("Password has been removed.");
-                  } else {
-                    bootbox.alert("Unable to remove password.");
-                  }
+
+            $('#modify-password').on("click", function() {
+                if (is_password_panel_visible) {
+                    password_panel.hide();
+                    is_password_panel_visible = false;
+                } else {
+                    password_panel.show();
+                    is_password_panel_visible = true;
                 }
-              }); 
-            } 
-          });    
-        }); 
-        
-      {% endif %}       
-        
-      $('#password').password();
-      
-      $('#form').submit(function() {
-        var region_id = $('#region').val();
-        if (region_id < 0) {
-          bootbox.alert("Region has not been specified.");
-          return false;
-        }
-       
-        var hostname = $('#hostname').val();
-        var acceptable_string = get_acceptable_string(hostname);
-        
-        if (acceptable_string != hostname) {
-          var message = get_acceptable_string_message('Hostname', hostname, acceptable_string);
-          bootbox.confirm(message, function(result) {
-            if (result) {
-              $('#hostname').val(acceptable_string);
+            });
+
+            $('#remove-password').on("click", function() {
+                var message = "This operation will remove the host password on file.  Proceed?";
+                bootbox.confirm(message, function(result) {
+                    if (result) {
+                        $.ajax({
+                            "url": "{{ url_for('api_remove_host_password', hostname=form.hostname.data) }}",
+                            type: "POST",
+                            dataType: 'json',
+                            success: function(response) {
+                                if (response.status == 'OK') {
+                                    bootbox.alert("Password has been removed.");
+                                } else {
+                                    bootbox.alert("Unable to remove password.");
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+        {% endif %}
+
+        $('#password').password();
+
+        $('#form').submit(function() {
+            var region_id = $('#region').val();
+            if (region_id < 0) {
+                bootbox.alert("Region has not been specified.");
+                return false;
             }
-          }); 
-        } else {
-          return true;
+
+            var hostname = $('#hostname').val();
+            var acceptable_string = get_acceptable_string(hostname);
+
+            if (acceptable_string != hostname) {
+                var message = get_acceptable_string_message('Hostname', hostname, acceptable_string);
+                bootbox.confirm(message, function(result) {
+                    if (result) {
+                        $('#hostname').val(acceptable_string);
+                    }
+                });
+            } else {
+                return true;
+            }
+
+            return false;
+        });
+
+        $('#verify-reachability').on("click", function() {
+            var host_or_ip = $('#host_or_ip').val();
+            var port_number = $('#port_number').val();
+
+            if (host_or_ip.indexOf(',') != -1 || port_number.indexOf(',') != -1) {
+                display_dialog(host_or_ip, port_number);
+            } else {
+                verify_reachability($(this), spinner, $('#host_or_ip').val(), $('#port_number').val());
+            }
+        });
+
+        $("#verify-reachability-dialog").on("click", ".verify-reachability-batch", function() {
+            var host_or_ip = $(this).data("host-or-ip");
+            var port_number = $(this).data("port-number");
+            var spinner_id = $(this).data("spinner-id");
+
+            var spinner = $('#' + spinner_id);
+            verify_reachability($(this), spinner, host_or_ip, port_number);
+        });
+
+
+        function display_dialog(host_or_ip, port_number) {
+            $('#verify-reachability-table tbody').html('');
+            $('#verify-reachability-dialog').modal({show:true, backdrop:'static'})
+
+            var html_code = '';
+            var host_or_ip_list = host_or_ip.split(',');
+            var port_number_list = port_number.split(',');
+
+            for (var i = 0; i < host_or_ip_list.length; i++) {
+                for (var j = 0; j < port_number_list.length; j++) {
+                    var host_or_ip = host_or_ip_list[i];
+                    var port_number = port_number_list[j];
+                    var spinner_id = 'spinner-' + i + '-' + j;
+
+                    var button = '<button type="button" class="btn btn-danger verify-reachability-batch" ' +
+                        'data-host-or-ip="' + host_or_ip + '" ' +
+                        'data-port-number="' + port_number + '" ' +
+                        'data-spinner-id="' + spinner_id + '"' +
+                        '>Check Reachability</button>'
+
+                    button += '<img class="host-spinner" id="' + spinner_id + '" src="{{ url_for("static", filename="spinner.gif") }}">';
+                    html_code += '<tr><td>' + host_or_ip + '</td><td>' + port_number + '</td><td>' + button + '</td></tr>';
+                }
+            }
+
+            $('#verify-reachability-table tbody').append(html_code);
+            $('.host-spinner').hide();
         }
-        
-        return false;
-      });
-      
-      $('#verify-reachability').on("click", function() {
-        spinner.show();
-      
-        var formData = {
-          hostname: '{{ form.hostname.data }}', 
-          platform: $('#platform').val(),
-          host_or_ip: $('#host_or_ip').val(), 
-          username: $('#username').val(), 
-          password: $('#password').val(), 
-          connection_type: $('#connection_type').val(), 
-          port_number: $('#port_number').val(),
-          jump_host: $('#jump_host').val()
-        };
-        
-         $.ajax({
-           url: "/api/check_host_reachability",
-           dataType: 'json',
-           data: formData,
-           success: function (response) {              
-             if (response.status == 'OK') {
-               display_success();
-             } else {
-               display_error();
-             }
-           },
-           error: function(XMLHttpRequest, textStatus, errorThrown) { 
-             display_error();
-           }  
-         });  
-         
-         function display_success() {
-           spinner.hide();
-           $('#verify-reachability').removeClass("btn-danger");
-           $('#verify-reachability').addClass("btn-primary");
-           bootbox.alert("<img src=\"{{ url_for('static', filename='green_check.png') }}\">CSM Server is able to reach the specified host.");
-         }
-         
-         function display_error() {
-           spinner.hide();
-           $('#verify-reachability').removeClass("btn-primary");
-           $('#verify-reachability').addClass("btn-danger");
-           bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">Unable to reach the specified host or you are not an authorized user.");
-         }
-         
-      });
-      
+
+        function verify_reachability(button, spinner, host_or_ip, port_number) {
+            spinner.show();
+
+            var formData = {
+                hostname: '{{ form.hostname.data }}',
+                platform: $('#platform').val(),
+                host_or_ip: host_or_ip,
+                username: $('#username').val(),
+                password: $('#password').val(),
+                connection_type: $('#connection_type').val(),
+                port_number: port_number,
+                jump_host: $('#jump_host').val()
+            };
+
+            $.ajax({
+                url: "/api/check_host_reachability",
+                dataType: 'json',
+                data: formData,
+                success: function(response) {
+                    if (response.status == 'OK') {
+                        display_success(button, spinner, host_or_ip, port_number);
+                    } else {
+                        display_error(button, spinner, host_or_ip, port_number);
+                    }
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    display_error(button, spinner, host_or_ip, port_number);
+                }
+            });
+
+            function display_success(button, spinner, host_or_ip, port_number) {
+                spinner.hide();
+
+                var channel = host_or_ip + (port_number.toString().length > 0 ? ':' + port_number : '');
+                button.removeClass("btn-danger");
+                button.addClass("btn-primary");
+
+                bootbox.alert("<img src=\"{{ url_for('static', filename='green_check.png') }}\">CSM Server is able to reach the specified host via " + channel + ".");
+            }
+
+            function display_error(button, spinner, host_or_ip, port_number) {
+                spinner.hide();
+
+                var channel = host_or_ip + (port_number.toString().length > 0 ? ':' + port_number : '');
+                button.removeClass("btn-primary");
+                button.addClass("btn-danger");
+
+                bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;Unable to reach the specified host via " +
+                    channel + ".<br><br>Or you may not be an authorized user.");
+            }
+        }
+
     });
-    
-  </script>
+</script>
+
+<style>
+    .modal-dialog {
+        width: 750px;
+    }
+</style>
 {% endblock extra_head %}
 
 {% block main %}
-<div class="row">
-  <div class="well col-sm-offset-2 col-sm-8">
-  <form id="form" method="post" class="form-horizontal">
 
-    <legend>{% if isEdit %}Edit Host{% else %}Create Host{% endif %}</legend>
-    
-    {{ alert_duplicate(form.hostname.data, duplicate_error) }}
-
-    {{ edit_field(form.hostname, maxlength=30, field_width="col-sm-4", class="form-control",
-      placeholder="Unique Name on CSM Server") }}
-    {{ edit_field(form.platform, field_width="col-sm-4", class="form-control") }}
-    {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
-    {{ edit_field(form.roles, field_width="col-sm-4", class="form-control", 
-      placeholder="Use Comma to Separate Roles") }}
-
-    <fieldset>
-      <legend>Connection Parameters</legend>
-      
-        {{ edit_field(form.connection_type, field_width="col-sm-4", class="form-control") }}
-                
-        {{ edit_field(form.host_or_ip, maxlength=30, field_width="col-sm-4", class="form-control",
-          placeholder="Terminal Server or Management IP") }}
-          
-        {{ edit_field(form.port_number, field_width="col-sm-4", class="form-control",
-          placeholder="Leave Blank for Default") }}
-        
-        {% if isEdit %}
-          {% set extra_field ='<a href="javascript://" id="modify-password">
-            <img src=\"/static/lock.png\" title="Show/Hide Password Field"></a>' %}
-          {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field ) }}
-        {% else %}
-          {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
-        {% endif %}
-      
-        <div id="password-panel">
-          {% if isEdit %}
-            {% set extra_field ='<a href="javascript://" id="remove-password">
-              <img src=\"/static/remove.png\" title="Click to Remove Password on File"></a>' %}
-            {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field,
-              placeholder="Use Password on File") }}
-          {% else %}
-            {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
-          {% endif %}
-        </div>
-        
-        {{ edit_field(form.jump_host, field_width="col-sm-4", class="form-control") }}
-    </fieldset>
-
-    <div class="form-actions">
-      <div class="btn col-sm-offset-4">
-        <button id="verify-reachability" type="button" class="btn btn-danger">Check Reachability</button>
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
-        <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
-      </div>
+<div id="verify-reachability-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Check Host Reachability</h4>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-striped" id="verify-reachability-table">
+                        <thead>
+                            <tr>
+                                <th width="40%">Terminal Server or Mgmt. IP</th>
+                                <th width="30%">Port Number</th>
+                                <th width="30%">Verify</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-submit" class="btn btn-primary" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
     </div>
-  </form>
-  </div>
+</div>
+
+<div class="row">
+    <div class="well col-sm-offset-2 col-sm-8">
+        <form id="form" method="post" class="form-horizontal">
+            <legend>{% if isEdit %}Edit Host{% else %}Create Host{% endif %}</legend>
+            {{ alert_duplicate(form.hostname.data, duplicate_error) }}
+            {{ edit_field(form.hostname, maxlength=30, field_width="col-sm-4", class="form-control",
+                placeholder="Unique Name on CSM Server") }}
+            {{ edit_field(form.platform, field_width="col-sm-4", class="form-control") }}
+            {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
+            {{ edit_field(form.roles, field_width="col-sm-4", class="form-control",
+            placeholder="Use Comma to Separate Roles") }}
+            <fieldset>
+                <legend>Connection Parameters</legend>
+                {{ edit_field(form.connection_type, field_width="col-sm-4", class="form-control") }}
+                {{ edit_field(form.host_or_ip, maxlength=30, field_width="col-sm-4", class="form-control",
+                    placeholder="Terminal Server or Management IP") }}
+                {{ edit_field(form.port_number, field_width="col-sm-4", class="form-control",
+                    placeholder="Leave Blank for Default") }}
+
+                {% if isEdit %}
+                    {% set extra_field ='<a href="javascript://" id="modify-password">
+                    <img src=\"/static/lock.png\" title="Show/Hide Password Field"></a>' %}
+                    {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field ) }}
+                {% else %}
+                    {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
+                {% endif %}
+
+                <div id="password-panel">
+                    {% if isEdit %}
+                        {% set extra_field ='<a href="javascript://" id="remove-password">
+                        <img src=\"/static/remove.png\" title="Click to Remove Password on File"></a>' %}
+                        {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field,
+                            placeholder="Use Password on File") }}
+                    {% else %}
+                        {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
+                    {% endif %}
+                </div>
+                {{ edit_field(form.jump_host, field_width="col-sm-4", class="form-control") }}
+            </fieldset>
+            <div class="form-actions">
+                <div class="btn col-sm-offset-4">
+                    <button id="verify-reachability" type="button" class="btn btn-danger">Check Reachability</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
+                    <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock main %}

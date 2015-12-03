@@ -1,0 +1,83 @@
+<!--
+This HTML file requires a corresponding make_conform_dialog.js file
+
+Caller must provide the following WTForms elements with the following IDs
+
+-->
+
+{% from 'host/common.html' import edit_field %}
+{% from 'share/select_server.html' import select_server %}
+
+{% macro make_conform_dialog(cco_lookup_enabled, server, server_directory, server_time, install_actions, software_packages, scheduled_time, scheduled_time_UTC) %}
+
+<div id="make-conform-dialog" data-hostname="" data-cco-lookup-enabled="{{ cco_lookup_enabled }}" data-server-time="{{ server_time }}" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="close" data-dismiss="modal">x</button>
+                <!-- <div class="wizard-container"> -->
+                <div class="card wizard-card csm-blue" id="make-conform-dialog-wizard">
+                    <form class="form-horizontal" method="post">
+                        <div class="wizard-header">
+                            <h3>
+                                Make Conform: <span id="make-conform-dialog-title"></span><br>
+                            </h3>
+                        </div>
+                        <ul>
+                            <li><a href="#dialog_general" data-toggle="tab">GENERAL</a></li>
+                            <li><a href="#dialog_server_repository" data-toggle="tab">SERVER REPOSITORY</a></li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane" id="dialog_general">
+
+                                <div class="form-group ">
+                                    <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
+                                    <div class=col-sm-6>
+                                        <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
+                                            <optgroup label="Install">
+                                                {% for install_action in install_actions %}
+                                                    <option value="{{ install_action }}">{{ install_action }}</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {{ edit_field(software_packages, class="form-control", spellcheck="false", rows="10") }}
+
+                                <div class="form-group ">
+                                    <label class="col-sm-4 control-label">{{ scheduled_time.label() }}</label>
+                                    <div class="col-sm-6">
+                                        <div  class="input-group date form_datetime">
+                                            <input id="scheduled-time" name="{{ scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
+                                            <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="tab-pane" id="dialog_server_repository">
+                                 <h4 class="info-text">Skip the server repository selection if there is no Install Add action.</h4>
+                                {{ select_server(server, server_directory) }}
+                            </div>
+                        </div>
+                        <div class="wizard-footer">
+                            <div class="pull-right">
+                                <img id="make-conform-dialog-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+                                <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                                <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                            </div>
+                            <div class="pull-left">
+                                <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                    </form>
+                </div>
+                <!-- wizard container -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endmacro %}
