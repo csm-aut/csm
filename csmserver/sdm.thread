@@ -38,18 +38,20 @@ from server_helper import get_server_impl
 
 from constants import JobStatus
 
+from thread_pool import Pool
+from thread_pool import WorkUnit
+
 from bsd_service import BSDServiceHandler
 from utils import untar
-from utils import get_tarfile_file_list
-
-from multiprocessing import Manager
-from process_pool import Pool
-from process_pool import WorkUnit
-    
-from constants import get_repository_directory
+from utils import get_tarfile_file_list 
 
 import os
 import traceback
+    
+from constants import get_repository_directory
+
+lock = threading.RLock()
+in_progress_downloads = {}
 
 class DownloadManager(threading.Thread):
     def __init__(self, name, num_threads=None):
@@ -60,8 +62,6 @@ class DownloadManager(threading.Thread):
         
         # Set up the thread pool
         self.pool = Pool(num_threads)
-        self.in_progress_jobs = Manager().list()
-        self.lock = Manager().Lock()
         
     def run(self):
         while 1:
@@ -77,51 +77,48 @@ class DownloadManager(threading.Thread):
          
             for download_job in download_jobs:
                 if download_job.status != JobStatus.FAILED:
-                    with self.lock:
+                    with lock:
                         # If another download job for the same image name is already in progress,
                         # the download job will not be queued for processing
-                        if download_job.cco_filename in self.in_progress_jobs:
+                        if download_job.cco_filename in in_progress_downloads:
                             continue
 
-                        self.in_progress_jobs.append(download_job.cco_filename)
+                        in_progress_downloads[download_job.cco_filename] = download_job.cco_filename
                         
-                    self.pool.submit(DownloadWorkUnit(self.in_progress_jobs, self.lock, download_job.id))
+                    self.pool.submit(DownloadWorkUnit(download_job.id))
         except:
             logger.exception('Unable to dispatch download job')  
         finally:
             db_session.close()
  
 class DownloadWorkUnit(WorkUnit):
-    def __init__(self, in_progress_jobs, lock, job_id):
-        self.in_progress_jobs = in_progress_jobs
-        self.lock = lock
+    def __init__(self, job_id):
         self.job_id = job_id
-        self.db_session = None
         self.download_job = None
     
     def progress_listener(self, message):
-        try:
-            if self.download_job is not None and self.db_session is not None:
-                self.download_job.set_status(message)
-                self.db_session.commit()
-        except:
-            pass
+        if self.download_job is not None:
+            db_session = DBSession()
+            self.download_job.set_status(message) 
+            db_session.commit()
     
-    def process(self, db_session, logger, process_name):
-        # Save the db_session reference for progress_listener
-        self.db_session = db_session
+    def process(self):
+        
+        db_session = DBSession()        
+        download_job = None
         try:           
-            self.download_job = db_session.query(DownloadJob).filter(DownloadJob.id == self.job_id).first()
-            if self.download_job is None:
+            download_job = db_session.query(DownloadJob).filter(DownloadJob.id == self.job_id).first()    
+            if download_job is None:
                 logger.error('Unable to retrieve download job: %s' % self.job_id)
                 return
-
-            output_file_path = get_repository_directory() + self.download_job.cco_filename
+            
+            self.download_job = download_job
+            output_file_path = get_repository_directory() + download_job.cco_filename
       
             # Only download if the image (tar file) is not in the downloads directory.
             # And, the image is a good one.
             if not self.is_tar_file_valid(output_file_path):
-                user_id = self.download_job.user_id
+                user_id = download_job.user_id
                 user = db_session.query(User).filter(User.id == user_id).first()
                 if user is None:
                     logger.error('Unable to retrieve user: %s' % user_id)
@@ -130,46 +127,45 @@ class DownloadWorkUnit(WorkUnit):
                 if preferences is None:
                     logger.error('Unable to retrieve user preferences: %s' % user_id)
                 
-                self.download_job.set_status(JobStatus.PROCESSING)
+                download_job.set_status(JobStatus.PROCESSING)
                 db_session.commit() 
                
                 bsd = BSDServiceHandler(username=preferences.cco_username, password=preferences.cco_password, 
-                    image_name=self.download_job.cco_filename, PID=self.download_job.pid,
-                    MDF_ID=self.download_job.mdf_id, software_type_ID=self.download_job.software_type_id)
+                    image_name=download_job.cco_filename, PID=download_job.pid, MDF_ID=download_job.mdf_id, 
+                    software_type_ID=download_job.software_type_id) 
                 
-                self.download_job.set_status('Preparing to download from cisco.com.')
+                download_job.set_status('Preparing to download from cisco.com.')
                 db_session.commit()
-
                 bsd.download(output_file_path, callback=self.progress_listener)
-
+                # Untar the file to the output directory unless the file is Full Software
                 tarfile_file_list = untar(output_file_path, get_repository_directory())
             else:
                 tarfile_file_list = get_tarfile_file_list(output_file_path)
 
             # Now transfers to the server repository
-            self.download_job.set_status('Transferring file to server repository.')
+            download_job.set_status('Transferring file to server repository.')
             db_session.commit()
 
-            server = db_session.query(Server).filter(Server.id == self.download_job.server_id).first()
+            server = db_session.query(Server).filter(Server.id == download_job.server_id).first()
             if server is not None:
                 server_impl = get_server_impl(server)
                 for filename in tarfile_file_list:
-                    server_impl.upload_file(get_repository_directory() + filename, filename, sub_directory=self.download_job.server_directory)
+                    server_impl.upload_file(get_repository_directory() + filename, filename, sub_directory=download_job.server_directory)
 
-            self.archive_download_job(db_session, self.download_job, JobStatus.COMPLETED)
+            self.archive_download_job(db_session, download_job, JobStatus.COMPLETED) 
             db_session.commit()
 
         except:
             try:
                 logger.exception('DownloadManager hit exception - download job = %s', self.job_id)   
-                self.archive_download_job(db_session, self.download_job, JobStatus.FAILED, traceback.format_exc())
+                self.archive_download_job(db_session, download_job, JobStatus.FAILED, traceback.format_exc())
                 db_session.commit()                
             except:
                 logger.exception('DownloadManager hit exception - download job = %s', self.job_id)
         finally:
-            with self.lock:
-                if self.download_job is not None and \
-                    self.download_job.cco_filename in self.in_progress_jobs: self.in_progress_jobs.remove(self.download_job.cco_filename)
+            with lock:
+                if download_job is not None and \
+                    download_job.cco_filename in in_progress_downloads: del in_progress_downloads[download_job.cco_filename]
             db_session.close()       
 
     """
