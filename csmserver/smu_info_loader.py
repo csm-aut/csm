@@ -203,53 +203,38 @@ class SMUInfoLoader(object):
     
     def load_smu_info(self, node_list, smu_dict, package_type):
         for node in node_list:
+            smu_name = self.getChildElementText(node, XML_TAG_NAME)
+
             if package_type == PackageType.SMU or package_type == PackageType.SERVICE_PACK:
                 smu_info = SMUInfo(id=node.attributes[XML_TAG_ID].value)
-
-                smu_info.status = node.attributes[XML_TAG_STATUS].value
-                smu_info.name = self.getChildElementText(node, XML_TAG_NAME)
-
-                smu_info.type = self.getChildElementText(node, XML_TAG_SMU_TYPE)
-                smu_info.posted_date = self.getChildElementText(node, XML_TAG_POSTED_DATE)
-                smu_info.eta_date = self.getChildElementText(node, XML_TAG_ETA_DATE)
-                smu_info.ddts = self.getChildElementText(node, XML_TAG_DDTS)
-                smu_info.description = self.getChildElementText(node, XML_TAG_DESCRIPTION)
-                smu_info.impact = self.getChildElementText(node, XML_TAG_IMPACT)
                 smu_info.cco_filename = self.getChildElementText(node, XML_TAG_CCO_FILE_NAME)
-
-                smu_info.supersedes = self.getChildElementText(node, XML_TAG_SUPERCEDES)
-                smu_info.superseded_by = self.getChildElementText(node, XML_TAG_SUPERCEDED_BY)
-                smu_info.prerequisites = self.getChildElementText(node, XML_TAG_PRE_REQUISITES)
-                smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)
-                smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
-                smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
-                smu_info.uncompressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE))
-                smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS);
-                smu_info.package_type = package_type
-
-                self.smu_meta.smu_info.append(smu_info)
-
-                smu_dict[smu_info.name] = smu_info
-
+                smu_info.status = node.attributes[XML_TAG_STATUS].value
             elif package_type == PackageType.SOFTWARE:
-                smu_info = SMUInfo()
+                smu_info = SMUInfo(id=smu_name)
+                smu_info.cco_filename = smu_name
+            else:
+                return
 
-                smu_info.name = self.getChildElementText(node, XML_TAG_NAME)
-                smu_info.compressed_size = self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE)
-                smu_info.cco_filename = smu_info.name
-                smu_info.id = smu_info.name
-                smu_info.package_type = PackageType.SOFTWARE
-                smu_info.description = self.getChildElementText(node, XML_TAG_DESCRIPTION)
-                #tar_info.prerequisites = ''
-                #tar_info.superseded_by = ''
+            smu_info.name = smu_name
+            smu_info.name = self.getChildElementText(node, XML_TAG_NAME)
+            smu_info.type = self.getChildElementText(node, XML_TAG_SMU_TYPE)
+            smu_info.posted_date = self.getChildElementText(node, XML_TAG_POSTED_DATE)
+            smu_info.eta_date = self.getChildElementText(node, XML_TAG_ETA_DATE)
+            smu_info.ddts = self.getChildElementText(node, XML_TAG_DDTS)
+            smu_info.description = self.getChildElementText(node, XML_TAG_DESCRIPTION)
+            smu_info.impact = self.getChildElementText(node, XML_TAG_IMPACT)
+            smu_info.supersedes = self.getChildElementText(node, XML_TAG_SUPERCEDES)
+            smu_info.superseded_by = self.getChildElementText(node, XML_TAG_SUPERCEDED_BY)
+            smu_info.prerequisites = self.getChildElementText(node, XML_TAG_PRE_REQUISITES)
+            smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)
+            smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
+            smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
+            smu_info.uncompressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE))
+            smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS)
+            smu_info.package_type = package_type
 
-                self.smu_meta.smu_info.append(smu_info)
-
-                #tar_dict[tar_info.name] = tar_info
-
-                self.smu_meta.smu_info.append(smu_info)
-            
-                smu_dict[smu_info.name] = smu_info
+            self.smu_meta.smu_info.append(smu_info)
+            smu_dict[smu_info.name] = smu_info
             
         """
         for smu_name in smu_dict:
@@ -306,12 +291,12 @@ class SMUInfoLoader(object):
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU), self.smus, PackageType.SMU)
         
         # For SMUs that have not been posted yet.
-        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU_INTRANSIT), self.in_transit_smus, PackageType.SMU_IN_TRANSIT);
+        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU_INTRANSIT), self.in_transit_smus, PackageType.SMU_IN_TRANSIT)
         
         # For Service Packs that have been posted.
-        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SP), self.service_packs, PackageType.SERVICE_PACK);
+        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SP), self.service_packs, PackageType.SERVICE_PACK)
 
-        # For Release Software far files that have been posted.
+        # For Software Tar Files that have been posted.
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_TAR), self.software, PackageType.SOFTWARE)
         
     """

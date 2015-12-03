@@ -2884,7 +2884,7 @@ def api_get_tar_list(platform, release):
             row = {}
             row['ST'] = 'True' if tar_info.name in file_list else 'False'
             row['name'] = tar_info.name
-            row['compressed_size'] = tar_info.compressed_size
+            row['compressed_size'] = tar_info.compressed_image_size
             row['description'] = ""
             rows.append(row)
     return jsonify( **{'data':rows} )
