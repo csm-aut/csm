@@ -246,23 +246,6 @@ class SMUInfoLoader(object):
                         prerequisite_smu_info = smu_dict[prerequisite_smu]
                         prerequisite_smu_info.prerequisite_to.append(smu_name)
         """               
-    """
-    def load_tar_info(self, node_list, tar_dict):
-        for node in node_list:
-            tar_info = SMUInfo()
-
-            tar_info.name = self.getChildElementText(node, XML_TAG_NAME)
-            tar_info.compressed_size = self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE)
-            tar_info.cco_filename = tar_info.name
-            tar_info.id = tar_info.name
-            tar_info.package_type = PackageType.SOFTWARE
-            #tar_info.prerequisites = ''
-            #tar_info.superseded_by = ''
-
-            self.smu_meta.smu_info.append(tar_info)
-
-            tar_dict[tar_info.name] = tar_info
-    """
 
     def load(self):
         try:
