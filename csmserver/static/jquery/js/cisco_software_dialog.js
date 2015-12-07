@@ -372,7 +372,7 @@ $(function() {
 
 function init_cisco_software_dialog(selected_platform, selected_release) {
     if (selected_platform != null && selected_release != null) {
-        platform = selected_platform.replace(/-/g,'_');
+        platform = selected_platform.replace(/-/g,'_').replace('hfr','crs');
         release = selected_release;
     }
 }
