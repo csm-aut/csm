@@ -243,7 +243,7 @@ $(function() {
             });
         }
     }
-    
+
     $("#dropdown-cisco-menu").on("click", ".selected-platform-and-release", function() {
         platform = $(this).attr('platform');
         release = $(this).attr('release');
@@ -370,6 +370,13 @@ $(function() {
 
 });
 
+function init_cisco_software_dialog(selected_platform, selected_release) {
+    if (selected_platform != null && selected_release != null) {
+        platform = selected_platform.replace(/-/g,'_').replace('hfr','crs');
+        release = selected_release;
+    }
+}
+
 function display_cisco_software_dialog(hostname_list, server_id, server_directory) {
 
     // Re-initialize variables and set the hostname only if there is one host selected.
@@ -471,7 +478,7 @@ function populate_file_list(element, server_directory_selector, server_directory
         }
     }
 }
-    
+
 function create_menu() {
     $.ajax({
         url: "/api/get_catalog",

@@ -25,24 +25,34 @@
 from sim import InventoryManager
 from sum import SoftwareManager
 from sdm import DownloadManager
+from gjm import GenericJobManager
+
+from database import DBSession
+from models import SystemOption
 
 from scheduler import InventoryManagerScheduler
 
 import os
 
 def dispatch():
-    inventory_manager = InventoryManager('Inventory Manager')
+    db_session = DBSession
+    system_option = SystemOption.get(db_session)
+
+    inventory_manager = InventoryManager(system_option.inventory_threads, 'Inventory-Manager')
     inventory_manager.start()
     
     inventory_manager_scheduler = InventoryManagerScheduler('Inventory Manager Scheduler')
     inventory_manager_scheduler.start()
  
-    software_manager = SoftwareManager('Software Manager')
+    software_manager = SoftwareManager(system_option.install_threads, 'Software-Manager')
     software_manager.start()
     
-    download_manager = DownloadManager('Download Manager')
+    download_manager = DownloadManager(system_option.download_threads, 'Download-Manager')
     download_manager.start()
-    
+
+    generic_job_manager = GenericJobManager(2, 'Generic-Job')
+    generic_job_manager.start()
+
     print('csmdispatcher started')
     
 def process_count(processname):

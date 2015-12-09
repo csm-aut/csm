@@ -28,7 +28,7 @@ from sqlalchemy.exc import IntegrityError
 from database import DBSession
 from models import SMUMeta
 from models import SMUInfo
-#from models import SoftwareTarInfo
+
 from models import CCOCatalog
 from models import logger
 from models import SystemOption
@@ -114,7 +114,12 @@ class SMUInfoLoader(object):
             self.smu_meta = SMUMeta(platform_release=platform_release)
             # Load data from the SMU XML file
             self.load()
-            
+
+            # This can happen if the given platform and release is not valid.
+            # The load method calls get_smu_info_from_db and failed.
+            if self.smu_meta is None:
+                return
+
             db_smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
             if db_smu_meta is not None:               
                 if db_smu_meta.created_time == self.smu_meta.created_time:
@@ -148,14 +153,6 @@ class SMUInfoLoader(object):
                 result_dict[smu_info.name] = smu_info
                 
         return result_dict
-
-#    def get_tars(self):
-#        result_dict = {}
-
-#        for tar in self.smu_meta.smu_info:
-#            result_dict[tar.name] = tar
-
-#        return result_dict
 
     @property
     def is_valid(self):
@@ -192,31 +189,21 @@ class SMUInfoLoader(object):
     def get_int_value(self, s):
         try:
             return int(s)
-        except:
+        except Exception:
             return 0
-        
+
     def getChildElementText(self, parent_elem, child_name):
         try:
             return parent_elem.getElementsByTagName(child_name)[0].firstChild.data
-        except:
+        except Exception:
             return ''   
     
     def load_smu_info(self, node_list, smu_dict, package_type):
         for node in node_list:
-            smu_name = self.getChildElementText(node, XML_TAG_NAME)
+            smu_info = SMUInfo(id=node.attributes[XML_TAG_ID].value)
 
-            if package_type == PackageType.SMU or package_type == PackageType.SERVICE_PACK:
-                smu_info = SMUInfo(id=node.attributes[XML_TAG_ID].value)
-                smu_info.cco_filename = self.getChildElementText(node, XML_TAG_CCO_FILE_NAME)
-                smu_info.status = node.attributes[XML_TAG_STATUS].value
-            elif package_type == PackageType.SOFTWARE:
-                smu_info = SMUInfo(id=smu_name)
-                smu_info.cco_filename = smu_name
-            else:
-                return
-
-            smu_info.name = smu_name
             smu_info.name = self.getChildElementText(node, XML_TAG_NAME)
+            smu_info.status = node.attributes[XML_TAG_STATUS].value
             smu_info.type = self.getChildElementText(node, XML_TAG_SMU_TYPE)
             smu_info.posted_date = self.getChildElementText(node, XML_TAG_POSTED_DATE)
             smu_info.eta_date = self.getChildElementText(node, XML_TAG_ETA_DATE)
@@ -226,6 +213,7 @@ class SMUInfoLoader(object):
             smu_info.supersedes = self.getChildElementText(node, XML_TAG_SUPERCEDES)
             smu_info.superseded_by = self.getChildElementText(node, XML_TAG_SUPERCEDED_BY)
             smu_info.prerequisites = self.getChildElementText(node, XML_TAG_PRE_REQUISITES)
+            smu_info.cco_filename = self.getChildElementText(node, XML_TAG_CCO_FILE_NAME)
             smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)
             smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
             smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
@@ -250,7 +238,7 @@ class SMUInfoLoader(object):
     def load(self):
         try:
             xmldoc = minidom.parseString(SMUInfoLoader.get_smu_meta_file(self.platform, self.release))
-        except:
+        except Exception:
             self.get_smu_info_from_db(self.platform, self.release)
             return
 
@@ -335,7 +323,7 @@ class SMUInfoLoader(object):
             url = IOSXR_URL + '/' + platform + '_' + release + '.xml'
             r = requests.get(url)
             return r.text
-        except:
+        except Exception:
             return None
     
     @classmethod
@@ -345,7 +333,7 @@ class SMUInfoLoader(object):
 
             r = requests.get(url)
             return r.text
-        except:
+        except Exception:
             return None
     
     @classmethod
@@ -392,7 +380,7 @@ class SMUInfoLoader(object):
             try:
                 r = requests.get(url + '/' + CATALOG)
                 lines = r.text.splitlines()
-            except:
+            except Exception:
                 pass
         
             for line in lines:
@@ -442,7 +430,7 @@ class SMUInfoLoader(object):
                 system_option.cco_lookup_time = datetime.datetime.utcnow()
                 db_session.commit()
                 return True
-            except:
+            except Exception:
                 logger.exception('refresh_all hit exception')
                 db_session.rollback()  
             
@@ -475,7 +463,7 @@ class SMUInfoLoader(object):
                 elif date_token is not None:                    
                     message += line + "\n"
                     
-        except:
+        except Exception:
             pass
         
         if date_token is not None:

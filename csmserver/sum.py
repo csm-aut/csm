@@ -22,9 +22,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-import threading
-import time 
 import datetime
+import urllib
 
 from database import DBSession
 from sqlalchemy import and_
@@ -38,8 +37,8 @@ from models import get_download_job_key_dict
 from constants import JobStatus
 from constants import InstallAction
 
-from process_pool import Pool
-from process_pool import WorkUnit
+from multi_process import WorkUnit
+from multi_process import JobManager
 
 from handlers.loader import get_inventory_handler_class 
 from handlers.loader import get_install_handler_class 
@@ -48,29 +47,15 @@ from base import InstallContext
 from utils import create_log_directory
 from utils import is_empty
 
-from mailer import send_install_status_email
+from filters import get_datetime_string
 
-from multiprocessing import Manager
+from mailer import create_email_job
 
 import traceback
 
-class SoftwareManager(threading.Thread):
-    def __init__(self, name, num_threads=None):
-        threading.Thread.__init__(self, name = name)
-        
-        db_session = DBSession()
-        if num_threads is None:
-            num_threads = SystemOption.get(db_session).install_threads
-
-        # Set up the thread pool
-        self.pool = Pool(num_workers=num_threads, name="Install-Job")
-        self.in_progress_hosts = Manager().list()
-        self.lock = Manager().Lock()
-    
-    def run(self):
-        while 1:
-            time.sleep(20)
-            self.dispatch()
+class SoftwareManager(JobManager):
+    def __init__(self, num_workers, worker_name):
+        JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
     
     """
     In order for a scheduled install job to proceed, its dependency must be successfully completed
@@ -95,7 +80,7 @@ class SoftwareManager(threading.Thread):
             install_jobs = db_session.query(InstallJob).filter(InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
             download_job_key_dict = get_download_job_key_dict()
 
-            if len(install_jobs)> 0:
+            if len(install_jobs) > 0:
                 for install_job in install_jobs:
                     if install_job.status != JobStatus.FAILED:
                         # If there is pending download, don't submit the install job
@@ -109,19 +94,9 @@ class SoftwareManager(threading.Thread):
                             if len(dependency_completed) == 0:
                                 continue
 
-                        with self.lock:
-                            # If another install job for the same host is already in progress,
-                            # the install job will not be queued for processing
-                            if install_job.host_id in self.in_progress_hosts:
-                                continue
+                        self.submit_job(InstallWorkUnit(install_job.host_id, install_job.id))
 
-                            self.in_progress_hosts.append(install_job.host_id)
-
-                        # Allow the install job to proceed
-                        install_work_unit = InstallWorkUnit(self.in_progress_hosts, self.lock,
-                                                            install_job.host_id, install_job.id)
-                        self.pool.submit(install_work_unit)
-        except:
+        except Exception:
             # print(traceback.format_exc())
             # Purpose ignore.  Otherwise, it may generate continue exception
             pass
@@ -140,12 +115,15 @@ class SoftwareManager(threading.Thread):
         return False
                 
 class InstallWorkUnit(WorkUnit):
-    def __init__(self, in_progress_hosts, lock, host_id, job_id):
-        self.in_progress_hosts = in_progress_hosts
-        self.lock = lock
+    def __init__(self, host_id, job_id):
+        WorkUnit.__init__(self)
+
         self.host_id = host_id
         self.job_id = job_id
-    
+
+    def get_unique_key(self):
+        return self.host_id
+
     def get_software(self, ctx, logger):
         handler_class = get_inventory_handler_class(ctx.host.platform)
         if handler_class is None:
@@ -156,7 +134,7 @@ class InstallWorkUnit(WorkUnit):
             # Update the time stamp
             ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
             
-    def process(self, db_session, logger, process_name):
+    def start(self, db_session, logger, process_name):
         ctx = None
 
         # print('processing', process_name, self.host_id, self.in_progress_hosts.__str__() )
@@ -207,30 +185,20 @@ class InstallWorkUnit(WorkUnit):
                 # print('processing 7', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 # Update the software
                 self.get_software(ctx, logger)
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.COMPLETED, process_name)
+                self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.COMPLETED, process_name)
             else:
                 # print('processing 8', process_name, self.host_id, self.in_progress_hosts.__str__() )
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name)
+                self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
-        except:
+        except Exception:
             # print('processing 9', process_name, self.host_id, self.in_progress_hosts.__str__() )
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
-            except:
+                self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
+            except Exception:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
-            # Must remove the host from the in progress list
-            try:
-                self.remove_host_from_in_progress(process_name)
-                db_session.close()
-            except:
-                logger.exception('InstallManager hit exception - install job = %s', self.job_id)
-
-    def remove_host_from_in_progress(self, process_name):
-        # print('before removing', process_name, self.host_id, self.in_progress_hosts.__str__() )
-        with self.lock:
-            if self.host_id in self.in_progress_hosts: self.in_progress_hosts.remove(self.host_id)
+            db_session.close()
 
         # print('after removing', process_name, self.host_id, self.in_progress_hosts.__str__() )
         
@@ -256,7 +224,7 @@ class InstallWorkUnit(WorkUnit):
             filter((InstallJobHistory.host_id == host_id), and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
             order_by(InstallJobHistory.status_time.desc()).first()
     
-    def archive_install_job(self, db_session, logger, ctx, install_job, job_status, process_name, trace=None):
+    def archive_install_job(self, db_session, logger, ctx, host, install_job, job_status, process_name, trace=None):
     
         install_job_history = InstallJobHistory()
         install_job_history.install_job_id = install_job.id
@@ -287,8 +255,39 @@ class InstallWorkUnit(WorkUnit):
     
         # Send notification error
         # print('before email', process_name, self.host_id, self.in_progress_hosts.__str__() )
-        send_install_status_email(db_session, logger, install_job_history)
+        self.create_email_notification(db_session, logger, host, install_job_history)
         # print('after email', process_name, self.host_id, self.in_progress_hosts.__str__() )
+
+    def create_email_notification(self, db_session, logger, host, install_job):
+        try:
+            session_log_link = "hosts/{}/install_job_history/session_log/{}?file_path={}".format(
+                urllib.quote(host.hostname), install_job.id, install_job.session_log)
+
+            message = '<html><head><body>'
+            if install_job.status == JobStatus.COMPLETED:
+                message += 'The scheduled installation for host "' + host.hostname + '" has COMPLETED<br><br>'
+            elif install_job.status == JobStatus.FAILED:
+                message += 'The scheduled installation for host "' + host.hostname + '" has FAILED<br><br>'
+
+            message += 'Scheduled Time: ' + get_datetime_string(install_job.scheduled_time) + ' (UTC)<br>'
+            message += 'Start Time: ' + get_datetime_string(install_job.start_time) + ' (UTC)<br>'
+            message += 'Install Action: ' + install_job.install_action + '<br><br>'
+
+            session_log_url = SystemOption.get(db_session).base_url + '/' + session_log_link
+
+            message += 'For more information, click the link below<br><br>'
+            message += session_log_url + '<br><br>'
+
+            if install_job.packages is not None and len(install_job.packages) > 0:
+                message += 'Followings are the software packages: <br><br>' + install_job.packages.replace(',','<br>')
+
+            message += '</body></head></html>'
+
+            create_email_job(db_session, logger, message, install_job.created_by)
+
+        except Exception:
+            logger.exception('create_email_notification hit exception')
+
     
 if __name__ == '__main__': 
     pass

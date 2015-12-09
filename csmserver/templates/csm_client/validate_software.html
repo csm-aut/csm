@@ -182,7 +182,7 @@
 
 {% block main %}
 
-{{ cisco_software_dialog() }}
+{{ cisco_software_dialog(system_option.enable_cco_lookup) }}
 {{ server_software_dialog(server_dialog_form.server_dialog_server, server_dialog_form.server_dialog_server_directory, server_dialog_form.server_dialog_target_software) }}
 
 <div id="create-software-profile-dialog" class="modal" role="dialog">

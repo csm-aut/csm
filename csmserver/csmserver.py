@@ -3023,7 +3023,8 @@ def validate_software():
 
     return render_template('csm_client/validate_software.html',
                            server_dialog_form=server_dialog_form,
-                           software_profile_form=software_profile_form)
+                           software_profile_form=software_profile_form,
+                           system_option=SystemOption.get(DBSession()))
 
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required

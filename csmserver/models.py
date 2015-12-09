@@ -775,7 +775,6 @@ class ConformanceReportEntry(Base):
 
     conformance_report_id = Column(Integer, ForeignKey('conformance_report.id'))
 
-"""
 class EmailJob(Base):
     __tablename__ = 'email_job'
 
@@ -790,7 +789,6 @@ class EmailJob(Base):
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
-"""
 
 Base.metadata.create_all(engine)
         

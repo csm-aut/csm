@@ -22,27 +22,41 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from database import DBSession
-from models import logger
-from models import EmailJob
+import time
+import threading
 
-from multi_process import JobManager
-from work_units.email_work_unit import EmailWorkUnit
+from multiprocessing import Manager
+from process_pool import Pool
 
-class GenericJobManager(JobManager):
+
+class JobManager(threading.Thread):
     def __init__(self, num_workers, worker_name):
-        JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
+        threading.Thread.__init__(self, name=worker_name)
+
+        self.pool = Pool(num_workers=num_workers, name=worker_name)
+        self.in_progress_jobs = Manager().list()
+        self.lock = Manager().Lock()
+
+    def run(self):
+        while 1:
+            time.sleep(20)
+            self.dispatch()
 
     def dispatch(self):
-        db_session = DBSession()
-        try:
-            # Submit email notification jobs if any
-            email_jobs = db_session.query(EmailJob).filter(EmailJob.status == None).all()
-            if len(email_jobs) > 0:
-                for email_job in email_jobs:
-                    self.submit_job(EmailWorkUnit(email_job.id))
+        raise NotImplementedError("Children must override dispatch()")
 
-        except Exception:
-            logger.exception('Unable to dispatch job')
-        finally:
-            db_session.close()
+    def submit_job(self, work_unit):
+        with self.lock:
+            if work_unit.get_unique_key() in self.in_progress_jobs:
+                return False
+
+            self.in_progress_jobs.append(work_unit.get_unique_key())
+
+        # Remember these shared memory references
+        work_unit.in_progress_jobs = self.in_progress_jobs
+        work_unit.lock = self.lock
+
+        self.pool.submit(work_unit)
+
+        return True
+
