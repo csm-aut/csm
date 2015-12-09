@@ -22,8 +22,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-import threading
-import time 
 import datetime
 
 from database import DBSession
@@ -38,8 +36,8 @@ from models import get_download_job_key_dict
 from constants import JobStatus
 from constants import InstallAction
 
-from process_pool import Pool
-from process_pool import WorkUnit
+from multi_process import WorkUnit
+from multi_process import JobManager
 
 from handlers.loader import get_inventory_handler_class 
 from handlers.loader import get_install_handler_class 
@@ -50,27 +48,11 @@ from utils import is_empty
 
 from mailer import send_install_status_email
 
-from multiprocessing import Manager
-
 import traceback
 
-class SoftwareManager(threading.Thread):
-    def __init__(self, name, num_threads=None):
-        threading.Thread.__init__(self, name = name)
-        
-        db_session = DBSession()
-        if num_threads is None:
-            num_threads = SystemOption.get(db_session).install_threads
-
-        # Set up the thread pool
-        self.pool = Pool(num_workers=num_threads, name="Install-Job")
-        self.in_progress_hosts = Manager().list()
-        self.lock = Manager().Lock()
-    
-    def run(self):
-        while 1:
-            time.sleep(20)
-            self.dispatch()
+class SoftwareManager(JobManager):
+    def __init__(self, num_workers, worker_name):
+        JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
     
     """
     In order for a scheduled install job to proceed, its dependency must be successfully completed
@@ -95,7 +77,7 @@ class SoftwareManager(threading.Thread):
             install_jobs = db_session.query(InstallJob).filter(InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
             download_job_key_dict = get_download_job_key_dict()
 
-            if len(install_jobs)> 0:
+            if len(install_jobs) > 0:
                 for install_job in install_jobs:
                     if install_job.status != JobStatus.FAILED:
                         # If there is pending download, don't submit the install job
@@ -109,19 +91,9 @@ class SoftwareManager(threading.Thread):
                             if len(dependency_completed) == 0:
                                 continue
 
-                        with self.lock:
-                            # If another install job for the same host is already in progress,
-                            # the install job will not be queued for processing
-                            if install_job.host_id in self.in_progress_hosts:
-                                continue
+                        self.submit_job(InstallWorkUnit(install_job.host_id, install_job.id))
 
-                            self.in_progress_hosts.append(install_job.host_id)
-
-                        # Allow the install job to proceed
-                        install_work_unit = InstallWorkUnit(self.in_progress_hosts, self.lock,
-                                                            install_job.host_id, install_job.id)
-                        self.pool.submit(install_work_unit)
-        except:
+        except Exception:
             # print(traceback.format_exc())
             # Purpose ignore.  Otherwise, it may generate continue exception
             pass
@@ -140,12 +112,15 @@ class SoftwareManager(threading.Thread):
         return False
                 
 class InstallWorkUnit(WorkUnit):
-    def __init__(self, in_progress_hosts, lock, host_id, job_id):
-        self.in_progress_hosts = in_progress_hosts
-        self.lock = lock
+    def __init__(self, host_id, job_id):
+        WorkUnit.__init__(self)
+
         self.host_id = host_id
         self.job_id = job_id
-    
+
+    def get_unique_key(self):
+        return self.host_id
+
     def get_software(self, ctx, logger):
         handler_class = get_inventory_handler_class(ctx.host.platform)
         if handler_class is None:
@@ -156,7 +131,7 @@ class InstallWorkUnit(WorkUnit):
             # Update the time stamp
             ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
             
-    def process(self, db_session, logger, process_name):
+    def start(self, db_session, logger, process_name):
         ctx = None
 
         # print('processing', process_name, self.host_id, self.in_progress_hosts.__str__() )
@@ -212,25 +187,15 @@ class InstallWorkUnit(WorkUnit):
                 # print('processing 8', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name)
 
-        except:
+        except Exception:
             # print('processing 9', process_name, self.host_id, self.in_progress_hosts.__str__() )
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
                 self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
-            except:
+            except Exception:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
-            # Must remove the host from the in progress list
-            try:
-                self.remove_host_from_in_progress(process_name)
-                db_session.close()
-            except:
-                logger.exception('InstallManager hit exception - install job = %s', self.job_id)
-
-    def remove_host_from_in_progress(self, process_name):
-        # print('before removing', process_name, self.host_id, self.in_progress_hosts.__str__() )
-        with self.lock:
-            if self.host_id in self.in_progress_hosts: self.in_progress_hosts.remove(self.host_id)
+            db_session.close()
 
         # print('after removing', process_name, self.host_id, self.in_progress_hosts.__str__() )
         

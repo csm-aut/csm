@@ -8,9 +8,11 @@ from constants import JobStatus
 
 class EmailWorkUnit(WorkUnit):
     def __init__(self, job_id):
+        WorkUnit.__init__(self)
+
         self.job_id = job_id
 
-    def process(self, db_session, logger, process_name):
+    def start(self, db_session, logger, process_name):
         try:
             smtp_server = db_session.query(SMTPServer).first()
             if smtp_server is None:
@@ -37,9 +39,9 @@ class EmailWorkUnit(WorkUnit):
             email_job.set_status(JobStatus.COMPLETED)
             db_session.commit()
 
-        except Exception:
-            logger.exception('EmailWorkUnit hit exception')
-
         finally:
             db_session.close()
+
+    def get_unique_key(self):
+        return 'email_job_{}'.format(self.job_id)
 

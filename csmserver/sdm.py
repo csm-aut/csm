@@ -22,18 +22,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-import time
-import threading 
-
 from database import DBSession
 
 from models import logger
 from models import User
 from models import DownloadJob
 from models import Preferences
-from models import SystemOption
 from models import Server
 from models import DownloadJobHistory
+
 from server_helper import get_server_impl
 
 from constants import JobStatus
@@ -42,33 +39,18 @@ from bsd_service import BSDServiceHandler
 from utils import untar
 from utils import get_tarfile_file_list
 
-from multiprocessing import Manager
-from process_pool import Pool
-from process_pool import WorkUnit
+from multi_process import WorkUnit
+from multi_process import JobManager
     
 from constants import get_repository_directory
 
 import os
 import traceback
 
-class DownloadManager(threading.Thread):
-    def __init__(self, name, num_threads=None):
-        threading.Thread.__init__(self, name = name)
-        
-        if num_threads is None:
-            num_threads = SystemOption.get(DBSession()).download_threads
-        
-        # Set up the thread pool
-        self.pool = Pool(num_threads)
-        self.in_progress_jobs = Manager().list()
-        self.lock = Manager().Lock()
-        
-    def run(self):
-        while 1:
-            # This will be configurable
-            time.sleep(20)
-            self.dispatch()
-     
+class DownloadManager(JobManager):
+    def __init__(self, num_workers, worker_name):
+        JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
+
     def dispatch(self):
         db_session = DBSession()
  
@@ -77,37 +59,35 @@ class DownloadManager(threading.Thread):
          
             for download_job in download_jobs:
                 if download_job.status != JobStatus.FAILED:
-                    with self.lock:
-                        # If another download job for the same image name is already in progress,
-                        # the download job will not be queued for processing
-                        if download_job.cco_filename in self.in_progress_jobs:
-                            continue
+                    self.submit_job(DownloadWorkUnit(download_job.id, download_job.cco_filename))
 
-                        self.in_progress_jobs.append(download_job.cco_filename)
-                        
-                    self.pool.submit(DownloadWorkUnit(self.in_progress_jobs, self.lock, download_job.id))
-        except:
+        except Exception:
             logger.exception('Unable to dispatch download job')  
         finally:
             db_session.close()
  
 class DownloadWorkUnit(WorkUnit):
-    def __init__(self, in_progress_jobs, lock, job_id):
-        self.in_progress_jobs = in_progress_jobs
-        self.lock = lock
+    def __init__(self, job_id, cco_filename):
+        WorkUnit.__init__(self)
+
         self.job_id = job_id
+        self.cco_filename = cco_filename
+
         self.db_session = None
         self.download_job = None
+
+    def get_unique_key(self):
+        return self.cco_filename
     
     def progress_listener(self, message):
         try:
             if self.download_job is not None and self.db_session is not None:
                 self.download_job.set_status(message)
                 self.db_session.commit()
-        except:
+        except Exception:
             pass
     
-    def process(self, db_session, logger, process_name):
+    def start(self, db_session, logger, process_name):
         # Save the db_session reference for progress_listener
         self.db_session = db_session
         try:           
@@ -159,17 +139,14 @@ class DownloadWorkUnit(WorkUnit):
             self.archive_download_job(db_session, self.download_job, JobStatus.COMPLETED)
             db_session.commit()
 
-        except:
+        except Exception:
             try:
                 logger.exception('DownloadManager hit exception - download job = %s', self.job_id)   
                 self.archive_download_job(db_session, self.download_job, JobStatus.FAILED, traceback.format_exc())
                 db_session.commit()                
-            except:
+            except Exception:
                 logger.exception('DownloadManager hit exception - download job = %s', self.job_id)
         finally:
-            with self.lock:
-                if self.download_job is not None and \
-                    self.download_job.cco_filename in self.in_progress_jobs: self.in_progress_jobs.remove(self.download_job.cco_filename)
             db_session.close()       
 
     """
@@ -182,7 +159,7 @@ class DownloadWorkUnit(WorkUnit):
             recorded_size = open(tarfile_path + '.size', 'r').read()
             if tarfile_size == int(recorded_size):
                 return True
-        except:
+        except Exception:
             return False
         
     def archive_download_job(self, db_session, download_job, job_status, trace=None):
