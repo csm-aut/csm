@@ -1,10 +1,9 @@
-from work_unit import WorkUnit
+from multi_process import WorkUnit
 
 from models import SMTPServer
 from models import EmailJob
 
 from mailer import sendmail
-from constants import JobStatus
 
 class EmailWorkUnit(WorkUnit):
     def __init__(self, job_id):
@@ -36,7 +35,7 @@ class EmailWorkUnit(WorkUnit):
                 password=smtp_server.password,
                 secure_connection=smtp_server.secure_connection)
 
-            email_job.set_status(JobStatus.COMPLETED)
+            db_session.delete(email_job)
             db_session.commit()
 
         finally:

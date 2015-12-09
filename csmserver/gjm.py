@@ -26,9 +26,8 @@ from database import DBSession
 from models import logger
 from models import EmailJob
 
-from multi_process import EmailWorkUnit
 from multi_process import JobManager
-
+from work_units.email_work_unit import EmailWorkUnit
 
 class GenericJobManager(JobManager):
     def __init__(self, num_workers, worker_name):

@@ -50,8 +50,8 @@ def dispatch():
     download_manager = DownloadManager(system_option.download_threads, 'Download-Manager')
     download_manager.start()
 
-    # generic_job_manager = GenericJobManager(3, 'Generic-Job')
-    # generic_job_manager.start()
+    generic_job_manager = GenericJobManager(2, 'Generic-Job')
+    generic_job_manager.start()
 
     print('csmdispatcher started')
     

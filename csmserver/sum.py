@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 import datetime
+import urllib
 
 from database import DBSession
 from sqlalchemy import and_
@@ -46,7 +47,9 @@ from base import InstallContext
 from utils import create_log_directory
 from utils import is_empty
 
-from mailer import send_install_status_email
+from filters import get_datetime_string
+
+from mailer import create_email_job
 
 import traceback
 
@@ -182,16 +185,16 @@ class InstallWorkUnit(WorkUnit):
                 # print('processing 7', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 # Update the software
                 self.get_software(ctx, logger)
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.COMPLETED, process_name)
+                self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.COMPLETED, process_name)
             else:
                 # print('processing 8', process_name, self.host_id, self.in_progress_hosts.__str__() )
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name)
+                self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
         except Exception:
             # print('processing 9', process_name, self.host_id, self.in_progress_hosts.__str__() )
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
-                self.archive_install_job(db_session, logger, ctx, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
+                self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
             except Exception:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
@@ -221,7 +224,7 @@ class InstallWorkUnit(WorkUnit):
             filter((InstallJobHistory.host_id == host_id), and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
             order_by(InstallJobHistory.status_time.desc()).first()
     
-    def archive_install_job(self, db_session, logger, ctx, install_job, job_status, process_name, trace=None):
+    def archive_install_job(self, db_session, logger, ctx, host, install_job, job_status, process_name, trace=None):
     
         install_job_history = InstallJobHistory()
         install_job_history.install_job_id = install_job.id
@@ -252,8 +255,39 @@ class InstallWorkUnit(WorkUnit):
     
         # Send notification error
         # print('before email', process_name, self.host_id, self.in_progress_hosts.__str__() )
-        send_install_status_email(db_session, logger, install_job_history)
+        self.create_email_notification(db_session, logger, host, install_job_history)
         # print('after email', process_name, self.host_id, self.in_progress_hosts.__str__() )
+
+    def create_email_notification(self, db_session, logger, host, install_job):
+        try:
+            session_log_link = "hosts/{}/install_job_history/session_log/{}?file_path={}".format(
+                urllib.quote(host.hostname), install_job.id, install_job.session_log)
+
+            message = '<html><head><body>'
+            if install_job.status == JobStatus.COMPLETED:
+                message += 'The scheduled installation for host "' + host.hostname + '" has COMPLETED<br><br>'
+            elif install_job.status == JobStatus.FAILED:
+                message += 'The scheduled installation for host "' + host.hostname + '" has FAILED<br><br>'
+
+            message += 'Scheduled Time: ' + get_datetime_string(install_job.scheduled_time) + ' (UTC)<br>'
+            message += 'Start Time: ' + get_datetime_string(install_job.start_time) + ' (UTC)<br>'
+            message += 'Install Action: ' + install_job.install_action + '<br><br>'
+
+            session_log_url = SystemOption.get(db_session).base_url + '/' + session_log_link
+
+            message += 'For more information, click the link below<br><br>'
+            message += session_log_url + '<br><br>'
+
+            if install_job.packages is not None and len(install_job.packages) > 0:
+                message += 'Followings are the software packages: <br><br>' + install_job.packages.replace(',','<br>')
+
+            message += '</body></head></html>'
+
+            create_email_job(db_session, logger, message, install_job.created_by)
+
+        except Exception:
+            logger.exception('create_email_notification hit exception')
+
     
 if __name__ == '__main__': 
     pass
