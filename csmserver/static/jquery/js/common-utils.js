@@ -28,6 +28,15 @@ function get_acceptable_string_message(field, old_value, new_value) {
     return field + " '" + old_value + "' contains invalid characters.  It is recommended that it be changed to '" + new_value + "'.  Change?";
 }
 
+function read_cookie_value(key, default_value) {
+    var value = $.cookie(key);
+    return (value == null ? (default_value == null ? value : default_value) : value);
+}
+
+function write_cookie_value(key, value) {
+    $.cookie(key, value);
+}
+
 /*
  * Trims all whitespaces from lines include blank lines and returns result as separate lines
  */

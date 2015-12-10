@@ -22,49 +22,32 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-import time
-import threading
-
 from database import DBSession
 from models import logger
 from models import EmailJob
 
-from process_pool import Pool
-from work_units import EmailWorkUnit
+from multi_process import JobManager
+from work_units.email_work_unit import EmailWorkUnit
 
-
-class GenericJobManager(threading.Thread):
-    def __init__(self, name, num_threads=4):
-        threading.Thread.__init__(self, name = name)
-        self.pool = Pool(num_workers=num_threads, name="Generic-Job")
-
-    def run(self):
-        while 1:
-            time.sleep(20)
-            self.dispatch()
+class GenericJobManager(JobManager):
+    def __init__(self, num_workers, worker_name):
+        JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
 
     def dispatch(self):
         db_session = DBSession()
+
+        self.handle_email_jobs(db_session)
+
+        db_session.close()
+
+
+    def handle_email_jobs(self, db_session):
         try:
             # Submit email notification jobs if any
             email_jobs = db_session.query(EmailJob).filter(EmailJob.status == None).all()
-            if len(email_jobs) > 0:
+            if email_jobs:
                 for email_job in email_jobs:
-                    self.pool.submit(EmailWorkUnit(email_job.id))
+                    self.submit_job(EmailWorkUnit(email_job.id))
+        except Exception:
+            logger.exception('Unable to dispatch email job')
 
-        except:
-            logger.exception('Unable to dispatch job')
-        finally:
-            db_session.close()
-
-if __name__ == "__main__":
-
-    db_session = DBSession()
-    job = EmailJob(recipients='alextang@cisco.com', message="testing")
-    db_session.add(job)
-    db_session.commit()
-
-    """
-    generic_job_manager = GenericJobManager('Generic Job Manager')
-    generic_job_manager.start()
-    """

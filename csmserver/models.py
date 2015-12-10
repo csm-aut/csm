@@ -684,6 +684,7 @@ class SystemOption(Base):
     _default_host_password = Column('default_host_password', String(100))
     base_url = Column(String(100))
     enable_ldap_auth = Column(Boolean, default=False)
+    enable_ldap_host_auth = Column(Boolean, default=False)
     ldap_server_url = Column(String(100))
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)
@@ -773,8 +774,7 @@ class ConformanceReportEntry(Base):
     comments = Column(String(50))
 
     conformance_report_id = Column(Integer, ForeignKey('conformance_report.id'))
-    
-"""
+
 class EmailJob(Base):
     __tablename__ = 'email_job'
 
@@ -789,7 +789,6 @@ class EmailJob(Base):
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
-"""
 
 Base.metadata.create_all(engine)
         

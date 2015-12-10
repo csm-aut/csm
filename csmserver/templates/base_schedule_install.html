@@ -116,6 +116,7 @@
 
 <script type="text/javascript">
 
+var host_software_platform = null;
 var host_software_version = null;
 
 $(function() {
@@ -423,7 +424,12 @@ $(function() {
         var server_id = get_server_cookie(region_id);
         var server_directory = get_server_directory_cookie(region_id)
 
+        if (host_software_platform != null && host_software_version != null) {
+            init_cisco_software_dialog(host_software_platform, host_software_version);
+        }
+
         display_cisco_software_dialog(hostname_list, server_id, server_directory)
+
     }
 
     $('#on-cisco-software-dialog-submit').click(function(e) {
