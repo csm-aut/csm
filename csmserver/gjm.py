@@ -35,14 +35,19 @@ class GenericJobManager(JobManager):
 
     def dispatch(self):
         db_session = DBSession()
+
+        self.handle_email_jobs(db_session)
+
+        db_session.close()
+
+
+    def handle_email_jobs(self, db_session):
         try:
             # Submit email notification jobs if any
             email_jobs = db_session.query(EmailJob).filter(EmailJob.status == None).all()
-            if len(email_jobs) > 0:
+            if email_jobs:
                 for email_job in email_jobs:
                     self.submit_job(EmailWorkUnit(email_job.id))
-
         except Exception:
-            logger.exception('Unable to dispatch job')
-        finally:
-            db_session.close()
+            logger.exception('Unable to dispatch email job')
+
