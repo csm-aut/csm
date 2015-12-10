@@ -2884,7 +2884,7 @@ def api_get_tar_list(platform, release):
             row = {}
             row['ST'] = 'True' if tar_info.name in file_list else 'False'
             row['name'] = tar_info.name
-            row['compressed_size'] = tar_info.compressed_size
+            row['compressed_size'] = tar_info.compressed_image_size
             row['description'] = ""
             rows.append(row)
     return jsonify( **{'data':rows} )
@@ -3023,7 +3023,8 @@ def validate_software():
 
     return render_template('csm_client/validate_software.html',
                            server_dialog_form=server_dialog_form,
-                           software_profile_form=software_profile_form)
+                           software_profile_form=software_profile_form,
+                           system_option=SystemOption.get(DBSession()))
 
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required
