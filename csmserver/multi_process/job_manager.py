@@ -39,8 +39,13 @@ class JobManager(threading.Thread):
 
     def run(self):
         while 1:
-            time.sleep(20)
-            self.dispatch()
+            try:
+                time.sleep(20)
+                self.dispatch()
+            except Exception:
+                # Print to debug console instead of to DB.
+                import traceback
+                print(traceback.format_exc())
 
     def dispatch(self):
         raise NotImplementedError("Children must override dispatch()")
