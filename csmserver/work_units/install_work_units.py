@@ -48,31 +48,22 @@ class InstallWorkUnit(WorkUnit):
     def start(self, db_session, logger, process_name):
         ctx = None
 
-        # print('processing', process_name, self.host_id, self.in_progress_hosts.__str__() )
-
         try:
-            # print('processing 1', process_name, self.host_id, self.in_progress_hosts.__str__() )
             install_job = db_session.query(InstallJob).filter(InstallJob.id == self.job_id).first()
 
-            # print('processing 1.1', process_name, self.host_id, self.in_progress_hosts.__str__() )
             if install_job is None:
-                # print('INSTALL JOB NONE', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 # This is normal because of race condition. It means the job is already deleted (completed).
                 return
 
-            # print('processing 2', process_name, self.host_id, self.in_progress_hosts.__str__() )
             if not db_session.query(SystemOption).first().can_install:
                 # This will halt this host that has already been queued
-                # print('CAN INSTALL', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 return
 
-            # print('processing 3', process_name, self.host_id, self.in_progress_hosts.__str__() )
             host = db_session.query(Host).filter(Host.id == self.host_id).first()
             if host is None:
                 logger.error('Unable to retrieve host %s', self.host_id)
                 return
 
-            # print('processing 4', process_name, self.host_id, self.in_progress_hosts.__str__() )
             handler_class = get_install_handler_class(host.platform)
             if handler_class is None:
                 logger.error('Unable to get handler for %s, install job %s', host.platform, self.job_id)
@@ -84,25 +75,19 @@ class InstallWorkUnit(WorkUnit):
             ctx = InstallContext(db_session, host, install_job)
             ctx.operation_id = self.get_last_operation_id(db_session, install_job)
 
-            # print('processing 5', process_name, self.host_id, self.in_progress_hosts.__str__() )
             db_session.commit()
-
-            # print('processing 6', process_name, self.host_id, self.in_progress_hosts.__str__() )
 
             handler = handler_class()
             handler.execute(ctx)
 
             if ctx.success:
-                # print('processing 7', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 # Update the software
                 self.get_software(ctx, logger)
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.COMPLETED, process_name)
             else:
-                # print('processing 8', process_name, self.host_id, self.in_progress_hosts.__str__() )
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
         except Exception:
-            # print('processing 9', process_name, self.host_id, self.in_progress_hosts.__str__() )
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
@@ -110,8 +95,6 @@ class InstallWorkUnit(WorkUnit):
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
             db_session.close()
-
-        # print('after removing', process_name, self.host_id, self.in_progress_hosts.__str__() )
 
     def get_last_operation_id(self, db_session, install_activate_job, trace=None):
 
@@ -165,9 +148,7 @@ class InstallWorkUnit(WorkUnit):
         db_session.commit()
 
         # Send notification error
-        # print('before email', process_name, self.host_id, self.in_progress_hosts.__str__() )
         self.create_email_notification(db_session, logger, host, install_job_history)
-        # print('after email', process_name, self.host_id, self.in_progress_hosts.__str__() )
 
     def create_email_notification(self, db_session, logger, host, install_job):
         try:
