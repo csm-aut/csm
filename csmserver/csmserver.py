@@ -52,6 +52,7 @@ from forms import BrowseServerDialogForm
 from forms import SoftwareProfileForm
 
 from models import Host
+from models import HostContext
 from models import JumpHost
 from models import InventoryJob
 from models import ConnectionParam
@@ -611,6 +612,7 @@ def host_create():
             created_by=current_user.username)
         
             host.inventory_job.append(InventoryJob())
+            host.context.append(HostContext())
             db_session.add(host)
             
             host.region_id = form.region.data if form.region.data > 0 else None
