@@ -6,6 +6,7 @@ from database import DBSession
 
 from models import Server
 from models import logger
+from models import CreateTarJob
 
 from wtforms import Form
 from wtforms import StringField
@@ -40,6 +41,23 @@ def create_tar_file():
 
 @tar_support.route('/api/create_tar_file')
 @login_required
+def api_create_tar_job():
+    db_session = DBSession()
+    server_id = request.args.get('server')
+    server_directory = request.args.get('server_directory')
+    source_tars = request.args.getlist('source_tars[]')
+    contents = request.args.get('tar_contents')
+    sps = request.args.getlist('sps[]')
+    new_tar_name = request.args.get('new_tar_name').strip('.tar')
+
+    create_tar_job = CreateTarJob()
+    create_tar_job.server_id = server_id
+    create_tar_job.server_directory = server_directory
+    create_tar_job.source_tars = source_tars
+    create_tar_job.contents = contents
+    create_tar_job.sps = sps
+    create_tar_job.new_tar_name = new_tar_name
+
 def api_create_tar_file():
     db_session = DBSession()
     server_id = request.args.get('server')

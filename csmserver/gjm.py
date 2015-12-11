@@ -24,10 +24,11 @@
 # =============================================================================
 from database import DBSession
 from models import logger
-from models import EmailJob
+from models import EmailJob, CreateTarJob
 
 from multi_process import JobManager
 from work_units.email_work_unit import EmailWorkUnit
+from work_units.create_tar_work_unit import CreateTarWorkUnit
 
 class GenericJobManager(JobManager):
     def __init__(self, num_workers, worker_name):
@@ -51,3 +52,11 @@ class GenericJobManager(JobManager):
         except Exception:
             logger.exception('Unable to dispatch email job')
 
+    def handle_create_tar_jobs(self, db_session):
+        try:
+            create_tar_jobs = db_session.query(CreateTarJob).filter(CreateTarJob.status == None).all()
+            if create_tar_jobs:
+                for create_tar_job in create_tar_jobs:
+                    self.submit_job(CreateTarWorkUnit(create_tar_job.id))
+        except Exception:
+            logger.exception('Unable to dispatch create tar job')
