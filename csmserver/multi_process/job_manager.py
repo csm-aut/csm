@@ -24,9 +24,15 @@
 # =============================================================================
 import time
 import threading
+import os
 
 from multiprocessing import Manager
-from process_pool import Pool
+
+# For Windows, use the thread_pool
+if os.name == 'nt':
+    from thread_pool import Pool
+else:
+    from process_pool import Pool
 
 
 class JobManager(threading.Thread):
@@ -34,8 +40,13 @@ class JobManager(threading.Thread):
         threading.Thread.__init__(self, name=worker_name)
 
         self.pool = Pool(num_workers=num_workers, name=worker_name)
-        self.in_progress_jobs = Manager().list()
-        self.lock = Manager().Lock()
+
+        if os.name == 'nt':
+            self.in_progress_jobs = []
+            self.lock = threading.RLock()
+        else:
+            self.in_progress_jobs = Manager().list()
+            self.lock = Manager().Lock()
 
     def run(self):
         while 1:
@@ -65,3 +76,5 @@ class JobManager(threading.Thread):
 
         return True
 
+if __name__ == '__main__':
+    pass
