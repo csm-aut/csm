@@ -11,6 +11,7 @@ from utils import create_log_directory
 from multi_process import WorkUnit
 
 import traceback
+import sys
 
 class InventoryWorkUnit(WorkUnit):
     def __init__(self, host_id, job_id):
