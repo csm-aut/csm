@@ -118,8 +118,8 @@ class Pool(object):
         try:
             while 1:
                 self.queue.get_nowait()
-        except Manager().Queue.empty():
-        # except:
+        # except Manager().Queue.empty():
+        except:
             pass
 
         # Send one sentinel for each worker thread: each thread will die
