@@ -50,8 +50,7 @@ class SchemaMigrate(BaseMigrate):
             # Creates a context for existing hosts
             hosts = db_session.query(Host).all()
             for host in hosts:
-                if host.context is None:
-                    host.context.append(HostContext())
+                host.context.append(HostContext())
             db_session.commit()
         except:
             pass
