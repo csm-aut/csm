@@ -35,7 +35,7 @@ from models import get_download_job_key_dict
 from constants import JobStatus
 
 from multi_process import JobManager
-from work_units.install_work_units import InstallWorkUnit
+from work_units.install_work_unit import InstallWorkUnit
 
 class SoftwareManager(JobManager):
     def __init__(self, num_workers, worker_name):
