@@ -24,6 +24,8 @@
 # =============================================================================
 import threading
 from utils import import_module
+from database import DBSession
+from models import logger
         
 ## Item pushed on the work queue to tell the worker threads to terminate
 SENTINEL = "QUIT"
@@ -49,7 +51,7 @@ class PoolWorker(threading.Thread):
                 break
 
             # Run the job / sequence
-            workunit.process()
+            workunit.process(DBSession(), logger, self.name)
 
 
 class Pool(object):
@@ -59,7 +61,7 @@ class Pool(object):
     few different ways
     """
 
-    def __init__(self, nworkers, name="Pool"):
+    def __init__(self, num_workers, name="Pool"):
         """
         \param nworkers (integer) number of worker threads to start
         \param name (string) prefix for the worker threads' name
@@ -73,7 +75,7 @@ class Pool(object):
   
         self._closed  = False
         self._workers = []
-        for idx in range(nworkers):
+        for idx in range(num_workers):
             thr = PoolWorker(self._workq, name="Worker-%s-%d" % (name, idx))
             try:
                 thr.start()
@@ -113,13 +115,6 @@ class Pool(object):
         # eventually, leaving the next sentinel for the next thread
         for thr in self._workers:
             self._workq.put(SENTINEL)
-
-    
-class WorkUnit(object):
-
-    def process(self):
-        """Do the work. Shouldn't raise any exception"""
-        raise NotImplementedError("Children must override Process")
 
 if __name__ == "__main__":
     print('begin')

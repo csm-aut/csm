@@ -23,6 +23,7 @@ from models import InventoryJob
 from models import Host
 from models import ConnectionParam
 from models import Region
+from models import HostContext
 
 from database import DBSession
 
@@ -144,9 +145,11 @@ def api_import_hosts():
         im_host.region_id = selected_region.id
         im_host.created_by = current_user.username
         im_host.inventory_job.append(InventoryJob())
+        im_host.context.append(HostContext())
         im_host.connection_param.append(ConnectionParam())
         im_host.connection_param[0].username = ''
         im_host.connection_param[0].password = ''
+        im_host.connection_param[0].port_number = ''
 
         for column in range(len(header_row)):
 
