@@ -20,30 +20,34 @@ $ cd /usr/local
 $ unzip csm-x.x.zip
 ```
 
-## Shut down CSM Server
+## Shutdown CSM Server
 
 ```shell
 $ cd /usr/local/csm/csmserver
-$ ./csmserver stop
+$ sudo ./csmserver stop
 ```
 
 ## Install New Python Modules
+
+If you are using a virtual environment, make sure you are inside the virtual environment before proceeding. 
+
+The following modules need to be installed for CSM Server built prior to 12/23/2015.
 
 ```shell
 $ sudo pip install condoor
 $ sudo pip install xlutils==1.7.1
 ```
 
-## Edit csmserver launch script and database.ini
+## Edit the Launch Script and database.ini
 
-If you have previously made modifications to csmserver launch script (e.g. use a different python interpreter) or database.ini (e.g. use different username and password to connect to the database), you will need to make the same changes here.
+If you have previously made modifications to csmserver launch script (e.g., use a different python interpreter) or database.ini (e.g., use different username and password to connect to the database), you will need to make the same changes here.
 
 ```shell
-$ vi /usr/local/csm/csmserver/csmserver
-$ vi /usr/local/csm/csmserver/database.ini
+$ sudo vi /usr/local/csm/csmserver/csmserver
+$ sudo vi /usr/local/csm/csmserver/database.ini
 ```
 
-## Switch to the latest code
+## Switch to the Latest Code
 
 Rename the current CSM Server directory to csm_old and the csm-x.x to csm.  
 
@@ -60,9 +64,9 @@ $ cd /usr/local/csm/csmserver
 $ ./csmserver start
 ```
 
-### Restart CSM Server - inside a virtual environment
+### Restart CSM Server - Inside a virtual environment
 
-Copy the virtual environment directory (e.g. env) which contains python interpreter and library modules, to the new application directory.
+Follow these steps only if you are running CSM Server inside a virtual environment.  Copy the virtual environment directory (e.g. env) that contains python interpreter and library modules from the old application directory to the new application directory.
 
 ```shell
 $ cd /usr/local/csm/csmserver
