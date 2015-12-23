@@ -72,5 +72,5 @@ Follow these steps only if you are running CSM Server inside a virtual environme
 $ cd /usr/local/csm/csmserver
 $ cp –R /usr/local/csm_old/csmserver/env .
 $ source env/bin/activate
-$ ./csmserver start
+$ sudo ./csmserver start
 ```
