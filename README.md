@@ -39,8 +39,8 @@ $ sudo pip install xlutils==1.7.1
 If you have previously made modifications to csmserver launch script (e.g. use a different python interpreter) or database.ini (e.g. use different username and password to connect to the database), you will need to make the same changes here.
 
 ```shell
-$ vi /usr/local/csm-master/csmserver/csmserver
-$ vi /usr/local/csm-master/csmserver/database.ini
+$ vi /usr/local/csm/csmserver/csmserver
+$ vi /usr/local/csm/csmserver/database.ini
 ```
 
 ## Switch to the latest code
