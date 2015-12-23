@@ -61,7 +61,7 @@ $ mv csm-x.x csm
 
 ```shell
 $ cd /usr/local/csm/csmserver
-$ ./csmserver start
+$ sudo ./csmserver start
 ```
 
 ### Restart CSM Server - Inside a virtual environment
