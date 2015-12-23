@@ -1,6 +1,6 @@
 # CSM Server
 
-CSM Server is an automation and orchestration framework for IOS-XR devices.  It provides the ability to simultaneouly deploy IOS-XR software or SMUs across multiple routers in a scheduled manner through a simple point and click Web interface.  It leverages the Accelerated Upgrade Tool (AUT) to automate and relieve customers of having to perform tedious and maual install steps themselves.
+CSM Server is an automation and orchestration framework for IOS-XR devices.  It provides the ability to simultaneouly deploy IOS-XR software or SMUs across multiple routers in a scheduled manner through a simple point and click Web interface.  It provides the automation to relieve customers of having to perform tedious and maual install steps themselves.
 
 # Getting the Latest Code
 
@@ -13,7 +13,7 @@ For new installation, consult the Install Guide to install CSM Server.  The Inst
 
 # Upgrade to the Latest Code
 
-This section assumes that CSM Server has been installed on /usr/local/csm and you wanted to upgrade to the latest code.  Copy csm-x.x.zip to /usr/local and unzip its contents.
+This section assumes that CSM Server has been installed on /usr/local and you wanted to upgrade to the latest code.  Copy csm-x.x.zip to /usr/local and unzip its contents.
 
 ```shell
 $ cd /usr/local
