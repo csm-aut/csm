@@ -51,6 +51,10 @@ class SchemaMigrate(BaseMigrate):
             hosts = db_session.query(Host).all()
             for host in hosts:
                 host.context.append(HostContext())
+                if len(host.connection_param) > 0:
+                    connection = host.connection_param[0]
+                    if connection.port_number is None:
+                        connection.port_number = ''
             db_session.commit()
         except:
             pass
