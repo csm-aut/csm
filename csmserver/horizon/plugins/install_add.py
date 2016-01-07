@@ -94,5 +94,5 @@ class InstallAddPlugin(IPlugin):
 
         manager.log("Add Package(s) Pending")
         install_add_remove(manager, device, cmd, has_tar=has_tar)
-        manager.log("Package(s) Removed Successfully")
+        manager.log("Package(s) Added Successfully")
 

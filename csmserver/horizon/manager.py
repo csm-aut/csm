@@ -84,6 +84,7 @@ class PluginsManager(object):
 
         self.current_plugin = None
 
+    @property
     def run(self):
         phase = None
 
@@ -123,7 +124,7 @@ class PluginsManager(object):
         try:
             self.log("Device Discovery Pending")
             device.discovery()
-        except condoor.exceptions.ConnectionError as e:
+        except condoor.ConnectionError as e:
             self.csm_ctx.post_status(e.message)
             return False
 
@@ -133,7 +134,7 @@ class PluginsManager(object):
         try:
             self.log("Device Connection Pending")
             device.connect()
-        except condoor.exceptions.ConnectionError as e:
+        except condoor.ConnectionError as e:
             self.csm_ctx.post_status(e.message)
             return False
         self.log("Device Connected Successfully")
@@ -154,7 +155,15 @@ class PluginsManager(object):
             self.csm_ctx.post_status(e.message)
             return False
 
-        except condoor.exceptions.ConnectionError as e:
+        except (condoor.ConnectionError, condoor.CommandError) as e:
+            self.csm_ctx.success = False
+            self.csm_ctx.post_status(e.message)
+            self.logger.error(e.message)
+            return False
+
+        except Exception as e:
+            self.logger.error(e.__class__)
+            self.logger.error(e.message)
             self.csm_ctx.success = False
             self.csm_ctx.post_status(e.message)
             return False
