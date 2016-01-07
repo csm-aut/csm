@@ -84,7 +84,6 @@ class PluginsManager(object):
 
         self.current_plugin = None
 
-    @property
     def run(self):
         phase = None
 
