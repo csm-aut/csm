@@ -798,11 +798,15 @@ class CreateTarJob(Base):
     server_directory = Column(String(300))
     source_tars = Column(Text)
     contents = Column(Text)
-    sps = Column(Text)
+    additional_packages = Column(Text)
     new_tar_name = Column(String(50))
     status = Column(String(200))
     status_time = Column(DateTime)
     created_by = Column(String(50))
+
+    def set_status(self, status):
+        self.status = status
+        self.status_time = datetime.datetime.utcnow()
 
 Base.metadata.create_all(engine)
         

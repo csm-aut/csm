@@ -30,6 +30,8 @@ from multi_process import JobManager
 from work_units.email_work_unit import EmailWorkUnit
 from work_units.create_tar_work_unit import CreateTarWorkUnit
 
+from constants import JobStatus
+
 class GenericJobManager(JobManager):
     def __init__(self, num_workers, worker_name):
         JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
@@ -38,6 +40,7 @@ class GenericJobManager(JobManager):
         db_session = DBSession()
 
         self.handle_email_jobs(db_session)
+        self.handle_create_tar_jobs(db_session)
 
         db_session.close()
 
@@ -54,9 +57,10 @@ class GenericJobManager(JobManager):
 
     def handle_create_tar_jobs(self, db_session):
         try:
-            create_tar_jobs = db_session.query(CreateTarJob).filter(CreateTarJob.status == None).all()
+            create_tar_jobs = db_session.query(CreateTarJob).filter().all()
             if create_tar_jobs:
                 for create_tar_job in create_tar_jobs:
-                    self.submit_job(CreateTarWorkUnit(create_tar_job.id))
+                    if create_tar_job.status != JobStatus.COMPLETED and create_tar_job.status != JobStatus.FAILED:
+                        self.submit_job(CreateTarWorkUnit(create_tar_job.id))
         except Exception:
             logger.exception('Unable to dispatch create tar job')
