@@ -305,7 +305,7 @@ $(function() {
         }
 
         // Check Install Manager constraint.
-        if (host_software_version != null && host_software_version == '5.3.2') {
+        if (can_support_up_to_27_pies(host_software_platform, host_software_version)) {
             if (trim_lines(software_packages).split('\n').length > 27) {
                 bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 27 software packages at a time.  For Install Add, use a tar archive file instead.");
                 return false;
@@ -321,6 +321,28 @@ $(function() {
 
         return true;
     });
+
+    // For ASR9K/CRS, software version above 5.3.2 can support up to 27 pies.
+    // In the future, this logic will need to be adjusted if we support other platforms.
+    // If this function is called during Batch Schedule Install, the platform and version
+    // will be null as multple hosts can be selected.
+    function can_support_up_to_27_pies(platform, version) {
+        if (platform != null && version != null) {
+            if (platform == 'asr9k-px' || platform == 'hfr-px') {
+                // Normalize the version from 5.3.3.23I -> 5.3.3
+                if (version.length > 5) {
+                   version = version.substring(0,5);
+                }
+
+                version = parseInt(version.replace(/\./g,''));
+                if (!isNaN(version) && version >= 532) {
+                   return true;
+                }
+            }
+        }
+
+        return false;
+    }
 
     // Convert the UTC time to Locale time
     $('#scheduled-time-UTC').val(function(index, value) {

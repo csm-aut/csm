@@ -38,14 +38,6 @@ create_directory(get_autlogs_directory())
 create_directory(get_repository_directory())
 create_directory(get_temp_directory())
 
-def is_column_existed(table, column_name):
-    inspector = inspect(engine)
-    column_list = inspector.get_columns(table)
-    for column in column_list:
-        if column['name'] == column_name:
-            return True
-    return False
-
 def init():
     if not is_ldap_supported():
         print('LDAP authentication is not supported because it has not been installed.')
@@ -53,8 +45,8 @@ def init():
     db_session = DBSession()
     system_version = SystemVersion.get(db_session)
 
-    # Handles database schema migration
-    for version in range(system_version.schema_version, CURRENT_SCHEMA_VERSION+1):    
+    # Handles database schema migration starting from the next schema version
+    for version in range(system_version.schema_version + 1, CURRENT_SCHEMA_VERSION + 1):
         handler_class = get_schema_migrate_class(version)
         if handler_class is not None:
             try:

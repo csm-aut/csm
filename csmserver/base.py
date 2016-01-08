@@ -36,6 +36,7 @@ from utils import make_url
 from constants import get_temp_directory
 from constants import get_autlogs_directory
 
+
 class Context(object):
     def __init__(self, db_session):
         self.db_session = db_session
@@ -58,7 +59,15 @@ class ImageContext(Context):
         self.committed_cli = None
         self.active_cli = None
         self.inactive_cli = None   
-        
+
+    @property
+    def data(self):
+        return self.host.context[0].data
+
+    @property
+    def data_modified_time(self):
+        return self.host.context[0].modified_time
+
     @property
     def host_urls(self):
         urls = []
@@ -86,8 +95,8 @@ class ImageContext(Context):
             system_option = SystemOption.get(self.db_session)
 
             if system_option.enable_default_host_authentication:
-                default_username=system_option.default_host_username
-                default_password=system_option.default_host_password
+                default_username = system_option.default_host_username
+                default_password = system_option.default_host_password
 
             for host_or_ip in connection.host_or_ip.split(','):
                 for port_number in connection.port_number.split(','):
@@ -129,6 +138,7 @@ class ConnectionContext(Context):
     def host_urls(self): 
         return self.urls 
 
+
 class InventoryContext(ImageContext):
     def __init__(self, db_session, host, inventory_job):
         ImageContext.__init__(self, db_session, host)
@@ -143,10 +153,12 @@ class InventoryContext(ImageContext):
         return get_autlogs_directory() + self.inventory_job.session_log  
     
     def post_status(self, message):
-        if self.db_session is not None and \
-            self.inventory_job is not None:
-            self.inventory_job.set_status(message)
-            self.db_session.commit() 
+        if self.db_session is not None and self.inventory_job is not None:
+            try:
+                self.inventory_job.set_status(message)
+                self.db_session.commit()
+            except:
+                self.db_session.rollback()
             
                
 class InstallContext(ImageContext):
@@ -177,14 +189,14 @@ class InstallContext(ImageContext):
             self._operation_id = int(value)
         except:  
             self._operation_id = -1
-    
-    """
-    Return the server repository URL (TFTP/FTP) where the packages can be found.
-    tftp://223.255.254.254/auto/tftp-gud/sit;VRF
-    ftp://username:password@10.55.7.21;VRF/remote/directory
-    """
+
     @property 
     def server_repository_url(self):
+        """
+        Return the server repository URL (TFTP/FTP) where the packages can be found.
+        tftp://223.255.254.254/auto/tftp-gud/sit;VRF
+        ftp://username:password@10.55.7.21;VRF/remote/directory
+        """
         server_id = self.install_job.server_id
         server = self.db_session.query(Server).filter(Server.id == server_id).first()
 
@@ -222,14 +234,19 @@ class InstallContext(ImageContext):
         return None
     
     def post_status(self, message):
-        if self.db_session is not None and \
-            self.install_job is not None:
-            self.install_job.set_status(message)
-            self.db_session.commit()              
-                
+        if self.db_session is not None and self.install_job is not None:
+            try:
+                self.install_job.set_status(message)
+                self.db_session.commit()
+            except:
+                self.db_session.rollback()
+
+
+
 class BaseHandler(object):
     def execute(self, ctx):
         raise NotImplementedError("Children must override execute")
+
 
 class BaseConnection(object):
     def login(self):       
@@ -240,4 +257,3 @@ class BaseConnection(object):
     
     def logout(self):
         raise NotImplementedError("Children must override logout")
-        

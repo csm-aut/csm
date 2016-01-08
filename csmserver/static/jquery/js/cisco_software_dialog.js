@@ -372,6 +372,15 @@ $(function() {
 
 function init_cisco_software_dialog(selected_platform, selected_release) {
     if (selected_platform != null && selected_release != null) {
+
+        if (selected_platform == 'asr9k-px' || selected_platform == 'hfr-px') {
+            // Normalize the version from 5.3.3.23I -> 5.3.3
+            if (selected_release.length > 5) {
+               selected_release = selected_release.substring(0,5);
+            }
+        }
+
+        // Convert the platform to the required known format.
         platform = selected_platform.replace(/-/g,'_').replace('hfr','crs');
         release = selected_release;
     }

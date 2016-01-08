@@ -25,6 +25,7 @@
 from sqlalchemy import Column, Table, Boolean
 from sqlalchemy import String, Integer, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext import mutable
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, synonym
 
@@ -50,7 +51,8 @@ from werkzeug import generate_password_hash
 from ldap_utils import ldap_auth
 from csm_exceptions import CSMLDAPException
 
-from flask import g, Flask
+from sqlalchemy.types import TypeDecorator, VARCHAR
+import json
 
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
@@ -59,6 +61,23 @@ from flask.ext.httpauth import HTTPBasicAuth
 
 # Contains information for password encryption
 encrypt_dict = None
+
+class JSONEncodedDict(TypeDecorator):
+    impl = Text
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            value = json.dumps(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            value = json.loads(value)
+        return value
+
+
+mutable.MutableDict.associate_with(JSONEncodedDict)
+
 
 Base = declarative_base()
 
@@ -220,7 +239,10 @@ class Host(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     region = relationship('Region', foreign_keys='Host.region_id') 
-    
+
+    context = relationship("HostContext",
+        cascade="all, delete, delete-orphan")
+
     connection_param = relationship("ConnectionParam",
         order_by="ConnectionParam.id",
         backref="host",
@@ -282,6 +304,15 @@ class Host(Base):
               
         return result
 
+class HostContext(Base):
+    __tablename__ = 'host_context'
+
+    id = Column(Integer, primary_key=True)
+    data = Column(JSONEncodedDict, default={})
+    host_id = Column(Integer, ForeignKey('host.id'), unique=True)
+    modified_time = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
 class ConnectionParam(Base):
     __tablename__ = 'connection_param'
     
@@ -292,11 +323,10 @@ class ConnectionParam(Base):
     _password = Column('password', String(100), nullable=False)
     connection_type = Column(String(10), nullable=False)
     # Multiple Ports can be specified using comma as the delimiter
-    port_number = Column(String(100))
+    port_number = Column(String(100), default='')
     
     host_id = Column(Integer, ForeignKey('host.id'))
     jump_host_id = Column(Integer, ForeignKey('jump_host.id'))
-    # jump_host = relationship("JumpHost", backref='connection_param', order_by=jump_host_id)
     jump_host = relationship("JumpHost", foreign_keys='ConnectionParam.jump_host_id')
     
     @property
@@ -318,7 +348,7 @@ class JumpHost(Base):
     username = Column(String(50), nullable=False)
     _password = Column('password', String(100), nullable=False)
     connection_type = Column(String(10), nullable=False)
-    port_number = Column(String(10))
+    port_number = Column(String(10), default='')
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     
@@ -910,4 +940,6 @@ init_encrypt()
  
 if __name__ == '__main__':
     pass
+
+
 

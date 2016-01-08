@@ -58,17 +58,13 @@ class PoolWorker(Process):
     def run(self):
         """Process the work unit, or wait for sentinel to exit"""
         while 1:
-            # print('waiting for item from queue', self.name)
             work_unit = self.queue.get()
-            # print('getting item from queue', self.name)
             if is_sentinel(work_unit):
                 # Got sentinel
                 break
 
             # Run the job / sequence
             work_unit.process(self.db_session, self.logger, self.name)
-            # print('DONE', self.name)
-
 
 class Pool(object):
     """
@@ -90,7 +86,6 @@ class Pool(object):
             process.daemon = True
             try:
                 process.start()
-                # print('process', process.name, 'started')
             except:
                 # If one thread has a problem, undo everything
                 self.terminate()
