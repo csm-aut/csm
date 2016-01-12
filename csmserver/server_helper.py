@@ -278,7 +278,16 @@ class FTPServer(ServerImpl):
         finally:
             if file is not None:
                 file.close()
-            
+
+    def delete_file(self, filename, sub_directory=None, callback=None):
+        ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
+
+        remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
+        if len(remote_directory) > 0:
+            ftp.cwd(remote_directory)
+
+        ftp.delete(filename)
+
     def handler(self, block):
         print block
         
