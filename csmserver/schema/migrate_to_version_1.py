@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,7 @@ sql_statements = [
     'alter table system_option add enable_ldap_auth BOOLEAN default 0',
     'alter table system_option add ldap_server_url VARCHAR(100)'
     ]
+
 
 class SchemaMigrate(BaseMigrate):
     def __init__(self, version):

@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,7 @@ import datetime
 import time
 import shutil
 
+
 class InventoryManagerScheduler(threading.Thread):
     def __init__(self, name, num_threads=None):
         threading.Thread.__init__(self, name = name)
@@ -63,8 +64,7 @@ class InventoryManagerScheduler(threading.Thread):
             else:
                 first_time = datetime.datetime.combine(datetime.datetime.now(), daily_time)
             
-            scheduler.enterabs(time.mktime(first_time.timetuple()), 1,
-                self.scheduling, (scheduler, daily_time,))
+            scheduler.enterabs(time.mktime(first_time.timetuple()), 1, self.scheduling, (scheduler, daily_time,))
            
             scheduler.run()
             
@@ -93,14 +93,14 @@ class InventoryManagerScheduler(threading.Thread):
                         inventory_job.pending_submit = True
                     db_session.commit()
                         
-            #Check if there is any housekeeping work to do
+            # Check if there is any housekeeping work to do
             self.perform_housekeeping_tasks(db_session, system_option)
             
         except:
             logger.exception('InventoryManagerScheduler hit exception')
         finally:
             db_session.close()
-            
+
     def perform_housekeeping_tasks(self, db_session, system_option):
 
         inventory_history_per_host = system_option.inventory_history_per_host

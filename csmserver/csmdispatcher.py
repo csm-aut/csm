@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,7 @@ from scheduler import InventoryManagerScheduler
 
 import os
 
+
 def dispatch():
     db_session = DBSession
     system_option = SystemOption.get(db_session)
@@ -54,7 +55,8 @@ def dispatch():
     generic_job_manager.start()
 
     print('csmdispatcher started')
-    
+
+
 def process_count(processname):
     try:
         return os.popen("ps -Af").read().count(processname)

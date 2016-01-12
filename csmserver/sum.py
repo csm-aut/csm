@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@ from constants import JobStatus
 from multi_process import JobManager
 from work_units.install_work_unit import InstallWorkUnit
 
+
 class SoftwareManager(JobManager):
     def __init__(self, num_workers, worker_name):
         JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
@@ -61,7 +62,8 @@ class SoftwareManager(JobManager):
             if not db_session.query(SystemOption).first().can_install:
                 return
                 
-            install_jobs = db_session.query(InstallJob).filter(InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
+            install_jobs = db_session.query(InstallJob).filter(
+                InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
             download_job_key_dict = get_download_job_key_dict()
 
             if len(install_jobs) > 0:

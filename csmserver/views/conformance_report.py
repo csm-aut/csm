@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@ from constants import JobStatus
 
 import re
 
+
 class ReportWriter(object):
     def __init__(self, conformance_report, filename, locale_datetime=None, include_host_packages=True):
         self.filename = filename
@@ -41,6 +42,7 @@ class ReportWriter(object):
 
     def write_report(self):
         raise NotImplementedError("Children must override write_report")
+
 
 class XLSWriter(ReportWriter):
     style_title = xlwt.easyxf('font: height 350, bold on; align: vert centre, horiz center;')
@@ -82,8 +84,10 @@ class XLSWriter(ReportWriter):
         self.ws.write(1, 2, report_datetime, XLSWriter.style_center )
         
         self.ws.write(4, 0, 'Summary: ', XLSWriter.style_bold)
-        self.ws.write(6, 0, 'Total Hosts: %d' % len(self.conformance_report.hostnames.split(',')), XLSWriter.style_summary)
-        self.ws.write(7, 0, 'Match Criteria: ' + (self.conformance_report.match_criteria + ' packages').title(), XLSWriter.style_summary)
+        self.ws.write(6, 0, 'Total Hosts: %d' % len(self.conformance_report.hostnames.split(',')),
+                      XLSWriter.style_summary)
+        self.ws.write(7, 0, 'Match Criteria: ' + (self.conformance_report.match_criteria + ' packages').title(),
+                      XLSWriter.style_summary)
         self.ws.write(8, 0, 'Results:', XLSWriter.style_summary)
         
         if self.conformance_report.host_not_in_conformance == 0:
@@ -168,5 +172,3 @@ class XLSWriter(ReportWriter):
                 self.row += 1
                 
             self.row += 1
-
-

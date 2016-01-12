@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@ from models import InventoryJob
 from multi_process import JobManager
 from work_units.inventory_work_unit import InventoryWorkUnit
 
+
 class InventoryManager(JobManager):
     def __init__(self, num_workers, worker_name):
         JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
@@ -49,4 +50,3 @@ class InventoryManager(JobManager):
 
 if __name__ == '__main__':
     pass
-    

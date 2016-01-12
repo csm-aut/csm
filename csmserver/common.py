@@ -1,3 +1,27 @@
+# =============================================================================
+# Copyright (c) 2016, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from flask.ext.login import current_user
 from sqlalchemy import or_, and_
 from platform_matcher import get_platform
@@ -30,6 +54,7 @@ from filters import time_difference_UTC
 from smu_utils import SP_INDICATOR, TAR_INDICATOR
 from utils import is_empty, get_datetime
 
+
 def fill_servers(choices, servers, include_local=True):
     # Remove all the existing entries
     del choices[:]
@@ -53,7 +78,8 @@ def fill_dependencies(choices):
     choices.append((InstallAction.INSTALL_ACTIVATE, InstallAction.INSTALL_ACTIVATE)) 
     choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
     choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT)) 
-        
+
+
 def fill_dependency_from_host_install_jobs(choices, install_jobs, current_install_job_id):
     # Remove all the existing entries
     del choices[:]
@@ -62,8 +88,9 @@ def fill_dependency_from_host_install_jobs(choices, install_jobs, current_instal
     for install_job in install_jobs:
         if install_job.id != current_install_job_id:
             choices.append((install_job.id, '%s - %s' % (install_job.install_action, 
-                get_datetime_string(install_job.scheduled_time)) ))
-        
+                            get_datetime_string(install_job.scheduled_time))))
+
+
 def fill_jump_hosts(choices):
     # Remove all the existing entries
     del choices[:]
@@ -79,6 +106,7 @@ def fill_jump_hosts(choices):
     except:
         logger.exception('fill_jump_hosts() hits exception')
 
+
 def fill_regions(choices):
     # Remove all the existing entries
     del choices[:]
@@ -93,7 +121,8 @@ def fill_regions(choices):
                 choices.append((region.id, region.name))
     except:
         logger.exception('fill_regions() hits exception')
-    
+
+
 def get_last_successful_inventory_elapsed_time(host):
     if host is not None:
         # Last inventory successful time
@@ -104,121 +133,149 @@ def get_last_successful_inventory_elapsed_time(host):
             return time_difference_UTC(inventory_job.last_successful_time)
         
     return ''
-    
-"""
-Returns a list of active/active-committed packages.  The list includes SMU/SP/Packages.
-"""
+
+
 def get_host_active_packages(hostname):
+    """
+    Returns a list of active/active-committed packages.  The list includes SMU/SP/Packages.
+    """
     db_session = DBSession()
     host = get_host(db_session, hostname)
     
     result_list = []       
     if host is not None:
         packages = db_session.query(Package).filter(
-            and_(Package.host_id == host.id, or_(Package.state == PackageState.ACTIVE, Package.state == PackageState.ACTIVE_COMMITTED) )).all()      
+            and_(Package.host_id == host.id, or_(Package.state == PackageState.ACTIVE,
+                                                 Package.state == PackageState.ACTIVE_COMMITTED))).all()
         for package in packages:
             result_list.append(package.name)
     
     return result_list
 
-"""
-Returns a list of inactive packages.  The list includes SMU/SP/Packages.
-"""
+
 def get_host_inactive_packages(hostname):
+    """
+    Returns a list of inactive packages.  The list includes SMU/SP/Packages.
+    """
     db_session = DBSession()
     host = get_host(db_session, hostname)
     
     result_list = []       
     if host is not None:
         packages = db_session.query(Package).filter(
-            and_(Package.host_id == host.id, Package.state == PackageState.INACTIVE) ).all()      
+            and_(Package.host_id == host.id, Package.state == PackageState.INACTIVE)).all()
         for package in packages:
             result_list.append(package.name)
     
     return result_list
-                 
+
+
 def get_server_list(db_session):
     return db_session.query(Server).order_by(Server.hostname.asc()).all()
+
 
 def get_host(db_session, hostname):
     return db_session.query(Host).filter(Host.hostname == hostname).first()
 
+
 def get_host_list(db_session):
     return db_session.query(Host).order_by(Host.hostname.asc()).all()
+
 
 def get_jump_host_by_id(db_session, id):
     return db_session.query(JumpHost).filter(JumpHost.id == id).first()
 
+
 def get_jump_host(db_session, hostname):
     return db_session.query(JumpHost).filter(JumpHost.hostname == hostname).first()
+
 
 def get_jump_host_list(db_session):
     return db_session.query(JumpHost).order_by(JumpHost.hostname.asc()).all()
 
+
 def get_server(db_session, hostname):
     return db_session.query(Server).filter(Server.hostname == hostname).first()
+
 
 def get_server_by_id(db_session, id):
     return db_session.query(Server).filter(Server.id == id).first()
 
+
 def get_region(db_session, region_name):
     return db_session.query(Region).filter(Region.name == region_name).first()
+
 
 def get_region_by_id(db_session, region_id):
     return db_session.query(Region).filter(Region.id == region_id).first()
 
+
 def get_region_list(db_session):
     return db_session.query(Region).order_by(Region.name.asc()).all()
+
 
 def get_user(db_session, username):
     return db_session.query(User).filter(User.username == username).first()
 
+
 def get_user_by_id(db_session, user_id):
     return db_session.query(User).filter(User.id == user_id).first()
+
 
 def get_user_list(db_session):
     return db_session.query(User).order_by(User.fullname.asc()).all()
 
+
 def get_smtp_server(db_session):
     return db_session.query(SMTPServer).first()
+
 
 def can_check_reachability(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
+
 def can_retrieve_software(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
+
 def can_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
+
 def can_delete_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
-        
+
+
 def can_edit_install(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN or \
         current_user.privilege == UserPrivilege.OPERATOR
 
+
 def can_create_user(current_user):
     return current_user.privilege == UserPrivilege.ADMIN
-                
+
+
 def can_edit(current_user):
     return can_create(current_user)
+
 
 def can_delete(current_user):
     return can_create(current_user)
 
+
 def can_create(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN 
+
 
 def create_or_update_install_job(
     db_session, host_id, install_action, scheduled_time, software_packages=None,
@@ -273,7 +330,7 @@ def create_or_update_install_job(
     install_job.created_by = current_user.username
     install_job.user_id = current_user.id
 
-    #Resets the following fields
+    # Resets the following fields
     install_job.status = None
     install_job.status_time = None
     install_job.session_log = None
@@ -296,14 +353,15 @@ def create_or_update_install_job(
         release = get_release(smu_list[0])
 
         create_download_jobs(db_session, platform, release, pending_downloads,
-            install_job.server_id, install_job.server_directory)
+                             install_job.server_id, install_job.server_directory)
 
     return install_job
 
-"""
-Pending downloads is an array of TAR files.
-"""
+
 def create_download_jobs(db_session, platform, release, pending_downloads, server_id, server_directory):
+    """
+    Pending downloads is an array of TAR files.
+    """
     smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
     if smu_meta is not None:
         for cco_filename in pending_downloads:
@@ -320,18 +378,19 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
                     software_type_id = smu_meta.smu_software_type_id
 
                 download_job = DownloadJob(
-                    cco_filename = cco_filename,
-                    pid = smu_meta.pid,
-                    mdf_id = smu_meta.mdf_id,
-                    software_type_id = software_type_id,
-                    server_id = server_id,
-                    server_directory = server_directory,
-                    user_id = current_user.id,
-                    created_by = current_user.username)
+                    cco_filename=cco_filename,
+                    pid=smu_meta.pid,
+                    mdf_id=smu_meta.mdf_id,
+                    software_type_id=software_type_id,
+                    server_id=server_id,
+                    server_directory=server_directory,
+                    user_id=current_user.id,
+                    created_by=current_user.username)
 
                 db_session.add(download_job)
 
             db_session.commit()
+
 
 def is_pending_on_download(db_session, filename, server_id, server_directory):
     download_job_key_dict = get_download_job_key_dict()

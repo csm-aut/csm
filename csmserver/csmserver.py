@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -140,12 +140,10 @@ from utils import remove_extra_spaces
 from server_helper import get_server_impl
 from wtforms.validators import Required
 
-from smu_utils import SMU_INDICATOR 
 from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 from smu_utils import get_platform_and_release
-from smu_utils import SP_INDICATOR
 from smu_utils import SMU_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
@@ -162,12 +160,10 @@ from views.host_import import host_import
 import os
 import io
 import logging
-import json
 import datetime
 import filters
 import collections
 import shutil
-import re
 import initialize
 
 app = Flask(__name__)
@@ -179,7 +175,7 @@ app.register_blueprint(conformance)
 app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
 
-#hook up the filters
+# Hook up the filters
 filters.init(app)
 
 app.secret_key = 'CSMSERVER'
@@ -189,13 +185,15 @@ login_manager = LoginManager()
 login_manager.setup_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in.'
-    
+
+
 @login_manager.user_loader
 def load_user(user_id):
     """Hook for Flask-Login to load a User instance from a user ID."""
     db_session = DBSession()
     return db_session.query(User).get(user_id)
-    
+
+
 @app.route('/')
 @login_required
 def home():
@@ -212,8 +210,9 @@ def home():
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
     return render_template('host/home.html', form=form, total_host_count=total_host_count, 
-        total_region_count=total_region_count, jump_hosts=jump_hosts, regions=regions, 
-        servers=servers, build_date=get_build_date(), current_user=current_user) 
+                           total_region_count=total_region_count, jump_hosts=jump_hosts, regions=regions,
+                           servers=servers, build_date=get_build_date(), current_user=current_user)
+
 
 @app.route('/api/get_host_platform_version/region/<int:region_id>')
 @login_required
@@ -236,8 +235,7 @@ def get_host_platform_version(region_id):
                 host_dict[key] += 1
             else:
                 host_dict[key] = 1
-                
-    
+
     rows = []
     # key is a tuple ('4.2.3-asr9k', 1)
     for key in host_dict.items():
@@ -248,8 +246,9 @@ def get_host_platform_version(region_id):
         row['host_count'] = key[1]
         rows.append(row)
         
-    return jsonify( **{'data':rows} )
-    
+    return jsonify(**{'data': rows})
+
+
 @app.route('/install_dashboard')
 @login_required
 def install_dashboard():
@@ -261,7 +260,8 @@ def install_dashboard():
             
     return render_template('host/install_dashboard.html', hosts=hosts) 
 
-@app.route('/users/create' , methods=['GET','POST'])
+
+@app.route('/users/create', methods=['GET','POST'])
 @login_required
 def user_create():
     if not can_create_user(current_user):
@@ -295,12 +295,14 @@ def user_create():
         form.active.data = True
         return render_template('user/edit.html', form=form)
 
-@app.route('/users/edit' , methods=['GET','POST'])
+
+@app.route('/users/edit', methods=['GET','POST'])
 @login_required
 def current_user_edit(): 
     return user_edit(current_user.username)
 
-@app.route('/users/<username>/edit' , methods=['GET','POST'])
+
+@app.route('/users/<username>/edit', methods=['GET','POST'])
 @login_required
 def user_edit(username):
     db_session = DBSession()
@@ -336,6 +338,7 @@ def user_edit(username):
 
     return render_template('user/edit.html', form=form)
 
+
 @app.route('/users/')
 @login_required
 def user_list():
@@ -350,6 +353,7 @@ def user_list():
     
     return render_template('user/not_authorized.html', user=current_user)
 
+
 @app.route('/users/<username>/delete/', methods=['DELETE'])
 @login_required
 def user_delete(username):
@@ -362,7 +366,8 @@ def user_delete(username):
     db_session.delete(user)
     db_session.commit()
         
-    return jsonify({'status':'OK'})
+    return jsonify({'status': 'OK'})
+
 
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
@@ -399,7 +404,8 @@ def login():
             else:
                 return redirect(url_for(return_url))
         else:
-            error_message = 'Your user name or password is incorrect.  Re-enter them again or contact your system administrator.'       
+            error_message = 'Your user name or password is incorrect.  \
+                             Re-enter them again or contact your system administrator.'
  
     # Fill the username if the user is still logged in.
     username = get_username(current_user)
@@ -408,15 +414,17 @@ def login():
         
     return render_template('user/login.html', form=form, error_message=error_message, username=username)
 
-"""
-Return the current username.  If the user already logged out, return None
-"""
+
 def get_username(current_user):
+    """
+    Return the current username.  If the user already logged out, return None
+    """
     try:
         return current_user.username
     except:
         return None
-    
+
+
 @app.route('/logout/')
 def logout():
     logout_user()
@@ -433,7 +441,7 @@ def get_region_host_count(region_id):
     else:
         count = db_session.query(Host).filter(Host.region_id == region_id).count()
         
-    return jsonify( **{'data': [ { 'region_host_count': count } ] } )
+    return jsonify(**{'data': [{'region_host_count': count}]})
     
 
 @app.route('/api/get_region_name/region/<int:region_id>')
@@ -447,7 +455,7 @@ def get_region_name(region_id):
         if region is not None:
             region_name = region.name
         
-    return jsonify( **{'data': [ { 'region_name': region_name } ] } )
+    return jsonify(**{'data': [{'region_name': region_name}]})
         
     
 @app.route('/api/get_managed_hosts/region/<int:region_id>')
@@ -477,14 +485,15 @@ def get_managed_hosts(region_id):
             inventory_job = host.inventory_job[0]
             if inventory_job is not None and inventory_job.last_successful_time is not None:
                 row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
-                row['inventory_status'] =  inventory_job.status
+                row['inventory_status'] = inventory_job.status
             else:
                 row['last_successful_retrieval'] = ''
                 row['inventory_status'] = ''
             
             rows.append(row)
     
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/get_managed_host_details/region/<int:region_id>')
 @login_required
@@ -517,7 +526,8 @@ def get_managed_host_details(region_id):
             
             rows.append(row)
     
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/acknowledge_csm_message', methods=['POST'])
 def api_acknowledge_csm_message():
@@ -537,8 +547,9 @@ def api_acknowledge_csm_message():
                 
         db_session.commit()
         
-    return jsonify({'status':'OK'})
-    
+    return jsonify({'status': 'OK'})
+
+
 @app.route('/api/get_csm_message', methods=['POST'])
 def api_get_csm_message():
     rows = [] 
@@ -572,12 +583,13 @@ def api_get_csm_message():
                     try:                       
                         delta = datetime.datetime.strptime(date, "%Y/%m/%d") - acknowledgment_date                       
                         if delta.days > 0:
-                            rows.append({ 'date' : date, 'message': message.replace("\n", "<br>") })
+                            rows.append({'date': date, 'message': message.replace("\n", "<br>")})
                     except:
                         logger.exception('api_get_csm_message hit exception')
     
-    return jsonify( **{'data':rows} )
-        
+    return jsonify(**{'data': rows})
+
+
 @app.route('/hosts/')
 @login_required
 def host_list():
@@ -588,6 +600,7 @@ def host_list():
         abort(404)
             
     return render_template('host/index.html', hosts=hosts)
+
 
 @app.route('/hosts/create/', methods=['GET', 'POST'])
 @login_required
@@ -608,8 +621,8 @@ def host_create():
                 return render_template('host/edit.html', form=form, duplicate_error=True)
             
             host = Host(hostname=form.hostname.data, 
-            platform=form.platform.data,
-            created_by=current_user.username)
+                        platform=form.platform.data,
+                        created_by=current_user.username)
         
             host.inventory_job.append(InventoryJob())
             host.context.append(HostContext())
@@ -619,23 +632,24 @@ def host_create():
             host.roles = remove_extra_spaces(form.roles.data)
             host.connection_param = [ConnectionParam(
                 # could have multiple IPs, separated by comma
-                host_or_ip = remove_extra_spaces(form.host_or_ip.data),
-                username = form.username.data,
-                password = form.password.data,
-                jump_host_id = form.jump_host.data if form.jump_host.data > 0 else None,
-                connection_type = form.connection_type.data,
+                host_or_ip=remove_extra_spaces(form.host_or_ip.data),
+                username=form.username.data,
+                password=form.password.data,
+                jump_host_id=form.jump_host.data if form.jump_host.data > 0 else None,
+                connection_type=form.connection_type.data,
                 # could have multiple ports, separated by comma
-                port_number = remove_extra_spaces(form.port_number.data))]
+                port_number=remove_extra_spaces(form.port_number.data))]
                             
             db_session.commit()
 
         finally:
             db_session.rollback()
             
-        return redirect(url_for('home') ) 
+        return redirect(url_for('home'))
 
     return render_template('host/edit.html', form=form)
-    
+
+
 @app.route('/hosts/<hostname>/edit/', methods=['GET', 'POST'])
 @login_required
 def host_edit(hostname):        
@@ -653,8 +667,7 @@ def host_edit(hostname):
         if not can_edit(current_user):
             abort(401)
         
-        if hostname != form.hostname.data and \
-            get_host(db_session, form.hostname.data) is not None:
+        if hostname != form.hostname.data and get_host(db_session, form.hostname.data) is not None:
             return render_template('host/edit.html', form=form, duplicate_error=True)
         
         host.hostname = form.hostname.data
@@ -676,7 +689,7 @@ def host_edit(hostname):
         
         return_url = get_return_url(request, 'home')
         if return_url is None:
-            return redirect(url_for('home') )
+            return redirect(url_for('home'))
         else:
             return redirect(url_for(return_url, hostname=hostname))
     else:
@@ -692,6 +705,7 @@ def host_edit(hostname):
         form.port_number.data = host.connection_param[0].port_number
         
         return render_template('host/edit.html', form=form)
+
    
 @app.route('/hosts/<hostname>/delete/', methods=['DELETE'])
 @login_required
@@ -710,7 +724,8 @@ def host_delete(hostname):
     db_session.delete(host)
     db_session.commit()
         
-    return jsonify({'status':'OK'})
+    return jsonify({'status': 'OK'})
+
 
 def delete_host_inventory_job_session_logs(db_session, host):
     inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id)
@@ -719,7 +734,8 @@ def delete_host_inventory_job_session_logs(db_session, host):
             shutil.rmtree(get_autlogs_directory() + inventory_job.session_log)   
         except:
             logger.exception('delete_host_inventory_job_session_logs hit exception')
-            
+
+
 def delete_host_install_job_session_logs(db_session, host):
     install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id)
     for install_job in install_jobs:
@@ -727,6 +743,7 @@ def delete_host_install_job_session_logs(db_session, host):
             shutil.rmtree(get_autlogs_directory() + install_job.session_log)   
         except:
             logger.exception('delete_host_install_job_session_logs hit exception')
+
 
 @app.route('/jump_hosts/')
 @login_required
@@ -738,6 +755,7 @@ def jump_host_list():
         abort(404)
             
     return render_template('jump_host/index.html', hosts=hosts)
+
 
 @app.route('/jump_hosts/create/', methods=['GET', 'POST'])
 @login_required
@@ -754,20 +772,21 @@ def jump_host_create():
             return render_template('jump_host/edit.html', form=form, duplicate_error=True)
         
         host = JumpHost(
-            hostname = form.hostname.data,
-            host_or_ip = form.host_or_ip.data,
-            username = form.username.data,
-            password = form.password.data,
-            connection_type = form.connection_type.data,
-            port_number = form.port_number.data,
-            created_by = current_user.username)
+            hostname=form.hostname.data,
+            host_or_ip=form.host_or_ip.data,
+            username=form.username.data,
+            password=form.password.data,
+            connection_type=form.connection_type.data,
+            port_number=form.port_number.data,
+            created_by=current_user.username)
           
         db_session.add(host)
         db_session.commit() 
             
-        return redirect(url_for('home') )
+        return redirect(url_for('home'))
                 
     return render_template('jump_host/edit.html', form=form)
+
 
 @app.route('/jump_hosts/<hostname>/edit/', methods=['GET', 'POST'])
 @login_required
@@ -784,8 +803,7 @@ def jump_host_edit(hostname):
         if not can_edit(current_user):
             abort(401)
         
-        if hostname != form.hostname.data and \
-            get_jump_host(db_session, form.hostname.data) is not None:
+        if hostname != form.hostname.data and get_jump_host(db_session, form.hostname.data) is not None:
             return render_template('jump_host/edit.html', form=form, duplicate_error=True)
         
         host.hostname = form.hostname.data
@@ -797,7 +815,7 @@ def jump_host_edit(hostname):
         host.port_number = form.port_number.data
         db_session.commit()
         
-        return redirect(url_for('home') )
+        return redirect(url_for('home'))
     else:
         # Assign the values to form fields
         form.hostname.data = host.hostname
@@ -807,6 +825,7 @@ def jump_host_edit(hostname):
         form.port_number.data = host.port_number
         
         return render_template('jump_host/edit.html', form=form)
+
 
 @app.route('/jump_hosts/<hostname>/delete/', methods=['DELETE'])
 @login_required
@@ -823,7 +842,8 @@ def jump_host_delete(hostname):
     db_session.delete(host)
     db_session.commit()
         
-    return jsonify({'status':'OK'})
+    return jsonify({'status': 'OK'})
+
 
 @app.route('/servers/create/', methods=['GET', 'POST'])
 @login_required
@@ -840,7 +860,7 @@ def server_create():
             return render_template('server/edit.html', form=form, duplicate_error=True) 
         
         server = Server(
-            hostname = form.hostname.data,
+            hostname=form.hostname.data,
             server_type=form.server_type.data,
             server_url=trim_last_slash(form.server_url.data), 
             username=form.username.data,
@@ -852,9 +872,10 @@ def server_create():
         db_session.add(server)
         db_session.commit()
             
-        return redirect(url_for('home') )
+        return redirect(url_for('home'))
 
     return render_template('server/edit.html', form=form)
+
 
 @app.route('/servers/<hostname>/edit/', methods=['GET', 'POST'])
 @login_required
@@ -871,8 +892,7 @@ def server_edit(hostname):
         if not can_edit(current_user):
             abort(401)
         
-        if hostname != form.hostname.data and \
-            get_server(db_session, form.hostname.data) is not None:
+        if hostname != form.hostname.data and get_server(db_session, form.hostname.data) is not None:
             return render_template('server/edit.html', form=form, duplicate_error=True)
         
         server.hostname = form.hostname.data
@@ -885,7 +905,7 @@ def server_edit(hostname):
         server.server_directory = trim_last_slash(form.server_directory.data)
         db_session.commit()
         
-        return redirect(url_for('home') )
+        return redirect(url_for('home'))
     else:
         # Assign the values to form fields
         form.hostname.data = server.hostname
@@ -915,9 +935,10 @@ def server_delete(hostname):
         db_session.delete(server)
         db_session.commit()
         
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     else:
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
+
 
 @app.route('/regions/create/', methods=['GET', 'POST'])
 @login_required
@@ -948,9 +969,10 @@ def region_create():
         db_session.add(region)
         db_session.commit()   
                    
-        return redirect(url_for('home') ) 
+        return redirect(url_for('home'))
     
     return render_template('region/edit.html', form=form)
+
 
 @app.route('/regions/<region_name>/edit/', methods=['GET', 'POST'])
 @login_required
@@ -967,8 +989,7 @@ def region_edit(region_name):
         if not can_edit(current_user):
             abort(401)
         
-        if region_name != form.region_name.data and \
-            get_region(db_session, form.region_name.data) is not None:
+        if region_name != form.region_name.data and get_region(db_session, form.region_name.data) is not None:
             return render_template('region/edit.html', form=form, duplicate_error=True)
         
         region.name = form.region_name.data
@@ -981,11 +1002,12 @@ def region_edit(region_name):
         
         db_session.commit()
         
-        return redirect(url_for('home') )
+        return redirect(url_for('home'))
     else:
         form.region_name.data = region.name
 
         return render_template('region/edit.html', form=form, region=region)
+
 
 @app.route('/regions/<region_name>/delete/', methods=['DELETE'])
 @login_required
@@ -1008,9 +1030,10 @@ def region_delete(region_name):
         db_session.delete(region)
         db_session.commit()
         
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     else:
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
+
 
 def add_validator(field, validator_class):
     validators = field.validators
@@ -1019,12 +1042,14 @@ def add_validator(field, validator_class):
             return
         
     validators.append(validator_class())
-            
+
+
 def remove_validator(field, validator_class):
     validators = field.validators
     for v in validators:
         if isinstance(v, validator_class):
             validators.remove(v) 
+
 
 @app.route('/api/hosts/<hostname>/last_successful_inventory_elapsed_time/')
 @login_required 
@@ -1034,10 +1059,10 @@ def api_get_last_successful_inventory_elapsed_time(hostname):
     if host is None:
         abort(404)
     
-    return jsonify( **{'data': [ 
+    return jsonify(**{'data': [
         {'last_successful_inventory_elapsed_time': get_last_successful_inventory_elapsed_time(host),
          'status': host.inventory_job[0].status}
-    ] } )
+    ]})
 
 
 @app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
@@ -1053,8 +1078,8 @@ def api_get_host_dashboard_packages(hostname, package_state):
         package_states = package_state.split(',')
         packages = []
         for package_state in package_states:
-            packages_list = db_session.query(Package).filter(and_(Package.host_id == host.id, Package.state == package_state)). \
-                order_by(Package.name).all()
+            packages_list = db_session.query(Package).filter(
+                and_(Package.host_id == host.id, Package.state == package_state)). order_by(Package.name).all()
             if len(packages_list) > 0:
                 packages.extend(packages_list)
             
@@ -1069,7 +1094,7 @@ def api_get_host_dashboard_packages(hostname, package_state):
             
             # Format it from module, then packages
             for package in packages:
-                package_name = package.name if package.location is None else  package.location + ':' + package.name
+                package_name = package.name if package.location is None else package.location + ':' + package.name
                 for modules_package_state in package.modules_package_state:
                     module = modules_package_state.module_name
                     if module in module_package_dict:
@@ -1083,22 +1108,23 @@ def api_get_host_dashboard_packages(hostname, package_state):
             
             for module in sorted_dict:
                 package_list = sorted_dict[module]
-                rows.append({ 'package' : module })
+                rows.append({'package': module})
                 for package_name in package_list:  
-                    rows.append({ 'package' : ('&nbsp;' * 7) + package_name })
+                    rows.append({'package': ('&nbsp;' * 7) + package_name})
             
         else:
             for package in packages:
-                rows.append( {'package' : package.name if package.location is None else  package.location + ':' + package.name} ) 
+                rows.append({'package': package.name if package.location is None else package.location + ':' + package.name})
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
 
-"""
-Returns scheduled installs for a host in JSON format.
-"""
+
 @app.route('/api/hosts/<hostname>/scheduled_installs', methods=['GET','POST'])
 @login_required
 def api_get_host_dashboard_scheduled_install(hostname):
+    """
+    Returns scheduled installs for a host in JSON format.
+    """
     db_session = DBSession()
     host = get_host(db_session, hostname)
     
@@ -1115,7 +1141,8 @@ def api_get_host_dashboard_scheduled_install(hostname):
 
             rows.append(row)
             
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/hosts/<hostname>/host_dashboard/cookie', methods=['GET', 'POST'])
 @login_required
@@ -1156,8 +1183,9 @@ def api_get_host_dashboard_cookie(hostname):
         row['can_schedule'] = system_option.can_schedule
         rows.append(row)
     
-    return jsonify( **{'data':rows} )
-    
+    return jsonify(**{'data': rows})
+
+
 @app.route('/api/hosts/<hostname>/install_job_history', methods=['GET'])
 @login_required
 def api_get_host_dashboard_install_job_history(hostname):
@@ -1176,7 +1204,8 @@ def api_get_host_dashboard_install_job_history(hostname):
 
         return jsonify(**get_install_job_json_dict(install_jobs))
     
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/hosts/<hostname>/software_inventory_history', methods=['GET'])
 @login_required
@@ -1196,7 +1225,8 @@ def api_get_host_dashboard_software_inventory_history(hostname):
 
         return jsonify(**get_inventory_job_json_dict(inventory_jobs))
     
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 def get_inventory_job_json_dict(inventory_jobs):
     rows = []    
@@ -1216,28 +1246,31 @@ def get_inventory_job_json_dict(inventory_jobs):
                   
         rows.append(row)
        
-    return {'data':rows}
-    
+    return {'data': rows}
+
+
 @app.route('/api/install_scheduled/')
 @login_required
 def api_get_install_scheduled():
     db_session = DBSession()
     
-    install_jobs = db_session.query(InstallJob).filter( \
-        (InstallJob.install_action is not None), \
+    install_jobs = db_session.query(InstallJob).filter(
+        (InstallJob.install_action is not None),
         and_(InstallJob.status == None))
 
     return jsonify(**get_install_job_json_dict(install_jobs))
+
 
 @app.route('/api/install_in_progress/')
 @login_required
 def api_get_install_in_progress():
     db_session = DBSession()    
-    install_jobs = db_session.query(InstallJob).filter(and_( \
-    InstallJob.status != None, \
-    InstallJob.status != JobStatus.FAILED) )
+    install_jobs = db_session.query(InstallJob).filter(and_(
+        InstallJob.status != None,
+        InstallJob.status != JobStatus.FAILED))
 
     return jsonify(**get_install_job_json_dict(install_jobs))
+
 
 @app.route('/api/install_failed/')
 @login_required
@@ -1246,6 +1279,7 @@ def api_get_install_failed():
     install_jobs = db_session.query(InstallJob).filter(InstallJob.status == JobStatus.FAILED)
 
     return jsonify(**get_install_job_json_dict(install_jobs))
+
 
 def get_download_job_status(download_job_key_dict, install_job, dependency_status):
     num_pending_downloads = 0
@@ -1270,7 +1304,7 @@ def get_download_job_status(download_job_key_dict, install_job, dependency_statu
         else:
             job_status = "{})".format(job_status)
             
-        #job_status = '(Failed)' if is_download_failed else ''
+        # job_status = '(Failed)' if is_download_failed else ''
         download_url = '<a href="' + url_for('download_dashboard') + '">Pending Download ' + job_status + '</a>'
         if len(dependency_status) > 0:
             dependency_status = '{}<br/>{}'.format(dependency_status, download_url)
@@ -1279,11 +1313,12 @@ def get_download_job_status(download_job_key_dict, install_job, dependency_statu
             
     return dependency_status
                         
-"""
-install_jobs is a list of install_job instances from the install_job or install_job_history table.
-Schema in the install_job_history table is a superset of the install_job table. 
-"""
+
 def get_install_job_json_dict(install_jobs):
+    """
+    install_jobs is a list of install_job instances from the install_job or install_job_history table.
+    Schema in the install_job_history table is a superset of the install_job table.
+    """
     download_job_key_dict = get_download_job_key_dict()
     rows = []    
     for install_job in install_jobs:
@@ -1320,7 +1355,8 @@ def get_install_job_json_dict(install_jobs):
                   
             rows.append(row)
        
-    return {'data':rows}
+    return {'data': rows}
+
 
 @app.route('/api/get_files_from_csm_repository/')
 @login_required
@@ -1337,13 +1373,13 @@ def get_files_from_csm_repository():
             row['downloaded_time'] = datetime.datetime.fromtimestamp(statinfo.st_mtime).strftime("%m/%d/%Y %I:%M %p")
             rows.append(row)
     
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/image/<image_name>/delete/' , methods=['DELETE'])
 @login_required  
 def api_delete_image_from_repository(image_name):
-    if current_user.privilege != UserPrivilege.ADMIN and \
-        current_user.privilege != UserPrivilege.NETWORK_ADMIN:
+    if current_user.privilege != UserPrivilege.ADMIN and current_user.privilege != UserPrivilege.NETWORK_ADMIN:
         abort(401)
     
     tar_image_path = get_repository_directory() + image_name
@@ -1359,9 +1395,10 @@ def api_delete_image_from_repository(image_name):
         os.remove(tar_image_path + '.size')
     except:
         logger.exception('api_delete_image_from_repository hit exception')
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
     
-    return jsonify({'status':'OK'})
+    return jsonify({'status': 'OK'})
+
     
 @app.route('/api/download_scheduled/')
 @login_required
@@ -1371,15 +1408,17 @@ def api_get_download_scheduled():
 
     return jsonify(**get_download_job_json_dict(db_session, download_jobs))
 
+
 @app.route('/api/download_in_progress/')
 @login_required
 def api_get_download_in_progress():
     db_session = DBSession()    
-    download_jobs = db_session.query(DownloadJob).filter(and_( \
-    DownloadJob.status != None, \
+    download_jobs = db_session.query(DownloadJob).filter(and_(
+    DownloadJob.status != None,
     DownloadJob.status != JobStatus.FAILED) )
 
     return jsonify(**get_download_job_json_dict(db_session, download_jobs))
+
 
 @app.route('/api/download_failed/')
 @login_required
@@ -1388,6 +1427,7 @@ def api_get_download_failed():
     download_jobs = db_session.query(DownloadJob).filter(DownloadJob.status == JobStatus.FAILED)
 
     return jsonify(**get_download_job_json_dict(db_session, download_jobs))
+
 
 @app.route('/api/download_completed/')
 @login_required
@@ -1405,6 +1445,7 @@ def api_get_download_completed():
 
     return jsonify(**get_download_job_json_dict(db_session, download_jobs))
 
+
 @app.route('/api/download_dashboard/cookie')
 @login_required
 def api_get_download_dashboard_cookie():
@@ -1413,8 +1454,9 @@ def api_get_download_dashboard_cookie():
     completed_download_job_count = db_session.query(DownloadJobHistory).filter(
         DownloadJobHistory.status == JobStatus.COMPLETED).count()
     
-    return jsonify( **{'data': [ {'last_completed_download_job_count': completed_download_job_count }] } )
-    
+    return jsonify(**{'data': [{'last_completed_download_job_count': completed_download_job_count}]})
+
+
 def get_download_job_json_dict(db_session, download_jobs):
     rows = []    
     for download_job in download_jobs:
@@ -1428,7 +1470,9 @@ def get_download_job_json_dict(db_session, download_jobs):
             if server is not None:
                 row['server_repository'] = server.hostname
                 if not is_empty(download_job.server_directory):
-                    row['server_repository'] = row['server_repository'] + '<br><span style="color: Gray;"><b>Sub-directory:</b></span> ' + download_job.server_directory
+                    row['server_repository'] = row['server_repository'] + \
+                                               '<br><span style="color: Gray;"><b>Sub-directory:</b></span> ' + \
+                                               download_job.server_directory
             else:
                 row['server_repository'] = 'Unknown'
                 
@@ -1441,7 +1485,8 @@ def get_download_job_json_dict(db_session, download_jobs):
                   
             rows.append(row)
        
-    return {'data':rows}
+    return {'data': rows}
+
 
 @app.route('/api/resubmit_download_jobs/')
 @login_required
@@ -1462,7 +1507,8 @@ def api_resubmit_download_jobs():
         download_job.status_time = None        
     db_session.commit()
     
-    return jsonify({'status':'OK'})
+    return jsonify({'status': 'OK'})
+
 
 @app.route('/resubmit_download_job/<int:id>/', methods=['POST'])
 @login_required
@@ -1482,12 +1528,13 @@ def resubmit_download_job(id):
         download_job.status_time = None        
         db_session.commit()
         
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
 
     except:  
         logger.exception('resubmit_download_job hits exception')
-        return jsonify({'status':'Failed: check system logs for details'})
-        
+        return jsonify({'status': 'Failed: check system logs for details'})
+
+
 @app.route('/delete_download_job/<int:id>/', methods=['DELETE'])
 @login_required
 def delete_download_job(id):
@@ -1506,11 +1553,12 @@ def delete_download_job(id):
             db_session.delete(download_job)            
             db_session.commit()
         
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
 
     except:  
         logger.exception('delete download job hits exception')
-        return jsonify({'status':'Failed: check system logs for details'})
+        return jsonify({'status': 'Failed: check system logs for details'})
+
 
 @app.route('/hosts/delete_all_failed_downloads/', methods=['DELETE'])
 @login_required
@@ -1520,6 +1568,7 @@ def delete_all_failed_downloads():
         
     return delete_all_downloads(status=JobStatus.FAILED)
 
+
 @app.route('/hosts/delete_all_scheduled_downloads/', methods=['DELETE'])
 @login_required
 def delete_all_scheduled_downloads():
@@ -1527,7 +1576,8 @@ def delete_all_scheduled_downloads():
         abort(401)
         
     return delete_all_downloads()
-    
+
+
 def delete_all_downloads(status=None):        
     db_session = DBSession()
     
@@ -1538,26 +1588,28 @@ def delete_all_downloads(status=None):
         
         db_session.commit()    
 
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     except:
         logger.exception('delete download job hits exception')
-        return jsonify({'status':'Failed: check system logs for details'})
-    
+        return jsonify({'status': 'Failed: check system logs for details'})
+
+
 @app.route('/api/get_server_time')
 @login_required
 def api_get_server_time():  
     dict = {}
     dict['server_time'] = datetime.datetime.utcnow()
 
-    return jsonify( **{'data':dict} )
+    return jsonify(**{'data': dict})
 
-"""
-This method is called by ajax attached to Select2 (Search a host).
-The returned JSON contains the predefined tags.
-"""
+
 @app.route('/api/get_hostnames/')
 @login_required
-def api_get_hostnames():  
+def api_get_hostnames():
+    """
+    This method is called by ajax attached to Select2 (Search a host).
+    The returned JSON contains the predefined tags.
+    """
     db_session = DBSession()
     
     rows = []   
@@ -1573,38 +1625,41 @@ def api_get_hostnames():
             row['text'] = host.hostname
             rows.append(row)
   
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
 
-"""
-This method is called by ajax attached to Select2 (Search a host).
-The returned JSON contains the predefined tags.
-"""
+
 @app.route('/api/get_regions/')
 @login_required
-def api_get_regions():  
+def api_get_regions():
+    """
+    This method is called by ajax attached to Select2 (Search a host).
+    The returned JSON contains the predefined tags.
+    """
     db_session = DBSession()
     
     rows = []   
-    criteria='%'
+    criteria = '%'
     if len(request.args) > 0:
         criteria += request.args.get('q') + '%'
  
     regions = db_session.query(Region).filter(Region.name.like(criteria)).order_by(Region.name.asc()).all()   
     if len(regions) > 0:
-        rows.append({ 'id': 0, 'text': 'ALL' })
+        rows.append({'id': 0, 'text': 'ALL'})
         for region in regions:
-            rows.append({ 'id': region.id, 'text': region.name })
+            rows.append({'id': region.id, 'text': region.name})
   
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
 
-"""
-Returns a list of unique Scheduled Time (in UTC) from the Job History.  
-"""
+
 def get_install_scheduled_time_list():
+    """
+    Returns a list of unique Scheduled Time (in UTC) from the Job History.
+    """
     result_list = []
     db_session = DBSession()
     
-    scheduled_times = db_session.query(InstallJobHistory.scheduled_time).order_by(InstallJobHistory.scheduled_time.desc()).distinct()
+    scheduled_times = db_session.query(InstallJobHistory.scheduled_time).order_by(
+                                       InstallJobHistory.scheduled_time.desc()).distinct()
     if scheduled_times is not None:
         for scheduled_time in scheduled_times:
             scheduled_time_string = get_datetime_string(scheduled_time[0])
@@ -1612,6 +1667,7 @@ def get_install_scheduled_time_list():
                 result_list.append(scheduled_time_string)
             
     return result_list
+
          
 @app.route('/api/install_completed/')
 @login_required
@@ -1629,6 +1685,7 @@ def api_get_install_completed():
               
     return jsonify(**get_install_job_json_dict(install_jobs))
 
+
 @app.route('/api/install_dashboard/cookie')
 @login_required
 def api_get_install_dashboard_cookie():
@@ -1638,18 +1695,19 @@ def api_get_install_dashboard_cookie():
     completed_install_job_count = db_session.query(InstallJobHistory).filter(
         InstallJobHistory.status == JobStatus.COMPLETED).count()
     
-    return jsonify( **{'data': [ 
+    return jsonify(**{'data': [
         {'last_completed_install_job_count': completed_install_job_count,
-         'can_schedule' : system_option.can_schedule,
-         'can_install' : system_option.can_install
-        }] } )
+         'can_schedule': system_option.can_schedule,
+         'can_install': system_option.can_install
+         }]})
     
-"""
-For batch scheduled installation.
-"""
+
 @app.route('/hosts/schedule_install/', methods=['GET', 'POST'])
 @login_required
 def schedule_install():
+    """
+    For batch scheduled installation.
+    """
     if not can_install(current_user):
         abort(401)
          
@@ -1662,7 +1720,7 @@ def schedule_install():
     
     return_url = get_return_url(request, 'home')
     
-    if request.method == 'POST': # and form.validate():
+    if request.method == 'POST':  # and form.validate():
         """
         f = request.form
         for key in f.keys():
@@ -1694,20 +1752,25 @@ def schedule_install():
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
                                     
-                        create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
-                                                     scheduled_time=scheduled_time, software_packages=software_packages, server=server,
-                                                     server_directory=server_directory, pending_downloads=pending_downloads, dependency=dependency)
+                        create_or_update_install_job(db_session=db_session, host_id=host.id,
+                                                     install_action=install_action[0],
+                                                     scheduled_time=scheduled_time, software_packages=software_packages,
+                                                     server=server, server_directory=server_directory,
+                                                     pending_downloads=pending_downloads, dependency=dependency)
                     else:
-                        # The dependency on each install action is already indicated in the implicit ordering in the selector.
-                        # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
-                        # have Pre-Upgrade (predecessor) as the dependency.
+                        # The dependency on each install action is already indicated in the implicit ordering
+                        # in the selector.  If the user selected Pre-Upgrade and Install Add, Install Add (successor)
+                        # will have Pre-Upgrade (predecessor) as the dependency.
                         dependency = 0              
                         for one_install_action in install_action:
                             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                                            install_action=one_install_action,
-                                                                           scheduled_time=scheduled_time, software_packages=software_packages,
-                                                                           server=server, server_directory=server_directory,
-                                                                           pending_downloads=pending_downloads, dependency=dependency)
+                                                                           scheduled_time=scheduled_time,
+                                                                           software_packages=software_packages,
+                                                                           server=server,
+                                                                           server_directory=server_directory,
+                                                                           pending_downloads=pending_downloads,
+                                                                           dependency=dependency)
                             dependency = new_install_job.id
                                                   
         return redirect(url_for(return_url))
@@ -1719,11 +1782,14 @@ def schedule_install():
         form.hidden_pending_downloads.data = ''
             
         return render_template('schedule_install.html', form=form, system_option=SystemOption.get(db_session),
-            server_time=datetime.datetime.utcnow(), return_url=return_url, install_action=get_install_actions_dict())
+                               server_time=datetime.datetime.utcnow(), return_url=return_url,
+                               install_action=get_install_actions_dict())
+
 
 def get_first_install_action(db_session, install_action):
     return db_session.query(InstallJob).filter(InstallJob.install_action == install_action). \
         order_by(InstallJob.scheduled_time.asc()).first()
+
                                                        
 @app.route('/hosts/<hostname>/schedule_install/', methods=['GET', 'POST'])
 @login_required
@@ -1732,6 +1798,7 @@ def host_schedule_install(hostname):
         abort(401)
         
     return handle_schedule_install_form(request=request, db_session=DBSession(), hostname=hostname)
+
 
 @app.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
 @login_required
@@ -1745,7 +1812,9 @@ def host_schedule_install_edit(hostname, id):
     if install_job is None:
         abort(404)
     
-    return handle_schedule_install_form(request=request, db_session=db_session, hostname=hostname, install_job=install_job)
+    return handle_schedule_install_form(request=request, db_session=db_session,
+                                        hostname=hostname, install_job=install_job)
+
 
 @app.route('/hosts/download_dashboard/', methods=['GET', 'POST'])
 @login_required
@@ -1754,6 +1823,7 @@ def download_dashboard():
         abort(401)
         
     return render_template('host/download_dashboard.html')
+
 
 @app.route('/api/create_download_jobs')
 @login_required
@@ -1777,9 +1847,10 @@ def api_create_download_jobs():
             import traceback
             print traceback.format_exc()
 
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
     finally:
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
+
 
 def handle_schedule_install_form(request, db_session, hostname, install_job=None):    
     host = get_host(db_session, hostname)
@@ -1791,7 +1862,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     
     # Retrieves all the install jobs for this host.  This will allow
     # the user to select which install job this install job can depend on.
-    install_jobs = db_session.query(InstallJob).filter(InstallJob.host_id == host.id).order_by(InstallJob.scheduled_time.asc()).all()
+    install_jobs = db_session.query(InstallJob).filter(
+        InstallJob.host_id == host.id).order_by(InstallJob.scheduled_time.asc()).all()
 
     region_servers = host.region.servers
     # Returns all server repositories if the region does not have any server repository designated.
@@ -1801,7 +1873,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # Fills the selections
     fill_servers(form.server_dialog_server.choices, region_servers)
     fill_servers(form.cisco_dialog_server.choices, region_servers, False)
-    fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs, (-1 if install_job is None else install_job.id))
+    fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs,
+                                           (-1 if install_job is None else install_job.id))
         
     if request.method == 'POST':
         if install_job is not None:
@@ -1831,9 +1904,13 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             # have Pre-Upgrade (predecessor) as the dependency.
             dependency = 0              
             for one_install_action in install_action:
-                new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=one_install_action,
-                                                               scheduled_time=scheduled_time, software_packages=software_packages, server=server,
-                                                               server_directory=server_directory, pending_downloads=pending_downloads,
+                new_install_job = create_or_update_install_job(db_session=db_session,
+                                                               host_id=host.id,
+                                                               install_action=one_install_action,
+                                                               scheduled_time=scheduled_time,
+                                                               software_packages=software_packages, server=server,
+                                                               server_directory=server_directory,
+                                                               pending_downloads=pending_downloads,
                                                                dependency=dependency, install_job=install_job)
                 dependency = new_install_job.id
                    
@@ -1867,16 +1944,16 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             form.dependency.data = str(install_job.dependency)
         
             if install_job.scheduled_time is not None:
-                form.scheduled_time_UTC.data = \
-                get_datetime_string(install_job.scheduled_time)
+                form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
         
-    return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session), \
-        host=host, server_time=datetime.datetime.utcnow(), install_job=install_job, return_url=return_url, \
-        install_action=get_install_actions_dict())
+    return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
+                           host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
+                           return_url=return_url, install_action=get_install_actions_dict())
 
 
 def get_host_schedule_install_form(request, host):
     return HostScheduleInstallForm(request.form)
+
 
 @app.route('/admin_console/', methods=['GET','POST'])
 @login_required
@@ -1938,7 +2015,7 @@ def admin_console():
          
         db_session.commit()
         
-        return redirect(url_for('home') ) 
+        return redirect(url_for('home'))
     else:
         
         admin_console_form.num_inventory_threads.data = system_option.inventory_threads
@@ -1969,9 +2046,10 @@ def admin_console():
             smtp_form.secure_connection.data = smtp_server.secure_connection
             
         return render_template('admin/index.html',
-            admin_console_form=admin_console_form,
-            smtp_form=smtp_form,
-            is_ldap_supported=is_ldap_supported())
+                               admin_console_form=admin_console_form,
+                               smtp_form=smtp_form,
+                               is_ldap_supported=is_ldap_supported())
+
 
 @app.route('/hosts/<hostname>/host_dashboard/')
 @login_required
@@ -1983,8 +2061,11 @@ def host_dashboard(hostname):
         abort(404)        
     
     return render_template('host/host_dashboard.html', host=host, 
-        form=get_host_schedule_install_form(request, host),
-        package_states=[ PackageState.ACTIVE_COMMITTED, PackageState.ACTIVE, PackageState.INACTIVE_COMMITTED, PackageState.INACTIVE ])
+                           form=get_host_schedule_install_form(request, host),
+                           package_states=[PackageState.ACTIVE_COMMITTED,
+                                           PackageState.ACTIVE,
+                                           PackageState.INACTIVE_COMMITTED, PackageState.INACTIVE])
+
 
 @app.route('/hosts/delete_all_failed_installs/', methods=['DELETE'])
 @login_required
@@ -1994,6 +2075,7 @@ def delete_all_failed_installs():
         
     return delete_all_installs(status=JobStatus.FAILED)
 
+
 @app.route('/hosts/delete_all_scheduled_installs/', methods=['DELETE'])
 @login_required
 def delete_all_scheduled_installs():
@@ -2001,6 +2083,7 @@ def delete_all_scheduled_installs():
         abort(401)
         
     return delete_all_installs()
+
     
 def delete_all_installs(status=None):        
     db_session = DBSession()
@@ -2014,10 +2097,11 @@ def delete_all_installs(status=None):
         
         db_session.commit()    
 
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     except:
         logger.exception('delete install job hits exception')
-        return jsonify({'status':'Failed: check system logs for details'})
+        return jsonify({'status': 'Failed: check system logs for details'})
+
 
 @app.route('/hosts/<hostname>/delete_all_failed_installs/', methods=['DELETE'])
 @login_required
@@ -2026,7 +2110,8 @@ def delete_all_failed_installs_for_host(hostname):
         abort(401)
         
     return delete_all_installs_for_host(hostname=hostname, status=JobStatus.FAILED)
-    
+
+
 @app.route('/hosts/<hostname>/delete_all_scheduled_installs/', methods=['DELETE'])
 @login_required
 def delete_all_scheduled_installs_for_host(hostname):
@@ -2034,7 +2119,8 @@ def delete_all_scheduled_installs_for_host(hostname):
         abort(401)
         
     return delete_all_installs_for_host(hostname)
-    
+
+
 def delete_all_installs_for_host(hostname, status=None):
     if not can_delete_install(current_user):
         abort(401)
@@ -2046,7 +2132,8 @@ def delete_all_installs_for_host(hostname, status=None):
         abort(404)
         
     try: 
-        install_jobs = db_session.query(InstallJob).filter(InstallJob.host_id == host.id, InstallJob.status == status).all()
+        install_jobs = db_session.query(InstallJob).filter(
+            InstallJob.host_id == host.id, InstallJob.status == status).all()
         if not install_jobs:
             return jsonify(status="No record fits the delete criteria.")
         
@@ -2056,10 +2143,11 @@ def delete_all_installs_for_host(hostname, status=None):
                 delete_install_job_dependencies(db_session, install_job)
             
         db_session.commit()
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     except:
         logger.exception('delete install job hits exception')
-        return jsonify({'status':'Failed: check system logs for details'})
+        return jsonify({'status': 'Failed: check system logs for details'})
+
 
 @app.route('/hosts/<int:id>/delete_install_job/', methods=['DELETE'])
 @login_required
@@ -2081,11 +2169,11 @@ def delete_install_job(id):
         
         db_session.commit()
         
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
 
     except:  
         logger.exception('delete install job hits exception')
-        return jsonify({'status':'Failed: check system logs for details'})
+        return jsonify({'status': 'Failed: check system logs for details'})
     
 
 def delete_install_job_dependencies(db_session, install_job):
@@ -2095,12 +2183,13 @@ def delete_install_job_dependencies(db_session, install_job):
             db_session.delete(dependency)
         delete_install_job_dependencies(db_session, dependency)
 
-"""
-This route is also used by mailer.py for email notification.
-"""
+
 @app.route('/hosts/<hostname>/<table>/session_log/<int:id>/')
 @login_required
 def host_session_log(hostname, table, id):
+    """
+    This route is also used by mailer.py for email notification.
+    """
     db_session = DBSession()
     
     record = None   
@@ -2131,7 +2220,9 @@ def host_session_log(hostname, table, id):
         with io.open(autlogs_file_path, "rt", encoding='latin-1') as fo:
             log_content = fo.read()
 
-    return render_template('host/session_log.html', hostname=hostname, table=table, table_id=id, file_entries=file_entries, log_content=log_content, is_file=os.path.isfile(autlogs_file_path))
+    return render_template('host/session_log.html', hostname=hostname, table=table,
+                           table_id=id, file_entries=file_entries, log_content=log_content,
+                           is_file=os.path.isfile(autlogs_file_path))
 
 
 @app.route('/hosts/<hostname>/<table>/trace/<int:id>/')
@@ -2156,12 +2247,12 @@ def host_trace(hostname, table, id):
     return render_template('host/trace.html', hostname=hostname, trace=trace)
 
 
-""" 
-Displays the system related logs.
-"""  
 @app.route('/logs/')
 @login_required
 def logs():
+    """
+    Displays the system related logs.
+    """
     db_session = DBSession()          
     
     # Only shows the ERROR 
@@ -2169,12 +2260,13 @@ def logs():
 
     return render_template('log.html', logs=logs)          
 
-"""
-Returns the log trace of a particular log record.
-"""
+
 @app.route('/logs/<int:log_id>/trace/')
 @login_required
 def log_trace(log_id):
+    """
+    Returns the log trace of a particular log record.
+    """
     db_session = DBSession()
     
     log = db_session.query(Log).filter(Log.id == log_id).first()
@@ -2182,6 +2274,7 @@ def log_trace(log_id):
         abort(404)
     
     return render_template('trace.html', log=log)
+
 
 @app.route('/failed_software_inventory_list/')
 @login_required
@@ -2192,6 +2285,7 @@ def failed_software_inventory_list():
     
     return render_template('failed_software_inventory.html', inventory_jobs=inventory_jobs)
 
+
 @app.route('/api/hosts/')
 @login_required
 def api_host_list():
@@ -2200,48 +2294,51 @@ def api_host_list():
     hosts = get_host_list(db_session)
     return get_host_json(hosts, request)
 
+
 @app.route('/api/hosts/<hostname>/')
 @login_required
 def api_host(hostname):
     db_session = DBSession()
     
     host = get_host(db_session, hostname)
-    return get_host_json([ host ], request)
+    return get_host_json([host], request)
     
-"""
-Allows /api/hosts/search?hostname=%XX% type query
-"""
+
 @app.route('/api/hosts/search')
 @login_required
 def api_host_search_list():
+    """
+    Allows /api/hosts/search?hostname=%XX% type query
+    """
     db_session = DBSession()
     
-    criteria='%'
+    criteria = '%'
     if len(request.args) > 0:
         criteria = request.args.get('hostname', '')
  
     hosts = db_session.query(Host).filter(Host.hostname.like(criteria)).order_by(Host.hostname.asc()).all()
     return get_host_json(hosts, request)
 
-"""
-Returns an array of files on the server repository.  The dictionary contains
-['filename'] = file
-['is_directory'] = True|False
-"""
+
 @app.route('/api/get_server_file_dict/<int:server_id>')
 @login_required
-def api_get_server_file_dict(server_id):  
+def api_get_server_file_dict(server_id):
+    """
+    Returns an array of files on the server repository.  The dictionary contains
+    ['filename'] = file
+    ['is_directory'] = True|False
+    """
     result_list, reachable = get_server_file_dict(server_id, request.args.get("server_directory"))
     if reachable:
-        return jsonify(**{'data' : result_list})
+        return jsonify(**{'data': result_list})
     else:
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
 
 
-"""
-Returns an array of dictionaries which contain the file and directory listing
-"""
 def get_server_file_dict(server_id, server_directory):
+    """
+    Returns an array of dictionaries which contain the file and directory listing
+    """
     db_session = DBSession()
     server_file_dict = []
     reachable = False
@@ -2260,14 +2357,18 @@ def get_server_file_dict(server_id, server_directory):
 def api_get_last_successful_install_add_packages(host_id):
     result_list = []
     db_session = DBSession()
+
     install_job_packages = db_session.query(InstallJobHistory.packages). \
         filter((InstallJobHistory.host_id == host_id), 
-        and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD, InstallJobHistory.status == JobStatus.COMPLETED)). \
+        and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD,
+             InstallJobHistory.status == JobStatus.COMPLETED)). \
         order_by(InstallJobHistory.status_time.desc()).first()
+
     if install_job_packages is not None:
         result_list.append(install_job_packages)
     
-    return jsonify(**{'data':result_list})
+    return jsonify(**{'data': result_list})
+
 
 @app.route('/api/get_install_history/hosts/<hostname>')
 @login_required
@@ -2282,7 +2383,8 @@ def api_get_install_history(hostname):
     if host is not None:
         install_jobs = db_session.query(InstallJobHistory). \
             filter((InstallJobHistory.host_id == host.id), 
-            and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD, InstallJobHistory.status == JobStatus.COMPLETED)). \
+            and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD,
+                 InstallJobHistory.status == JobStatus.COMPLETED)). \
             order_by(InstallJobHistory.status_time.desc())
         
         for install_job in install_jobs:
@@ -2293,7 +2395,8 @@ def api_get_install_history(hostname):
                 row['created_by'] = install_job.created_by
                 rows.append(row)
     
-    return jsonify(**{'data':rows})
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/get_servers')
 @login_required
@@ -2304,9 +2407,10 @@ def api_get_servers():
     servers = get_server_list(db_session)
     if servers is not None:
         for server in servers:
-            result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
+            result_list.append({'server_id': server.id, 'hostname': server.hostname})
     
-    return jsonify(**{'data':result_list})
+    return jsonify(**{'data': result_list})
+
 
 @app.route('/api/get_servers/host/<hostname>')
 @login_required
@@ -2334,7 +2438,7 @@ def api_get_servers_by_region(region_id):
         # Returns all server repositories if the region does not have any server repository designated.
         return api_get_servers()
 
-    return jsonify(**{'data':result_list})
+    return jsonify(**{'data': result_list})
 
 
 @app.route('/api/get_distinct_host_platforms')
@@ -2348,7 +2452,7 @@ def api_get_distinct_host_platforms():
         if platform[0] is not None:
             rows.append({'platform': platform[0]})
 
-    return jsonify(**{'data':rows})
+    return jsonify(**{'data': rows})
 
 
 @app.route('/api/get_distinct_host_software_versions/platform/<platform>')
@@ -2364,14 +2468,15 @@ def api_get_distinct_host_software_versions(platform):
         if software_version[0] is not None:
             rows.append({'software_version': software_version[0]})
 
-    return jsonify(**{'data':rows})
+    return jsonify(**{'data': rows})
 
-"""
-software_versions may equal to 'ALL' or multiple software versions
-"""
+
 @app.route('/api/get_distinct_host_regions/platform/<platform>/software_versions/<software_versions>')
 @login_required
 def api_get_distinct_host_regions(platform, software_versions):
+    """
+    software_versions may equal to 'ALL' or multiple software versions
+    """
     clauses = []
     db_session = DBSession()
 
@@ -2392,15 +2497,16 @@ def api_get_distinct_host_regions(platform, software_versions):
         for region in regions:
             rows.append({'region_id': region.id, 'region_name': region.name})
 
-    return jsonify(**{'data':rows})
+    return jsonify(**{'data': rows})
 
-"""
-software_versions may equal to 'ALL' or multiple software versions
-region_ids may equal to 'ALL' or multiple region ids
-"""
+
 @app.route('/api/get_distinct_host_roles/platform/<platform>/software_versions/<software_versions>/region_ids/<region_ids>')
 @login_required
 def api_get_distinct_host_roles(platform, software_versions, region_ids):
+    """
+    software_versions may equal to 'ALL' or multiple software versions
+    region_ids may equal to 'ALL' or multiple region ids
+    """
     clauses = []
     db_session = DBSession()
 
@@ -2426,7 +2532,7 @@ def api_get_distinct_host_roles(platform, software_versions, region_ids):
     for role in roles_list:
         rows.append({'role': role})
 
-    return jsonify(**{'data':rows})
+    return jsonify(**{'data': rows})
 
 
 @app.route('/api/get_hosts/platform/<platform>/software_versions/<software_versions>/region_ids/<region_ids>/roles/<roles>')
@@ -2459,7 +2565,7 @@ def api_get_hosts_by_platform(platform, software_versions, region_ids, roles):
         else:
             rows.append({'hostname': host.hostname})
 
-    return jsonify(**{'data':rows})
+    return jsonify(**{'data': rows})
 
 
 @app.route('/api/get_hosts/region/<int:region_id>/role/<role>/software/<software>')
@@ -2495,7 +2601,8 @@ def api_get_hosts_by_region(region_id, role, software):
 
                 rows.append(row)
     
-    return jsonify(**{'data':rows})
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/get_software/<hostname>')
 @login_required
@@ -2510,10 +2617,11 @@ def get_software(hostname):
         if not host.inventory_job[0].pending_submit:
             host.inventory_job[0].pending_submit = True
             db_session.commit()
-            return jsonify({'status':'OK'})
+            return jsonify({'status': 'OK'})
    
-    return jsonify({'status':'Failed'}) 
- 
+    return jsonify({'status': 'Failed'})
+
+
 @app.route('/api/remove_host_password/<hostname>', methods=['POST'])
 @login_required   
 def api_remove_host_password(hostname):
@@ -2526,10 +2634,11 @@ def api_remove_host_password(hostname):
     if host is not None:
         host.connection_param[0].password = ''
         db_session.commit()
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     else:
-        return jsonify({'status':'Failed'}) 
-    
+        return jsonify({'status': 'Failed'})
+
+
 @app.route('/api/remove_jump_host_password/<hostname>', methods=['POST'])
 @login_required   
 def api_remove_jump_host_password(hostname):
@@ -2542,10 +2651,11 @@ def api_remove_jump_host_password(hostname):
     if host is not None:
         host.password = ''
         db_session.commit()
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     else:
-        return jsonify({'status':'Failed'}) 
-    
+        return jsonify({'status': 'Failed'})
+
+
 @app.route('/api/check_host_reachability')
 @login_required
 def check_host_reachability():
@@ -2555,7 +2665,7 @@ def check_host_reachability():
     urls = []   
     # Below information is directly from the page and 
     # may not have been saved yet.
-    hostname =  request.args.get('hostname')
+    hostname = request.args.get('hostname')
     platform = request.args.get('platform')
     host_or_ip = request.args.get('host_or_ip')
     username = request.args.get('username')
@@ -2569,8 +2679,9 @@ def check_host_reachability():
         db_session = DBSession()
         jump_host = get_jump_host_by_id(db_session=db_session, id=jump_host_id)
         if jump_host is not None:
-            url = make_url(connection_type=jump_host.connection_type, username=jump_host.username, \
-                password=jump_host.password, host_or_ip=jump_host.host_or_ip, port_number=jump_host.port_number)
+            url = make_url(connection_type=jump_host.connection_type, username=jump_host.username,
+                           password=jump_host.password, host_or_ip=jump_host.host_or_ip,
+                           port_number=jump_host.port_number)
             urls.append(url)
     
     db_session = DBSession()
@@ -2581,14 +2692,15 @@ def check_host_reachability():
         if host is not None:
             password = host.connection_param[0].password
             
-    default_username=None
-    default_password=None
+    default_username = None
+    default_password = None
     system_option = SystemOption.get(db_session)
     if system_option.enable_default_host_authentication:
-        default_username=system_option.default_host_username
-        default_password=system_option.default_host_password
+        default_username = system_option.default_host_username
+        default_password = system_option.default_host_password
                 
-    url = make_url(connection_type=connection_type, 
+    url = make_url(
+        connection_type=connection_type,
         username=username, 
         password=password, 
         host_or_ip=host_or_ip, 
@@ -2597,8 +2709,9 @@ def check_host_reachability():
         default_password=default_password)
     urls.append(url)
     
-    return jsonify({'status':'OK'}) if is_connection_valid(db_session, platform, urls) else jsonify({'status':'Failed'})
-    
+    return jsonify({'status': 'OK'}) if is_connection_valid(db_session, platform, urls) else jsonify({'status': 'Failed'})
+
+
 @app.route('/api/get_software_package_upgrade_list/hosts/<hostname>/release/<target_release>')
 @login_required
 def get_software_package_upgrade_list(hostname, target_release):
@@ -2613,9 +2726,10 @@ def get_software_package_upgrade_list(hostname, target_release):
     host_packages = get_host_active_packages(hostname) 
     target_packages = get_target_software_package_list(host.platform, host_packages, target_release, match_internal_name)
     for package in target_packages:
-        rows.append({'package' : package})
+        rows.append({'package': package})
         
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/check_jump_host_reachability')
 @login_required
@@ -2627,21 +2741,22 @@ def check_jump_host_reachability():
     connection_type = request.args.get('connection_type')
     port_number = request.args.get('port_number')
     
-    port = 23 # default telnet port
+    port = 23  # default telnet port
     if len(port_number) > 0:
         port = int(port_number)
     elif connection_type == ConnectionType.SSH:
         port = 22
     
-    return jsonify({'status':'OK'}) if is_reachable(host_or_ip, port) else jsonify({'status':'Failed'})
-    
+    return jsonify({'status': 'OK'}) if is_reachable(host_or_ip, port) else jsonify({'status': 'Failed'})
+
+
 @app.route('/api/check_server_reachability')
 @login_required
 def check_server_reachability():
     if not can_check_reachability(current_user):
         abort(401)
             
-    hostname =  request.args.get('hostname')
+    hostname = request.args.get('hostname')
     server_type = request.args.get('server_type')
     server_url = request.args.get('server_url')
     username = request.args.get('username')
@@ -2649,7 +2764,7 @@ def check_server_reachability():
     server_directory = request.args.get('server_directory')
     
     server = Server(hostname=hostname, server_type=server_type, server_url=server_url, 
-        username=username, password=password, server_directory=server_directory)
+                    username=username, password=password, server_directory=server_directory)
     # The form is in the edit mode and the user clicks Validate Reachability
     # If there is no password specified, try get it from the database.
     if (server_type == ServerType.FTP_SERVER or server_type == ServerType.SFTP_SERVER) and password == '':
@@ -2659,7 +2774,8 @@ def check_server_reachability():
             server.password = server_in_db.password
 
     server_impl = get_server_impl(server)
-    return jsonify({'status':'OK'}) if server_impl.check_reachability() else jsonify({'status':'Failed'}) 
+    return jsonify({'status': 'OK'}) if server_impl.check_reachability() else jsonify({'status': 'Failed'})
+
 
 @app.route('/api/validate_cisco_user', methods=['POST'])
 @login_required
@@ -2675,12 +2791,13 @@ def validate_cisco_user():
             password = Preferences.get(DBSession(), current_user.id).cco_password
     
         BSDServiceHandler.get_access_token(username, password)
-        return jsonify({'status':'OK'}) 
+        return jsonify({'status': 'OK'})
     except KeyError:
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
     except:
         logger.exception('validate_cisco_user hit exception')
-        return jsonify({'status':'Failed'})         
+        return jsonify({'status': 'Failed'})
+
 
 def get_host_json(hosts, request):    
     if hosts is None:
@@ -2692,7 +2809,8 @@ def get_host_json(hosts, request):
     for host in hosts:
         hosts_list.append(host.get_json())
     
-    return jsonify(**{'host':hosts_list})
+    return jsonify(**{'host': hosts_list})
+
 
 def get_install_actions_dict():
     return {
@@ -2708,26 +2826,30 @@ def get_install_actions_dict():
     }
         
 
-"""
-Returns the return_url encoded in the parameters
-"""
 def get_return_url(request, default_url=None):
+    """
+    Returns the return_url encoded in the parameters
+    """
     url = request.args.get('return_url')
     if url is None:
         url = default_url
     return url
 
+
 @app.errorhandler(401)
 def error_not_authorized(error):
     return render_template('user/not_authorized.html', user=current_user)
+
 
 @app.errorhandler(404)
 def error_not_found(error):
     return render_template('error/not_found.html'), 404   
 
+
 @app.errorhandler(500)
 def catch_server_errors(e):
     logger.exception("Server error!")   
+
 
 @app.route('/shutdown')
 def shutdown_server():
@@ -2737,11 +2859,13 @@ def shutdown_server():
     func()
     
     return 'Flask has been shutdown'
-    
+
+
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db_session = DBSession()
     db_session.close()
+
 
 # Setup logging for production.
 if not app.debug:
@@ -2752,15 +2876,18 @@ if not app.debug:
 def event_stream():
     return 'data: testing\n\n'
 
+
 @app.route('/stream')
 def stream():
     return Response(event_stream(),
-        mimetype="text/event-stream")
+                    mimetype="text/event-stream")
+
 
 @app.route('/about')
 @login_required
 def about():    
-    return render_template('about.html', build_date=get_build_date() )
+    return render_template('about.html', build_date=get_build_date())
+
 
 def get_build_date(): 
     try:
@@ -2769,6 +2896,7 @@ def get_build_date():
         pass
     
     return None
+
 
 @app.route('/user_preferences', methods=['GET','POST'])
 @login_required
@@ -2793,12 +2921,14 @@ def user_preferences():
             
         db_session.commit()
         
-        return redirect(url_for('home') ) 
+        return redirect(url_for('home'))
     else:
         preferences = user.preferences[0]
         form.cco_username.data = preferences.cco_username
        
-    return render_template('csm_client/preferences.html', form=form, platforms_and_releases=get_platforms_and_releases_dict(db_session)) 
+    return render_template('csm_client/preferences.html', form=form,
+                           platforms_and_releases=get_platforms_and_releases_dict(db_session))
+
 
 def get_platforms_and_releases_dict(db_session):
     excluded_platform_list = []
@@ -2831,7 +2961,8 @@ def get_platforms_and_releases_dict(db_session):
                 rows.append(row)
             
     return rows
-    
+
+
 @app.route('/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def get_smu_list(platform, release):        
@@ -2839,37 +2970,45 @@ def get_smu_list(platform, release):
     form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
     
-    return render_template('csm_client/get_smu_list.html', form=form, platform=platform, release=release, system_option=system_option) 
+    return render_template('csm_client/get_smu_list.html', form=form, platform=platform,
+                           release=release, system_option=system_option)
+
 
 @app.route('/api/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def api_get_smu_list(platform, release):    
     smu_loader = SMUInfoLoader(platform, release)
     if smu_loader.smu_meta is None:
-        return jsonify( **{'data':[]} )
+        return jsonify(**{'data': []})
 
     hostname = request.args.get('hostname')
     hide_installed_packages = request.args.get('hide_installed_packages')
 
     if request.args.get('filter') == 'Optimal':
-        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_optimal_smu_list(), smu_loader.file_suffix)
+        return get_smu_or_sp_list(hostname, hide_installed_packages,
+                                  smu_loader.get_optimal_smu_list(), smu_loader.file_suffix)
     else:
-        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_smu_list(), smu_loader.file_suffix)
+        return get_smu_or_sp_list(hostname, hide_installed_packages,
+                                  smu_loader.get_smu_list(), smu_loader.file_suffix)
+
 
 @app.route('/api/get_sp_list/platform/<platform>/release/<release>')
 @login_required
 def api_get_sp_list(platform, release):  
     smu_loader = SMUInfoLoader(platform, release)
     if smu_loader.smu_meta is None:
-        return jsonify(**{'data':[]})
+        return jsonify(**{'data': []})
 
     hostname = request.args.get('hostname')
     hide_installed_packages = request.args.get('hide_installed_packages')
 
     if request.args.get('filter') == 'Optimal':
-        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_optimal_sp_list(), smu_loader.file_suffix)
+        return get_smu_or_sp_list(hostname, hide_installed_packages,
+                                  smu_loader.get_optimal_sp_list(), smu_loader.file_suffix)
     else:
-        return get_smu_or_sp_list(hostname, hide_installed_packages, smu_loader.get_sp_list(), smu_loader.file_suffix)
+        return get_smu_or_sp_list(hostname, hide_installed_packages,
+                                  smu_loader.get_sp_list(), smu_loader.file_suffix)
+
 
 @app.route('/api/get_tar_list/platform/<platform>/release/<release>')
 @login_required
@@ -2878,7 +3017,7 @@ def api_get_tar_list(platform, release):
     file_list = get_file_list(get_repository_directory(), '.tar')
 
     if smu_loader.smu_meta is None:
-        return jsonify( **{'data':[]} )
+        return jsonify(**{'data': []})
     else:
         tars_list = smu_loader.get_tar_list()
         rows = []
@@ -2889,11 +3028,14 @@ def api_get_tar_list(platform, release):
             row['compressed_size'] = tar_info.compressed_image_size
             row['description'] = ""
             rows.append(row)
-    return jsonify( **{'data':rows} )
-"""
-Return the SMU/SP list.  If hostname is given, compare its active packages.
-"""
+
+    return jsonify(**{'data': rows})
+
+
 def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_suffix):
+    """
+    Return the SMU/SP list.  If hostname is given, compare its active packages.
+    """
     file_list = get_file_list(get_repository_directory(), '.' + file_suffix)
 
     host_packages = [] if hostname is None else get_host_active_packages(hostname)
@@ -2935,14 +3077,15 @@ def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_su
 
             rows.append(row)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
 
-"""
-Only SMU should go through this logic
-  The package_bundles defined must be satisfied for the SMU to be applicable.
-  However,asr9k-fpd-px can be excluded.
-"""
+
 def is_smu_applicable(host_packages, required_package_bundles):
+    """
+    Only SMU should go through this logic
+    The package_bundles defined must be satisfied for the SMU to be applicable.
+    However,asr9k-fpd-px can be excluded.
+    """
     if not is_empty(required_package_bundles):
         package_bundles = required_package_bundles.split(',')
         package_bundles = [p for p in package_bundles if p != 'asr9k-fpd-px']
@@ -2991,7 +3134,8 @@ def api_get_smu_details(smu_id):
 
         rows.append(row)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 def get_smu_ids(db_session, smu_name_list):
     smu_ids = []
@@ -3004,6 +3148,7 @@ def get_smu_ids(db_session, smu_name_list):
             smu_ids.append('Unknown')
                   
     return ','.join([id for id in smu_ids])
+
     
 @app.route('/api/get_smu_meta_retrieval_elapsed_time/platform/<platform>/release/<release>')
 @login_required
@@ -3014,7 +3159,7 @@ def api_get_smu_meta_retrieval_elapsed_time(platform, release):
     if smu_meta is not None:
         retrieval_elapsed_time = time_difference_UTC(smu_meta.retrieval_time)
 
-    return jsonify( **{'data': [ {'retrieval_elapsed_time': retrieval_elapsed_time }] } )
+    return jsonify(**{'data': [{'retrieval_elapsed_time': retrieval_elapsed_time}]})
     
     
 @app.route('/validate_software')
@@ -3028,15 +3173,17 @@ def validate_software():
                            software_profile_form=software_profile_form,
                            system_option=SystemOption.get(DBSession()))
 
+
 @app.route('/api/check_cisco_authentication/', methods=['POST'])
 @login_required
 def check_cisco_authentication():
     preferences = Preferences.get(DBSession(), current_user.id) 
     if preferences is not None:
         if not is_empty(preferences.cco_username) and not is_empty(preferences.cco_password):
-            return jsonify({'status':'OK'})
+            return jsonify({'status': 'OK'})
     
-    return jsonify({'status':'Failed'}) 
+    return jsonify({'status': 'Failed'})
+
 
 @app.route('/api/get_catalog')
 @login_required
@@ -3060,7 +3207,8 @@ def api_get_catalog():
             row['releases'] = releases
             rows.append(row)
     
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 def get_filtered_platform_list(platform, releases, excluded_platform_list):
     result_list = []
@@ -3070,12 +3218,13 @@ def get_filtered_platform_list(platform, releases, excluded_platform_list):
             
     return result_list
 
-"""
-Given a SMU list, return the ones that are missing in the server repository.
-"""
+
 @app.route('/api/get_missing_files_on_server/<int:server_id>')
 @login_required
 def api_get_missing_files_on_server(server_id):
+    """
+    Given a SMU list, return the ones that are missing in the server repository.
+    """
     rows = []    
     smu_list = request.args.get('smu_list').split()
     server_directory = request.args.get('server_directory')
@@ -3093,13 +3242,16 @@ def api_get_missing_files_on_server(server_id):
                 description = '' if smu_info is None else smu_info.description
                 # If selected SMU on CCO
                 if cco_filename is not None:             
-                    rows.append({'smu_entry':smu_name, 'description': description, 'cco_filename': cco_filename, 'is_downloadable':True})
+                    rows.append({'smu_entry': smu_name, 'description': description,
+                                 'cco_filename': cco_filename, 'is_downloadable': True})
                 else:
-                    rows.append({'smu_entry':smu_name, 'description': description, 'is_downloadable':False})
+                    rows.append({'smu_entry': smu_name, 'description': description,
+                                 'is_downloadable': False})
     else:
-        return jsonify({'status':'Failed'}) 
+        return jsonify({'status': 'Failed'})
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @app.route('/api/check_is_tar_downloadable')
 def check_is_tar_downloadable():
@@ -3115,12 +3267,14 @@ def check_is_tar_downloadable():
         description = '' if smu_info is None else smu_info.description
         # If selected TAR on CCO
         if cco_filename is not None:
-            rows.append({'smu_entry':smu_name, 'description': description, 'cco_filename': cco_filename, 'is_downloadable':True})
+            rows.append({'smu_entry': smu_name, 'description': description,
+                         'cco_filename': cco_filename, 'is_downloadable': True})
         else:
-            rows.append({'smu_entry':smu_name, 'description': description, 'is_downloadable':False})
+            rows.append({'smu_entry': smu_name, 'description': description,
+                         'is_downloadable': False})
 
+    return jsonify(**{'data': rows})
 
-    return jsonify( **{'data':rows} )
 
 def is_smu_on_server_repository(server_file_dict, smu_name):
     for file_info in server_file_dict:
@@ -3128,20 +3282,22 @@ def is_smu_on_server_repository(server_file_dict, smu_name):
             return True
     return False
 
+
 @app.route('/api/refresh_all_smu_info')
 @login_required
 def api_refresh_all_smu_info():  
     if SMUInfoLoader.refresh_all():
-        return jsonify({'status':'OK'})
+        return jsonify({'status': 'OK'})
     else:
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
 
-"""
-Returns udi info for a platform
-"""
+
 @app.route('/api/get_udi')
 @login_required
 def api_get_udi():
+    """
+    Returns udi info for a platform
+    """
     db_session = DBSession()
     udis = get_udi(db_session)
 
@@ -3156,7 +3312,7 @@ def api_get_udi():
 
             rows.append(row)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
 
 
 @app.route('/api/get_cco_lookup_time')
@@ -3164,18 +3320,18 @@ def api_get_udi():
 def api_get_cco_lookup_time():  
     system_option = SystemOption.get(DBSession())
     if system_option.cco_lookup_time is not None:
-        return jsonify( **{'data': [ {'cco_lookup_time': get_datetime_string(system_option.cco_lookup_time) }] } )
+        return jsonify(**{'data': [{'cco_lookup_time': get_datetime_string(system_option.cco_lookup_time)}]})
     else:
-        return jsonify({'status':'Failed'})
+        return jsonify({'status': 'Failed'})
     
-    
-"""
-Given a SMU list, return any missing pre-requisites.  The
-SMU entries returned also have the file extension appended.
-"""
+
 @app.route('/api/get_missing_prerequisite_list')
 @login_required
 def api_get_missing_prerequisite_list():
+    """
+    Given a SMU list, return any missing pre-requisites.  The
+    SMU entries returned also have the file extension appended.
+    """
     hostname = request.args.get('hostname')
     # The SMUs selected by the user to install
     smu_list = request.args.get('smu_list').split()
@@ -3194,17 +3350,18 @@ def api_get_missing_prerequisite_list():
             if not host_packages_contains(host_packages, smu_name):
                 smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
                 description = '' if smu_info is None else smu_info.description
-                rows.append({'smu_entry':smu_name, 'description':description})
+                rows.append({'smu_entry': smu_name, 'description': description})
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
 
-"""
-Given a software package/SMU/SP list, return those
-that require router reload.
-"""
+
 @app.route('/api/get_reload_list')
 @login_required
-def api_get_reload_list():    
+def api_get_reload_list():
+    """
+    Given a software package/SMU/SP list, return those
+    that require router reload.
+    """
     # The software packages/SMUs/SPs selected by the user to install
     package_list = request.args.get('package_list').split()   
     
@@ -3217,35 +3374,38 @@ def api_get_reload_list():
             if smu_loader.is_valid:
                 for package_name in package_list:
                     if 'mini' in package_name:
-                        rows.append({ 'entry' : package_name, 'description':''})
+                        rows.append({'entry': package_name, 'description': ''})
                     else:
                         # Strip the suffix
                         smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
                         if smu_info is not None:
                             if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
-                                rows.append({ 'entry' : package_name, 'description': smu_info.description})
- 
-    
-    return jsonify( **{'data':rows} )
+                                rows.append({'entry': package_name, 'description': smu_info.description})
+
+    return jsonify(**{'data': rows})
+
 
 def host_packages_contains(host_packages, smu_name):
     for package in host_packages:
         # Performs a partial match
-        if smu_name.replace('.pie','') in package:
+        if smu_name.replace('.pie', '') in package:
             return True
     return False
+
 
 @app.route('/api/validate_software')
 @login_required
 def api_validate_software():
     smu_list = request.args.get('smu_list').split()
-    return  jsonify( **{'data': get_validated_list(smu_list)} )
+    return jsonify(**{'data': get_validated_list(smu_list)})
+
 
 # This route will prompt a file download
 @app.route('/download_session_log')
 @login_required
 def download_session_log():
     return send_file(get_autlogs_directory() + request.args.get('file_path'), as_attachment=True)
+
 
 @app.route('/download_system_logs')
 @login_required

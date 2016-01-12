@@ -1,3 +1,27 @@
+# =============================================================================
+# Copyright (c) 2016, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from sqlalchemy import and_
 
 from handlers.loader import get_inventory_handler_class
@@ -24,6 +48,7 @@ from models import SystemOption
 import traceback
 import datetime
 import urllib
+
 
 class InstallWorkUnit(WorkUnit):
     def __init__(self, host_id, job_id):
@@ -90,7 +115,8 @@ class InstallWorkUnit(WorkUnit):
         except Exception:
             try:
                 logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
-                self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name, trace=traceback.format_exc())
+                self.archive_install_job(db_session, logger, ctx, host, install_job,
+                                         JobStatus.FAILED, process_name, trace=traceback.format_exc())
             except Exception:
                 logger.exception('InstallManager hit exception - install job = %s', self.job_id)
         finally:
@@ -115,7 +141,8 @@ class InstallWorkUnit(WorkUnit):
 
     def get_last_successful_install_job(self, db_session, host_id):
         return db_session.query(InstallJobHistory). \
-            filter((InstallJobHistory.host_id == host_id), and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
+            filter((InstallJobHistory.host_id == host_id),
+                   and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
             order_by(InstallJobHistory.status_time.desc()).first()
 
     def archive_install_job(self, db_session, logger, ctx, host, install_job, job_status, process_name, trace=None):

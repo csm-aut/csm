@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@ from sqlalchemy.engine.url import URL
 from database import db_settings, ENABLE_DEBUG
 from models import get_db_session_logger
         
-## Item pushed on the work queue to tell the worker threads to terminate
+# Item pushed on the work queue to tell the worker threads to terminate
 SENTINEL = "QUIT"
 
 
@@ -48,7 +48,8 @@ class PoolWorker(Process):
 
         DATABASE_CONNECTION_INFO = URL(**db_settings)
         # Create the database engine
-        engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600, convert_unicode=True, echo=ENABLE_DEBUG)
+        engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600,
+                               convert_unicode=True, echo=ENABLE_DEBUG)
         self.db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=False,
                                          bind=engine))()
@@ -65,6 +66,7 @@ class PoolWorker(Process):
 
             # Run the job / sequence
             work_unit.process(self.db_session, self.logger, self.name)
+
 
 class Pool(object):
     """
