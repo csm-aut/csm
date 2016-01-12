@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,7 @@ from constants import ConnectionType
 import socket
 import time
 
+
 def is_connection_valid(db_session, platform, urls):
     ctx = ConnectionContext(db_session, urls)
     
@@ -45,17 +46,18 @@ def is_connection_valid(db_session, platform, urls):
     
     return ctx.success
 
-"""
-This function check reachability for specified hostname/port
-It tries to open TCP socket.
-It supports IPv6.
-:param host string: hostname or ip address string
-:rtype: str
-:param port number: tcp port number
-:rtype: bool
-:return: True if host is reachable else false
-"""
+
 def is_reachable(host, port=23):
+    """
+    This function check reachability for specified hostname/port
+    It tries to open TCP socket.
+    It supports IPv6.
+    :param host string: hostname or ip address string
+    :rtype: str
+    :param port number: tcp port number
+    :rtype: bool
+    :return: True if host is reachable else false
+    """
     try:
         addresses = socket.getaddrinfo(
             host, port, socket.AF_UNSPEC, socket.SOCK_STREAM
@@ -65,7 +67,7 @@ def is_reachable(host, port=23):
 
     for family, socktype, proto, cannonname, sockaddr in addresses:
         sock = socket.socket(family, socket.SOCK_STREAM)
-        #sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+        # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
         sock.settimeout(5)
         try:
             sock.connect(sockaddr)

@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@ from utils import import_module
 from utils import concatenate_dirs
 from models import logger
 
+
 def get_server_impl(server):
     if server.server_type == ServerType.TFTP_SERVER:
         return TFTPServer(server) 
@@ -44,6 +45,7 @@ def get_server_impl(server):
         return SFTPServer(server)
     else:
         return None
+
 
 class ServerImpl(object):
     def __init__(self, server):
@@ -66,7 +68,8 @@ class ServerImpl(object):
     """
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         raise NotImplementedError("Children must override upload_file")
-    
+
+
 class TFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
@@ -105,8 +108,7 @@ class TFTPServer(ServerImpl):
             is_reachable = False
               
         return result_list, is_reachable
-    
-    
+
     def check_reachability(self):
         try:
             if os.path.isdir(self.server.server_directory):
@@ -289,8 +291,8 @@ class FTPServer(ServerImpl):
         ftp.delete(filename)
 
     def handler(self, block):
-        print block
-        
+        pass
+
 class SFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
@@ -375,4 +377,4 @@ class SFTPServer(ServerImpl):
         
 if __name__ == '__main__':         
     pass
-    
+

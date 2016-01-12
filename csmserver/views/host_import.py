@@ -1,3 +1,27 @@
+# =============================================================================
+# Copyright (c) 2016, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from flask import Blueprint
 from flask import jsonify, render_template, redirect, url_for
 from flask.ext.login import current_user
@@ -43,6 +67,7 @@ HEADER_FIELD_PASSWORD = 'password'
 HEADER_FIELD_CONNECTION = 'connection'
 HEADER_FIELD_PORT = 'port'
 
+
 @host_import.route('/')
 @login_required
 def import_hosts():
@@ -54,17 +79,19 @@ def import_hosts():
 
     return render_template('host/import_hosts.html', form=form)
 
+
 def get_column_number(header, column_name):
     try:
         return header.index(column_name)
     except ValueError:
         return -1
 
+
 @host_import.route('/api/import_hosts', methods=['POST'])
 @login_required
 def api_import_hosts():
     importable_header = [HEADER_FIELD_HOSTNAME, HEADER_FIELD_REGION, HEADER_FIELD_ROLES, HEADER_FIELD_IP,
-        HEADER_FIELD_USERNAME, HEADER_FIELD_PASSWORD, HEADER_FIELD_CONNECTION, HEADER_FIELD_PORT]
+                         HEADER_FIELD_USERNAME, HEADER_FIELD_PASSWORD, HEADER_FIELD_CONNECTION, HEADER_FIELD_PORT]
     platform = request.form['platform']
     region_id = request.form['region']
     data_list = request.form['data_list']

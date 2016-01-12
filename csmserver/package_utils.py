@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -66,11 +66,12 @@ ASR9K_PACKAGES = {
     'asr9k-video-p': 'asr9k-video-px.pie',
 }
 
-"""
-If match_internal_name is true, it matches the host_packages instead of the physical name
-on the server repository.
-"""
+
 def get_target_software_package_list(platform, host_packages, target_version, match_internal_name=False):
+    """
+    If match_internal_name is true, it matches the host_packages instead of the physical name
+    on the server repository.
+    """
     target_list = []
     platform_package_list = {}
     

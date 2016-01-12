@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,16 +38,12 @@ restful_api = Blueprint('restful', __name__, url_prefix='/api')
 auth = HTTPBasicAuth()
 
 
-@restful_api.route('/')
-def show():
-    # return render_template('host/index.html', hosts=None)
-    return jsonify({'status':'OK'})
-
 @restful_api.route('/token')
 @auth.login_required
 def get_auth_token():
     token = g.user.generate_auth_token(600)
-    return jsonify({ 'token': token.decode('ascii')})
+    return jsonify({'token': token.decode('ascii')})
+
 
 @auth.verify_password
 def verify_password(username_or_token, password):
@@ -56,7 +52,7 @@ def verify_password(username_or_token, password):
     if not user:
         # try to authenticate with username/password
         db_session = DBSession()
-        user = db_session.query(User).filter_by(username = username_or_token).first()
+        user = db_session.query(User).filter_by(username=username_or_token).first()
         if not user or not User.authenticate(db_session.query, username_or_token, password):
             return False
     g.user = user
@@ -67,7 +63,8 @@ def verify_password(username_or_token, password):
 @restful_api.route('/get_software_catalog')
 @auth.login_required
 def get_software_catalog():
-    return jsonify( **{'data': SMUInfoLoader.get_catalog()} )
+    return jsonify(**{'data': SMUInfoLoader.get_catalog()})
+
 
 @restful_api.route('/get_optimal_smus_since/platform/<platform>/release/<release>')
 @auth.login_required
@@ -89,7 +86,8 @@ def get_optimal_smus_since(platform, release):
     # Convert that string to a datetime, then sort the list of dictionaries by the posted_dates.
     rows.sort(key=lambda k: datetime.datetime.strptime(k['posted_date'].split()[0], '%m/%d/%Y'), reverse=True)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @restful_api.route('/get_smus_since/platform/<platform>/release/<release>')
 @auth.login_required
@@ -111,7 +109,8 @@ def get_smus_since(platform, release):
     # Convert that string to a datetime, then sort the list of dictionaries by the posted_dates.
     rows.sort(key=lambda k: datetime.datetime.strptime(k['posted_date'].split()[0], '%m/%d/%Y'), reverse=True)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @restful_api.route('/get_smu_details/platform/<platform>/release/<release>/smu_name/<smu_name>')
 @auth.login_required
@@ -122,10 +121,11 @@ def api_get_smu_info_by_name(platform, release, smu_name):
     except:
         return('Page does not exist; check platform and release', 404)
 
-    if smu_info != None:
-        return jsonify( **{'data':get_smu_info(smu_info.id, platform, release)} )
+    if smu_info is not None:
+        return jsonify(**{'data': get_smu_info(smu_info.id, platform, release)})
     else:
         return('Page does not exist; check smu_name', 404)
+
 
 @restful_api.route('/get_smu_details/platform/<platform>/release/<release>/smu_id/<smu_id>')
 @auth.login_required
@@ -136,10 +136,11 @@ def api_get_smu_info_by_id(platform, release, smu_id):
         return('Page does not exist; check platform and release', 404)
 
     data = get_smu_info(smu_id, platform, release)
-    if data != []:
-        return jsonify( **{'data':data} )
+    if data:
+        return jsonify(**{'data': data})
     else:
         return('Page does not exist; check smu_id', 404)
+
 
 def get_smu_info(smu_id, platform, release):
     rows = []

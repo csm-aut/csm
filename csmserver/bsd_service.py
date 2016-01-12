@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -50,7 +50,8 @@ BSD_K9_FORM = "k9_form_details_response"
 BSD_FIELD_DETAILS = "field_details"
 BSD_FIELD_ID = "field_id"
 BSD_FIELD_VALUE = "field_value"
-    
+
+
 class BSDServiceHandler(object):
     def __init__(self, username, password, MDF_ID, software_type_ID, PID, image_name):
         self.username = username
@@ -107,13 +108,14 @@ class BSDServiceHandler(object):
                             eula = self.get_json_value(json_text, BSD_EULA_FORM)
                             k9 = self.get_json_value(json_text, BSD_K9_FORM)
                             if eula is not None:
-                                response = self.send_EULA_request(access_token, download_session_ID);
+                                response = self.send_EULA_request(access_token, download_session_ID)
                                 self.debug_print('EULA response', response.text)
                             elif k9 is not None:
-                                response = self.send_K9_request(access_token, download_session_ID);
+                                response = self.send_K9_request(access_token, download_session_ID)
                                 self.debug_print('K9 response', response.text)
                                 
-                            response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
+                            response = self.send_download_request(access_token, UDI, self.MDF_ID,
+                                                                  metadata_trans_ID, image_GUID)
                             if response is not None:
                                 self.debug_print('After accepting EULA or K9', response.text)
                                 
@@ -125,7 +127,8 @@ class BSDServiceHandler(object):
                         self.debug_print('download_session', download_session_ID) 
                          
                         if download_url is not None and download_session_ID is not None:
-                            self.send_get_image(access_token, download_url, output_file_path, self.image_name, image_size, callback)
+                            self.send_get_image(access_token, download_url, output_file_path,
+                                                self.image_name, image_size, callback)
                         else:                      
                             message = 'User "' + self.username + '" may not have software download privilege on cisco.com.'       
                             raise Exception(message)
@@ -137,24 +140,24 @@ class BSDServiceHandler(object):
     def send_EULA_request(self, access_token, download_session_ID):
         headers = {'Authorization': 'Bearer ' + access_token}
         return requests.post(HTTP_EULA_URL + "?download_session_id=" + download_session_ID +
-            "&user_action=Accepted", headers=headers)
+                             "&user_action=Accepted", headers=headers)
         
     def send_K9_request(self, access_token, download_session_ID):
         headers = {'Authorization': 'Bearer ' + access_token}
         return requests.post(HTTP_K9_URL + "?download_session_id=" + download_session_ID + 
-            "&user_action=Accepted", headers=headers)
+                             "&user_action=Accepted", headers=headers)
         
     def send_download_statistics(self, access_token, download_session_ID, image_guid, image_size):
         headers = {'Authorization': 'Bearer ' + access_token}
         return requests.post(HTTP_DOWNLOAD_STATISTICS_URL + 
-            "?download_session_id=" + download_session_ID + 
-            "&image_guid=" + image_guid + 
-            "&download_status=Success" + 
-            "&download_file_size=" + image_size, headers=headers)
+                             "?download_session_id=" + download_session_ID +
+                             "&image_guid=" + image_guid +
+                             "&download_status=Success" +
+                             "&download_file_size=" + image_size, headers=headers)
           
     def send_get_image(self, access_token, url_string, output_file_path, image_name, image_size, callback=None):
         # Segment is 1 MB.  For 40 MB files, there will be about 40 updates (i.e. database writes)
-        chunk_list= get_chunks((int)(image_size), (int)(image_size) / 1048576)
+        chunk_list= get_chunks(int(image_size), int(image_size) / 1048576)
    
         headers = {'Authorization': 'Bearer ' + access_token}
         r = requests.get(url_string, headers=headers, stream=True)
@@ -211,13 +214,14 @@ class BSDServiceHandler(object):
         else:
             return None
 
+
 def get_chunks(image_size, segments):
     chunk_list = []
     if segments == 0:
         chunk_list.append(image_size)
     else:
         chunk = (int)(image_size / segments)   
-        for i in range((int)(segments)):
+        for i in range(int(segments)):
             chunk_list.append(chunk * (i + 1))
     
     return chunk_list
@@ -225,4 +229,3 @@ def get_chunks(image_size, segments):
                    
 if __name__ == '__main__':  
     print(BSDServiceHandler.get_sn_2_info(BSDServiceHandler.get_access_token("alextang", "xx"), "FOX1316G5R5"))
-    

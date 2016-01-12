@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -240,7 +240,6 @@ class InstallContext(ImageContext):
                 self.db_session.commit()
             except:
                 self.db_session.rollback()
-
 
 
 class BaseHandler(object):

@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -78,6 +78,7 @@ XML_TAG_SMU = 'smu'
 XML_TAG_SP = 'sp'
 XML_TAG_SMU_INTRANSIT = 'smuIntransit'
 XML_TAG_TAR = 'tar'
+
 
 class SMUInfoLoader(object):
     """
@@ -216,8 +217,10 @@ class SMUInfoLoader(object):
             smu_info.cco_filename = self.getChildElementText(node, XML_TAG_CCO_FILE_NAME)
             smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)
             smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
-            smu_info.compressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
-            smu_info.uncompressed_image_size = self.get_int_value(self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE))
+            smu_info.compressed_image_size = self.get_int_value(
+                self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
+            smu_info.uncompressed_image_size = self.get_int_value(
+                self.getChildElementText(node, XML_TAG_UNCOMPRESSED_IMAGE_SIZE))
             smu_info.composite_DDTS = self.getChildElementText(node, XML_TAG_COMPOSITE_DDTS)
             smu_info.package_type = package_type
 
@@ -262,26 +265,28 @@ class SMUInfoLoader(object):
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU), self.smus, PackageType.SMU)
         
         # For SMUs that have not been posted yet.
-        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU_INTRANSIT), self.in_transit_smus, PackageType.SMU_IN_TRANSIT)
+        self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU_INTRANSIT),
+                           self.in_transit_smus, PackageType.SMU_IN_TRANSIT)
 
         # For Service Packs that have been posted.
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SP), self.service_packs, PackageType.SERVICE_PACK)
 
         # For Software Tar Files that have been posted.
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_TAR), self.software, PackageType.SOFTWARE)
-        
-    """
-    Returns all the SMUs (posted and obsoleted).
-    """
+
     def get_smu_list(self):
+        """
+        Returns all the SMUs (posted and obsoleted).
+        """
         return OrderedDict(sorted(self.smus.items())).values()
     
     def get_optimal_smu_list(self):
         return get_smus_exclude_supersedes_include_prerequisites(self, self.get_smu_list())
-    """
-    Returns all the Service Packs (posted and obsoleted).
-    """
+
     def get_sp_list(self):
+        """
+        Returns all the Service Packs (posted and obsoleted).
+        """
         return OrderedDict(sorted(self.service_packs.items())).values()
     
     def get_optimal_sp_list(self):
@@ -290,10 +295,10 @@ class SMUInfoLoader(object):
     def get_tar_list(self):
         return OrderedDict(sorted(self.software.items())).values()
 
-    """
-    Given a SMU/SP name, returns the SMUInfo.
-    """
     def get_smu_info(self, smu_name):
+        """
+        Given a SMU/SP name, returns the SMUInfo.
+        """
         if smu_name in self.smus:
             return self.smus[smu_name]
         elif smu_name in self.in_transit_smus:
@@ -359,20 +364,20 @@ class SMUInfoLoader(object):
                     release_list.insert(0, entry.release)
                     
             return OrderedDict(sorted(catalog.items()))           
-    
-    """
-    Returns a sorted dictionary representing the catalog.dat file.
-        asr9k_px
-             4.2.3, 4.2.1
-        crs_px
-            4.3.0, 4.2.3, 4.2.1
-        ncs6k
-            5.0.1
-        ncs6k_sysadmin
-            5.0.1, 5.0.0
-    """
+
     @classmethod
     def get_catalog_from_cco(cls):
+        """
+        Returns a sorted dictionary representing the catalog.dat file.
+            asr9k_px
+                 4.2.3, 4.2.1
+            crs_px
+                4.3.0, 4.2.3, 4.2.1
+            ncs6k
+                5.0.1
+            ncs6k_sysadmin
+                5.0.1, 5.0.0
+        """
         lines = []
         catalog = {}
     
@@ -402,13 +407,12 @@ class SMUInfoLoader(object):
                         release_list.insert(0, release)
 
         return OrderedDict(sorted(catalog.items()))
-    
-    
-    """
-    Retrieves all the catalog data and SMU XML file data and updates the database.
-    """
+
     @classmethod
     def refresh_all(cls):
+        """
+        Retrieves all the catalog data and SMU XML file data and updates the database.
+        """
         db_session = DBSession()
         
         catalog = SMUInfoLoader.get_catalog_from_cco()
@@ -435,17 +439,17 @@ class SMUInfoLoader(object):
                 db_session.rollback()  
             
         return False
-                
-    """
-    Returns an array of dictionary items { token : message }
-    csmserver.msg file has token like
-    @2015/5/1@Admin,Operator
-      --- message ---
-    @2015/4/1@Admin
-      --- message ---
-    """
+
     @classmethod
     def get_cco_csm_messages(cls):
+        """
+        Returns an array of dictionary items { token : message }
+        csmserver.msg file has token like
+        @2015/5/1@Admin,Operator
+          --- message ---
+        @2015/4/1@Admin
+          --- message ---
+        """
         csm_messages = []
         message = ''
         date_token = None
@@ -456,7 +460,7 @@ class SMUInfoLoader(object):
             for line in lines:    
                 if len(line) > 0 and line[0] == '@':
                     if date_token is not None:
-                        csm_messages.append({ 'token' : date_token, 'message' : message })
+                        csm_messages.append({'token': date_token, 'message': message})
                     
                     date_token = line[1:]
                     message = ''
@@ -467,13 +471,10 @@ class SMUInfoLoader(object):
             pass
         
         if date_token is not None:
-            csm_messages.append({ 'token' : date_token, 'message' : message })
+            csm_messages.append({'token': date_token, 'message': message})
         
         return csm_messages
     
 if __name__ == '__main__':
-    #smu_loader = SMUInfoLoader('asr9k_px', '4.2.1')
-    # SMUInfoLoader.get_cco_csm_messages()
-    # print(SMUInfoLoader.get_smu_meta_file_timestamp('asr9k_px', '5.3.0'))
     SMUInfoLoader.refresh_all()
 

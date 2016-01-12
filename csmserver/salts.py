@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,19 +25,22 @@
 ENCRYPT = 0
 DECRYPT = 1
 
+
 def get_int(data, base):
-    #based on a key, generate an int in the range [0, base-1]
+    # based on a key, generate an int in the range [0, base-1]
     sum = 0
     for index in range(len(data)):
         sum += ord(data[index])
         
     return sum % base
 
+
 def transform(c, from_str, to_str):   
     for index in range(len(from_str)):
         if c == to_str[index]:
             return from_str[index]        
     return c
+
 
 def shuffling(encrypt, input, operation):
     output = ''
@@ -56,14 +59,13 @@ def shuffling(encrypt, input, operation):
 
     return output
 
+
 def encode(encrypt, password):
     return None if password is None else shuffling(encrypt, password, ENCRYPT)
+
 
 def decode(encrypt, password):
     return None if password is None else shuffling(encrypt, password, DECRYPT)
 
-import base64
-
 if __name__ == '__main__': 
-    print('encode', base64.b64encode('test'.encode('utf-8')))
-    print('decode', bytes.decode(base64.b64decode('dGVzdA==')))
+    pass

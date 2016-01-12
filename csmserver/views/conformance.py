@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -191,6 +191,7 @@ def api_get_software_profiles():
 
     return jsonify(**{'data': rows})
 
+
 @conformance.route('/api/create_software_profile', methods=['POST'])
 @login_required
 def api_create_software_profile():
@@ -203,7 +204,8 @@ def api_create_software_profile():
     software_profile = get_software_profile(db_session, profile_name)
 
     if software_profile is not None:
-        return jsonify({'status': 'Software profile "' + profile_name + '" already exists.  Use a different name instead.'})
+        return jsonify({'status': 'Software profile "' + profile_name +
+                        '" already exists.  Use a different name instead.'})
 
     software_profile = SoftwareProfile(
         name=profile_name,
@@ -247,7 +249,7 @@ def api_rerun_conformance_report(id):
     conformance_report = get_conformance_report_by_id(db_session, id)
     if conformance_report is not None:
         return run_conformance_report(conformance_report.software_profile,
-                                      conformance_report.match_criteria, conformance_report.hostnames);
+                                      conformance_report.match_criteria, conformance_report.hostnames)
     else:
         jsonify({'status': 'Unable to locate the conformance report with id = %d' % id})
 
@@ -285,7 +287,8 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
         for hostname in hostnames.split(','):
             host = get_host(db_session, hostname)
             if host:
-                packages_to_match = [software_profile_package.replace('.pie', '') for software_profile_package in software_profile_packages]
+                packages_to_match = [software_profile_package.replace('.pie', '')
+                                     for software_profile_package in software_profile_packages]
 
                 inventory_job = host.inventory_job[0]
 
@@ -373,6 +376,7 @@ def match_packages(host_packages, packages_to_match):
 
     return result_packages
 
+
 def get_missing_packages(host_packages, software_profile_packages):
     missing_packages = []
 
@@ -386,9 +390,11 @@ def get_missing_packages(host_packages, software_profile_packages):
                 matched = True
                 break
 
-        if not matched: missing_packages.append(software_profile_package)
+        if not matched:
+            missing_packages.append(software_profile_package)
 
     return missing_packages
+
 
 @conformance.route('/api/export_conformance_report/report/<int:id>')
 @login_required
@@ -461,6 +467,7 @@ def api_get_conformance_report(id):
 
     return jsonify(**{'data': rows})
 
+
 @conformance.route('/api/get_conformance_report_software_profile_packages/report/<int:id>')
 @login_required
 def api_get_conformance_report_software_profile_packages(id):
@@ -506,10 +513,10 @@ def api_get_conformance_report_dates():
     return jsonify(**{'data': rows})
 
 
-"""
-Returns the conformance report in descending order of creation date by user.
-"""
 def get_conformance_report_by_user(db_session, username):
+    """
+    Returns the conformance report in descending order of creation date by user.
+    """
     return db_session.query(ConformanceReport).filter(ConformanceReport.created_by == username).order_by(
         ConformanceReport.created_time.desc()).all()
 
@@ -551,7 +558,8 @@ def api_create_install_jobs():
         for one_install_action in install_action:
             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                            install_action=one_install_action,
-                                                           scheduled_time=scheduled_time, software_packages=software_packages,
+                                                           scheduled_time=scheduled_time,
+                                                           software_packages=software_packages,
                                                            server=server, server_directory=server_directory,
                                                            pending_downloads=pending_downloads, dependency=dependency)
             dependency = new_install_job.id
@@ -559,6 +567,7 @@ def api_create_install_jobs():
         return jsonify({'status': 'OK'})
     except Exception:
         return jsonify({'status': 'Failed'})
+
 
 def get_software_profile(db_session, profile_name):
     return db_session.query(SoftwareProfile).filter(SoftwareProfile.name == profile_name).first()
@@ -573,8 +582,10 @@ class SoftwareProfileForm(Form):
     description = StringField('Description', [required(), Length(max=100)])
     software_packages = TextAreaField('Software Packages', [required()])
 
+
 class ConformanceForm(Form):
     conformance_reports = SelectField('Previously Run Reports', coerce=int, choices=[(-1, '')])
+
 
 class ConformanceReportDialogForm(Form):
     software_profile = SelectField('Software Profile', coerce=str, choices=[('', '')])
@@ -591,7 +602,8 @@ class ConformanceReportDialogForm(Form):
 class ExportConformanceReportForm(Form):
     include_host_packages = HiddenField("Include Host packages on the report")
 
+
 class MakeConformDialogForm(Form):
-    install_action = SelectMultipleField('Install Action', coerce=str, choices = [('', '')])
+    install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
     scheduled_time = StringField('Scheduled Time', [required()])
     software_packages = TextAreaField('Software Packages')

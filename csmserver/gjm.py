@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@ from work_units.create_tar_work_unit import CreateTarWorkUnit
 
 from constants import JobStatus
 
+
 class GenericJobManager(JobManager):
     def __init__(self, num_workers, worker_name):
         JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
@@ -43,7 +44,6 @@ class GenericJobManager(JobManager):
         self.handle_create_tar_jobs(db_session)
 
         db_session.close()
-
 
     def handle_email_jobs(self, db_session):
         try:

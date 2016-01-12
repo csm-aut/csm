@@ -1,4 +1,27 @@
-
+# =============================================================================
+# Copyright (c) 2016, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from models import Preferences
 from models import Server
 from models import User
@@ -16,6 +39,7 @@ from constants import JobStatus
 
 import os
 import traceback
+
 
 class DownloadWorkUnit(WorkUnit):
     def __init__(self, job_id, cco_filename):
@@ -65,8 +89,9 @@ class DownloadWorkUnit(WorkUnit):
                 db_session.commit()
 
                 bsd = BSDServiceHandler(username=preferences.cco_username, password=preferences.cco_password,
-                    image_name=self.download_job.cco_filename, PID=self.download_job.pid,
-                    MDF_ID=self.download_job.mdf_id, software_type_ID=self.download_job.software_type_id)
+                                        image_name=self.download_job.cco_filename, PID=self.download_job.pid,
+                                        MDF_ID=self.download_job.mdf_id,
+                                        software_type_ID=self.download_job.software_type_id)
 
                 self.download_job.set_status('Preparing to download from cisco.com.')
                 db_session.commit()
@@ -85,7 +110,8 @@ class DownloadWorkUnit(WorkUnit):
             if server is not None:
                 server_impl = get_server_impl(server)
                 for filename in tarfile_file_list:
-                    server_impl.upload_file(get_repository_directory() + filename, filename, sub_directory=self.download_job.server_directory)
+                    server_impl.upload_file(get_repository_directory() + filename, filename,
+                                            sub_directory=self.download_job.server_directory)
 
             self.archive_download_job(db_session, self.download_job, JobStatus.COMPLETED)
             db_session.commit()
@@ -100,11 +126,12 @@ class DownloadWorkUnit(WorkUnit):
         finally:
             db_session.close()
 
-    """
-    The tar file is considered valid if its corresponding .size file content
-    equals to the size of the tar file.  It will be nice if we can have MD5 support.
-    """
+
     def is_tar_file_valid(self, tarfile_path):
+        """
+        The tar file is considered valid if its corresponding .size file content
+        equals to the size of the tar file.  It will be nice if we can have MD5 support.
+        """
         try:
             tarfile_size = os.path.getsize(tarfile_path)
             recorded_size = open(tarfile_path + '.size', 'r').read()
@@ -112,6 +139,7 @@ class DownloadWorkUnit(WorkUnit):
                 return True
         except Exception:
             return False
+
 
     def archive_download_job(self, db_session, download_job, job_status, trace=None):
         download_job.set_status(job_status)

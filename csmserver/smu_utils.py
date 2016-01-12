@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,11 +33,11 @@ SMU_INDICATOR = 'CSC'
 SP_INDICATOR = '.sp'
 TAR_INDICATOR = 'iosxr'
     
-"""
-Returns the package type.  Available package types are defined in PackageType.
-"""
+
 def get_package_type(name):
     """
+    Returns the package type.  Available package types are defined in PackageType.
+
     Only ASR9K supports Service Packs concept
     Example: asr9k-px-4.3.2.sp-1.0.0 or asr9k-px-4.3.2.k9-sp-1.0.0
     """
@@ -50,21 +50,22 @@ def get_package_type(name):
     else:
         return PackageType.PACKAGE
     
-"""
-Given a package name, try to derive a name which can be used to lookup a SMU or SP
-in the SMU meta file.
- 
-However, there is no guarantee that the correct name can be derived. That depends
-on the given name if it is within the parsing criteria.
-"""
+
 def get_smu_lookup_name(name):
+    """
+    Given a package name, try to derive a name which can be used to lookup a SMU or SP
+    in the SMU meta file.
+
+    However, there is no guarantee that the correct name can be derived. That depends
+    on the given name if it is within the parsing criteria.
+    """
     name = name.strip()
     package_type = get_package_type(name)
     if package_type != PackageType.SMU and package_type != PackageType.SERVICE_PACK:
         return name
     
     # The worst case scenario of the name could be "disk0:asr9k-px-4.2.1.CSCud90009-1.0.0.pie"
-    name = name.replace('.pie','')
+    name = name.replace('.pie', '')
     
     # Skip the location string if found
     pos = name.find(':')
@@ -86,11 +87,12 @@ def get_smu_lookup_name(name):
             
     return name
 
-"""
-The smu_info_dict has the following format
-   smu name ->  set()
-"""
+
 def get_unique_set_from_dict(smu_info_dict):
+    """
+    The smu_info_dict has the following format
+       smu name ->  set()
+    """
     resultant_set = set()
     for smu_set in smu_info_dict.values():
         for smu_name in smu_set:
@@ -98,7 +100,8 @@ def get_unique_set_from_dict(smu_info_dict):
                 resultant_set.add(smu_name)
             
     return resultant_set
-                
+
+
 def get_missing_prerequisite_list(smu_list):
     result_list = []   
     platform, release = get_platform_and_release(smu_list)
@@ -134,10 +137,11 @@ def get_missing_prerequisite_list(smu_list):
                 
     return result_list
 
-"""
-Given a package list (SMU/SP/Pacages), return the platform and release.
-"""
+
 def get_platform_and_release(package_list):
+    """
+    Given a package list (SMU/SP/Pacages), return the platform and release.
+    """
     platform = UNKNOWN
     release = UNKNOWN
     
@@ -151,12 +155,13 @@ def get_platform_and_release(package_list):
         
     return platform, release
 
-"""
-Given a SMU list, return a dictionary which contains
-key: smu name in smu_list
-value: cco filename  (can be None if smu_name is not in the XML file)
-""" 
+
 def get_download_info_dict(smu_list):
+    """
+    Given a SMU list, return a dictionary which contains
+    key: smu name in smu_list
+    value: cco filename  (can be None if smu_name is not in the XML file)
+    """
     download_info_dict = {}
     platform, release = get_platform_and_release(smu_list)
     
@@ -175,12 +180,13 @@ def get_download_info_dict(smu_list):
             download_info_dict[smu_name] = None
             
     return download_info_dict, smu_loader
-    
-"""
-Returns the validated list given the SMU/SP list.
-A smu_list may contain packages, SMUs, SPs, or junk texts.
-"""
+
+
 def get_validated_list(smu_list):
+    """
+    Returns the validated list given the SMU/SP list.
+    A smu_list may contain packages, SMUs, SPs, or junk texts.
+    """
     unrecognized_list = []
     package_list = []
     result_list = []
@@ -190,7 +196,7 @@ def get_validated_list(smu_list):
     
     if platform == UNKNOWN or release == UNKNOWN:
         for line in smu_list:
-            result_list.append({'smu_entry': line, 'is':'Unrecognized' })
+            result_list.append({'smu_entry': line, 'is': 'Unrecognized'})
         return result_list
     
     # Load the SMU information
@@ -229,25 +235,27 @@ def get_validated_list(smu_list):
         for pre_requisite_smu in missing_required_prerequisite_set:
             pre_requisite_smu_info = smu_loader.get_smu_info(pre_requisite_smu)
             description = pre_requisite_smu_info.description if pre_requisite_smu_info is not None else ''
-            result_list.append({ 'smu_entry': pre_requisite_smu + '.' + file_suffix, 'is':'Pre-requisite', 'description':description })
+            result_list.append({'smu_entry': pre_requisite_smu + '.' + file_suffix,
+                                'is': 'Pre-requisite', 'description':description})
                 
         excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
         
         for smu_info in smu_info_list:
             if smu_info.name not in excluded_supersede_dict:
-                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'Superseded', 'description':smu_info.description })
+                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix,
+                                    'is': 'Superseded', 'description': smu_info.description})
             else:
-                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix, 'is':'SMU/SP', 'description':smu_info.description })
+                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix,
+                                    'is': 'SMU/SP', 'description': smu_info.description})
     
     if len(package_list) > 0:
         for entry in package_list:
-            result_list.append({'smu_entry': entry, 'is':'Package', 'description':'' })
+            result_list.append({'smu_entry': entry, 'is': 'Package', 'description': ''})
             
     if len(unrecognized_list) > 0:
         for entry in unrecognized_list:
-            result_list.append({'smu_entry': entry, 'is':'Unrecognized', 'description':'' })
- 
-            
+            result_list.append({'smu_entry': entry, 'is': 'Unrecognized', 'description': ''})
+
     return result_list
 
 if __name__ == '__main__':

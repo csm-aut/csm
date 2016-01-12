@@ -1,3 +1,27 @@
+# =============================================================================
+# Copyright (c) 2016, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from flask import Blueprint
 from flask import jsonify, render_template, request
 from flask.ext.login import login_required
@@ -30,6 +54,7 @@ import re
 
 tar_support = Blueprint('tools', __name__, url_prefix='/tools')
 
+
 @tar_support.route('/create_tar_file')
 @login_required
 def create_tar_file():
@@ -37,7 +62,8 @@ def create_tar_file():
     create_tar_form = CreateTarForm(request.form)
     return render_template('tools/create_tar_file.html',
                            select_server_form = select_server_form,
-                           form = create_tar_form)
+                           form=create_tar_form)
+
 
 @tar_support.route('/api/create_tar_job')
 @login_required
@@ -77,7 +103,19 @@ def get_progress():
         logger.error('Unable to retrieve Create Tar Job: %s' % job_id)
         return jsonify(status='Unable to retrieve job')
 
+<<<<<<< HEAD
     return jsonify(status='OK',progress= tar_job.status)
+=======
+
+def handleRemoveReadonly(func, path, exc):
+    excvalue = exc[1]
+    if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+        os.chmod(path, stat.S_IRWXU| stat.S_IRWXG| stat.S_IRWXO) # 0777
+        func(path)
+    else:
+        raise
+>>>>>>> alex/v3.3
+
 
 @tar_support.route('/api/get_tar_contents')
 @login_required
@@ -85,18 +123,17 @@ def get_tar_contents():
     files = request.args.getlist('files[]')
     files = files[0].strip().split(',')
     rows = []
-    repo_path =  get_repository_directory()
-
+    repo_path = get_repository_directory()
 
     for file in files:
         if file:
             for f in get_tarfile_file_list(repo_path + file):
                 row = {}
-                row['file'] = repo_path +  file + '/' + f
+                row['file'] = repo_path + file + '/' + f
                 row['filename'] = f
                 row['source_tar'] = file
                 rows.append(row)
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
 
 @tar_support.route('/api/get_full_software_tar_files_from_csm_repository/')
 @login_required
@@ -112,7 +149,8 @@ def get_full_software_tar_files_from_csm_repository():
             row['image_size'] = '{} bytes'.format(statinfo.st_size)
             rows.append(row)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @tar_support.route('/api/get_sp_files_from_csm_repository/')
 @login_required
@@ -128,7 +166,8 @@ def get_sp_files_from_csm_repository():
             row['image_size'] = '{} bytes'.format(statinfo.st_size)
             rows.append(row)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 class CreateTarForm(Form):
     new_tar_name = StringField('New File Name', [required(), Length(max=30)])

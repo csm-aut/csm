@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@ from multi_process import JobManager
 
 from work_units.download_work_unit import DownloadWorkUnit
 
+
 class DownloadManager(JobManager):
     def __init__(self, num_workers, worker_name):
         JobManager.__init__(self, num_workers=num_workers, worker_name=worker_name)
@@ -54,4 +55,3 @@ class DownloadManager(JobManager):
 if __name__ == '__main__':
     download_manager = DownloadManager('Download Manager')
     download_manager.start()
-    

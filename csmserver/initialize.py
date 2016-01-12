@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@ import traceback
 create_directory(get_autlogs_directory())
 create_directory(get_repository_directory())
 create_directory(get_temp_directory())
+
 
 def init():
     if not is_ldap_supported():

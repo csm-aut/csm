@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -62,6 +62,7 @@ from flask.ext.httpauth import HTTPBasicAuth
 # Contains information for password encryption
 encrypt_dict = None
 
+
 class JSONEncodedDict(TypeDecorator):
     impl = Text
 
@@ -80,6 +81,7 @@ mutable.MutableDict.associate_with(JSONEncodedDict)
 
 
 Base = declarative_base()
+
 
 class User(Base):
     """A user login, with credentials and authentication."""
@@ -100,30 +102,30 @@ class User(Base):
     modified_time = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     preferences = relationship("Preferences",
-        order_by="Preferences.id",
-        backref="user",
-        cascade="all, delete, delete-orphan")
+                               order_by="Preferences.id",
+                               backref="user",
+                               cascade="all, delete, delete-orphan")
     
     install_job = relationship("InstallJob",
-        order_by="InstallJob.id",
-        backref="user",
-        cascade="all, delete, delete-orphan")
+                               order_by="InstallJob.id",
+                               backref="user",
+                               cascade="all, delete, delete-orphan")
     
     download_job = relationship("DownloadJob",
-        order_by="DownloadJob.id",
-        backref="user",
-        cascade="all, delete, delete-orphan")
+                                order_by="DownloadJob.id",
+                                backref="user",
+                                cascade="all, delete, delete-orphan")
     
     download_job_history = relationship("DownloadJobHistory",
-        order_by="desc(DownloadJobHistory.created_time)",
-        backref="host",
-        cascade="all, delete, delete-orphan")
+                                        order_by="desc(DownloadJobHistory.created_time)",
+                                        backref="host",
+                                        cascade="all, delete, delete-orphan")
     
     csm_message = relationship("CSMMessage",
-        cascade="all, delete, delete-orphan")
+                               cascade="all, delete, delete-orphan")
 
     conformance_report = relationship("ConformanceReport",
-        cascade="all, delete, delete-orphan")
+                                      cascade="all, delete, delete-orphan")
     
     def _get_password(self):
         return self._password
@@ -223,6 +225,7 @@ class User(Base):
     def __repr__(self):
         return u'<{self.__class__.__name__}: {self.id}>'.format(self=self)
 
+
 class Host(Base):
     __tablename__ = 'host'
     
@@ -241,35 +244,35 @@ class Host(Base):
     region = relationship('Region', foreign_keys='Host.region_id') 
 
     context = relationship("HostContext",
-        cascade="all, delete, delete-orphan")
+                           cascade="all, delete, delete-orphan")
 
     connection_param = relationship("ConnectionParam",
-        order_by="ConnectionParam.id",
-        backref="host",
-        cascade="all, delete, delete-orphan")
+                                    order_by="ConnectionParam.id",
+                                    backref="host",
+                                    cascade="all, delete, delete-orphan")
     
     inventory_job = relationship("InventoryJob",
-        cascade="all, delete, delete-orphan")
+                                 cascade="all, delete, delete-orphan")
     
     inventory_job_history = relationship("InventoryJobHistory",
-        order_by="desc(InventoryJobHistory.created_time)",
-        backref="host",
-        cascade="all, delete, delete-orphan")
+                                         order_by="desc(InventoryJobHistory.created_time)",
+                                         backref="host",
+                                         cascade="all, delete, delete-orphan")
     
     packages = relationship("Package",
-        order_by="Package.id",
-        backref="host",
-        cascade="all, delete, delete-orphan")
+                            order_by="Package.id",
+                            backref="host",
+                            cascade="all, delete, delete-orphan")
     
     install_job = relationship("InstallJob",
-        order_by="asc(InstallJob.scheduled_time)",
-        backref="host",
-        cascade="all, delete, delete-orphan")
+                               order_by="asc(InstallJob.scheduled_time)",
+                               backref="host",
+                               cascade="all, delete, delete-orphan")
     
     install_job_history = relationship("InstallJobHistory",
-        order_by="desc(InstallJobHistory.created_time)",
-        backref="host",
-        cascade="all, delete, delete-orphan")
+                                       order_by="desc(InstallJobHistory.created_time)",
+                                       backref="host",
+                                       cascade="all, delete, delete-orphan")
 
     def get_json(self):
         result = {}
@@ -303,6 +306,7 @@ class Host(Base):
             logger.exception('Host.get_json() hits exception')  
               
         return result
+
 
 class HostContext(Base):
     __tablename__ = 'host_context'
@@ -338,7 +342,8 @@ class ConnectionParam(Base):
     def password(self, value):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
-    
+
+
 class JumpHost(Base):
     __tablename__ = 'jump_host'
     
@@ -362,6 +367,7 @@ class JumpHost(Base):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
 
+
 class InventoryJob(Base):
     __tablename__ = 'inventory_job'
     
@@ -380,7 +386,8 @@ class InventoryJob(Base):
         self.status_time = datetime.datetime.utcnow()
         if self.status == JobStatus.COMPLETED:
             self.last_successful_time = self.status_time
-    
+
+
 class InventoryJobHistory(Base):
     __tablename__ = 'inventory_job_history'
     
@@ -396,7 +403,8 @@ class InventoryJobHistory(Base):
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
-    
+
+
 class Package(Base):
     __tablename__ = 'package'
     
@@ -408,9 +416,10 @@ class Package(Base):
     host_id = Column(Integer, ForeignKey('host.id')) 
     
     modules_package_state = relationship("ModulePackageState",
-        order_by="ModulePackageState.module_name",
-        backref="package",
-        cascade="all, delete, delete-orphan")
+                                         order_by="ModulePackageState.module_name",
+                                         backref="package",
+                                         cascade="all, delete, delete-orphan")
+
 
 class ModulePackageState(Base):
     __tablename__ = 'module_package_state'
@@ -444,12 +453,12 @@ class InstallJob(Base):
     
     host_id = Column(Integer, ForeignKey('host.id'))     
     user_id = Column(Integer, ForeignKey('user.id'))
-    #host = relationship('Host', foreign_keys='InstallJob.host_id')
 
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
-    
+
+
 class InstallJobHistory(Base):
     __tablename__ = 'install_job_history'
     
@@ -473,7 +482,8 @@ class InstallJobHistory(Base):
     def set_status(self, status):
         self.status = status        
         self.status_time = datetime.datetime.utcnow()
- 
+
+
 class Region(Base):
     __tablename__ = 'region'
 
@@ -482,7 +492,8 @@ class Region(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     servers = relationship('Server', order_by="Server.hostname", secondary=lambda: RegionServer)
-          
+
+
 class Server(Base):
     __tablename__ = 'server'
 
@@ -508,7 +519,8 @@ class Server(Base):
     def password(self, value):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
-    
+
+
 class SMTPServer(Base):
     __tablename__ = 'smtp_server'
 
@@ -533,9 +545,8 @@ class SMTPServer(Base):
 
 
 RegionServer = Table('region_server', Base.metadata,
-    Column('region_id', Integer, ForeignKey("region.id"), primary_key=True),
-    Column('server_id', Integer, ForeignKey("server.id"), primary_key=True)
-)
+                     Column('region_id', Integer, ForeignKey("region.id"), primary_key=True),
+                     Column('server_id', Integer, ForeignKey("server.id"), primary_key=True))
 
 
 class Preferences(Base):
@@ -561,7 +572,8 @@ class Preferences(Base):
     @classmethod
     def get(cls, db_session, user_id):
         return db_session.query(Preferences).filter(Preferences.user_id == user_id).first()
-    
+
+
 class DownloadJob(Base):
     __tablename__ = 'download_job'
 
@@ -585,7 +597,8 @@ class DownloadJob(Base):
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
-        
+
+
 class DownloadJobHistory(Base):
     __tablename__ = 'download_job_history'
 
@@ -610,12 +623,14 @@ class DownloadJobHistory(Base):
         self.status = status        
         self.status_time = datetime.datetime.utcnow()
 
+
 class CCOCatalog(Base):
     __tablename__ = 'cco_catalog'
     
     platform = Column(String(40), primary_key=True)
     release = Column(String(40), primary_key=True)
-    
+
+
 class SMUMeta(Base):
     __tablename__ = 'smu_meta'
     # name is like asr9k_px_4.2.3
@@ -630,8 +645,9 @@ class SMUMeta(Base):
     retrieval_time = Column(DateTime)
 
     smu_info = relationship("SMUInfo",
-        backref="smu_meta",
-        cascade="all, delete, delete-orphan")
+                            backref="smu_meta",
+                            cascade="all, delete, delete-orphan")
+
 
 class SMUInfo(Base):
     __tablename__ = 'smu_info'
@@ -669,7 +685,8 @@ class SMUInfo(Base):
     @cco_filename.setter
     def cco_filename(self, value):
         self._cco_filename = value
-        
+
+
 class SystemVersion(Base): 
     __tablename__ = 'system_version'
 
@@ -680,6 +697,7 @@ class SystemVersion(Base):
     @classmethod
     def get(cls, db_session):
         return db_session.query(SystemVersion).first()
+
 
 class DeviceUDI(Base):
     __tablename__ = 'device_udi'
@@ -692,6 +710,7 @@ class DeviceUDI(Base):
     @classmethod
     def get(cls, db_session):
         return db_session.query(DeviceUDI).first()
+
 
 class SystemOption(Base):
     __tablename__ = 'system_option'
@@ -732,21 +751,21 @@ class SystemOption(Base):
     @classmethod
     def get(cls, db_session):
         return db_session.query(SystemOption).first()
-    
+
+
 class Encrypt(Base):
     __tablename__ = 'encrypt'
 
     id = Column(Integer, primary_key=True)
     key = Column(String(30), default=datetime.datetime.utcnow().strftime("%m/%d/%Y %I:%M %p"))
-    string1 = Column(String(100), 
-        default=STRING1)
-    string2 = Column(String(100), 
-        default=STRING2)
+    string1 = Column(String(100), default=STRING1)
+    string2 = Column(String(100), default=STRING2)
     
     @classmethod
     def get(cls, db_session):
         return db_session.query(Encrypt).first()
-    
+
+
 class Log(Base):
     __tablename__ = 'log'
     
@@ -756,12 +775,14 @@ class Log(Base):
     msg = Column(Text)
     created_time = Column(DateTime)
 
+
 class CSMMessage(Base):
     __tablename__ = 'csm_message'
     
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'))
     acknowledgment_date = Column(DateTime)
+
 
 class SoftwareProfile(Base):
     __tablename__ = 'software_profile'
@@ -771,7 +792,8 @@ class SoftwareProfile(Base):
     description = Column(Text)
     packages = Column(Text)
     created_by = Column(String(50))
-    
+
+
 class ConformanceReport(Base):
     __tablename__ = 'conformance_report'
 
@@ -787,9 +809,10 @@ class ConformanceReport(Base):
     user_id = Column(Integer, ForeignKey('user.id'))
 
     entries = relationship("ConformanceReportEntry",
-        order_by="ConformanceReportEntry.hostname",
-        backref="conformance_report",
-        cascade="all, delete, delete-orphan")
+                           order_by="ConformanceReportEntry.hostname",
+                           backref="conformance_report",
+                           cascade="all, delete, delete-orphan")
+
 
 class ConformanceReportEntry(Base):
     __tablename__ = 'conformance_report_entry'
@@ -804,6 +827,7 @@ class ConformanceReportEntry(Base):
     comments = Column(String(50))
 
     conformance_report_id = Column(Integer, ForeignKey('conformance_report.id'))
+
 
 class EmailJob(Base):
     __tablename__ = 'email_job'
@@ -839,7 +863,8 @@ class CreateTarJob(Base):
         self.status_time = datetime.datetime.utcnow()
 
 Base.metadata.create_all(engine)
-        
+
+
 class LogHandler(logging.Handler):
 
     def __init__(self, db_session):
@@ -870,11 +895,11 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(LogHandler(DBSession()))
 
 
-"""
-Return a session specific logger.  This is necessary especially
-if the db_session is from a different process address space.
-"""
 def get_db_session_logger(db_session):
+    """
+    Return a session specific logger.  This is necessary especially
+    if the db_session is from a different process address space.
+    """
     session_logger = logging.getLogger('session_logger')
     session_logger.setLevel(logging.DEBUG)
     session_logger.addHandler(LogHandler(db_session))
@@ -886,15 +911,18 @@ def get_download_job_key_dict():
     db_session = DBSession()
     download_jobs = db_session.query(DownloadJob).all()
     for download_job in download_jobs:
-        download_job_key = "{}{}{}{}".format(download_job.user_id,download_job.cco_filename, download_job.server_id, download_job.server_directory)
+        download_job_key = "{}{}{}{}".format(download_job.user_id,download_job.cco_filename,
+                                             download_job.server_id, download_job.server_directory)
         result[download_job_key] = download_job
     return result
+
 
 def init_system_version():
     db_session = DBSession()
     if db_session.query(SystemVersion).count() == 0:
         db_session.add(SystemVersion())
         db_session.commit()
+
 
 def create_user(db_session, username, password, privilege, fullname, email):
     user = User(
@@ -908,20 +936,23 @@ def create_user(db_session, username, password, privilege, fullname, email):
     db_session.commit()
     
     return user
-    
+
+
 def init_user():
     db_session = DBSession()
 
     # Setup a default cisco user if none exists
     if db_session.query(User).count() == 0:
         create_user(db_session, 'root', 'root', UserPrivilege.ADMIN, 'admin', 'admin')
-        
+
+
 def init_system_option():
     db_session = DBSession()
     if db_session.query(SystemOption).count() == 0:
         db_session.add(SystemOption())
         db_session.commit()
-        
+
+
 def init_encrypt(): 
     global encrypt_dict
 
@@ -930,7 +961,8 @@ def init_encrypt():
         db_session.add(Encrypt())
         db_session.commit()
     encrypt_dict = dict(Encrypt.get(db_session).__dict__)
-    
+
+
 def initialize():
     init_user()      
     init_system_option()
@@ -940,6 +972,3 @@ init_encrypt()
  
 if __name__ == '__main__':
     pass
-
-
-

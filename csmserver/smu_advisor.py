@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,11 +24,12 @@
 # =============================================================================
 from utils import comma_delimited_str_to_list
 
-"""
-Returns a list of SMUInfo which has already excluded all the supersedes and included 
-missing pre-requisites.
-"""
+
 def get_smus_exclude_supersedes_include_prerequisites(smu_loader, smu_info_list):
+    """
+    Returns a list of SMUInfo which has already excluded all the supersedes and included
+    missing pre-requisites.
+    """
     smu_info = []
     resultant_smu_dict = {}
     
@@ -52,10 +53,11 @@ def get_smus_exclude_supersedes_include_prerequisites(smu_loader, smu_info_list)
     
     return resultant_smu_dict.values()
             
-"""
-Given a SMU list, returns all the pre-requisites.
-"""
+
 def get_missing_required_prerequisite_set(smu_loader, smu_info_list):
+    """
+    Given a SMU list, returns all the pre-requisites.
+    """
     # Dictionary: String:Set
     missing_required_prerequisites_dict = get_missing_required_prerequisites(smu_loader, smu_info_list)
         
@@ -68,10 +70,11 @@ def get_missing_required_prerequisite_set(smu_loader, smu_info_list):
         
     return missing_required_prerequisite_set
 
-"""
-Given a SMUInfo array, returns a dictionary keyed by the SMU name with SMUInfo as the value.
-"""
+
 def get_dict_from_list(smu_info_list):
+    """
+    Given a SMUInfo array, returns a dictionary keyed by the SMU name with SMUInfo as the value.
+    """
     smu_info_dict = {}
     
     for smu_info in smu_info_list:
@@ -79,16 +82,17 @@ def get_dict_from_list(smu_info_list):
         
     return smu_info_dict
 
-"""
-Given a SMUInfo list, return all the missing pre-requisites in a dictionary.
-If a pre-requisite is superseded by a SMU in the smu_info_list, it is not
-considered a missing pre-requisite.  If a pre-requisite is superseded by
-another pre-requisite during the search, it is not considered a missing 
-pre-requisite.
 
-SMU name : pre-requisite 1, pre-requisite2, and etc..
-"""
 def get_missing_required_prerequisites(smu_loader, smu_info_list):
+    """
+    Given a SMUInfo list, return all the missing pre-requisites in a dictionary.
+    If a pre-requisite is superseded by a SMU in the smu_info_list, it is not
+    considered a missing pre-requisite.  If a pre-requisite is superseded by
+    another pre-requisite during the search, it is not considered a missing
+    pre-requisite.
+
+    SMU name : pre-requisite 1, pre-requisite2, and etc..
+    """
     all_required_prerequisite_set = set()
     missing_required_prerequisite_dict = {}
     smu_info_dict = get_dict_from_list(smu_info_list)
@@ -139,15 +143,16 @@ def get_missing_required_prerequisites(smu_loader, smu_info_list):
                 new_missing_required_prerequisite_set.add(missing_required_prerequisite)
         
         if len(new_missing_required_prerequisite_set) > 0:
-            new_missing_required_prerequisite_dict [smu_name] = new_missing_required_prerequisite_set           
+            new_missing_required_prerequisite_dict[smu_name] = new_missing_required_prerequisite_set
             
     return new_missing_required_prerequisite_dict  
  
-"""
-Given a SMU name, returns all its pre-requisites including its pre-requisites' pre-requisites.
-SMU name can be SMU/SP name.
-"""
+
 def get_all_prerequisites(smu_loader, prerequisite_set, smu_name):
+    """
+    Given a SMU name, returns all its pre-requisites including its pre-requisites' pre-requisites.
+    SMU name can be SMU/SP name.
+    """
     smu_info = smu_loader.get_smu_info(smu_name)
     if smu_info is not None:
         prerequisites = comma_delimited_str_to_list(smu_info.prerequisites)
@@ -158,11 +163,12 @@ def get_all_prerequisites(smu_loader, prerequisite_set, smu_name):
 
                 get_all_prerequisites(smu_loader, prerequisite_set, prerequisite)
 
-"""
-Given a SMU name, returns all the SMUs that supersede this SMU.
-SMU name can be SMU/SP name.
-"""                
+
 def get_all_superseded_bys(smu_loader, superseded_by_set, smu_name):
+    """
+    Given a SMU name, returns all the SMUs that supersede this SMU.
+    SMU name can be SMU/SP name.
+    """
     smu_info = smu_loader.get_smu_info(smu_name)
     if smu_info is not None:
         superseded_bys = comma_delimited_str_to_list(smu_info.superseded_by)    
@@ -173,11 +179,12 @@ def get_all_superseded_bys(smu_loader, superseded_by_set, smu_name):
                     
                 get_all_superseded_bys(smu_loader, superseded_by_set, superseded_by)
 
-"""
-Given a smu_name_set, check to see if the smu_name is tagged as a superseded SMU.  Each SMU
-name in the smu_name_set represents a SMUInfo which may contain the smu_name as its supersedes.
-"""                
+
 def is_superseded(smu_loader, smu_name_list, smu_name):
+    """
+    Given a smu_name_set, check to see if the smu_name is tagged as a superseded SMU.  Each SMU
+    name in the smu_name_set represents a SMUInfo which may contain the smu_name as its supersedes.
+    """
     for name in smu_name_list:
         smu_info = smu_loader.get_smu_info(name)
         if smu_info is not None:
@@ -188,10 +195,11 @@ def is_superseded(smu_loader, smu_name_list, smu_name):
             
     return False
 
-"""
-Given a smu_info_list, exclude SMUs that are superseded by other SMUs in the list.
-"""
+
 def get_excluded_supersede_list(smu_info_list):
+    """
+    Given a smu_info_list, exclude SMUs that are superseded by other SMUs in the list.
+    """
     smu_info_dict = get_dict_from_list(smu_info_list)
     resultant_list = []
     
