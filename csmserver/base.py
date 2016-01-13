@@ -61,7 +61,7 @@ class ImageContext(Context):
         self.inactive_cli = None
 
     def load_data(self, key):
-        return self.host.context[0].data[key]
+        return self.host.context[0].data.get(key)
 
     def save_data(self, key, value):
         self.host.context[0].data[key] = value
