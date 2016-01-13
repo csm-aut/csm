@@ -259,6 +259,7 @@ def install_add_remove(manager, device, cmd, has_tar=False):
         manager.log_install_errors(output)
         manager.error("Operation {} failed".format(op_id))
 
+
 def clear_cfg_inconsistency(manager, device):
     """
     perform clear configuration inconsistency both from exec and
@@ -278,3 +279,25 @@ def clear_cfg_inconsistency(manager, device):
     output = device.send(adm_cmd)
     if '...OK' not in output:
         manager.error("{} command execution failed".format(cmd))
+
+
+def save_data(device, key, data):
+    """
+    Stores (data, timestamp) tuple for key adding timestamp
+    """
+    ctx = device.get_property("ctx")
+    if ctx:
+        ctx.save_data(key, [data, time.time()])
+    else:
+        raise AttributeError("No CSM context in device")
+
+
+def load_data(device, key):
+    """
+    Loads (data, timestamp) tuple for the key
+    """
+    ctx = device.get_property("ctx")
+    if ctx:
+        return ctx.load_data(key)
+    else:
+        raise AttributeError("No CSM context in device")

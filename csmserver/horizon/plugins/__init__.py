@@ -45,6 +45,7 @@ plugin_classes = [
     SoftwareVersionPlugin,
     InstallDeactivatePlugin,
     InstallRemovePlugin,
+    ISISNeighborCountPlugin,
     ConfigBackupPlugin,
     NodeStatusPlugin,
     DiskSpacePlugin,

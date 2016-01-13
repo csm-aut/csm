@@ -47,6 +47,18 @@ class PluginError(Exception):
     pass
 
 
+# FIXME: Phases needs to be agreed with Alex
+csm2plugin_phase_map = {
+    "Pre-Upgrade": "PRE_UPGRADE",
+    "Install Add": "ADD",
+    "Remove": "REMOVE",
+    "Activate": "UPGRADE",
+    "Deactivate": "DEACTIVATE",
+    "Commit": "COMMIT",
+    "Post-Upgrade": "POST_UPGRADE"
+}
+
+
 class PluginsManager(object):
     error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
@@ -83,37 +95,17 @@ class PluginsManager(object):
         self.logger.setLevel(log_level)
 
         self.current_plugin = None
-
-    def run(self):
-        phase = None
-
-        # FIXME: Phases needs to be agreed with Alex
-        if self.csm_ctx.requested_action == "Pre-Upgrade":
-            phase = "PRE_UPGRADE"
-
-        if self.csm_ctx.requested_action == "Install Add":
-            phase = "ADD"
-
-        if self.csm_ctx.requested_action == "Remove":
-            phase = "REMOVE"
-
-        if self.csm_ctx.requested_action == "Activate":
-            phase = "UPGRADE"
-
-        if self.csm_ctx.requested_action == "Deactivate":
-            phase = "DEACTIVATE"
-
-        if self.csm_ctx.requested_action == "Commit":
-            phase = "COMMIT"
-
-        if self.csm_ctx.requested_action == "Post-Upgrade":
-            phase = "POST_UPGRADE"
-
-        if phase is None:
+        self._phase = csm2plugin_phase_map.get(self.csm_ctx.requested_action, None)
+        if self._phase is None:
             self.csm_ctx.success = False
             self.csm_ctx.post_status("Action not supported")
             self.log("Action {} not supported".format(self.csm_ctx.requested_action))
 
+    @property
+    def phase(self):
+        return self._phase
+
+    def run(self):
         device = condoor.Connection(
             self.csm_ctx.host.hostname,
             self.csm_ctx.host_urls,
@@ -138,11 +130,11 @@ class PluginsManager(object):
             return False
         self.log("Device Connected Successfully")
 
-        list_of_plugins = ", ".join(plugin.description for plugin in plugins.get_plugins_of_phase(phase))
+        list_of_plugins = ", ".join(plugin.description for plugin in plugins.get_plugins_of_phase(self.phase))
         self.log("Plugins to be launched: {}".format(list_of_plugins))
 
         try:
-            for plugin in plugins.get_plugins_of_phase(phase):
+            for plugin in plugins.get_plugins_of_phase(self.phase):
                 self.log("Launching {} Plugin".format(plugin.description))
                 self.current_plugin = plugin.description
                 plugin.__class__.start(self, device)
@@ -177,6 +169,10 @@ class PluginsManager(object):
     def log(self, message, log_message):
         self.logger.info(log_message)
         self.csm_ctx.post_status(message)
+
+    @plugin_log
+    def info(self, message, log_message):
+        self.logger.info(log_message)
 
     @plugin_log
     def error(self, message, log_message):
