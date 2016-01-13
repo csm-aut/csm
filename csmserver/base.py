@@ -58,14 +58,15 @@ class ImageContext(Context):
             
         self.committed_cli = None
         self.active_cli = None
-        self.inactive_cli = None   
+        self.inactive_cli = None
 
-    @property
-    def data(self):
-        return self.host.context[0].data
+    def get_property(self, key):
+        return self.host.context[0].data[key]
 
-    @property
-    def data_modified_time(self):
+    def store_property(self, key, value):
+        self.host.context[0].data[key] = value
+
+    def get_property_modified_time(self):
         return self.host.context[0].modified_time
 
     @property
