@@ -60,13 +60,13 @@ class ImageContext(Context):
         self.active_cli = None
         self.inactive_cli = None
 
-    def get_property(self, key):
+    def load_data(self, key):
         return self.host.context[0].data[key]
 
-    def store_property(self, key, value):
+    def save_data(self, key, value):
         self.host.context[0].data[key] = value
 
-    def get_property_modified_time(self):
+    def get_data_modified_time(self):
         return self.host.context[0].modified_time
 
     @property
