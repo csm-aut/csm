@@ -30,6 +30,7 @@
 import os
 
 from plugin import IPlugin
+from ..plugin_lib import save_data, save_to_file, file_name_from_cmd_and_phase
 
 
 class ConfigBackupPlugin(IPlugin):
@@ -46,12 +47,11 @@ class ConfigBackupPlugin(IPlugin):
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        output = device.send("show running", timeout=2200)
-        ctx = device.get_property("ctx")
-        if ctx:
-            store_dir = ctx.log_directory
-            name = "{}.log".format(ConfigBackupPlugin.NAME.lower())
-            file_name = os.path.join(store_dir, name)
-            IPlugin.save_to_file(output, file_name)
-            manager.log("Config stored to: {}".format(file_name))
+        cmd = "show running-config"
+        output = device.send(cmd, timeout=2200)
+        file_name = file_name_from_cmd_and_phase(cmd, manager.phase)
+        full_name = save_to_file(device, file_name, output)
+        if full_name:
+            save_data(device, cmd, full_name)
+            manager.log("Device config saved to {}".format(file_name))
         return True

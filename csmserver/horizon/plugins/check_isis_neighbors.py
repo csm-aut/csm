@@ -29,7 +29,7 @@
 
 import re
 from plugin import IPlugin
-from ..plugin_lib import save_data, load_data
+from ..plugin_lib import save_data, load_data, save_to_file, load_from_file, file_name_from_cmd_and_phase
 from time import time
 from datetime import datetime
 
@@ -85,21 +85,35 @@ class ISISNeighborCountPlugin(IPlugin):
                 for instance, state_dict in isis_neighbor_info.items():
                     for state, neighbors in state_dict.items():
                         manager.info("Instance {} {:<6} L1={} L2={} L1L2={}".format(instance, state, *neighbors))
+
+                file_name = file_name_from_cmd_and_phase(cmd, manager.phase)
+                full_path = save_to_file(device, file_name, output)
+                if full_path:
+                    manager.log("The '{}' command output saved to {}".format(cmd, file_name))
+
                 if manager.phase == "PRE_UPGRADE":
                     save_data(device, "isis_neighbors", isis_neighbor_info)
+                    if full_path:
+                        # store the full_path to command output under the cmd key
+                        save_data(device, cmd, full_path)
+
             else:
                 manager.info("No ISIS protocol instance active")
 
             if manager.phase == "POST_UPGRADE":
-                    ISISNeighborCountPlugin.compare_data(manager, device, "isis_neighbors", isis_neighbor_info)
+                    pre_upgrade_output_filename, timestamp = load_data(device, cmd)
+                    if pre_upgrade_output_filename:
+                        data = load_from_file(device, pre_upgrade_output_filename)
+                        file_name = file_name_from_cmd_and_phase(cmd, "PRE_UPGRADE")
+                        save_to_file(device, file_name, data)
 
+                    ISISNeighborCountPlugin.compare_data(manager, device, "isis_neighbors", isis_neighbor_info)
 
     @staticmethod
     def compare_data(manager, device, storage_key, current_data):
         levels = ["L1", "L2", "L1L2"]
-        try:
-            previous_data, timestamp = load_data(device, storage_key)
-        except ValueError:
+        previous_data, timestamp = load_data(device, storage_key)
+        if previous_data is None:
             manager.warning("No data stored from Pre-Upgrade phase. Can't compare.")
             return
 

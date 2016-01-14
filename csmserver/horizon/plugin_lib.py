@@ -29,6 +29,7 @@
 import re
 import itertools
 import time
+import os
 
 import package_lib
 import condoor
@@ -298,6 +299,46 @@ def load_data(device, key):
     """
     ctx = device.get_property("ctx")
     if ctx:
-        return ctx.load_data(key)
+        result = ctx.load_data(key)
+        if isinstance(result, list):
+            return tuple(result)
+        else:
+            return result, None
     else:
         raise AttributeError("No CSM context in device")
+
+
+def save_to_file(device, file_name, data):
+    """
+    Save data to filename in the log_directory provided by CSM
+    """
+    ctx = device.get_property("ctx")
+    if ctx:
+        store_dir = ctx.log_directory
+        full_path = os.path.join(store_dir, file_name)
+        with open(full_path, "w") as f:
+            f.write(data)
+            return full_path
+    return None
+
+
+def load_from_file(device, file_name):
+    """
+    Load data from file where full path is provided as file_name
+    """
+    ctx = device.get_property("ctx")
+    if ctx:
+        store_dir = ctx.log_directory
+        # full_path = os.path.join(store_dir, file_name)
+        full_path = file_name
+        with open(full_path, "r") as f:
+            data = f.read()
+            return data
+    return None
+
+
+def file_name_from_cmd_and_phase(cmd, phase):
+    filename = re.sub(r"\s+", '-', cmd)
+    filename += "." + phase
+    filename += ".log"
+    return filename

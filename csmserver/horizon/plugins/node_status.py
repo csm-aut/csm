@@ -101,7 +101,7 @@ class NodeStatusPlugin(IPlugin):
                     break
         else:
             device.store_property('inventory', inventory)
-            manager.log("All notes in valid state for upgrade")
+            manager.log("All nodes in valid state for upgrade")
             return True
 
         manager.error("Not all nodes in correct state. Upgrade can not proceed")

@@ -30,6 +30,7 @@ import os
 import re
 
 from plugin import IPlugin
+from ..plugin_lib import save_data, save_to_file, file_name_from_cmd_and_phase
 
 
 class ErrorCorePlugin(IPlugin):
@@ -54,13 +55,13 @@ class ErrorCorePlugin(IPlugin):
         # FIXME: Consider optimization
         # The log may be large
         # Maybe better run sh logging | i "Error|error|ERROR|Traceback|Core for pid" directly on the device
-        output = device.send("show logging last 500", timeout=300)
-        ctx = device.get_property("ctx")
-        if ctx:
-            store_dir = ctx.log_directory
-            file_name = os.path.join(store_dir, "post_upgrade_log.log")
-            IPlugin.save_to_file(output, file_name)
-            manager.log("Device log stored to: {}".format(file_name))
+        cmd = "show logging last 500"
+        output = device.send(cmd, timeout=300)
+
+        file_name = file_name_from_cmd_and_phase(cmd, manager.phase)
+        full_name = save_to_file(device, file_name, output)
+        if full_name:
+            manager.log("Device log saved to {}".format(file_name))
 
         for match in re.finditer(ErrorCorePlugin._string_to_check_re, output):
             manager.warning(match.group())
