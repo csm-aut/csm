@@ -27,6 +27,11 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+
+# The plugin system is based on Yapsy package. Refer to http://yapsy.sourceforge.net/index.html
+# Copyright (c) 2007-2015, Thibauld Nion
+
+
 import logging
 import os
 import sys
@@ -51,18 +56,6 @@ def plugin_log(func):
 
 class PluginError(Exception):
     pass
-
-
-# FIXME: Phases needs to be agreed with Alex
-csm2plugin_phase_map = {
-    "Pre-Upgrade": "PRE_UPGRADE",
-    "Add": "ADD",
-    "Remove": "REMOVE",
-    "Activate": "UPGRADE",
-    "Deactivate": "DEACTIVATE",
-    "Commit": "COMMIT",
-    "Post-Upgrade": "POST_UPGRADE"
-}
 
 
 RE_NON_ALPHANUM = re.compile("\W", re.U)
