@@ -1,7 +1,7 @@
 #==============================================================
 # node_status.py  - Plugin for checking Node states.
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,26 +28,18 @@
 
 import re
 
-from plugin import IPlugin
+from horizon.plugin import Plugin
 
 
-class NodeStatusPlugin(IPlugin):
-
+class NodeStatusPlugin(Plugin):
     """
     ASR9k Pre-upgrade check
     This plugin checks states of all nodes
     """
-    NAME = "NODE_STATUS"
-    DESCRIPTION = "Node Status Check"
-    TYPE = "PRE_UPGRADE_AND_POST_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K", "CRS"]
-
     @staticmethod
     def _parse_show_platform(manager, device, output):
         inventory = {}
         lines = output.split('\n')
-        #platform = device.get_property('platform')
         family = device.family
 
         # FIXME: This will not be needed when platform will be used by plugins manager
@@ -92,7 +84,7 @@ class NodeStatusPlugin(IPlugin):
             'DISABLED',
             'UNPOWERED',
             'ADMIN DOWN',
-            'NOT ALLOW ONLIN', # This is not spelling error
+            'NOT ALLOW ONLIN',  # This is not spelling error
         ]
         for key, value in inventory.items():
             if 'CPU' in key:
@@ -100,7 +92,7 @@ class NodeStatusPlugin(IPlugin):
                     manager.log("{}={}: {}".format(key, value, "Not in valid state for upgrade"))
                     break
         else:
-            device.store_property('inventory', inventory)
+            manager.save_data("inventory", inventory)
             manager.log("All nodes in valid state for upgrade")
             return True
 

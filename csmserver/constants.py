@@ -100,7 +100,7 @@ class ServerType:
 class InstallAction:
     UNKNOWN = 'Unknown'
     PRE_UPGRADE = 'Pre-Upgrade'
-    INSTALL_ADD = 'Install Add'
+    INSTALL_ADD = 'Add'
     INSTALL_ACTIVATE = 'Activate'
     POST_UPGRADE = 'Post-Upgrade'
     INSTALL_COMMIT = 'Commit'

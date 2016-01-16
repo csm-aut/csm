@@ -1,9 +1,10 @@
 # =============================================================================
-# cfg_backup.py  - Plugin to capture(show running)
-# configurations present on the system.
+# __init__.py
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
+#
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,31 +28,4 @@
 # =============================================================================
 
 
-import os
-
-from plugin import IPlugin
-from ..plugin_lib import save_data, save_to_file, file_name_from_cmd_and_phase
-
-
-class ConfigBackupPlugin(IPlugin):
-
-    """
-    Pre-upgrade check
-    This plugin checks and record active packages
-    """
-    NAME = "CONFIG_BACKUP"
-    DESCRIPTION = "Configuration Backup"
-    TYPE = "PRE_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
-    @staticmethod
-    def start(manager, device, *args, **kwargs):
-        cmd = "show running-config"
-        output = device.send(cmd, timeout=2200)
-        file_name = file_name_from_cmd_and_phase(cmd, manager.phase)
-        full_name = save_to_file(device, file_name, output)
-        if full_name:
-            save_data(device, cmd, full_name)
-            manager.log("Device config saved to {}".format(file_name))
-        return True
+from cfg_backup import ConfigBackupPlugin

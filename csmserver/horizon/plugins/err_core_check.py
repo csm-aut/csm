@@ -1,6 +1,6 @@
 # =============================================================================
 #
-# Copyright (c)  2015, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Author: Prasad S R
@@ -29,21 +29,14 @@
 import os
 import re
 
-from plugin import IPlugin
-from ..plugin_lib import save_data, save_to_file, file_name_from_cmd_and_phase
+from horizon.plugin import Plugin
 
 
-class ErrorCorePlugin(IPlugin):
+class ErrorCorePlugin(Plugin):
     """
     ASR9k Post-upgrade check
     This pluging checks for errors, traceback or any core dump
     """
-    NAME = "ERROR_TRACEBACK_CRASH_CHECK"
-    DESCRIPTION = "Device Log Check"
-    TYPE = "POST_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     # matching any errors, core and tracebacks
     _string_to_check_re = re.compile(
         "^(.*(?:[Ee][Rr][Rr][Oo][Rr]|Core for pid|Traceback).*)$", re.MULTILINE
@@ -58,8 +51,8 @@ class ErrorCorePlugin(IPlugin):
         cmd = "show logging last 500"
         output = device.send(cmd, timeout=300)
 
-        file_name = file_name_from_cmd_and_phase(cmd, manager.phase)
-        full_name = save_to_file(device, file_name, output)
+        file_name = manager.file_name_from_cmd(cmd)
+        full_name = manager.save_to_file(file_name, output)
         if full_name:
             manager.log("Device log saved to {}".format(file_name))
 

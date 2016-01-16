@@ -1,7 +1,7 @@
 # =============================================================================
 # redundancy_check.py -- plugin to parse and check show redundancy
 #
-# Copyright (c)  2015, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,10 @@
 # =============================================================================
 
 
-from plugin import IPlugin
+from horizon.plugin import Plugin
 
 
-class NodeRedundancyPlugin(IPlugin):
+class NodeRedundancyPlugin(Plugin):
 
     """
     ASR9k Pre-upgrade check
@@ -55,7 +55,8 @@ class NodeRedundancyPlugin(IPlugin):
         for ln, line in enumerate(lines[:6]):
             if "is in STANDBY role" in line:
                 if "is ready" in lines[ln + 1]:
-                    manager.log("Redundancy level OK")
-                    return True
+                    break
                 else:
                     manager.error("Standby is not ready. Upgrade can not proceed.")
+
+        manager.log("Redundancy level OK")

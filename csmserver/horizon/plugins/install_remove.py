@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Author: Suryakant Kewat
@@ -27,33 +27,25 @@
 
 import re
 
-from plugin import IPlugin
-from ..plugin_lib import get_package, install_add_remove
+from horizon.plugin import Plugin
+from horizon.plugin_lib import get_package, install_add_remove
 import horizon.package_lib as package_lib
 
 
-class InstallRemovePlugin(IPlugin):
-
+class InstallRemovePlugin(Plugin):
     """
     A plugin for install remove operation
     """
-    NAME = "INSTALL_REMOVE"
-    DESCRIPTION = "Install Remove Packages"
-    TYPE = "REMOVE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def start(manager, device, *args, **kwargs):
         """
         Performs install remove operation
         """
-        ctx = device.get_property("ctx")
-
         try:
-            packages = ctx.software_packages
+            packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No package list provided")
+            return
 
         deact_pkgs = package_lib.NewPackage(packages)
         installed_inact = device.send("admin show install inactive summary")
@@ -62,8 +54,8 @@ class InstallRemovePlugin(IPlugin):
         packages_to_remove = package_lib.package_intersection(deact_pkgs.pkg_list, inactive_pkgs.pkg_list)
         if not packages_to_remove:
             manager.warning("Packages already removed. Nothing to be removed")
-            get_package(device)
-            return True
+            get_package(device, manager)
+            return
 
         to_remove = " ".join(packages_to_remove)
 

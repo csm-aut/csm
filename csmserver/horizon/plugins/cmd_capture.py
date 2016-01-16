@@ -1,10 +1,10 @@
 # =============================================================================
-# plugin.py - Generic Plugin Class
+# cmd_capture
 #
-# Copyright (c) 2015, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
-# Author: Klaudiusz Staniek
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -28,35 +28,24 @@
 # =============================================================================
 
 
-class PluginError(Exception):
-    pass
+from horizon.plugin import Plugin
 
 
-class IPlugin(object):
-
+class CmdCapturePlugin(Plugin):
     """
-    This is a main Plugin template class providing interface to other plugins
+    Pre-upgrade check
+    This plugin checks and record active packages
     """
-    NAME = "GENERIC"
-    DESCRIPTION = "Generic Plugin Template"
-    TYPE = None
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
-    def save_to_file(data, outfile):
-        with open(outfile, "w") as f:
-            f.write(data)
-        return
-
-    @staticmethod
-    def start(manger, device, *args, **kwargs):
-        """
-        Start the plugin
-        Must be overridden by the plugin class child implementation
-        """
-        raise NotImplementedError
-
-    @property
-    def description(self):
-        return (self.DESCRIPTION[:35] + '..') if len(self.DESCRIPTION) > 37 else self.DESCRIPTION
+    def start(manager, device, *args, **kwargs):
+        command_list, timestamp = manager.load_data("custom-commands")
+        if command_list:
+            for cmd in command_list:
+                output = device.send(cmd, timeout=2200)
+                file_name = manager.file_name_from_cmd(cmd)
+                full_name = manager.save_to_file(file_name, output)
+                if full_name:
+                    manager.save_data(cmd, full_name)
+                manager.log("Output of '{}' command saved to {}".format(cmd, file_name))
+        else:
+            manager.log("No custom commands provided")

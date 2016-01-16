@@ -1,7 +1,7 @@
 # =============================================================================
 # check_isis_neighbours - Plugin for checking number of ISIS neighbours
 #
-# Copyright (c)  2015, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # # Author: Klaudiusz Staniek
@@ -28,14 +28,12 @@
 # =============================================================================
 
 import re
-from plugin import IPlugin
-from ..plugin_lib import save_data, load_data, save_to_file, load_from_file, file_name_from_cmd_and_phase
+from horizon.plugin import Plugin
 from time import time
 from datetime import datetime
 
 
-class ISISNeighborCountPlugin(IPlugin):
-
+class ISISNeighborCountPlugin(Plugin):
     """
     ASR9k Pre-upgrade check
     This plugin check the number of ISIS Neighbors and store this information in format
@@ -48,12 +46,6 @@ class ISISNeighborCountPlugin(IPlugin):
     }
 
     """
-    NAME = "ISIS_NEIGHBORS"
-    DESCRIPTION = "ISIS Neighbors Check"
-    TYPE = "PRE_UPGRADE_AND_POST_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def start(manager, device, *args, **kwargs):
         cmd = "show isis neighbor summary"
@@ -86,33 +78,33 @@ class ISISNeighborCountPlugin(IPlugin):
                     for state, neighbors in state_dict.items():
                         manager.info("Instance {} {:<6} L1={} L2={} L1L2={}".format(instance, state, *neighbors))
 
-                file_name = file_name_from_cmd_and_phase(cmd, manager.phase)
-                full_path = save_to_file(device, file_name, output)
+                file_name = manager.file_name_from_cmd(cmd)
+                full_path = manager.save_to_file(file_name, output)
                 if full_path:
                     manager.log("The '{}' command output saved to {}".format(cmd, file_name))
 
-                if manager.phase == "PRE_UPGRADE":
-                    save_data(device, "isis_neighbors", isis_neighbor_info)
+                if manager.phase == "Pre-Upgrade":
+                    manager.save_data("isis_neighbors", isis_neighbor_info)
                     if full_path:
                         # store the full_path to command output under the cmd key
-                        save_data(device, cmd, full_path)
+                        manager.save_data(cmd, full_path)
 
             else:
                 manager.info("No ISIS protocol instance active")
 
-            if manager.phase == "POST_UPGRADE":
-                    pre_upgrade_output_filename, timestamp = load_data(device, cmd)
+            if manager.phase == "Post-Upgrade":
+                    pre_upgrade_output_filename, timestamp = manager.load_data(cmd)
                     if pre_upgrade_output_filename:
-                        data = load_from_file(device, pre_upgrade_output_filename)
-                        file_name = file_name_from_cmd_and_phase(cmd, "PRE_UPGRADE")
-                        save_to_file(device, file_name, data)
+                        data = manager.load_from_file(pre_upgrade_output_filename)
+                        file_name = manager.file_name_from_cmd(cmd, phase="Pre-Upgrade")
+                        manager.save_to_file(file_name, data)
 
-                    ISISNeighborCountPlugin.compare_data(manager, device, "isis_neighbors", isis_neighbor_info)
+                    ISISNeighborCountPlugin.compare_data(manager, "isis_neighbors", isis_neighbor_info)
 
     @staticmethod
-    def compare_data(manager, device, storage_key, current_data):
+    def compare_data(manager, storage_key, current_data):
         levels = ["L1", "L2", "L1L2"]
-        previous_data, timestamp = load_data(device, storage_key)
+        previous_data, timestamp = manager.load_data(storage_key)
         if previous_data is None:
             manager.warning("No data stored from Pre-Upgrade phase. Can't compare.")
             return
@@ -149,4 +141,3 @@ class ISISNeighborCountPlugin(IPlugin):
         else:
             manager.warning("No data stored from Pre-Upgrade phase")
             return
-

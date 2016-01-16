@@ -1,7 +1,7 @@
 # =============================================================================
 # install_add.py - plugin for adding packages
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Author: Suryakant Kewat
@@ -28,13 +28,11 @@
 # =============================================================================
 
 
-import re
-
-from plugin import IPlugin
-from ..plugin_lib import install_add_remove
+from horizon.plugin import Plugin
+from horizon.plugin_lib import install_add_remove
 
 
-class InstallAddPlugin(IPlugin):
+class InstallAddPlugin(Plugin):
     """
     A plugin for add operation
     it will create xml equivalent for
@@ -42,22 +40,14 @@ class InstallAddPlugin(IPlugin):
     Arguments:
     1.one argument of type dictionary
     """
-    NAME = "INSTALL_ADD"
-    DESCRIPTION = "Install Add Packages"
-    TYPE = "ADD"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def start(manager, device, *args, **kwargs):
         """
         It performs add operation of the pies listed in given file
         """
-        ctx = device.get_property("ctx")
-
         server_repository_url = None
         try:
-            server_repository_url = ctx.server_repository_url
+            server_repository_url = manager.csm.server_repository_url
         except AttributeError:
             pass
 
@@ -65,7 +55,7 @@ class InstallAddPlugin(IPlugin):
             manager.error("No repository not provided")
 
         try:
-            packages = ctx.software_packages
+            packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No package list provided")
 
@@ -95,4 +85,3 @@ class InstallAddPlugin(IPlugin):
         manager.log("Add Package(s) Pending")
         install_add_remove(manager, device, cmd, has_tar=has_tar)
         manager.log("Package(s) Added Successfully")
-

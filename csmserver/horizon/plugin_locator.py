@@ -1,8 +1,10 @@
 # =============================================================================
-# version_check.py - Plugin for checking version of running
+# plugin_locator.py
 #
 # Copyright (c)  2016, Cisco Systems
 # All rights reserved.
+#
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,40 +27,20 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import re
 
-from horizon.plugin import Plugin
-
-
-class SoftwareVersionPlugin(Plugin):
-    """
-    ASR9k Pre-upgrade check
-    This plugin checks if version of all inputs packages are same.
-    If input package contains SMUs only , ensure that box is running same ver.
-    """
-    @staticmethod
-    def start(manager, device, *args, **kwargs):
+class PluginLocator(object):
+    def locate_plugins(self):
         """
+        Walk through the plugins' places and look for plugins
+
+        Return the discovered plugins as a list of
+        ``(candidate_infofile_path, candidate_file_path, plugin_info_instance)``
+        and their number.
         """
+        raise NotImplementedError("locate_plugins method must be implemented in {}".format(self))
 
-        output = device.send("show version brief")
-
-        match = re.search('Version (\d+\.\d+\.\d+)', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search(
-            'Version (\d+\.\d+\.\d+\.\d+[a-zA-Z])', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search('cisco (\w+)', output)
-        if match:
-            platform = match.group(1).lower()
-            device.store_property('platform', platform)
-            manager.log("Platform detected: {}".format(platform))
-            return True
-
-        manager.error("Can not determine software version")
+    def gather_core_plugin_info(self, directory, filename):
+        """
+        Return a ``PluginInfo`` as well as the ``ConfigParser`` used to build it.
+        """
+        raise NotImplementedError("gather_core_plugin_info must be implemented in {}".format(self))

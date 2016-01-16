@@ -1,7 +1,7 @@
 # =============================================================================
 # cfg_failed_startup_check
 #
-# Copyright (c)  2015, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # # Author: Klaudiusz Staniek
@@ -28,21 +28,14 @@
 # =============================================================================
 
 
-from plugin import IPlugin
+from horizon.plugin import Plugin
 
 
-class CfgFiledStartupCheckPlugin(IPlugin):
-
+class CfgFiledStartupCheckPlugin(Plugin):
     """
     ASR9k Pre-upgrade check
     This plugin checks Standby state
     """
-    NAME = "CFG_FAILED_STARTUP"
-    DESCRIPTION = "Configuration Failed Startup Check"
-    TYPE = "POST_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def start(manager, device, *args, **kwargs):
         """

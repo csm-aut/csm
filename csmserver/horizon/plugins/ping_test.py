@@ -1,7 +1,7 @@
 #==============================================================================
 # ping_test.py - Plugin for checking reachability to tftp.
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,30 +28,22 @@
 
 from urlparse import urlparse
 
-from plugin import IPlugin
+from horizon.plugin import Plugin
 
 
-class PingTestPlugin(IPlugin):
-
+class PingTestPlugin(Plugin):
     """
     A plugin to check reachability of tftp
     or repository IP address given
 
     """
-    NAME = "PING_TEST"
-    DESCRIPTION = "Repository Reachability Check"
-    TYPE = "PRE_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        ctx = device.get_property("ctx")
-
         try:
-            server_repository_url = ctx.server_repository_url
+            server_repository_url = manager.csm.server_repository_url
         except AttributeError:
             manager.error("No repository path provided")
+            return False
 
         if server_repository_url is None:
             manager.log("Skipping, repository not provided")

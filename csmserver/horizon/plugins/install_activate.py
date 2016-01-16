@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Author: Suryakant Kewat
@@ -25,31 +25,22 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import re
-
-from plugin import IPlugin
-from ..plugin_lib import clear_cfg_inconsistency, install_activate_deactivate
+from horizon.plugin import Plugin
+from horizon.plugin_lib import clear_cfg_inconsistency, install_activate_deactivate
 import horizon.package_lib as package_lib
 
-class InstallActivatePlugin(IPlugin):
 
+class InstallActivatePlugin(Plugin):
     """
     A plugin for install activate operation
     """
-    NAME = "INSTALL_ACTIVATE"
-    DESCRIPTION = "Activate Packages"
-    TYPE = "UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def _get_tobe_activated_pkg_list(manager, device):
         """
            Get list of package which can be activated.
         """
-        ctx = device.get_property("ctx")
         try:
-            packages = ctx.software_packages
+            packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No packages selected")
 

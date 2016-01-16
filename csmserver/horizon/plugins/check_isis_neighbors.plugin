@@ -1,0 +1,13 @@
+[Core]
+Name = ISIS Neighbor Check
+Module = check_isis_neighbors
+
+[CSM]
+Phases = Pre-Upgrade, Post-Upgrade
+Platforms = ASR9K, NCS6K
+
+[Documentation]
+Author = Klaudiusz Staniek
+Version = 1.0
+Website = https://github.com/csm-aut/csm
+Description = This plugin checks the number of ISIS neighbors before and after up upgrade.
