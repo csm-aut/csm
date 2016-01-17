@@ -366,6 +366,16 @@ class PluginManager(object):
         self.filter_plugins()
         return len(self.get_plugin_candidates())
 
+
+    def get_plugins_by_name(self, name, category="Default"):
+        items = []
+        if category in self.category_mapping:
+            for item in self.category_mapping[category]:
+                if item.name == name:
+                    items.append(item)
+        return items
+
+
     # Plugin filter
     def _filter(self, plugin_info):
         return True
@@ -423,4 +433,5 @@ class PluginManager(object):
         filename += "." + (self.phase if phase is None else phase)
         filename += ".log"
         return filename
+
 

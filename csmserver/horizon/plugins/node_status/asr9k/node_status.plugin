@@ -4,7 +4,7 @@ Module = node_status
 
 [CSM]
 Phases = Pre-Upgrade, Post-Upgrade
-Platforms = ASR9K, CRS
+Platforms = ASR9K
 
 [Documentation]
 Author = Klaudiusz Staniek

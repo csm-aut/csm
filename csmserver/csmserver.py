@@ -3440,6 +3440,20 @@ def plugins():
     info = [plugin.to_dict() for plugin in plugins]
     return jsonify(**{"data": info})
 
+@app.route('/api/plugins/<name>')
+@login_required
+def plugin_by_name(name):
+    pm = PluginManager()
+    pm.locate_plugins()
+    pm.load_plugins()
+    plugins = pm.get_plugins_by_name(name)
+    if not isinstance(plugins, list):
+        plugin = [plugins.to_dict()]
+    else:
+        plugin = [plugin.to_dict() for plugin in plugins]
+    return jsonify(**{"data": plugin})
+
+
 if __name__ == '__main__':  
     initialize.init()  
     app.run(host='0.0.0.0', use_reloader=False, threaded=True, debug=False)

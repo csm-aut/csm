@@ -115,7 +115,6 @@ class PluginInfo(object):
             self.details.add_section("Documentation")
         self.details.set("Documentation", "Author", author)
 
-
     @property
     def description(self):
         return self.details.get("Documentation", "Description")
@@ -125,7 +124,6 @@ class PluginInfo(object):
         if not self.details.has_section("Documentation"):
             self.details.add_section("Documentation")
         self.details.set("Documentation", "Description", description)
-
 
     def to_dict(self):
         info = {
@@ -137,3 +135,4 @@ class PluginInfo(object):
             "author": self.author,
             "description": self.description}
         return info
+
