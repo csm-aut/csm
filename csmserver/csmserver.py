@@ -157,6 +157,8 @@ from views.conformance import conformance
 from views.tar_support import tar_support
 from views.host_import import host_import
 
+from horizon.plugin_manager import PluginManager
+
 import os
 import io
 import logging
@@ -3428,7 +3430,16 @@ def download_system_logs():
     log_file.close()  
         
     return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
-        
+
+@app.route('/api/plugins')
+@login_required
+def plugins():
+    pm = PluginManager()
+    pm.locate_plugins()
+    plugins = pm.load_plugins()
+    info = [plugin.to_dict() for plugin in plugins]
+    return jsonify(**{"data": info})
+
 if __name__ == '__main__':  
     initialize.init()  
     app.run(host='0.0.0.0', use_reloader=False, threaded=True, debug=False)
