@@ -42,11 +42,6 @@ class NodeStatusPlugin(Plugin):
         lines = output.split('\n')
         family = device.family
 
-        # FIXME: This will not be needed when platform will be used by plugins manager
-        if family not in NodeStatusPlugin.FAMILY:
-            manager.warning("Router family {} not supported. Skipping.".format(family))
-            return inventory
-
         for line in lines:
             line = line.strip()
             if len(line) > 0 and line[0].isdigit():

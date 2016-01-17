@@ -95,7 +95,7 @@ class PluginInfo(object):
 
     @property
     def version(self):
-        return StrictVersion(self.details.get("Documentation", "Version"))
+        return str(StrictVersion(self.details.get("Documentation", "Version")))
 
     @version.setter
     def version(self, version_string):
@@ -126,3 +126,14 @@ class PluginInfo(object):
             self.details.add_section("Documentation")
         self.details.set("Documentation", "Description", description)
 
+
+    def to_dict(self):
+        info = {
+            "name": self.name,
+            "path": self.path,
+            "platforms": self.platforms,
+            "phases": self.phases,
+            "version": self.version,
+            "author": self.author,
+            "description": self.description}
+        return info

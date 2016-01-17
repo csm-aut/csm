@@ -1,5 +1,5 @@
 # =============================================================================
-# manager.py
+# plugin_manager.py
 #
 # Copyright (c)  2015, Cisco Systems
 # All rights reserved.
@@ -44,6 +44,7 @@ from plugin_locator import PluginLocator
 from plugin_file_locator import PluginFileLocator
 
 from plugin import Plugin
+from csm_context import CSMContext
 
 
 # decorator adding the current plugin name to the log message if plugin is executed
@@ -72,26 +73,29 @@ def normalize_plugin_name_for_module_name(plugin_name):
     return ret
 
 
-class PluginsManager(object):
+class PluginManager(object):
     error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
-    def __init__(self, csm, categories_filter=None, plugin_locator=None, plugin_dirs=None):
-        self._csm = csm
-        self.logger = logging.getLogger("{}.plugin_manager".format(self._csm.host.hostname))
+    csm = CSMContext()
 
-        try:
-            log_level = self._csm.log_level
-        except AttributeError:
-            log_level = logging.DEBUG
+    def __init__(self, categories_filter=None, plugin_locator=None, plugin_dirs=None):
 
+        self._set_logging()
+        self.current_plugin = None
+
+        if categories_filter is None:
+            categories_filter = {"Default": Plugin}
+        self.set_categories_filter(categories_filter)
+
+        plugin_locator = plugin_locator if plugin_locator else PluginFileLocator()
+        self.set_plugin_locator(plugin_locator)
+
+        self._rejected_plugins = []
+
+    def _set_logging(self, hostname="host", log_dir=None, log_level=logging.NOTSET):
+        self.logger = logging.getLogger("{}.plugin_manager".format(hostname))
         formatter = logging.Formatter('%(asctime)-15s %(levelname)8s: %(message)s')
-        try:
-            log_dir = self._csm.log_directory
-        except AttributeError:
-            log_dir = None
-
         if log_dir:
-            # Create the log directory.
             if not os.path.exists(log_dir):
                 try:
                     os.makedirs(log_dir)
@@ -107,27 +111,17 @@ class PluginsManager(object):
         self.logger.addHandler(handler)
         self.logger.setLevel(log_level)
 
-        self.current_plugin = None
-
-        if categories_filter is None:
-            categories_filter = {"Default": Plugin}
-        self.set_categories_filter(categories_filter)
-
-        plugin_locator = plugin_locator if plugin_locator else PluginFileLocator()
-        self.set_plugin_locator(plugin_locator)
-
-        self._rejected_plugins = []
-
 
     @property
     def phase(self):
-        return self._csm.requested_action
+        if self.csm is None:
+            raise RuntimeError("Plugin manager must run to get the the current phase")
+        return self.csm.requested_action
 
-    @property
-    def csm(self):
-        return self._csm
+    def run(self, csm):
+        self.csm = csm
+        self._set_logging(self.csm.host.hostname, csm.log_directory, csm.log_level)
 
-    def run(self):
         device = condoor.Connection(
             self.csm.host.hostname,
             self.csm.host_urls,
@@ -211,7 +205,7 @@ class PluginsManager(object):
         self.logger.warning(log_message)
 
     def log_install_errors(self, output):
-        errors = re.findall(PluginsManager.error_pattern, output)
+        errors = re.findall(PluginManager.error_pattern, output)
         for line in errors:
             self.warning(line)
 
