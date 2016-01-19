@@ -54,7 +54,7 @@ class ISISNeighborCountPlugin(Plugin):
         if output:
             isis_instance = None
             for line in output.split('\n'):
-                result = re.search('IS-IS (\w+) neighbor summary:', line)
+                result = re.search('IS-IS (.*) neighbor summary:', line)
                 if result:
                     isis_instance = result.group(1)
                     isis_neighbor_info[isis_instance] = {}
