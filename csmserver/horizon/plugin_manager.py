@@ -430,7 +430,7 @@ class PluginManager(object):
 
     def file_name_from_cmd(self, cmd, phase=None):
         filename = re.sub(r"\s+", '-', cmd)
-        filename += "." + (self.phase if phase is None else phase)
+        filename += "." + (str(self.phase).upper() if phase is None else str(phase).upper())
         filename += ".log"
         return filename
 

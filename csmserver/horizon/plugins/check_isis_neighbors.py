@@ -93,11 +93,11 @@ class ISISNeighborCountPlugin(Plugin):
                 manager.info("No ISIS protocol instance active")
 
             if manager.phase == "Post-Upgrade":
-                    pre_upgrade_output_filename, timestamp = manager.load_data(cmd)
-                    if pre_upgrade_output_filename:
-                        data = manager.load_from_file(pre_upgrade_output_filename)
-                        file_name = manager.file_name_from_cmd(cmd, phase="Pre-Upgrade")
-                        manager.save_to_file(file_name, data)
+                    #pre_upgrade_output_filename, timestamp = manager.load_data(cmd)
+                    #if pre_upgrade_output_filename:
+                    #    data = manager.load_from_file(pre_upgrade_output_filename)
+                    #    file_name = manager.file_name_from_cmd(cmd, phase="Pre-Upgrade")
+                    #    manager.save_to_file(file_name, data)
 
                     ISISNeighborCountPlugin.compare_data(manager, "isis_neighbors", isis_neighbor_info)
 
