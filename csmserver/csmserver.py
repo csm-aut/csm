@@ -3515,8 +3515,6 @@ def plugin_by_name(name):
         plugin = [plugin.to_dict() for plugin in plugins]
     return jsonify(**{"data": plugin})
 
-
-
 if __name__ == '__main__':  
     initialize.init()  
     app.run(host='0.0.0.0', use_reloader=False, threaded=True, debug=False)
