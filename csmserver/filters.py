@@ -31,11 +31,16 @@ def init(app):
     app.jinja_env.filters['datetime_string'] = get_datetime_string
     app.jinja_env.filters['beautify_platform'] = beautify_platform
     app.jinja_env.filters['none2blank'] = convert_none_to_blank
+    app.jinja_env.filters['match_string'] = match_string
     
     # The nl2br filter uses the Jinja environment's context to determine
     # whether to autoescape
     app.jinja_env.filters['nl2br'] = evalcontextfilter(nl2br)
     app.jinja_env.filters['comma2br'] = evalcontextfilter(comma2br)
+
+
+def match_string(source_string, search_value):
+    return True if search_value in source_string else False
 
 
 def convert_none_to_blank(value):

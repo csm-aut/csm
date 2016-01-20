@@ -136,6 +136,7 @@ from utils import comma_delimited_str_to_list
 from utils import get_base_url 
 from utils import is_ldap_supported
 from utils import remove_extra_spaces
+from utils import generate_file_diff
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -1376,7 +1377,7 @@ def get_files_from_csm_repository():
     return jsonify(**{'data': rows})
 
 
-@app.route('/api/image/<image_name>/delete/' , methods=['DELETE'])
+@app.route('/api/image/<image_name>/delete/', methods=['DELETE'])
 @login_required  
 def api_delete_image_from_repository(image_name):
     if current_user.privilege != UserPrivilege.ADMIN and current_user.privilege != UserPrivilege.NETWORK_ADMIN:
@@ -2221,7 +2222,7 @@ def host_session_log(hostname, table, id):
             log_content = fo.read()
 
     return render_template('host/session_log.html', hostname=hostname, table=table,
-                           table_id=id, file_entries=file_entries, log_content=log_content,
+                           record_id=id, file_entries=file_entries, log_content=log_content,
                            is_file=os.path.isfile(autlogs_file_path))
 
 
@@ -3428,7 +3429,69 @@ def download_system_logs():
     log_file.close()  
         
     return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
-        
+
+
+@app.route('/api/get_session_log_file_diff/hostname/<hostname>')
+@login_required
+def api_get_session_log_file_diff(hostname):
+    """
+    An example of the post_upgrade_log_file_path is
+        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.log'
+    """
+    record_id = request.args.get("record_id")
+    post_upgrade_log_file_path = request.args.get("post_upgrade_log_file_path")
+
+    if is_empty(hostname) or is_empty(post_upgrade_log_file_path):
+        return jsonify({'status': 'Either hostname or post_upgrade_log_file_path is empty.'})
+
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
+
+    if host is None:
+        return jsonify({'status': 'Hostname {} does not exist.'.format(hostname)})
+
+    install_job_history = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == record_id).first()
+    if install_job_history is None:
+        return jsonify({'status': 'The job history is no longer available.'})
+
+    pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, host.id)
+    if pre_upgrade_job is None:
+        return jsonify({'status': 'No previous Pre-Upgrade job found.'})
+
+    post_upgrade_log_filename = os.path.basename(post_upgrade_log_file_path)
+    pre_upgrade_log_filename = post_upgrade_log_filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
+
+    # This is the complete file path to reach the file.
+    pre_upgrade_log_file_path = os.path.join(get_autlogs_directory() + pre_upgrade_job.session_log,
+                                             pre_upgrade_log_filename)
+    if not os.path.isfile(pre_upgrade_log_file_path):
+        return jsonify({'status': 'This file "{}" cannot be found in last Pre-Upgrade job.'.format(pre_upgrade_log_filename)})
+
+    post_upgrade_log_file_path = os.path.join(get_autlogs_directory(), post_upgrade_log_file_path)
+    if not os.path.isfile(post_upgrade_log_file_path):
+        return jsonify({'status': 'The Post-Upgrade log, "{}" cannot be found anymore.'.format(post_upgrade_log_filename)})
+
+    file_diff = generate_file_diff(pre_upgrade_log_file_path, post_upgrade_log_file_path)
+
+    data = [
+        {'file1': pre_upgrade_log_filename,
+         'file1_created_time': get_datetime_string(pre_upgrade_job.created_time),
+         'file2': post_upgrade_log_filename,
+         'file2_created_time': get_datetime_string(install_job_history.created_time),
+         'insertions': file_diff.count('ins style'),
+         'deletions': file_diff.count('del style'),
+         'file_diff': file_diff}
+    ]
+
+    return jsonify(**{'data': data})
+
+
+def get_last_successful_pre_upgrade_job(db_session, host_id):
+    return db_session.query(InstallJobHistory). \
+        filter((InstallJobHistory.host_id == host_id),
+               and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
+        order_by(InstallJobHistory.status_time.desc()).first()
+
 if __name__ == '__main__':  
     initialize.init()  
     app.run(host='0.0.0.0', use_reloader=False, threaded=True, debug=False)
