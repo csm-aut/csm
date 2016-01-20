@@ -158,6 +158,8 @@ from views.conformance import conformance
 from views.tar_support import tar_support
 from views.host_import import host_import
 
+from horizon.plugin_manager import PluginManager
+
 import os
 import io
 import logging
@@ -3430,7 +3432,6 @@ def download_system_logs():
         
     return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
 
-
 @app.route('/api/get_session_log_file_diff/hostname/<hostname>')
 @login_required
 def api_get_session_log_file_diff(hostname):
@@ -3491,6 +3492,28 @@ def get_last_successful_pre_upgrade_job(db_session, host_id):
         filter((InstallJobHistory.host_id == host_id),
                and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
         order_by(InstallJobHistory.status_time.desc()).first()
+
+@app.route('/api/plugins')
+@login_required
+def plugins():
+    pm = PluginManager()
+    pm.locate_plugins()
+    plugins = pm.load_plugins()
+    info = [plugin.to_dict() for plugin in plugins]
+    return jsonify(**{"data": info})
+
+@app.route('/api/plugins/<name>')
+@login_required
+def plugin_by_name(name):
+    pm = PluginManager()
+    pm.locate_plugins()
+    pm.load_plugins()
+    plugins = pm.get_plugins_by_name(name)
+    if not isinstance(plugins, list):
+        plugin = [plugins.to_dict()]
+    else:
+        plugin = [plugin.to_dict() for plugin in plugins]
+    return jsonify(**{"data": plugin})
 
 if __name__ == '__main__':  
     initialize.init()  

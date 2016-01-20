@@ -1,8 +1,10 @@
 # =============================================================================
-# device_connect.py - Plugin for checking version of running
+# __init__.py
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
+#
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,24 +28,4 @@
 # =============================================================================
 
 
-from plugin import IPlugin
-from ..plugin_lib import get_package
-
-
-class DevicePackageSatePlugin(IPlugin):
-
-    """
-    This is a plugin maintaining the initial device connection
-    """
-    NAME = "Polling Package State"
-    DESCRIPTION = "Connect to device and get package state"
-    TYPE = "POLL"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
-    @staticmethod
-    def start(manager, device, *args, **kwargs):
-        """
-        """
-        get_package(device)
-
+from cfg_backup import ConfigBackupPlugin

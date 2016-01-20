@@ -1,5 +1,6 @@
 # =============================================================================
-# version_check.py - Plugin for checking version of running
+# cfg_backup.py  - Plugin to capture(show running)
+# configurations present on the system.
 #
 # Copyright (c)  2016, Cisco Systems
 # All rights reserved.
@@ -25,40 +26,22 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import re
 
 from horizon.plugin import Plugin
 
 
-class SoftwareVersionPlugin(Plugin):
+class ConfigBackupPlugin(Plugin):
     """
-    ASR9k Pre-upgrade check
-    This plugin checks if version of all inputs packages are same.
-    If input package contains SMUs only , ensure that box is running same ver.
+    Pre-upgrade check
+    This plugin checks and record active packages
     """
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        """
-        """
-
-        output = device.send("show version brief")
-
-        match = re.search('Version (\d+\.\d+\.\d+)', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search(
-            'Version (\d+\.\d+\.\d+\.\d+[a-zA-Z])', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search('cisco (\w+)', output)
-        if match:
-            platform = match.group(1).lower()
-            device.store_property('platform', platform)
-            manager.log("Platform detected: {}".format(platform))
-            return True
-
-        manager.error("Can not determine software version")
+        cmd = "show running-config"
+        output = device.send(cmd, timeout=2200)
+        file_name = manager.file_name_from_cmd(cmd)
+        full_name = manager.save_to_file(file_name, output)
+        if full_name:
+            manager.save_data(cmd, full_name)
+            manager.log("Device config saved to {}".format(file_name))
+        return True

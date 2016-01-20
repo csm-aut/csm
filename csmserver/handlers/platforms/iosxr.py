@@ -28,7 +28,7 @@ from parsers.loader import get_package_parser_class
 
 import condoor
 
-from horizon.manager import PluginsManager
+from horizon.plugin_manager import PluginManager
 
 import time
 
@@ -99,9 +99,9 @@ class BaseInventoryHandler(BaseHandler):
 class BaseInstallHandler(BaseHandler):                         
     def execute(self, ctx):
 
-        pm = PluginsManager(ctx)
+        pm = PluginManager()
         try:
-            pm.run()
+            pm.run(ctx)
         except condoor.GeneralError as e:
             ctx.post_status = e.message
             ctx.success = False
