@@ -1,8 +1,10 @@
 # =============================================================================
-# version_check.py - Plugin for checking version of running
+# cmd_capture
 #
 # Copyright (c)  2016, Cisco Systems
 # All rights reserved.
+#
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,40 +27,25 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import re
 
 from horizon.plugin import Plugin
 
 
-class SoftwareVersionPlugin(Plugin):
+class CmdCapturePlugin(Plugin):
     """
-    ASR9k Pre-upgrade check
-    This plugin checks if version of all inputs packages are same.
-    If input package contains SMUs only , ensure that box is running same ver.
+    Pre-upgrade check
+    This plugin checks and record active packages
     """
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        """
-        """
-
-        output = device.send("show version brief")
-
-        match = re.search('Version (\d+\.\d+\.\d+)', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search(
-            'Version (\d+\.\d+\.\d+\.\d+[a-zA-Z])', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search('cisco (\w+)', output)
-        if match:
-            platform = match.group(1).lower()
-            device.store_property('platform', platform)
-            manager.log("Platform detected: {}".format(platform))
-            return True
-
-        manager.error("Can not determine software version")
+        command_list, timestamp = manager.load_data("custom-commands")
+        if command_list:
+            for cmd in command_list:
+                output = device.send(cmd, timeout=2200)
+                file_name = manager.file_name_from_cmd(cmd)
+                full_name = manager.save_to_file(file_name, output)
+                if full_name:
+                    manager.save_data(cmd, full_name)
+                manager.log("Output of '{}' command saved to {}".format(cmd, file_name))
+        else:
+            manager.log("No custom commands provided")

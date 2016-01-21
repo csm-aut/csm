@@ -1,10 +1,10 @@
 # =============================================================================
-# plugin.py - Generic Plugin Class
+# plugin.py
 #
-# Copyright (c) 2015, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
-# Author: Klaudiusz Staniek
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -32,23 +32,10 @@ class PluginError(Exception):
     pass
 
 
-class IPlugin(object):
-
+class Plugin(object):
     """
     This is a main Plugin template class providing interface to other plugins
     """
-    NAME = "GENERIC"
-    DESCRIPTION = "Generic Plugin Template"
-    TYPE = None
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
-    @staticmethod
-    def save_to_file(data, outfile):
-        with open(outfile, "w") as f:
-            f.write(data)
-        return
-
     @staticmethod
     def start(manger, device, *args, **kwargs):
         """
@@ -56,7 +43,3 @@ class IPlugin(object):
         Must be overridden by the plugin class child implementation
         """
         raise NotImplementedError
-
-    @property
-    def description(self):
-        return (self.DESCRIPTION[:35] + '..') if len(self.DESCRIPTION) > 37 else self.DESCRIPTION

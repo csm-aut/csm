@@ -1,0 +1,13 @@
+[Core]
+Name = Failed Config Check
+Module = cfg_failed_startup_check
+
+[CSM]
+Phases = Post-Upgrade
+Platforms = ASR9K
+
+[Documentation]
+Author = Klaudiusz Staniek
+Version = 1.0
+Website = https://github.com/csm-aut/csm
+Description = This plugin checks if there was no failed configuration during startup.

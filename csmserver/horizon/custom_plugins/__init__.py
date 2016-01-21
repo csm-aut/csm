@@ -1,8 +1,10 @@
 # =============================================================================
-# version_check.py - Plugin for checking version of running
+# __init__
 #
 # Copyright (c)  2016, Cisco Systems
 # All rights reserved.
+#
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -24,41 +26,3 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
-import re
-
-from horizon.plugin import Plugin
-
-
-class SoftwareVersionPlugin(Plugin):
-    """
-    ASR9k Pre-upgrade check
-    This plugin checks if version of all inputs packages are same.
-    If input package contains SMUs only , ensure that box is running same ver.
-    """
-    @staticmethod
-    def start(manager, device, *args, **kwargs):
-        """
-        """
-
-        output = device.send("show version brief")
-
-        match = re.search('Version (\d+\.\d+\.\d+)', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search(
-            'Version (\d+\.\d+\.\d+\.\d+[a-zA-Z])', output)
-        if match:
-            version = match.group(1)
-            device.store_property('version', version)
-            manager.log("Software version detected: {}".format(version))
-        match = re.search('cisco (\w+)', output)
-        if match:
-            platform = match.group(1).lower()
-            device.store_property('platform', platform)
-            manager.log("Platform detected: {}".format(platform))
-            return True
-
-        manager.error("Can not determine software version")

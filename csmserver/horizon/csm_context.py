@@ -1,9 +1,10 @@
 # =============================================================================
-# cfg_backup.py  - Plugin to capture(show running)
-# configurations present on the system.
+# csm_context
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
+#
+# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,31 +28,25 @@
 # =============================================================================
 
 
-import os
+from base import InstallContext
+import logging
 
-from plugin import IPlugin
 
+class CSMContext(object):
+    def __init__(self, log_level=logging.DEBUG):
+        self._csm = None
+        self._log_level = log_level
 
-class ConfigBackupPlugin(IPlugin):
+    def __get__(self, instance, owner):
+        return self._csm
 
-    """
-    Pre-upgrade check
-    This plugin checks and record active packages
-    """
-    NAME = "CONFIG_BACKUP"
-    DESCRIPTION = "Configuration Backup"
-    TYPE = "PRE_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
+    def __set__(self, instance, value):
+        if not isinstance(value, InstallContext):
+            raise TypeError("CSMContext for plugin manager must be a InstallContext type")
+        self._csm = value
+        if not hasattr(self._csm, "log_level"):
+            self._csm.log_level = self._log_level
 
-    @staticmethod
-    def start(manager, device, *args, **kwargs):
-        output = device.send("show running", timeout=2200)
-        ctx = device.get_property("ctx")
-        if ctx:
-            store_dir = ctx.log_directory
-            name = "{}.log".format(ConfigBackupPlugin.NAME.lower())
-            file_name = os.path.join(store_dir, name)
-            IPlugin.save_to_file(output, file_name)
-            manager.log("Config stored to: {}".format(file_name))
-        return True
+    def __delete(self):
+        del self._csm
+        self._csm = None

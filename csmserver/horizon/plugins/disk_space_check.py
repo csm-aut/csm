@@ -1,7 +1,7 @@
 #==============================================================================
-# disk_space_plugin.py - Plugin for checking available disk space.
+# disk_space_check.py - Plugin for checking available disk space.
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,24 +29,17 @@
 import os
 import re
 
-from plugin import IPlugin
+from horizon.plugin import Plugin
 
 #this needs to be done in different way
 from condoor import TIMEOUT
 
 
-class DiskSpacePlugin(IPlugin):
-
+class DiskSpacePlugin(Plugin):
     """
     Pre-upgrade check
     This plugin checks the available disk space
     """
-    NAME = "DISK_SPACE"
-    DESCRIPTION = "Disk Space Check"
-    TYPE = "PRE_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def _get_pie_size(manager, device, package_url):
         cmd = "admin show install pie-info " + package_url
@@ -61,7 +54,7 @@ class DiskSpacePlugin(IPlugin):
                     manager.error(output)
 
     @staticmethod
-    def _get_filesystems(manager, device):
+    def _get_filesystems(device):
         output = device.send("show filesystem")
         file_systems = {}
         start = False
@@ -156,18 +149,17 @@ class DiskSpacePlugin(IPlugin):
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        ctx = device.get_property("ctx")
         try:
-            packages = ctx.software_packages
+            packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No package list provided")
 
         try:
-            server_repository_url = ctx.server_repository_url
+            server_repository_url = manager.csm.server_repository_url
         except AttributeError:
             manager.error("No repository path provided")
 
-        file_systems = DiskSpacePlugin._get_filesystems(manager, device)
+        file_systems = DiskSpacePlugin._get_filesystems(device)
 
         disk0 = file_systems.get('disk0:', None)
         if not disk0:
@@ -187,7 +179,7 @@ class DiskSpacePlugin(IPlugin):
 
         free_disk0 = disk0.get('free', 0)
 
-        device.store_property('free_disk0_space', free_disk0)
+        manager.save_data("free_disk0_space", free_disk0)
 
         if server_repository_url is None:
             manager.log("Skipping calculation of required harddisk free space")

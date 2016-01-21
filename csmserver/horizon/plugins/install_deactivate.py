@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Author: Suryakant Kewat
@@ -25,34 +25,22 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
-import re
-
-from plugin import IPlugin
-from ..plugin_lib import clear_cfg_inconsistency, install_activate_deactivate
+from horizon.plugin import Plugin
+from horizon.plugin_lib import clear_cfg_inconsistency, install_activate_deactivate
 import horizon.package_lib as package_lib
 
 
-class InstallDeactivatePlugin(IPlugin):
-
+class InstallDeactivatePlugin(Plugin):
     """
     A plugin for install activate operation
     """
-    NAME = "INSTALL_DEACTIVATE"
-    DESCRIPTION = "Deactivate Packages"
-    TYPE = "DEACTIVATE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
-
     @staticmethod
     def _get_tobe_deactivated_pkg_list(manager, device):
         """
         Produces a list of packaged to be deactivated
         """
-        ctx = device.get_property("ctx")
         try:
-            packages = ctx.software_packages
+            packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No packages selected")
 
@@ -87,10 +75,8 @@ class InstallDeactivatePlugin(IPlugin):
         clear_cfg_inconsistency(manager, device)
 
         operation_id = None
-        csm_ctx = device.get_property('ctx')
-        if csm_ctx:
-            if hasattr(csm_ctx, 'operation_id'):
-                operation_id = csm_ctx.operation_id
+        if hasattr(manager.csm, 'operation_id'):
+            operation_id = manager.csm.operation_id
 
         if operation_id is None or operation_id == -1:
             tobe_deactivated = InstallDeactivatePlugin._get_tobe_deactivated_pkg_list(manager, device)

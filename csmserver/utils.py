@@ -24,6 +24,7 @@
 # =============================================================================
 from os import listdir, sep, path, makedirs
 from os.path import isfile, join
+from diff_match_patch import diff_match_patch
 
 import re
 import sys
@@ -277,6 +278,38 @@ def is_ldap_supported():
     except:
         return False
     return True
+
+
+def generate_file_diff(filename1, filename2):
+    """
+    Given two files, return the file diff in HTML format.
+    """
+    text1 = ''
+    text2 = ''
+
+    try:
+        with open(filename1) as f:
+            text1 = f.read()
+    except IOError:
+        pass
+
+    try:
+        with open(filename2) as f:
+            text2 = f.read()
+    except IOError:
+        pass
+
+    dmp = diff_match_patch()
+    diff = dmp.diff_main(text1, text2)
+
+    dmp.diff_cleanupSemantic(diff)
+    ds = dmp.diff_prettyHtml(diff)
+
+    # Do some cleanup work here
+    ds = ds.replace(' ', '&nbsp;')
+    ds = ds.replace('ins&nbsp;style', 'ins style')
+    ds = ds.replace('del&nbsp;style', 'del style')
+    return ds
 
 
 def generate_ip_range(start_ip, end_ip):
