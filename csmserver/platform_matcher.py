@@ -121,10 +121,10 @@ def get_IOSXR_release(name):
     matches = re.findall("\d+\.\d+\.\d+", name)
     if matches:
         return matches[0]
-    return UNKNOWN;
+    return UNKNOWN
 
 
-def get_NCS6K_release(name, platform_type):
+def get_NCS6K_release(name):
     """
     Example,
         input: ncs6k-xr-5.0.1
@@ -136,19 +136,10 @@ def get_NCS6K_release(name, platform_type):
         output: 5.0.1
 
     """
-    if platform_type == PLATFORM_TYPE_NCS6K_PACKAGE:
-        name = name.replace('ncs6k-xr-', '')
-    elif platform_type == PLATFORM_TYPE_NCS6K_SMU:
-        name = name.replace('ncs6k-', '')
-    elif platform_type == PLATFORM_TYPE_NCS6K_SYSADMIN_PACKAGE:
-        name = name.replace('ncs6k-sysadmin-xr-', '')
-    elif platform_type == PLATFORM_TYPE_NCS6K_SYSADMIN_SMU:
-        name = name.replace('ncs6k-sysadmin-', '')
-    
-    tokens = name.split('.')
-    if len(tokens) >= 3:
-        return tokens[0] + '.' + tokens[1] + '.' + tokens[2]
-    return UNKNOWN;
+    matches = re.findall("\d+\.\d+\.\d+", name)
+    if matches:
+        return matches[0]
+    return UNKNOWN
 
 
 def get_platform_type(name):
