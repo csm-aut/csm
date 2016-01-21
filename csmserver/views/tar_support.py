@@ -24,7 +24,7 @@
 # =============================================================================
 from flask import Blueprint
 from flask import jsonify, render_template, request
-from flask.ext.login import login_required
+from flask.ext.login import login_required, current_user
 
 from database import DBSession
 
@@ -83,6 +83,7 @@ def api_create_tar_job():
         contents = (',').join(contents),
         additional_packages = (',').join(additional_packages),
         new_tar_name = new_tar_name,
+        created_by = current_user.username,
         status = 'Job Submitted.')
 
     db_session.add(create_tar_job)
@@ -103,18 +104,7 @@ def get_progress():
         logger.error('Unable to retrieve Create Tar Job: %s' % job_id)
         return jsonify(status='Unable to retrieve job')
 
-<<<<<<< HEAD
     return jsonify(status='OK',progress= tar_job.status)
-=======
-
-def handleRemoveReadonly(func, path, exc):
-    excvalue = exc[1]
-    if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
-        os.chmod(path, stat.S_IRWXU| stat.S_IRWXG| stat.S_IRWXO) # 0777
-        func(path)
-    else:
-        raise
->>>>>>> alex/v3.3
 
 
 @tar_support.route('/api/get_tar_contents')

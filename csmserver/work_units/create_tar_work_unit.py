@@ -9,6 +9,7 @@ from constants import get_repository_directory, get_temp_directory
 from constants import JobStatus
 
 from server_helper import get_server_impl
+from server_helper import FTPServer, SFTPServer
 
 import os
 import shutil
@@ -23,6 +24,8 @@ class CreateTarWorkUnit(WorkUnit):
 
         self.job_id = job_id
         self.upload_progress = 0
+        self.chunk_list = []
+        self.new_tar_size = 0
 
     def start(self, db_session, logger, process_name):
         self.db_session = db_session
@@ -87,17 +90,28 @@ class CreateTarWorkUnit(WorkUnit):
 
                 server = self.db_session.query(Server).filter(Server.id == server_id).first()
                 if server is not None:
-                    self.create_tar_job.set_status('Uploading tar file to external repository.')
+                    self.create_tar_job.set_status('Uploading to external repository.')
                     self.db_session.commit()
+
                     server_impl = get_server_impl(server)
-                    #if new_tar_name in server_impl.get_file_list():
-                    #print server_impl.get_file_list()
-                    #files, _ = server_impl.get_file_list()
+
+                    # If the new file already exists on the remote host, delete it
                     if new_tar_name in server_impl.get_file_list():
                         server_impl.delete_file(new_tar_name)
-                    #print server_impl.get_file_list()
-                    server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory,
-                                            callback=self.progress_listener)
+
+                    statinfo = os.stat(tarname + '.tar')
+                    self.new_tar_size = statinfo.st_size
+                    self.chunk_list = self.get_chunks(self.new_tar_size, self.new_tar_size / 1048576)
+
+                    if isinstance(server_impl, FTPServer):
+                        server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory,
+                                            callback=self.ftp_progress_listener)
+                    elif isinstance(server_impl, SFTPServer):
+                        server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory,
+                                            callback=self.sftp_progress_listener)
+                    else:
+                        server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory)
+
 
                 self.create_tar_job.set_status('Removing temporary directories.')
                 self.db_session.commit()
@@ -126,15 +140,33 @@ class CreateTarWorkUnit(WorkUnit):
     def get_unique_key(self):
         return 'create_tar_job_{}'.format(self.job_id)
 
-    def progress_listener(self, buff):
+
+    def ftp_progress_listener(self, buff):
         if self.create_tar_job and self.db_session:
-            #print len(buff)
             self.upload_progress += len(buff)
-            new_status = 'Upload progress: {} bytes'.format(self.upload_progress)
-            print new_status
-            self.create_tar_job.set_status(new_status)
-            self.db_session.commit()
-            #print self.create_tar_job.new_tar_name
-            #print self.upload_progress
+            if len(self.chunk_list) > 0 and self.upload_progress > self.chunk_list[0]:
+                self.create_tar_job.set_status('Upload progress: {0} out of {1} bytes'.format(self.upload_progress,
+                                                                                              self.new_tar_size))
+                self.db_session.commit()
+                del self.chunk_list[0]
+
+
+    def sftp_progress_listener(self, size, image_size):
+        if self.create_tar_job and self.db_session:
+            self.upload_progress += size
+            if len(self.chunk_list) > 0 and self.upload_progress > self.chunk_list[0]:
+                self.create_tar_job.set_status('Upload progress: {0} out of {1} bytes'.format(self.upload_progress,
+                                                                                              self.new_tar_size))
+                self.db_session.commit()
+                del self.chunk_list[0]
+
+    def get_chunks(self, image_size, segments):
+        chunk_list = []
+        if segments == 0:
+            chunk_list.append(image_size)
         else:
-            print "not create_tar_job or not db_session"
+            chunk = (int)(image_size / segments)
+            for i in range(int(segments)):
+                chunk_list.append(chunk * (i + 1))
+
+        return chunk_list

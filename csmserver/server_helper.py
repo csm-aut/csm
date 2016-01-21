@@ -372,7 +372,10 @@ class SFTPServer(ServerImpl):
             remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
             if len(remote_directory) > 0:
                 sftp.chdir(remote_directory)
-            sftp.put(source_file_path) 
+            if callback:
+                sftp.put(source_file_path, callback=callback)
+            else:
+                sftp.put(source_file_path)
             
         
 if __name__ == '__main__':         

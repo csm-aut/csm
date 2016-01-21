@@ -30,8 +30,10 @@ from models import InventoryJob
 from models import InventoryJobHistory
 from models import InstallJobHistory
 from models import DownloadJobHistory
+from models import CreateTarJob
 
 from constants import get_autlogs_directory
+from constants import JobStatus
 
 import threading 
 import sched
@@ -189,6 +191,15 @@ class InventoryManagerScheduler(threading.Thread):
             
             skip_count += 1
                 
+        db_session.commit()
+
+        # Deleting old CreateTarJobs
+        create_tar_jobs = db_session.query(CreateTarJob).filter().all
+
+        for create_tar_job in create_tar_jobs:
+            if create_tar_job.status == JobStatus.COMPLETED or create_tar_job.status == JobStatus.FAILED:
+                db_session.delete(create_tar_job)
+
         db_session.commit()
         
 if __name__ == '__main__':
