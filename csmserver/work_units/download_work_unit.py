@@ -29,7 +29,7 @@ from models import DownloadJob
 from models import DownloadJobHistory
 
 from server_helper import get_server_impl
-from bsd_service import BSDServiceHandler
+from cisco_service.bsd_service import BSDServiceHandler
 from utils import untar
 from utils import get_tarfile_file_list
 
