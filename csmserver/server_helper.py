@@ -66,7 +66,7 @@ class ServerImpl(object):
     dest_filename - filename on the server repository
     sub_directory - sub-directory under the server repository
     """
-    def upload_file(self, source_file_path, dest_filename, sub_directory=None):
+    def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         raise NotImplementedError("Children must override upload_file")
 
 
@@ -118,7 +118,7 @@ class TFTPServer(ServerImpl):
         except:
             return False
         
-    def upload_file(self, source_file_path, dest_filename, sub_directory=None):
+    def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         if sub_directory is None:
             path = self.server.server_directory
         else:
@@ -259,7 +259,7 @@ class FTPServer(ServerImpl):
         except:
             return False
         
-    def upload_file(self, source_file_path, dest_filename, sub_directory=None):
+    def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         try:
             file = open(source_file_path, 'rb')
             
@@ -270,17 +270,28 @@ class FTPServer(ServerImpl):
                 ftp.cwd(remote_directory)
                 
             # default block size is 8912
-            ftp.storbinary('STOR ' + dest_filename, file, callback=self.handler)
-            ftp.quit()    
+            if callback:
+                ftp.storbinary('STOR ' + dest_filename, file, callback=callback)
+            else:
+                ftp.storbinary('STOR ' + dest_filename, file)
+            ftp.quit()
             file.close()
 
         finally:
             if file is not None:
                 file.close()
-            
+
+    def delete_file(self, filename, sub_directory=None, callback=None):
+        ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
+
+        remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
+        if len(remote_directory) > 0:
+            ftp.cwd(remote_directory)
+
+        ftp.delete(filename)
+
     def handler(self, block):
         pass
-
 
 class SFTPServer(ServerImpl):
     def __init__(self, server):
@@ -354,14 +365,17 @@ class SFTPServer(ServerImpl):
             logger.exception('SFTPServer hit exception')
             return False
         
-    def upload_file(self, source_file_path, dest_filename, sub_directory=None):
+    def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         sftp_module = import_module('pysftp')
 
         with sftp_module.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
             remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
             if len(remote_directory) > 0:
                 sftp.chdir(remote_directory)
-            sftp.put(source_file_path) 
+            if callback:
+                sftp.put(source_file_path, callback=callback)
+            else:
+                sftp.put(source_file_path)
             
         
 if __name__ == '__main__':         

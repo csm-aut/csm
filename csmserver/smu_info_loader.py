@@ -236,7 +236,7 @@ class SMUInfoLoader(object):
                     if prerequisite_smu in smu_dict:
                         prerequisite_smu_info = smu_dict[prerequisite_smu]
                         prerequisite_smu_info.prerequisite_to.append(smu_name)
-        """               
+        """
 
     def load(self):
         try:
@@ -267,7 +267,7 @@ class SMUInfoLoader(object):
         # For SMUs that have not been posted yet.
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SMU_INTRANSIT),
                            self.in_transit_smus, PackageType.SMU_IN_TRANSIT)
-        
+
         # For Service Packs that have been posted.
         self.load_smu_info(xmldoc.getElementsByTagName(XML_TAG_SP), self.service_packs, PackageType.SERVICE_PACK)
 
