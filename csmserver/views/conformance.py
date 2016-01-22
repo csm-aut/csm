@@ -485,7 +485,7 @@ def api_get_conformance_report_software_profile_packages(id):
 
         for software_profile_package in software_profile_packages:
             description = ''
-            if smu_loader is not None:
+            if smu_loader is not None and smu_loader.is_valid:
                 smu_info = smu_loader.get_smu_info(software_profile_package.replace('.' + smu_loader.file_suffix,''))
                 if smu_info is not None:
                     description = smu_info.description
