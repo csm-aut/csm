@@ -4,7 +4,7 @@ Module = cfg_backup
 
 [CSM]
 Phases = Pre-Upgrade, Post-Upgrade
-Platforms = ASR9K, NCS6K
+Platforms = ASR9K, NCS6K, CRS
 
 [Documentation]
 Author = Klaudiusz Staniek

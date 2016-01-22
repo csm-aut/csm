@@ -42,6 +42,13 @@ class ErrorCorePlugin(Plugin):
         "^(.*(?:[Ee][Rr][Rr][Oo][Rr]|Core for pid|Traceback).*)$", re.MULTILINE
     )
 
+    # TODO: Check log against
+    # "Version of existing saved configuration detected to be incompatible with the installed software"
+    # cfgmgr-rp[165]: %MGBL-CONFIG-4-VERSION : Version of existing saved configuration detected to be incompatible
+    # with the installed software. Configuration will be restored from an alternate source and may take
+    # longer than usual on this boot.
+
+
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
