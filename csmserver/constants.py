@@ -35,7 +35,7 @@ csm_data
   temp
 """
 DIRECTORY_BASE = '../../csm_data/'
-DIRECTORY_AUT_LOGS = DIRECTORY_BASE + 'autlogs/'
+DIRECTORY_LOG = DIRECTORY_BASE + 'autlogs/'
 DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'
 DIRECTORY_TEMP = DIRECTORY_BASE + 'temp/'
 
@@ -44,8 +44,8 @@ def get_csm_data_directory():
     return DIRECTORY_BASE
 
 
-def get_autlogs_directory():
-    return DIRECTORY_AUT_LOGS
+def get_log_directory():
+    return DIRECTORY_LOG
 
 
 def get_repository_directory():

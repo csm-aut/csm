@@ -28,13 +28,13 @@ from sqlalchemy import inspect
 from database import DBSession, CURRENT_SCHEMA_VERSION, engine
 
 from utils import create_directory, is_ldap_supported
-from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
+from constants import get_log_directory, get_repository_directory, get_temp_directory
 from schema.loader import get_schema_migrate_class
 
 import traceback
 
 # Create the necessary supporting directories
-create_directory(get_autlogs_directory())
+create_directory(get_log_directory())
 create_directory(get_repository_directory())
 create_directory(get_temp_directory())
 

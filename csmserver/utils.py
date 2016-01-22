@@ -35,7 +35,7 @@ import importlib
 import tarfile
 import re
 
-from constants import get_autlogs_directory
+from constants import get_log_directory
 from __builtin__ import True
 
 
@@ -58,7 +58,7 @@ def import_module(module, path=None):
 def create_log_directory(host_or_ip, id):
     host = host_or_ip.strip().replace('.', '_').replace(' ', '_')
     date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
-    directory = get_autlogs_directory() + host + '-' + date_string + '-' + str(id)
+    directory = get_log_directory() + host + '-' + date_string + '-' + str(id)
 
     if not path.exists(directory):
         makedirs(directory)

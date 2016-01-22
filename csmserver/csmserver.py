@@ -86,7 +86,9 @@ from constants import ServerType
 from constants import UserPrivilege
 from constants import ConnectionType
 from constants import BUG_SEARCH_URL
-from constants import get_autlogs_directory, get_repository_directory, get_temp_directory
+from constants import get_log_directory
+from constants import get_repository_directory
+from constants import get_temp_directory
 
 from common import get_last_successful_inventory_elapsed_time 
 from common import get_host_active_packages 
@@ -734,7 +736,7 @@ def delete_host_inventory_job_session_logs(db_session, host):
     inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id)
     for inventory_job in inventory_jobs:
         try:
-            shutil.rmtree(get_autlogs_directory() + inventory_job.session_log)   
+            shutil.rmtree(get_log_directory() + inventory_job.session_log)
         except:
             logger.exception('delete_host_inventory_job_session_logs hit exception')
 
@@ -743,7 +745,7 @@ def delete_host_install_job_session_logs(db_session, host):
     install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id)
     for install_job in install_jobs:
         try:
-            shutil.rmtree(get_autlogs_directory() + install_job.session_log)   
+            shutil.rmtree(get_log_directory() + install_job.session_log)
         except:
             logger.exception('delete_host_install_job_session_logs hit exception')
 
@@ -2207,25 +2209,105 @@ def host_session_log(hostname, table, id):
         abort(404)
        
     file_path = request.args.get('file_path')
-    autlogs_file_path = get_autlogs_directory() + file_path
+    log_file_path = get_log_directory() + file_path
 
-    if not(os.path.isdir(autlogs_file_path) or os.path.isfile(autlogs_file_path)):
+    if not(os.path.isdir(log_file_path) or os.path.isfile(log_file_path)):
         abort(404)
 
-    file_entries = []
+    file_pairs = {}
     log_content = ''
-    if os.path.isdir(autlogs_file_path):
+
+    if os.path.isdir(log_file_path):
         # Returns all files under the requested directory
-        file_list = get_file_list(autlogs_file_path)
+        file_list = get_file_list(log_file_path)
+
+        # Get the Pre-Upgrade file list if the Post-Upgrade file list is being viewed.
+        # An example of a Post-Upgrade log file is 'show-isis-neighbor-summary.POST-UPGRADE.log'
+        pre_upgrade_file_path = ''
+        pre_upgrade_file_list = []
+        if sum([1 for filename in file_list if 'POST-UPGRADE' in filename]) > 0:
+            pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, record.host_id)
+            if pre_upgrade_job is not None:
+                pre_upgrade_file_path = pre_upgrade_job.session_log
+                pre_upgrade_file_list = get_file_list(get_log_directory() + pre_upgrade_file_path)
+
         for filename in file_list:
-            file_entries.append(file_path + os.sep + filename)
+            counterpart = ''
+            if 'POST-UPGRADE' in filename and filename.replace('POST-UPGRADE', 'PRE-UPGRADE') in pre_upgrade_file_list:
+                counterpart = pre_upgrade_file_path + os.sep + filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
+
+            file_pairs[file_path + os.sep + filename] = counterpart
+
+        file_pairs = collections.OrderedDict(sorted(file_pairs.items()))
     else:        
-        with io.open(autlogs_file_path, "rt", encoding='latin-1') as fo:
+        with io.open(log_file_path, "rt", encoding='latin-1') as fo:
             log_content = fo.read()
 
     return render_template('host/session_log.html', hostname=hostname, table=table,
-                           record_id=id, file_entries=file_entries, log_content=log_content,
-                           is_file=os.path.isfile(autlogs_file_path))
+                           record_id=id, file_pairs=file_pairs, log_content=log_content,
+                           is_file=os.path.isfile(log_file_path))
+
+
+def get_last_successful_pre_upgrade_job(db_session, host_id):
+    return db_session.query(InstallJobHistory). \
+        filter((InstallJobHistory.host_id == host_id),
+               and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
+        order_by(InstallJobHistory.status_time.desc()).first()
+
+
+@app.route('/api/get_session_log_file_diff/hostname/<hostname>')
+@login_required
+def api_get_session_log_file_diff(hostname):
+    """
+    An example of the post_upgrade_log_file_path is
+        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.log'
+    """
+    record_id = request.args.get("record_id")
+    post_upgrade_log_file_path = request.args.get("post_upgrade_log_file_path")
+
+    if is_empty(hostname) or is_empty(post_upgrade_log_file_path):
+        return jsonify({'status': 'Either hostname or post_upgrade_log_file_path is empty.'})
+
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
+
+    if host is None:
+        return jsonify({'status': 'Hostname {} does not exist.'.format(hostname)})
+
+    install_job_history = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == record_id).first()
+    if install_job_history is None:
+        return jsonify({'status': 'The job history is no longer available.'})
+
+    pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, host.id)
+    if pre_upgrade_job is None:
+        return jsonify({'status': 'No previous Pre-Upgrade job found.'})
+
+    post_upgrade_log_filename = os.path.basename(post_upgrade_log_file_path)
+    pre_upgrade_log_filename = post_upgrade_log_filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
+
+    # This is the complete file path to reach the file.
+    pre_upgrade_log_file_path = os.path.join(get_log_directory() + pre_upgrade_job.session_log,
+                                             pre_upgrade_log_filename)
+    if not os.path.isfile(pre_upgrade_log_file_path):
+        return jsonify({'status': 'This file "{}" cannot be found in last Pre-Upgrade job.'.format(pre_upgrade_log_filename)})
+
+    post_upgrade_log_file_path = os.path.join(get_log_directory(), post_upgrade_log_file_path)
+    if not os.path.isfile(post_upgrade_log_file_path):
+        return jsonify({'status': 'The Post-Upgrade log, "{}" cannot be found anymore.'.format(post_upgrade_log_filename)})
+
+    file_diff = generate_file_diff(pre_upgrade_log_file_path, post_upgrade_log_file_path)
+
+    data = [
+        {'file1': pre_upgrade_log_filename,
+         'file1_created_time': get_datetime_string(pre_upgrade_job.created_time),
+         'file2': post_upgrade_log_filename,
+         'file2_created_time': get_datetime_string(install_job_history.created_time),
+         'insertions': file_diff.count('ins style'),
+         'deletions': file_diff.count('del style'),
+         'file_diff': file_diff}
+    ]
+
+    return jsonify(**{'data': data})
 
 
 @app.route('/hosts/<hostname>/<table>/trace/<int:id>/')
@@ -3407,7 +3489,7 @@ def api_validate_software():
 @app.route('/download_session_log')
 @login_required
 def download_session_log():
-    return send_file(get_autlogs_directory() + request.args.get('file_path'), as_attachment=True)
+    return send_file(get_log_directory() + request.args.get('file_path'), as_attachment=True)
 
 
 @app.route('/download_system_logs')
@@ -3432,66 +3514,6 @@ def download_system_logs():
         
     return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
 
-@app.route('/api/get_session_log_file_diff/hostname/<hostname>')
-@login_required
-def api_get_session_log_file_diff(hostname):
-    """
-    An example of the post_upgrade_log_file_path is
-        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.log'
-    """
-    record_id = request.args.get("record_id")
-    post_upgrade_log_file_path = request.args.get("post_upgrade_log_file_path")
-
-    if is_empty(hostname) or is_empty(post_upgrade_log_file_path):
-        return jsonify({'status': 'Either hostname or post_upgrade_log_file_path is empty.'})
-
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-
-    if host is None:
-        return jsonify({'status': 'Hostname {} does not exist.'.format(hostname)})
-
-    install_job_history = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == record_id).first()
-    if install_job_history is None:
-        return jsonify({'status': 'The job history is no longer available.'})
-
-    pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, host.id)
-    if pre_upgrade_job is None:
-        return jsonify({'status': 'No previous Pre-Upgrade job found.'})
-
-    post_upgrade_log_filename = os.path.basename(post_upgrade_log_file_path)
-    pre_upgrade_log_filename = post_upgrade_log_filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
-
-    # This is the complete file path to reach the file.
-    pre_upgrade_log_file_path = os.path.join(get_autlogs_directory() + pre_upgrade_job.session_log,
-                                             pre_upgrade_log_filename)
-    if not os.path.isfile(pre_upgrade_log_file_path):
-        return jsonify({'status': 'This file "{}" cannot be found in last Pre-Upgrade job.'.format(pre_upgrade_log_filename)})
-
-    post_upgrade_log_file_path = os.path.join(get_autlogs_directory(), post_upgrade_log_file_path)
-    if not os.path.isfile(post_upgrade_log_file_path):
-        return jsonify({'status': 'The Post-Upgrade log, "{}" cannot be found anymore.'.format(post_upgrade_log_filename)})
-
-    file_diff = generate_file_diff(pre_upgrade_log_file_path, post_upgrade_log_file_path)
-
-    data = [
-        {'file1': pre_upgrade_log_filename,
-         'file1_created_time': get_datetime_string(pre_upgrade_job.created_time),
-         'file2': post_upgrade_log_filename,
-         'file2_created_time': get_datetime_string(install_job_history.created_time),
-         'insertions': file_diff.count('ins style'),
-         'deletions': file_diff.count('del style'),
-         'file_diff': file_diff}
-    ]
-
-    return jsonify(**{'data': data})
-
-
-def get_last_successful_pre_upgrade_job(db_session, host_id):
-    return db_session.query(InstallJobHistory). \
-        filter((InstallJobHistory.host_id == host_id),
-               and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
-        order_by(InstallJobHistory.status_time.desc()).first()
 
 @app.route('/api/plugins')
 @login_required

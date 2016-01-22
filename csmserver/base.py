@@ -34,7 +34,7 @@ from utils import is_empty
 from utils import make_url
 
 from constants import get_temp_directory
-from constants import get_autlogs_directory
+from constants import get_log_directory
 
 
 class Context(object):
@@ -151,7 +151,7 @@ class InventoryContext(ImageContext):
     
     @property
     def log_directory(self):
-        return get_autlogs_directory() + self.inventory_job.session_log  
+        return get_log_directory() + self.inventory_job.session_log
     
     def post_status(self, message):
         if self.db_session is not None and self.inventory_job is not None:
@@ -167,6 +167,7 @@ class InstallContext(ImageContext):
         ImageContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
+        self._custom_commands = []
     
     @property
     def software_packages(self):
@@ -178,8 +179,16 @@ class InstallContext(ImageContext):
     
     @property
     def log_directory(self):
-        return get_autlogs_directory() + self.install_job.session_log 
-    
+        return get_log_directory() + self.install_job.session_log
+
+    @property
+    def custom_commands(self):
+        return self._custom_commands
+
+    @custom_commands.setter
+    def custom_commands(self, value):
+        self._custom_commands = value
+
     @property
     def operation_id(self):
         return self._operation_id

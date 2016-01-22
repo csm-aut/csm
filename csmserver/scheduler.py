@@ -32,7 +32,7 @@ from models import InstallJobHistory
 from models import DownloadJobHistory
 from models import CreateTarJob
 
-from constants import get_autlogs_directory
+from constants import get_log_directory
 from constants import JobStatus
 
 import threading 
@@ -138,7 +138,7 @@ class InventoryManagerScheduler(threading.Thread):
                 # Delete the session log directory
                 try:
                     if inventory_job.session_log is not None: 
-                        shutil.rmtree(get_autlogs_directory() + inventory_job.session_log)   
+                        shutil.rmtree(get_log_directory() + inventory_job.session_log)
                 except:
                     logger.exception('InventoryManagerScheduler hit exception- inventory job = %s', inventory_job.id)
                     
@@ -164,7 +164,7 @@ class InventoryManagerScheduler(threading.Thread):
                 # Delete the session log directory
                 try:
                     if install_job.session_log is not None:
-                        shutil.rmtree(get_autlogs_directory() + install_job.session_log)   
+                        shutil.rmtree(get_log_directory() + install_job.session_log)
                 except:
                     logger.exception('InventoryManagerScheduler hit exception - install job = %s', install_job.id)
                 

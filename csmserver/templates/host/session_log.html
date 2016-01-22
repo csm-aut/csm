@@ -17,6 +17,7 @@
         $(".open-file-diff-dialog").on("click", function() {
             var hostname = $(this).attr('data-hostname');
             var record_id = $(this).attr('data-record-id');
+
             var post_upgrade_log_file_path = $(this).attr('data-file-path');
 
             get_file_diff(hostname, record_id, post_upgrade_log_file_path);
@@ -127,7 +128,7 @@
                 </div>
                 <div class="panel-body pull-center">
                     <table  class="table table-striped">
-                        {% for entry in file_entries %}
+                        {% for entry, counterpart in file_pairs.iteritems() %}
                         <tr>
                             <td>
                                 <a href="{{ url_for('download_session_log') }}?file_path={{ entry }}">
@@ -138,9 +139,9 @@
                                 <a href="{{ url_for('host_session_log', hostname=hostname, table=table, id=record_id) }}?file_path={{ entry }}" >{{ entry }}</a>
                             </td>
 
-                            {% if entry | match_string('POST-UPGRADE.log') %}
+                            {% if counterpart | length > 0 %}
                             <td>
-                                <a class="open-file-diff-dialog" data-record-id="{{ record_id }}" data-hostname="{{ hostname }}" data-file-path="{{ entry }}" href="javascript://">
+                                <a class="open-file-diff-dialog" data-record-id="{{ record_id }}" data-hostname="{{ hostname }}" data-file-path="{{ entry }}" data-counterpart-file-path="{{ counterpart }}" href="javascript://">
                                     <img title="Compare with last Pre-Upgrade log" src="{{ url_for('static', filename='file_diff.png') }}">
                                 </a>
                             </td>
