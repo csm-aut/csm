@@ -118,9 +118,11 @@ class PluginManager(object):
             raise RuntimeError("Plugin manager must run to get the the current phase")
         return self.csm.requested_action
 
-    def run(self, csm):
+    def run(self, csm, plugin_names=[]):
         self.csm = csm
         self._set_logging(self.csm.host.hostname, csm.log_directory, csm.log_level)
+
+        plugin_names = plugin_names if hasattr(plugin_names, '__iter__') else [plugin_names]
 
         device = condoor.Connection(
             self.csm.host.hostname,
@@ -144,13 +146,19 @@ class PluginManager(object):
             return False
         self.log("Device Connected Successfully")
 
-        self.filter = lambda plugin_info: (device.family in plugin_info.platforms) and \
-                                          (self.csm.requested_action in plugin_info.phases)
+        if plugin_names:
+            self.filter = lambda plugin_info: (device.family in plugin_info.platforms) and \
+                                              (self.csm.requested_action in plugin_info.phases) and \
+                                              (plugin_info.name in plugin_names)
+        else:
+            self.filter = lambda plugin_info: (device.family in plugin_info.platforms) and \
+                                              (self.csm.requested_action in plugin_info.phases)
 
         nop = self.locate_plugins()
         self.log("Number of plugins: {}".format(nop))
 
         plugins = self.load_plugins()
+
         list_of_plugins = ", ".join(plugin.name for plugin in plugins)
         self.log("Plugins to be launched: {}".format(list_of_plugins))
 
@@ -370,11 +378,11 @@ class PluginManager(object):
     def get_plugins_by_name(self, name, category="Default"):
         items = []
         if category in self.category_mapping:
+            print self.category_mapping[category]
             for item in self.category_mapping[category]:
                 if item.name == name:
                     items.append(item)
         return items
-
 
     # Plugin filter
     def _filter(self, plugin_info):
@@ -412,7 +420,6 @@ class PluginManager(object):
             f.write(data)
             self.info("File '{}' saved in CSM log directory".format(file_name))
             return full_path
-
         return None
 
     def load_from_file(self, file_name):
@@ -429,9 +436,10 @@ class PluginManager(object):
         return None
 
     def file_name_from_cmd(self, cmd, phase=None):
-        filename = re.sub(r"\s+", '-', cmd)
+        #filename = re.sub(r"\s+", '-', cmd)
+        filename = re.sub(r"\W+", '-', cmd)
         filename += "." + (str(self.phase).upper() if phase is None else str(phase).upper())
-        filename += ".log"
+        filename += ".txt"
         return filename
 
 

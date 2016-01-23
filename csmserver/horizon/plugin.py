@@ -1,5 +1,5 @@
 # =============================================================================
-# plugin.py
+# plugin_tester.py
 #
 # Copyright (c)  2016, Cisco Systems
 # All rights reserved.

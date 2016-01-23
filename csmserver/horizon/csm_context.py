@@ -41,7 +41,9 @@ class CSMContext(object):
         return self._csm
 
     def __set__(self, instance, value):
-        if not isinstance(value, InstallContext):
+        # hack for cmd line plugin_tester.py
+        if "InstallContext" not in str(value.__class__):
+        #if not isinstance(value, InstallContext):
             raise TypeError("CSMContext for plugin manager must be a InstallContext type")
         self._csm = value
         if not hasattr(self._csm, "log_level"):
