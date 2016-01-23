@@ -23,6 +23,8 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from models import logger
+from base_service import BaseServiceHandler
+
 import requests
 import json
  
@@ -32,11 +34,8 @@ HTTP_METADATA_URL = "https://api.cisco.com/software/v2.0/metadata/"
 HTTP_DOWNLOAD_URL = "https://api.cisco.com/software/v2.0/downloads/urls/"
 HTTP_EULA_URL = "https://api.cisco.com/software/v2.0/compliance/forms/eula"
 HTTP_K9_URL = "https://api.cisco.com/software/v2.0/compliance/forms/k9"
-HTTP_ACCESS_TOKEN_URL = "https://cloudsso.cisco.com/as/token.oauth2"
-HTTP_SN2INFO_URL = "https://api.cisco.com/product/v1.0/coverage/status/serial_numbers/"
 HTTP_DOWNLOAD_STATISTICS_URL = "https://api.cisco.com/software/841/downloads/statistics"
 
-BSD_ACCESS_TOKEN = "access_token"
 BSD_EXCEPTION_MESSAGE = "exception_message" 
 BSD_METADATA_TRANS_ID = "metadata_trans_id"
 BSD_IMAGE_DETAILS = "image_details"
@@ -52,31 +51,18 @@ BSD_FIELD_ID = "field_id"
 BSD_FIELD_VALUE = "field_value"
 
 
-class BSDServiceHandler(object):
+class BSDServiceHandler(BaseServiceHandler):
     def __init__(self, username, password, MDF_ID, software_type_ID, PID, image_name):
-        self.username = username
-        self.password = password
+        BaseServiceHandler.__init__(self, username, password)
+
         self.image_name = image_name
         self.PID = PID
         self.MDF_ID = MDF_ID
         self.software_type_ID = software_type_ID
-    
-    @classmethod
-    def get_sn_2_info(cls, access_token, serial_numbers):
-        print('ACCESS TOKEN', access_token)
-        url_string = HTTP_SN2INFO_URL + serial_numbers
-        print('URL', url_string)
-        headers = {'Authorization': 'Bearer ' + access_token}
-        return requests.get(url_string, headers=headers)
-    
+
     @classmethod
     def get_access_token(cls, username, password):
-        payload = {'client_id': CLIENT_ID, 'client_secret': CLIENT_SECRET, 'username' : username, 'password' : password, 'grant_type' : 'password' }
-        response = requests.post(HTTP_ACCESS_TOKEN_URL, params=payload)
-        return json.loads(response.text)[BSD_ACCESS_TOKEN]
-
-    def debug_print(self, heading, data):
-        print(heading, data)
+        return BaseServiceHandler.get_access_token(username, password, CLIENT_ID, CLIENT_SECRET)
         
     def download(self, output_file_path, callback=None):
         access_token = self.get_access_token(self.username, self.password)
@@ -197,22 +183,6 @@ class BSDServiceHandler(object):
             
         headers = {'Authorization': 'Bearer ' + access_token}
         return requests.get(url_string, headers=headers)
-
-    def get_json_value(self, json_object, key):
-        if isinstance(json_object, dict):
-            for k, v in json_object.items():
-                if k == key:
-                    return v
-                value = self.get_json_value(v, key)
-                if value is not None:
-                    return value
-        elif isinstance(json_object, list):
-            for v in json_object:
-                value = self.get_json_value(v, key)
-                if value is not None:
-                    return value
-        else:
-            return None
 
 
 def get_chunks(image_size, segments):

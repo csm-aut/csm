@@ -150,7 +150,7 @@ from smu_utils import get_platform_and_release
 from smu_utils import SMU_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
-from bsd_service import BSDServiceHandler
+from cisco_service.bsd_service import BSDServiceHandler
 
 from package_utils import get_target_software_package_list
 from restful import restful_api
