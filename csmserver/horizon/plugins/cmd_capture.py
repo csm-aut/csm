@@ -38,7 +38,7 @@ class CmdCapturePlugin(Plugin):
     """
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        command_list, timestamp = manager.load_data("custom-commands")
+        command_list = manager.csm.custom_commands
         if command_list:
             for cmd in command_list:
                 output = device.send(cmd, timeout=2200)
