@@ -650,8 +650,8 @@ class SMUInfo(Base):
     functional_areas = Column(Text)              
     package_bundles = Column(Text)
     composite_DDTS = Column(Text)
-    compressed_image_size = Column(Integer, default=0)              
-    uncompressed_image_size = Column(Integer, default=0)  
+    compressed_image_size = Column(String(20))
+    uncompressed_image_size = Column(String(20))
     
     supersedes = Column(Text)
     superseded_by = Column(Text)
