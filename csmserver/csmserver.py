@@ -159,6 +159,7 @@ from views.exr_migrate import exr_migrate
 from views.conformance import conformance
 from views.tar_support import tar_support
 from views.host_import import host_import
+from views.custom_command import custom_command
 
 from horizon.plugin_manager import PluginManager
 
@@ -179,6 +180,7 @@ app.register_blueprint(exr_migrate)
 app.register_blueprint(conformance)
 app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
+app.register_blueprint(custom_command)
 
 # Hook up the filters
 filters.init(app)

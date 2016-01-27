@@ -862,6 +862,15 @@ class CreateTarJob(Base):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
 
+class CustomCommandProfile(Base):
+    __tablename__ = 'custom_command_profile'
+
+    id = Column(Integer, primary_key=True)
+    profile_name = Column(String(50))
+    description = Column(Text)
+    command_list = Column(Text)
+    created_by = Column(String(50))
+
 Base.metadata.create_all(engine)
 
 

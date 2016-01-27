@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% from 'host/common.html' import edit_field %}
+
+{% block extra_head %}
+  
+<script charset="utf-8">
+
+    $(function() {
+
+        $('a[href="#profiles-tab"]').tab('show');
+
+        var profile_id = $.cookie('profile-id');
+
+        // Use delegate pattern for event
+        $("#profile-table").on("click", ".data-delete-link", function() {
+            var delete_url = $(this).attr('data-delete-url');
+            var profile_name = $(this).attr('data-delete-profile-name');
+
+            bootbox.confirm("You are about to delete custom command profile \'" + profile_name + "\'.  OK to proceed?", function(result) {
+                if (result) {
+                    $.ajax({
+                        url: delete_url,
+                        type: 'DELETE',
+                        success: function(result) {
+                            if (result.status == 'OK') {
+                                profile_table.api().ajax.reload();
+                            } else {
+                                bootbox.alert('Delete failed.');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        var profile_table = $("#profile-table").dataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'profile_name',
+                "render": function(data, type, row) {
+                    return '<a href="/custom_command_profiles/command_profile/' + data + '/edit">' + data + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'description',
+            },{
+                "targets": 2,
+                "data": 'command_list',
+                "render": function(data, type, row) {
+                    return insert_slider(comma2br(data), row['id']);
+                }
+            },{
+                "targets": 3,
+                "data": 'created_by',
+            }, {
+                "targets": 4,
+                "data": 'profile_name',
+                "render": function(data, type, row) {
+                    return '<a class="data-delete-link" href="javascript://"  \
+                data-delete-profile-name="' + data + '" \
+                data-delete-url="/custom_command_profiles/command_profile/' + data + '/delete">Delete</a>';
+                }
+            }],
+            "ajax": {
+                "url": "{{ url_for('custom_command.api_get_command_profiles') }}",
+            }
+        });
+
+        function insert_slider(command_list, id) {
+            if (command_list != null && command_list.length > 0) {
+                var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' +
+                    '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
+                    '</a>' +
+                    '<!-- Collapsible Element HTML -->' +
+                    '<div id="toggle' + id + '" class="collapse">' +
+                    '<div style="white-space: nowrap;">' +command_list.replace(/,/g, "<br/>") +
+                    '</div>' +
+                    '</div>';
+                return html;
+            } else {
+                return '&nbsp;';
+            }
+        }
+
+        /*      
+        function display_conformance_report_software_profile_packages(id) {
+            $.ajax({
+                url: "/conformance/api/get_conformance_report_software_profile_packages/report/" + id,
+                dataType: 'json',
+                success: function(response) {
+                    var html_code = '<ul>';
+                    $.each(response, function(index, element) {
+                        for (i = 0; i < element.length; i++) {
+                            html_code += '<li>' + element[i].software_profile_package;
+                            if (element[i].description.length > 0) {
+                                html_code += ' - ' + element[i].description;
+                            }
+                            html_code += '</li>';
+                        }
+                    });
+
+                    html_code += '</ul>';
+
+                    $('#software-profile-package-info').html(html_code);
+                }
+            });
+        }
+        */
+/*
+        $('.btn-toggle').click(function() {
+            $(this).find('.btn').toggleClass('active');  
+    
+            if ($(this).find('.btn-primary').size()>0) {
+    	        $(this).find('.btn').toggleClass('btn-primary');
+            }
+    
+            $(this).find('.btn').toggleClass('btn-default');       
+        });
+ 
+*/       
+    });
+</script>
+
+<style>
+    .modal-dialog {    
+        width: 850px;
+    }
+</style>
+
+{% endblock extra_head %}  
+  
+{% block main %}
+
+<!-- Main -->
+<div class="container">
+    <div class="row">
+        <div class="col-sm-12">
+            <ul class="nav nav-tabs" id="command-profile-tab">
+                <li><a data-toggle="tab" href="#profiles-tab">Custom Command Profiles</a></li>
+                <li class="dropdown">
+                    <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a data-toggle="main-tab" href="{{ url_for('custom_command.command_profile_create') }}">Command Profile</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="tab-content" style="margin-top:10px;">
+                <div id="profiles-tab" class="tab-pane fade in active">
+                    <table class="display table" id="profile-table">
+                        <thead>
+                            <tr>
+                                <th>Profile Name</th>
+                                <th>Description</th>
+                                <th>Command List</th>
+                                <th>Created By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}
