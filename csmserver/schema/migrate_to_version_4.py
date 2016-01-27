@@ -1,10 +1,6 @@
 # =============================================================================
-# plugin_tester.py
-#
-# Copyright (c)  2016, Cisco Systems
+# Copyright (c) 2015, Cisco Systems, Inc
 # All rights reserved.
-#
-# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,20 +22,25 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from schema.base import BaseMigrate
+from database import DBSession
+from models import Host
+from models import HostContext
 
+sql_statements = [
+    'alter table smu_info modify compressed_image_size VARCHAR(20)',
+    'alter table smu_info modify uncompressed_image_size VARCHAR(20)'
+    ]
 
-class PluginError(Exception):
-    pass
+class SchemaMigrate(BaseMigrate):
+    def __init__(self, version):
+        BaseMigrate.__init__(self, version)
 
+    def start(self):
+        db_session = DBSession()
+        for sql in sql_statements:
+            try:
+                db_session.execute(sql)
+            except:
+                pass
 
-class Plugin(object):
-    """
-    This is a main Plugin template class providing interface to other plugins
-    """
-    @staticmethod
-    def start(manger, device, *args, **kwargs):
-        """
-        Start the plugin
-        Must be overridden by the plugin class child implementation
-        """
-        raise NotImplementedError
