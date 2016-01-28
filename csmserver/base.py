@@ -22,7 +22,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
 from constants import ServerType
 
 from models import Server
@@ -38,8 +37,7 @@ from constants import get_log_directory
 
 
 class Context(object):
-    def __init__(self, db_session):
-        self.db_session = db_session
+    def __init__(self):
         self._success = False
         
     @property
@@ -49,16 +47,12 @@ class Context(object):
     @success.setter
     def success(self, value):
         self._success = value 
-            
 
-class ImageContext(Context):
-    def __init__(self, db_session, host):
-        Context.__init__(self, db_session)
+
+class ConnectionContext(Context):
+    def __init__(self, host):
+        Context.__init__(self)
         self.host = host
-            
-        self.committed_cli = None
-        self.active_cli = None
-        self.inactive_cli = None
 
     def load_data(self, key):
         return self.host.context[0].data.get(key)
@@ -91,8 +85,8 @@ class ImageContext(Context):
                 except:
                     pass
 
-            default_username=None
-            default_password=None
+            default_username = None
+            default_password = None
             system_option = SystemOption.get(self.db_session)
 
             if system_option.enable_default_host_authentication:
@@ -119,36 +113,22 @@ class ImageContext(Context):
         return urls
 
 
-class ConnectionContext(Context):
-    def __init__(self, db_session, urls):
-        Context.__init__(self, db_session)
-        self.urls = urls
+class SoftwareContext(ConnectionContext):
+    def __init__(self, db_session, host):
+        ConnectionContext.__init__(self, host)
+        self.host = host
+        self.db_session = db_session
 
-    @property
-    def requested_action(self):
-        return 'Get-Package'
-
-    @property
-    def log_directory(self):
-        return get_temp_directory()
-
-    def post_status(self, message):
-        pass
-    
-    @property
-    def host_urls(self): 
-        return self.urls 
+        self.committed_cli = None
+        self.active_cli = None
+        self.inactive_cli = None
 
 
-class InventoryContext(ImageContext):
+class InventoryContext(SoftwareContext):
     def __init__(self, db_session, host, inventory_job):
-        ImageContext.__init__(self, db_session, host)
+        SoftwareContext.__init__(self, db_session, host)
         self.inventory_job = inventory_job
-        
-    @property
-    def requested_action(self):
-        return 'Get-Package'
-    
+
     @property
     def log_directory(self):
         return get_log_directory() + self.inventory_job.session_log
@@ -158,13 +138,13 @@ class InventoryContext(ImageContext):
             try:
                 self.inventory_job.set_status(message)
                 self.db_session.commit()
-            except:
+            except Exception:
                 self.db_session.rollback()
             
                
-class InstallContext(ImageContext):
+class InstallContext(SoftwareContext):
     def __init__(self, db_session, host, install_job):
-        ImageContext.__init__(self, db_session, host)
+        SoftwareContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
         self._custom_commands = []
@@ -197,7 +177,7 @@ class InstallContext(ImageContext):
     def operation_id(self, value):
         try:
             self._operation_id = int(value)
-        except:  
+        except Exception:
             self._operation_id = -1
 
     @property 
@@ -248,8 +228,25 @@ class InstallContext(ImageContext):
             try:
                 self.install_job.set_status(message)
                 self.db_session.commit()
-            except:
+            except Exception:
                 self.db_session.rollback()
+
+
+class TestConnectionContext(Context):
+    def __init__(self, urls):
+        Context.__init__(self)
+        self.urls = urls
+
+    @property
+    def log_directory(self):
+        return get_temp_directory()
+
+    def post_status(self, message):
+        pass
+
+    @property
+    def host_urls(self):
+        return self.urls
 
 
 class BaseHandler(object):

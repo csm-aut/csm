@@ -479,23 +479,27 @@ def get_managed_hosts(region_id):
             row = {} 
             row['hostname'] = host.hostname
             row['region'] = '' if host.region is None else host.region.name
-            row['host_or_ip'] = host.connection_param[0].host_or_ip
-            row['platform'] = host.platform
-            
-            if host.software_version is not None:
-                row['software'] = host.software_platform + ' ' + host.software_version
+
+            if len(host.connection_param) > 0:
+                row['host_or_ip'] = host.connection_param[0].host_or_ip
+                row['platform'] = host.platform
+
+                if host.software_version is not None:
+                    row['software'] = host.software_platform + ' ' + host.software_version
+                else:
+                    row['software'] = 'Unknown'
+
+                inventory_job = host.inventory_job[0]
+                if inventory_job is not None and inventory_job.last_successful_time is not None:
+                    row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
+                    row['inventory_status'] = inventory_job.status
+                else:
+                    row['last_successful_retrieval'] = ''
+                    row['inventory_status'] = ''
+
+                rows.append(row)
             else:
-                row['software'] = 'Unknown'
-            
-            inventory_job = host.inventory_job[0]
-            if inventory_job is not None and inventory_job.last_successful_time is not None:
-                row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
-                row['inventory_status'] = inventory_job.status
-            else:
-                row['last_successful_retrieval'] = ''
-                row['inventory_status'] = ''
-            
-            rows.append(row)
+                logger.error('Host %s has no connection information.', host.hostname)
     
     return jsonify(**{'data': rows})
 
@@ -516,20 +520,23 @@ def get_managed_host_details(region_id):
             row = {} 
             row['hostname'] = host.hostname
             row['platform'] = host.platform
-            
-            connection_param = host.connection_param[0]
-            row['connection'] = connection_param.connection_type
-            row['host_or_ip'] = connection_param.host_or_ip
-            row['port_number'] = 'Default' if is_empty(connection_param.port_number) else connection_param.port_number
-            
-            if not is_empty(connection_param.jump_host):
-                row['jump_host'] = connection_param.jump_host.hostname
+
+            if len(host.connection_param) > 0:
+                connection_param = host.connection_param[0]
+                row['connection'] = connection_param.connection_type
+                row['host_or_ip'] = connection_param.host_or_ip
+                row['port_number'] = 'Default' if is_empty(connection_param.port_number) else connection_param.port_number
+
+                if not is_empty(connection_param.jump_host):
+                    row['jump_host'] = connection_param.jump_host.hostname
+                else:
+                    row['jump_host'] = ''
+
+                row['username'] = connection_param.username
+
+                rows.append(row)
             else:
-                row['jump_host'] = ''
-                          
-            row['username'] = connection_param.username
-            
-            rows.append(row)
+                logger.error('Host %s has no connection information.', host.hostname)
     
     return jsonify(**{'data': rows})
 
@@ -2794,7 +2801,7 @@ def check_host_reachability():
         default_password=default_password)
     urls.append(url)
     
-    return jsonify({'status': 'OK'}) if is_connection_valid(db_session, platform, urls) else jsonify({'status': 'Failed'})
+    return jsonify({'status': 'OK'}) if is_connection_valid(platform, urls) else jsonify({'status': 'Failed'})
 
 
 @app.route('/api/get_software_package_upgrade_list/hosts/<hostname>/release/<target_release>')

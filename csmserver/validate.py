@@ -24,15 +24,15 @@
 # =============================================================================
 from models import logger
 from handlers.loader import get_connection_handler_class 
-from base import ConnectionContext
+from base import TestConnectionContext
 from constants import ConnectionType
 
 import socket
 import time
 
 
-def is_connection_valid(db_session, platform, urls):
-    ctx = ConnectionContext(db_session, urls)
+def is_connection_valid(platform, urls):
+    ctx = TestConnectionContext(urls)
     
     try:
         handler_class = get_connection_handler_class(platform)

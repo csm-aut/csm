@@ -110,7 +110,7 @@ def make_file_writable(file_path):
 
 def get_tarfile_file_list(tar_file_path):
     file_list = []
-    
+
     tar = tarfile.open(tar_file_path)
     tar_info_list = tar.getmembers()
     for tar_info in tar_info_list:
