@@ -27,6 +27,8 @@ from database import DBSession
 
 
 sql_statements = [
+    'alter table install_job add best_effort_config_applying INTEGER',
+    'alter table install_job add config_filename VARCHAR(300)',
     'alter table install_job_history add best_effort_config_applying INTEGER',
     'alter table install_job_history add config_filename VARCHAR(300)'
     ]
