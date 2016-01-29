@@ -126,17 +126,6 @@ class SoftwareContext(ConnectionContext):
         self.active_cli = None
         self.inactive_cli = None
 
-    @property
-    def migration_directory(self):
-        return get_migration_directory()
-
-    def post_status(self, message):
-        pass
-    
-    @property
-    def host_urls(self): 
-        return self.urls 
-
 
 class InventoryContext(SoftwareContext):
     def __init__(self, db_session, host, inventory_job):
@@ -151,7 +140,6 @@ class InventoryContext(SoftwareContext):
     def migration_directory(self):
         return get_migration_directory()
 
-    
     def post_status(self, message):
         if self.db_session is not None and self.inventory_job is not None:
             try:
@@ -255,7 +243,6 @@ class InstallContext(SoftwareContext):
         return self.install_job.config_filename
     
     def post_status(self, message):
-
         if self.db_session is not None and self.install_job is not None:
             try:
                 self.install_job.set_status(message)

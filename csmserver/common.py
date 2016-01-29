@@ -130,6 +130,18 @@ def fill_regions(choices):
     except:
         logger.exception('fill_regions() hits exception')
 
+def fill_default_region(choices, region):
+    # Remove all the existing entries
+    del choices[:]
+
+    # do not close session as the caller will do it
+    db_session = DBSession()
+    try:
+        if region is not None:
+            choices.append((region.id, region.name))
+    except:
+        logger.exception('fill_default_region() hits exception')
+
 
 def get_last_successful_inventory_elapsed_time(host):
     if host is not None:
@@ -298,7 +310,6 @@ def get_return_url(request, default_url=None):
 def get_first_install_action(db_session, install_action):
     return db_session.query(InstallJob).filter(InstallJob.install_action == install_action). \
         order_by(InstallJob.scheduled_time.asc()).first()
-
 
 
 def create_or_update_install_job(
