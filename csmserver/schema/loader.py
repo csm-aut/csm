@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from utils import import_class
+
 
 def get_schema_migrate_class(version):
     return import_class('schema.migrate_to_version_%s.SchemaMigrate' % version)

@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,16 +35,17 @@ STRING1 = "ABCDEF~!@#$%^&*()-_=+|[]{};:',.<>asdfghj/?GHIJKLMNOPQRSTUVWXYZ12345qw
 STRING2 = "WERTY[}{|=+-_)~abcdenojk54321ZpASstuUI09876OP/?.,<>';:]QfghiXCVBNMlmvwDFGHJKL(*&^%$#@!qrxyz"
 
 PREFIX = 'encrypted'
-ENCRYPT = {'key' : 'csmserver', 'string1' : STRING1, 'string2' : STRING2}
+ENCRYPT = {'key': 'csmserver', 'string1': STRING1, 'string2': STRING2}
 
 # Make sure the CURRENT_SCHEMA_VERSION is an integer
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 ENABLE_DEBUG=False
 
-"""
-Creates the database if it has not been created yet.
-"""
+
 def create_database_if_not_exists(db_settings):
+    """
+    Creates the database if it has not been created yet.
+    """
     # Make a deep copy of the db_settings
 
     drivername = db_settings['drivername']
@@ -54,33 +55,34 @@ def create_database_if_not_exists(db_settings):
         engine = create_engine(URL(**db_dict))
         engine.execute("create database if not exists " + db_settings['database'])
     
-"""
-An example content of database.ini 
 
-For MySQL.
-
-[Database]
-drivername: mysql+pymysql
-host: localhost
-port: 3306
-username: root
-password: root
-database: csmdb
-
-For PostgreSQL
-
-[Database]
-drivername: postgresql+psycopg2
-host: localhost
-port: 5432 
-username: root
-password: root
-database: csmdb
-
-The username and password in database.ini will be encrypted
-if it is not already in encrypted format.
-"""
 def get_database_settings():
+    """
+    An example content of database.ini
+
+    For MySQL.
+
+    [Database]
+    drivername: mysql+pymysql
+    host: localhost
+    port: 3306
+    username: root
+    password: root
+    database: csmdb
+
+    For PostgreSQL
+
+    [Database]
+    drivername: postgresql+psycopg2
+    host: localhost
+    port: 5432
+    username: root
+    password: root
+    database: csmdb
+
+    The username and password in database.ini will be encrypted
+    if it is not already in encrypted format.
+    """
     global ENABLE_DEBUG
     
     # Python 2.7.6, ConfigParser, Python 3.3, configparser
@@ -115,11 +117,12 @@ create_database_if_not_exists(db_settings)
 
 DATABASE_CONNECTION_INFO = URL(**db_settings)
 # Create the database engine
-engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600, convert_unicode=True, echo=ENABLE_DEBUG)
+engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600,
+                       convert_unicode=True, echo=ENABLE_DEBUG)
+
 DBSession = scoped_session(sessionmaker(autocommit=False,
                                         autoflush=False,
                                         bind=engine))
-
 
 if __name__ == '__main__': 
     pass

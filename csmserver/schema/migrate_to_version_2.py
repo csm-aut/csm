@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,11 +30,9 @@ sql_statements = [
     'alter table system_option add cco_lookup_time DATETIME',
     'alter table smu_meta drop column downloaded_time',
     'alter table server add vrf VARCHAR(100)',
-    'alter table smu_meta add retrieval_time DATETIME',
-    'alter table smu_meta add tar_software_type_id VARCHAR(20)',
-    'update smu_meta set `tar_software_type_id`="280805694"',
-    'alter table smu_info modify id VARCHAR(100)'
+    'alter table smu_meta add retrieval_time DATETIME'
     ]
+
 
 class SchemaMigrate(BaseMigrate):
     def __init__(self, version):

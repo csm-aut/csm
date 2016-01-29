@@ -1,10 +1,36 @@
+# =============================================================================
+# Copyright (c) 2016, Cisco Systems, Inc
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+# =============================================================================
 from flask import Blueprint
 from flask import jsonify, render_template, request
-from flask.ext.login import login_required
+from flask.ext.login import login_required, current_user
 
 from database import DBSession
 
 from models import Server
+from models import logger
+from models import CreateTarJob
 
 from wtforms import Form
 from wtforms import StringField
@@ -28,6 +54,7 @@ import re
 
 tar_support = Blueprint('tools', __name__, url_prefix='/tools')
 
+
 @tar_support.route('/create_tar_file')
 @login_required
 def create_tar_file():
@@ -35,75 +62,50 @@ def create_tar_file():
     create_tar_form = CreateTarForm(request.form)
     return render_template('tools/create_tar_file.html',
                            select_server_form = select_server_form,
-                           form = create_tar_form)
+                           form=create_tar_form)
 
-@tar_support.route('/api/create_tar_file')
+
+@tar_support.route('/api/create_tar_job')
 @login_required
-def api_create_tar_file():
+def api_create_tar_job():
     db_session = DBSession()
     server_id = request.args.get('server')
     server_directory = request.args.get('server_directory')
     source_tars = request.args.getlist('source_tars[]')
-    contents = request.args.get('tar_contents')
-    sps = request.args.getlist('sps[]')
-    new_tar_name = request.args.get('new_tar_name')
+    contents = request.args.getlist('tar_contents[]')
+    additional_packages = request.args.getlist('additional_packages[]')
+    new_tar_name = request.args.get('new_tar_name').strip('.tar')
 
-    if not new_tar_name or re.search(r'[^A-Za-z0-9_\-\\]',new_tar_name):
-        return jsonify({'status': 'Invalid file name.'})
-    else:
-        date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
+    create_tar_job = CreateTarJob(
+        server_id = server_id,
+        server_directory = server_directory,
+        source_tars = (',').join(source_tars),
+        contents = (',').join(contents),
+        additional_packages = (',').join(additional_packages),
+        new_tar_name = new_tar_name,
+        created_by = current_user.username,
+        status = 'Job Submitted.')
 
-        repo_dir = get_repository_directory()
-        temp_path = get_temp_directory() + str(date_string)
-        new_tar_path = os.path.join(temp_path, str(date_string))
+    db_session.add(create_tar_job)
+    db_session.commit()
 
-        try:
-            if not os.path.exists(temp_path):
-                os.makedirs(temp_path)
-                os.makedirs(new_tar_path, 7777)
+    job_id = create_tar_job.id
 
-            # Untar source tars into the temp/timestamp directory
-            if source_tars:
-                for source in source_tars:
-                    with tarfile.open(os.path.join(repo_dir, source)) as tar:
-                        tar.extractall(temp_path)
+    return jsonify({'status': 'OK', 'job_id': job_id})
 
-            # Copy the selected contents from the temp/timestamp directory
-            # to the new tar directory
-            if contents:
-                for f in contents.strip().split('\n'):
-                    _, filename = os.path.split(f)
-                    shutil.copy2(os.path.join(temp_path, filename), new_tar_path)
+@tar_support.route('/api/get_progress')
+@login_required
+def get_progress():
+    db_session = DBSession()
+    job_id = request.args.get('job_id')
 
-            # Copy the selected sp files from the repository to the new tar directory
-            for sp in sps:
-                shutil.copy2(os.path.join(repo_dir, sp), new_tar_path)
+    tar_job = db_session.query(CreateTarJob).filter(CreateTarJob.id == job_id).first()
+    if tar_job is None:
+        logger.error('Unable to retrieve Create Tar Job: %s' % job_id)
+        return jsonify(status='Unable to retrieve job')
 
-            tarname = os.path.join(temp_path, new_tar_name)
-            shutil.make_archive(tarname, format='tar', root_dir=new_tar_path)
-            make_file_writable(os.path.join(new_tar_path, tarname) + '.tar')
+    return jsonify(status='OK',progress= tar_job.status)
 
-            server = db_session.query(Server).filter(Server.id == server_id).first()
-            if server is not None:
-                server_impl = get_server_impl(server)
-                server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory)
-
-            shutil.rmtree(temp_path, onerror=handleRemoveReadonly)
-            return jsonify({'status': 'OK'})
-
-        except Exception as e:
-            shutil.rmtree(temp_path, onerror=handleRemoveReadonly)
-            print e
-
-        return jsonify({'status': e})
-
-def handleRemoveReadonly(func, path, exc):
-    excvalue = exc[1]
-    if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
-        os.chmod(path, stat.S_IRWXU| stat.S_IRWXG| stat.S_IRWXO) # 0777
-        func(path)
-    else:
-        raise
 
 @tar_support.route('/api/get_tar_contents')
 @login_required
@@ -111,19 +113,17 @@ def get_tar_contents():
     files = request.args.getlist('files[]')
     files = files[0].strip().split(',')
     rows = []
-    repo_path =  get_repository_directory()
-
+    repo_path = get_repository_directory()
 
     for file in files:
         if file:
             for f in get_tarfile_file_list(repo_path + file):
                 row = {}
-                row['file'] = repo_path +  file + '/' + f
+                row['file'] = repo_path + file + '/' + f
                 row['filename'] = f
                 row['source_tar'] = file
                 rows.append(row)
-    return jsonify( **{'data':rows} )
-
+    return jsonify(**{'data': rows})
 
 @tar_support.route('/api/get_full_software_tar_files_from_csm_repository/')
 @login_required
@@ -139,7 +139,8 @@ def get_full_software_tar_files_from_csm_repository():
             row['image_size'] = '{} bytes'.format(statinfo.st_size)
             rows.append(row)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 @tar_support.route('/api/get_sp_files_from_csm_repository/')
 @login_required
@@ -155,7 +156,8 @@ def get_sp_files_from_csm_repository():
             row['image_size'] = '{} bytes'.format(statinfo.st_size)
             rows.append(row)
 
-    return jsonify( **{'data':rows} )
+    return jsonify(**{'data': rows})
+
 
 class CreateTarForm(Form):
     new_tar_name = StringField('New File Name', [required(), Length(max=30)])

@@ -1,7 +1,7 @@
 # =============================================================================
 # version_check.py - Plugin for checking version of running
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,22 +27,15 @@
 
 import re
 
-from plugin import IPlugin
+from horizon.plugin import Plugin
 
 
-class SoftwareVersionPlugin(IPlugin):
-
+class SoftwareVersionPlugin(Plugin):
     """
     ASR9k Pre-upgrade check
     This plugin checks if version of all inputs packages are same.
     If input package contains SMUs only , ensure that box is running same ver.
     """
-    NAME = "SOFTWARE_VERSION"
-    DESCRIPTION = "Software Version Check"
-    TYPE = "PRE_UPGRADE"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def start(manager, device, *args, **kwargs):
         """

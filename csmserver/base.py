@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c)  2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,7 +22,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
 from constants import ServerType
 
 from models import Server
@@ -35,13 +34,13 @@ from utils import is_empty
 from utils import make_url
 
 from constants import get_temp_directory
-from constants import get_autlogs_directory
+
+from constants import get_log_directory
 from constants import get_migration_directory
 
 
 class Context(object):
-    def __init__(self, db_session):
-        self.db_session = db_session
+    def __init__(self):
         self._success = False
         
     @property
@@ -51,17 +50,22 @@ class Context(object):
     @success.setter
     def success(self, value):
         self._success = value 
-            
 
-class ImageContext(Context):
-    def __init__(self, db_session, host):
-        Context.__init__(self, db_session)
+
+class ConnectionContext(Context):
+    def __init__(self, host):
+        Context.__init__(self)
         self.host = host
-            
-        self.committed_cli = None
-        self.active_cli = None
-        self.inactive_cli = None   
-        
+
+    def load_data(self, key):
+        return self.host.context[0].data.get(key)
+
+    def save_data(self, key, value):
+        self.host.context[0].data[key] = value
+
+    def get_data_modified_time(self):
+        return self.host.context[0].modified_time
+
     @property
     def host_urls(self):
         urls = []
@@ -84,13 +88,13 @@ class ImageContext(Context):
                 except:
                     pass
 
-            default_username=None
-            default_password=None
+            default_username = None
+            default_password = None
             system_option = SystemOption.get(self.db_session)
 
             if system_option.enable_default_host_authentication:
-                default_username=system_option.default_host_username
-                default_password=system_option.default_host_password
+                default_username = system_option.default_host_username
+                default_password = system_option.default_host_password
 
             for host_or_ip in connection.host_or_ip.split(','):
                 for port_number in connection.port_number.split(','):
@@ -112,18 +116,15 @@ class ImageContext(Context):
         return urls
 
 
-class ConnectionContext(Context):
-    def __init__(self, db_session, urls):
-        Context.__init__(self, db_session)
-        self.urls = urls
+class SoftwareContext(ConnectionContext):
+    def __init__(self, db_session, host):
+        ConnectionContext.__init__(self, host)
+        self.host = host
+        self.db_session = db_session
 
-    @property
-    def requested_action(self):
-        return 'Get-Package'
-
-    @property
-    def log_directory(self):
-        return get_temp_directory()
+        self.committed_cli = None
+        self.active_cli = None
+        self.inactive_cli = None
 
     @property
     def migration_directory(self):
@@ -136,35 +137,36 @@ class ConnectionContext(Context):
     def host_urls(self): 
         return self.urls 
 
-class InventoryContext(ImageContext):
+
+class InventoryContext(SoftwareContext):
     def __init__(self, db_session, host, inventory_job):
-        ImageContext.__init__(self, db_session, host)
+        SoftwareContext.__init__(self, db_session, host)
         self.inventory_job = inventory_job
-        
-    @property
-    def requested_action(self):
-        return 'Get-Package'
-    
+
     @property
     def log_directory(self):
-        return get_autlogs_directory() + self.inventory_job.session_log
+        return get_log_directory() + self.inventory_job.session_log
 
     @property
     def migration_directory(self):
         return get_migration_directory()
+
     
     def post_status(self, message):
-        if self.db_session is not None and \
-            self.inventory_job is not None:
-            self.inventory_job.set_status(message)
-            self.db_session.commit() 
+        if self.db_session is not None and self.inventory_job is not None:
+            try:
+                self.inventory_job.set_status(message)
+                self.db_session.commit()
+            except Exception:
+                self.db_session.rollback()
             
                
-class InstallContext(ImageContext):
+class InstallContext(SoftwareContext):
     def __init__(self, db_session, host, install_job):
-        ImageContext.__init__(self, db_session, host)
+        SoftwareContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
+        self._custom_commands = []
     
     @property
     def software_packages(self):
@@ -176,12 +178,20 @@ class InstallContext(ImageContext):
     
     @property
     def log_directory(self):
-        return get_autlogs_directory() + self.install_job.session_log
+        return get_log_directory() + self.install_job.session_log
 
     @property
     def migration_directory(self):
         return get_migration_directory()
-    
+
+    @property
+    def custom_commands(self):
+        return self._custom_commands
+
+    @custom_commands.setter
+    def custom_commands(self, value):
+        self._custom_commands = value
+
     @property
     def operation_id(self):
         return self._operation_id
@@ -190,16 +200,16 @@ class InstallContext(ImageContext):
     def operation_id(self, value):
         try:
             self._operation_id = int(value)
-        except:  
+        except Exception:
             self._operation_id = -1
-    
-    """
-    Return the server repository URL (TFTP/FTP) where the packages can be found.
-    tftp://223.255.254.254/auto/tftp-gud/sit;VRF
-    ftp://username:password@10.55.7.21;VRF/remote/directory
-    """
+
     @property 
     def server_repository_url(self):
+        """
+        Return the server repository URL (TFTP/FTP) where the packages can be found.
+        tftp://223.255.254.254/auto/tftp-gud/sit;VRF
+        ftp://username:password@10.55.7.21;VRF/remote/directory
+        """
         server_id = self.install_job.server_id
         server = self.db_session.query(Server).filter(Server.id == server_id).first()
 
@@ -245,15 +255,36 @@ class InstallContext(ImageContext):
         return self.install_job.config_filename
     
     def post_status(self, message):
-        if self.db_session is not None and \
-            self.install_job is not None:
-            self.install_job.set_status(message)
-            self.db_session.commit()
 
-                
+        if self.db_session is not None and self.install_job is not None:
+            try:
+                self.install_job.set_status(message)
+                self.db_session.commit()
+            except Exception:
+                self.db_session.rollback()
+
+
+class TestConnectionContext(Context):
+    def __init__(self, urls):
+        Context.__init__(self)
+        self.urls = urls
+
+    @property
+    def log_directory(self):
+        return get_temp_directory()
+
+    def post_status(self, message):
+        pass
+
+    @property
+    def host_urls(self):
+        return self.urls
+
+
 class BaseHandler(object):
     def execute(self, ctx):
         raise NotImplementedError("Children must override execute")
+
 
 class BaseConnection(object):
     def login(self):       
@@ -264,4 +295,3 @@ class BaseConnection(object):
     
     def logout(self):
         raise NotImplementedError("Children must override logout")
-        

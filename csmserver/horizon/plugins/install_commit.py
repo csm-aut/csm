@@ -1,7 +1,7 @@
 # =============================================================================
 # install_commit.py - plugin for adding packages
 #
-# Copyright (c)  2013, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Author: Prasad S R
@@ -29,20 +29,14 @@
 
 import re
 
-from plugin import IPlugin
-from ..plugin_lib import get_package, watch_operation
+from horizon.plugin import Plugin
+from horizon.plugin_lib import get_package, watch_operation
 
 
-class InstallCommitPlugin(IPlugin):
+class InstallCommitPlugin(Plugin):
     """
     A plugin for install commit operation
     """
-    NAME = "INSTALL_COMMIT"
-    DESCRIPTION = "Install Commit Packages"
-    TYPE = "COMMIT"
-    VERSION = "1.0.0"
-    FAMILY = ["ASR9K"]
-
     @staticmethod
     def start(manager, device, *args, **kwargs):
         """
@@ -77,5 +71,4 @@ class InstallCommitPlugin(IPlugin):
         elif re.search(success_oper, output):
             manager.log("Operation {} finished successfully".format(op_id))
 
-        get_package(device)
-
+        get_package(device, manager)

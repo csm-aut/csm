@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,24 +28,18 @@ from sqlalchemy import inspect
 from database import DBSession, CURRENT_SCHEMA_VERSION, engine
 
 from utils import create_directory, is_ldap_supported
-from constants import get_autlogs_directory, get_repository_directory, get_temp_directory, get_migration_directory
+
+from constants import get_log_directory, get_repository_directory, get_temp_directory, get_migration_directory
 from schema.loader import get_schema_migrate_class
 
 import traceback
 
 # Create the necessary supporting directories
-create_directory(get_autlogs_directory())
+create_directory(get_log_directory())
 create_directory(get_repository_directory())
 create_directory(get_temp_directory())
 create_directory(get_migration_directory())
 
-def is_column_existed(table, column_name):
-    inspector = inspect(engine)
-    column_list = inspector.get_columns(table)
-    for column in column_list:
-        if column['name'] == column_name:
-            return True
-    return False
 
 def init():
     if not is_ldap_supported():
@@ -54,8 +48,8 @@ def init():
     db_session = DBSession()
     system_version = SystemVersion.get(db_session)
 
-    # Handles database schema migration
-    for version in range(system_version.schema_version, CURRENT_SCHEMA_VERSION+1):    
+    # Handles database schema migration starting from the next schema version
+    for version in range(system_version.schema_version + 1, CURRENT_SCHEMA_VERSION + 1):
         handler_class = get_schema_migrate_class(version)
         if handler_class is not None:
             try:

@@ -1,0 +1,14 @@
+[Core]
+Name = Install Deactivate
+Module = install_deactivate
+
+[CSM]
+Phases = Deactivate
+Platforms = ASR9K
+
+[Documentation]
+Author = Suryakant Kewat, Klaudiusz Staniek
+Version = 1.0
+Website = https://github.com/csm-aut/csm
+Description = This plugin deactivates packages on the system. This may cause device reload.
+

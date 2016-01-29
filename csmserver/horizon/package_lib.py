@@ -450,6 +450,7 @@ def validate_xr_node_state(inventory, device):
 
 protocols = ['tftp', 'ftp:', 'sftp']
 
+
 def get_pkgs(pkg_lst):
     if isinstance(pkg_lst, list):
         return pkg_lst

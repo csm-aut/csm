@@ -29,6 +29,7 @@
 import re
 import itertools
 import time
+import os
 
 import package_lib
 import condoor
@@ -48,7 +49,6 @@ def watch_operation(manager, device, op_id=0):
         cmd_show_install_request = "admin show install request"
 
         manager.log("Watching the operation {} to complete".format(op_id))
-        ctx = device.get_property("ctx")
         last_status = None
 
         propeller = itertools.cycle(["|", "/", "-", "\\", "|", "/", "-", "\\"])
@@ -79,7 +79,7 @@ def watch_operation(manager, device, op_id=0):
                     message += "\r\n<br>{}".format(status)
 
                 if message != last_status:
-                    ctx.post_status(message)
+                    manager.csm.post_status(message)
                     last_status = message
 
             if pat_no_install in output:
@@ -88,30 +88,28 @@ def watch_operation(manager, device, op_id=0):
         return output
 
 
-def get_package(device):
-    csm_ctx = device.get_property('ctx')
-    if csm_ctx:
-        if device.os_type == "XR":
-            if hasattr(csm_ctx, 'active_cli'):
-                output = device.send("admin show install active summary")
-                csm_ctx.active_cli = output
-            if hasattr(csm_ctx, 'inactive_cli'):
-                output = device.send("admin show install inactive summary")
-                csm_ctx.inactive_cli = output
-            if hasattr(csm_ctx, 'committed_cli'):
-                output = device.send("admin show install committed summary")
-                csm_ctx.committed_cli = output
+def get_package(device, manager):
+    if device.os_type == "XR":
+        if hasattr(manager.csm, 'active_cli'):
+            output = device.send("admin show install active summary")
+            manager.csm.active_cli = output
+        if hasattr(manager.csm, 'inactive_cli'):
+            output = device.send("admin show install inactive summary")
+            manager.csm.inactive_cli = output
+        if hasattr(manager.csm, 'committed_cli'):
+            output = device.send("admin show install committed summary")
+            manager.csm.committed_cli = output
 
-        if device.os_type == "eXR":
-            if hasattr(csm_ctx, 'active_cli'):
-                output = device.send("admin show install active")
-                csm_ctx.active_cli = output
-            if hasattr(csm_ctx, 'inactive_cli'):
-                output = device.send("admin show install inactive")
-                csm_ctx.inactive_cli = output
-            if hasattr(csm_ctx, 'committed_cli'):
-                output = device.send("admin show install committed")
-                csm_ctx.committed_cli = output
+    if device.os_type == "eXR":
+        if hasattr(manager.csm, 'active_cli'):
+            output = device.send("admin show install active")
+            manager.csm.active_cli = output
+        if hasattr(manager.csm, 'inactive_cli'):
+            output = device.send("admin show install inactive")
+            manager.csm.inactive_cli = output
+        if hasattr(manager.csm, 'committed_cli'):
+            output = device.send("admin show install committed")
+            manager.csm.committed_cli = output
 
 
 def wait_for_reload(manager, device):
@@ -217,7 +215,7 @@ def install_activate_deactivate(manager, device, cmd):
         success = watch_install(manager, device, op_id, cmd)
         if not success:
             manager.error("Reload or boot failure")
-        get_package(device)
+        get_package(device, manager)
         manager.log("Operation {} finished successfully".format(op_id))
         return
     else:
@@ -226,16 +224,15 @@ def install_activate_deactivate(manager, device, cmd):
 
 
 def install_add_remove(manager, device, cmd, has_tar=False):
-    ctx = device.get_property("ctx")
     manager.log("Waiting the operation to continue asynchronously")
     output = device.send(cmd, timeout=7200)
     result = re.search('Install operation (\d+) \'', output)
     if result:
         op_id = result.group(1)
         # this needs to be clarified
-        if hasattr(ctx, 'operation_id'):
+        if hasattr(manager.csm, 'operation_id'):
             if has_tar is True:
-                ctx.operation_id = op_id
+                manager.csm.operation_id = op_id
                 manager.log("The operation {} stored".format(op_id))
     else:
         manager.log_install_errors(output)
@@ -252,12 +249,13 @@ def install_add_remove(manager, device, cmd, has_tar=False):
             manager.error("Operation {} failed".format(op_id))
             return  # for same of clarity
 
-        get_package(device)
+        get_package(device, manager)
         manager.log("Operation {} finished successfully".format(op_id))
         return  # for sake of clarity
     else:
         manager.log_install_errors(output)
         manager.error("Operation {} failed".format(op_id))
+
 
 def clear_cfg_inconsistency(manager, device):
     """

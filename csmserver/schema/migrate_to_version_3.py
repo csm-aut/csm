@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,10 +24,16 @@
 # =============================================================================
 from schema.base import BaseMigrate
 from database import DBSession
+from models import Host
+from models import HostContext
 
 sql_statements = [
-
+    'alter table smu_meta add tar_software_type_id VARCHAR(20)',
+    'update smu_meta set `tar_software_type_id`="280805694"',
+    'alter table smu_info modify id VARCHAR(100)',
+    'alter table system_option add enable_ldap_host_auth BOOLEAN default 0'
     ]
+
 
 class SchemaMigrate(BaseMigrate):
     def __init__(self, version):
@@ -39,4 +45,18 @@ class SchemaMigrate(BaseMigrate):
             try:
                 db_session.execute(sql)
             except:
-                pass 
+                pass
+
+        try:
+            # Creates a context for existing hosts
+            hosts = db_session.query(Host).all()
+            for host in hosts:
+                host.context.append(HostContext())
+                if len(host.connection_param) > 0:
+                    connection = host.connection_param[0]
+                    if connection.port_number is None:
+                        connection.port_number = ''
+            db_session.commit()
+        except:
+            pass
+

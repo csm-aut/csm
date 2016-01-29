@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -119,49 +119,43 @@ pattern_list[PLATFORM_TYPE_NCS6K_SYSADMIN_PACKAGE] = pattern
 
 def get_IOSXR_release(name):
     matches = re.findall("\d+\.\d+\.\d+", name)
-    if matches != []:
+    if matches:
         return matches[0]
     return UNKNOWN
-"""
-Example,
-    input: ncs6k-xr-5.0.1
-           ncs6k-5.0.1.CSCul51055-0.0.2.i
-           ncs6k-sysadmin-xr-5.0.1
-           ncs6k-sysadmin-5.0.1.CSCul51055-0.0.2.i
-           ASR9K-iosxr-px-k9-5.0.1.tar
-           ASR9K-iosxr-px-5.0.1-bridge_smus.tar
-    output: 5.0.1
 
-"""
-def get_NCS6K_release(name, platform_type):
-    if platform_type == PLATFORM_TYPE_NCS6K_PACKAGE:
-        name = name.replace('ncs6k-xr-', '')
-    elif platform_type == PLATFORM_TYPE_NCS6K_SMU:
-        name = name.replace('ncs6k-', '')
-    elif platform_type == PLATFORM_TYPE_NCS6K_SYSADMIN_PACKAGE:
-        name = name.replace('ncs6k-sysadmin-xr-', '')
-    elif platform_type == PLATFORM_TYPE_NCS6K_SYSADMIN_SMU:
-        name = name.replace('ncs6k-sysadmin-', '')
-    
-    tokens = name.split('.')
-    if len(tokens) >= 3:
-        return tokens[0] + '.' + tokens[1] + '.' + tokens[2]
+
+def get_NCS6K_release(name):
+    """
+    Example,
+        input: ncs6k-xr-5.0.1
+               ncs6k-5.0.1.CSCul51055-0.0.2.i
+               ncs6k-sysadmin-xr-5.0.1
+               ncs6k-sysadmin-5.0.1.CSCul51055-0.0.2.i
+               ASR9K-iosxr-px-k9-5.0.1.tar
+               ASR9K-iosxr-px-5.0.1-bridge_smus.tar
+        output: 5.0.1
+
+    """
+    matches = re.findall("\d+\.\d+\.\d+", name)
+    if matches:
+        return matches[0]
     return UNKNOWN
+
 
 def get_platform_type(name):
     for platform_type in pattern_list:
         pattern = pattern_list[platform_type]
-        if (pattern.match(name)):
+        if pattern.match(name):
             return platform_type
     
     return PLATFORM_TYPE_UNKNOWN
 
-"""
-Returns the platform based on the pattern type.
-ASR9K-PX, CRS-PX, NCS6K
-"""
-def get_platform(name):
 
+def get_platform(name):
+    """
+    Returns the platform based on the pattern type.
+    ASR9K-PX, CRS-PX, NCS6K
+    """
     platform_type = get_platform_type(name)
 
     if platform_type == PLATFORM_TYPE_ASR9K_P_SMU or \
@@ -186,6 +180,7 @@ def get_platform(name):
             return PLATFORM_NCS6K_SYSADMIN
     else:
         return UNKNOWN
+
 
 def get_release(name):
     platform_type = get_platform_type(name)   
