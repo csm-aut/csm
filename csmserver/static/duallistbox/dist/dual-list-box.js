@@ -38,9 +38,9 @@
                 horizontal: false,              // Whether to layout the dual list box as horizontal or vertical.
                 textLength: 45,                 // Maximum text length that is displayed in the select.
                 moveAllBtn: true,               // Whether the append all button is available.
-                maxAllBtn:  500,                // Maximum size of list in which the all button works without warning. See below.
+                maxAllBtn:  3000,                // Maximum size of list in which the all button works without warning. See below.
                 selectClass:'form-control',
-                warning:    'Are you sure you want to move this many items? Doing so can cause your browser to become unresponsive.'
+                warning:    'Are you sure you want to move these many items? Doing so can cause your browser to become unresponsive.'
             };
 
             var htmlOptions = {

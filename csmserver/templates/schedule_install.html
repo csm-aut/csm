@@ -65,7 +65,8 @@ $('#browse-server-button').on('click', function(e) {
 
 $('#browse-cisco-button').on('click', function(e) {
     if (validate_region()) {
-        on_display_cisco_software_dialog($('#region option:selected').val());
+        var selected_hosts = host_selector.get_selected_items();
+        on_display_cisco_software_dialog($('#region option:selected').val(), selected_hosts);
     }
 });
 

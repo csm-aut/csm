@@ -38,8 +38,8 @@ from server_helper import get_server_impl
 
 from constants import JobStatus
 
-from threadpool import Pool
-from threadpool import WorkUnit
+from thread_pool import Pool
+from thread_pool import WorkUnit
 
 from bsd_service import BSDServiceHandler
 from utils import untar
@@ -136,24 +136,25 @@ class DownloadWorkUnit(WorkUnit):
                     software_type_ID=download_job.software_type_id) 
                 
                 download_job.set_status('Preparing to download from cisco.com.')
-                db_session.commit() 
-                
-                bsd.download(output_file_path, callback=self.progress_listener)         
-                # Untar the file to the output directory
-                tarfile_file_list = untar(output_file_path, get_repository_directory())
+                db_session.commit()
+                bsd.download(output_file_path, callback=self.progress_listener)
+                # Untar the file to the output directory unless the file is Full Software
+                if "iosxr" not in download_job.cco_filename:
+                    tarfile_file_list = untar(output_file_path, get_repository_directory())
             else:
                 tarfile_file_list = get_tarfile_file_list(output_file_path)
-            
-            # Now transfers to the server repository
-            download_job.set_status('Transferring file to server repository.')
-            db_session.commit() 
-            
-            server = db_session.query(Server).filter(Server.id == download_job.server_id).first()
-            if server is not None:
-                server_impl = get_server_impl(server) 
-                for filename in tarfile_file_list:
-                    server_impl.upload_file(get_repository_directory() + filename, filename, sub_directory=download_job.server_directory)       
-            
+
+            if "iosxr" not in download_job.cco_filename:
+                # Now transfers to the server repository
+                download_job.set_status('Transferring file to server repository.')
+                db_session.commit()
+
+                server = db_session.query(Server).filter(Server.id == download_job.server_id).first()
+                if server is not None:
+                    server_impl = get_server_impl(server)
+                    for filename in tarfile_file_list:
+                        server_impl.upload_file(get_repository_directory() + filename, filename, sub_directory=download_job.server_directory)
+
             self.archive_download_job(db_session, download_job, JobStatus.COMPLETED) 
             db_session.commit()
 

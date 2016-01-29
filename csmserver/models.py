@@ -102,10 +102,10 @@ class User(Base):
     
     csm_message = relationship("CSMMessage",
         cascade="all, delete, delete-orphan")
-    
+
     conformance_report = relationship("ConformanceReport",
         cascade="all, delete, delete-orphan")
-
+    
     def _get_password(self):
         return self._password
 
@@ -248,47 +248,7 @@ class Host(Base):
         order_by="desc(InstallJobHistory.created_time)",
         backref="host",
         cascade="all, delete, delete-orphan")
-        
-    @property
-    def urls(self):
-        _urls = []
-        
-        if len(self.connection_param) > 0:
-            connection = self.connection_param[0]
-            db_session = DBSession()
-            # Checks if there is a jump server
-            if connection.jump_host_id is not None:
-                try:
-                    jump_host = db_session.query(JumpHost).filter(JumpHost.id == connection.jump_host_id).first()
-                    if jump_host is not None:
-                        _urls.append(make_url(
-                            connection_type=jump_host.connection_type,
-                            username=jump_host.username,
-                            password=jump_host.password,
-                            host_or_ip=jump_host.host_or_ip,
-                            port_number=jump_host.port_number))
-                except:
-                    logger.exception('Host.urls() hits exception')
-            
-            default_username=None
-            default_password=None
-            system_option = SystemOption.get(db_session)
-            
-            if system_option.enable_default_host_authentication:
-                default_username=system_option.default_host_username
-                default_password=system_option.default_host_password
-                
-            _urls.append(make_url(
-                connection_type=connection.connection_type,
-                username=connection.username,
-                password=connection.password,
-                host_or_ip=connection.host_or_ip,
-                port_number=connection.port_number,
-                default_username=default_username,
-                default_password=default_password))
-        
-        return _urls
-    
+
     def get_json(self):
         result = {}
         result['hostname'] = self.hostname
@@ -496,15 +456,16 @@ class InstallJobHistory(Base):
  
 class Region(Base):
     __tablename__ = 'region'
+
     id = Column(Integer, primary_key=True)
     name = Column(String(100), index=True)
-    
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     servers = relationship('Server', order_by="Server.hostname", secondary=lambda: RegionServer)
           
 class Server(Base):
     __tablename__ = 'server'
+
     id = Column(Integer, primary_key=True)
     hostname = Column(String(100), index=True)
     server_type = Column(String(20))
@@ -530,6 +491,7 @@ class Server(Base):
     
 class SMTPServer(Base):
     __tablename__ = 'smtp_server'
+
     id = Column(Integer, primary_key=True)
     server = Column(String(50))
     server_port = Column(String(10))
@@ -558,8 +520,8 @@ RegionServer = Table('region_server', Base.metadata,
 
 class Preferences(Base):
     __tablename__ = 'preferences'
+
     id = Column(Integer, primary_key=True)
-    
     excluded_platforms_and_releases = Column(Text)
     cco_username = Column(String(50))
     _cco_password = Column('cco_password', String(100))
@@ -581,7 +543,8 @@ class Preferences(Base):
         return db_session.query(Preferences).filter(Preferences.user_id == user_id).first()
     
 class DownloadJob(Base):
-    __tablename__ = 'download_job'  
+    __tablename__ = 'download_job'
+
     id = Column(Integer, primary_key=True)
     cco_filename = Column(String(50))
     scheduled_time = Column(DateTime, default=datetime.datetime.utcnow)
@@ -604,7 +567,8 @@ class DownloadJob(Base):
         self.status_time = datetime.datetime.utcnow()
         
 class DownloadJobHistory(Base):
-    __tablename__ = 'download_job_history'   
+    __tablename__ = 'download_job_history'
+
     id = Column(Integer, primary_key=True)
     cco_filename = Column(String(50))
     scheduled_time = Column(DateTime)
@@ -639,18 +603,20 @@ class SMUMeta(Base):
     created_time = Column(String(30)) # Use string instead of timestamp
     smu_software_type_id = Column(String(20))
     sp_software_type_id = Column(String(20))
+    tar_software_type_id = Column(String(20))
     file_suffix = Column(String(10))
     pid = Column(String(200))
     mdf_id = Column(String(200))
     retrieval_time = Column(DateTime)
-    
+
     smu_info = relationship("SMUInfo",
         backref="smu_meta",
         cascade="all, delete, delete-orphan")
-    
+
 class SMUInfo(Base):
     __tablename__ = 'smu_info'
-    id = Column(String(15), primary_key=True)
+
+    id = Column(String(100), primary_key=True)
     name = Column(String(50))
     status = Column(String(20))
     type = Column(String(20)) # Recommended, Optional, PSIRT
@@ -686,6 +652,7 @@ class SMUInfo(Base):
         
 class SystemVersion(Base): 
     __tablename__ = 'system_version'
+
     id = Column(Integer, primary_key=True)
     schema_version = Column(Integer, default=CURRENT_SCHEMA_VERSION)
     software_version = Column(String(10), default='1.0')
@@ -693,9 +660,22 @@ class SystemVersion(Base):
     @classmethod
     def get(cls, db_session):
         return db_session.query(SystemVersion).first()
-    
+
+class DeviceUDI(Base):
+    __tablename__ = 'device_udi'
+    id = Column(Integer, primary_key=True)
+    platform = Column(String(50))
+    pid = Column(String(50))
+    version = Column(String(50))
+    serial_number = Column(String(50))
+
+    @classmethod
+    def get(cls, db_session):
+        return db_session.query(DeviceUDI).first()
+
 class SystemOption(Base):
-    __tablename__ = 'system_option'   
+    __tablename__ = 'system_option'
+
     id = Column(Integer, primary_key=True)
     inventory_threads = Column(Integer, default=5)
     install_threads = Column(Integer, default=10)
@@ -734,6 +714,7 @@ class SystemOption(Base):
     
 class Encrypt(Base):
     __tablename__ = 'encrypt'
+
     id = Column(Integer, primary_key=True)
     key = Column(String(30), default=datetime.datetime.utcnow().strftime("%m/%d/%Y %I:%M %p"))
     string1 = Column(String(100), 
@@ -772,43 +753,50 @@ class SoftwareProfile(Base):
     
 class ConformanceReport(Base):
     __tablename__ = 'conformance_report'
+
     id = Column(Integer, primary_key=True)
     software_profile = Column(String(100))
-    software_profile_packages = Column(Text) 
+    software_profile_packages = Column(Text)
     match_criteria = Column(String(30))
-    hostnames = Column(Text) 
+    hostnames = Column(Text)
     host_not_in_conformance = Column(Integer, default=0)
     host_out_dated_inventory = Column(Integer, default=0)
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
     user_id = Column(Integer, ForeignKey('user.id'))
-    
+
     entries = relationship("ConformanceReportEntry",
         order_by="ConformanceReportEntry.hostname",
         backref="conformance_report",
         cascade="all, delete, delete-orphan")
-    
+
 class ConformanceReportEntry(Base):
     __tablename__ = 'conformance_report_entry'
+
     id = Column(Integer, primary_key=True)
-    hostname = Column(String(50)) 
+    hostname = Column(String(50))
     platform = Column(String(20))
     software = Column(String(20))
-    host_packages = Column(Text)              
+    host_packages = Column(Text)
     missing_packages = Column(Text)
     conformed = Column(String(3))
     comments = Column(String(50))
 
     conformance_report_id = Column(Integer, ForeignKey('conformance_report.id'))
 
-    
+
 Base.metadata.create_all(engine)
         
 class LogHandler(logging.Handler):
+
+    def __init__(self, db_session):
+        logging.Handler.__init__(self)
+        self.db_session = db_session
+
     def emit(self, record):
     
         trace = traceback.format_exc() if record.__dict__['exc_info'] else None
-        
+
         args = record.__dict__['args']
         msg = record.__dict__['msg']
     
@@ -820,14 +808,27 @@ class LogHandler(logging.Handler):
             trace=trace,
             msg=msg, 
             created_time=datetime.datetime.utcnow())
+
+        self.db_session.add(log)
+        self.db_session.rollback()
+        self.db_session.flush()
+        self.db_session.commit()
         
-        db_session = DBSession()
-        db_session.add(log)
-        db_session.commit()
-        
-logger = logging.getLogger('log')
+logger = logging.getLogger('logger')
 logger.setLevel(logging.DEBUG)
-logger.addHandler(LogHandler())
+logger.addHandler(LogHandler(DBSession()))
+
+
+"""
+Return a session specific logger.  This is necessary especially
+if the db_session is from a different process address space.
+"""
+def get_db_session_logger(db_session):
+    session_logger = logging.getLogger('session_logger')
+    session_logger.setLevel(logging.DEBUG)
+    session_logger.addHandler(LogHandler(db_session))
+    return session_logger
+
        
 def get_download_job_key_dict():
     result = {}

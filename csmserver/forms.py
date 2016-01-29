@@ -134,7 +134,7 @@ class RegionForm(Form):
     
 class AdminConsoleForm(Form):
     num_inventory_threads = IntegerField('Number of Software Inventory Processes', [validators.NumberRange(min=2, max=50)])
-    num_install_threads = IntegerField('Number of Install Processes', [validators.NumberRange(min=2, max=50)])
+    num_install_threads = IntegerField('Number of Install Processes', [validators.NumberRange(min=2, max=100)])
     num_download_threads = IntegerField('Number of SMU Download Processes', [validators.NumberRange(min=2, max=50)])
     can_schedule = HiddenField("Allow Users to Schedule Install")
     can_install = HiddenField("Allow Scheduled Installs to Run")

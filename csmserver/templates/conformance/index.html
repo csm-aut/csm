@@ -9,7 +9,7 @@
 <script src="/static/jquery/js/conformance_report_dialog.js"></script>
 <script src="/static/jquery/js/select_server.js"></script>
 <script src="/static/jquery/js/make_conform_dialog.js"></script>
-<script src="/static/jquery/js/select_region_hosts.js"></script>
+<script src="/static/jquery/js/select_hosts_by_platform.js"></script>
   
 <script charset="utf-8">
 
@@ -64,11 +64,11 @@
         
         function export_conformance_report(id, include_host_packages) {
             $.ajax({
-                url: "/conformance/api/get_conformance_report_datetime/" + id,
+                url: "/conformance/api/get_conformance_report_datetime/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     $.each(response, function(index, element) {
-                        window.location.href = '/conformance/api/export_conformance_report/' + id + '?locale_datetime=' +
+                        window.location.href = '/conformance/api/export_conformance_report/report/' + id + '?locale_datetime=' +
                             convertToLocaleString(element[0].conformance_report_datetime) +
                             '&include_host_packages=' + include_host_packages;
                     });
@@ -201,7 +201,7 @@
                 "data": 'missing_packages',
                 "render": function(data, type, row) {                   
                     if (data.length > 0) {
-                        return comma2br(data);
+                        return '<span style="color:red;">' + comma2br(data) + '</span>';
                     } else {
                         return '';
                     }
@@ -256,14 +256,14 @@
         function display_conformance_report(id) {
             $.cookie('conformance-report-id', id); 
 
-            conformance_report_table.api().ajax.url("/conformance/api/get_conformance_report/" + id).load();
+            conformance_report_table.api().ajax.url("/conformance/api/get_conformance_report/report/" + id).load();
             display_conformance_report_summary(id);
             display_conformance_report_software_profile_packages(id)
         }
 
         function display_conformance_report_software_profile_packages(id) {
             $.ajax({
-                url: "/conformance/api/get_conformance_report_software_profile_packages/" + id,
+                url: "/conformance/api/get_conformance_report_software_profile_packages/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     var html_code = '<ul>';
@@ -286,7 +286,7 @@
         
         function display_conformance_report_summary(id) {          
             $.ajax({
-                url: "/conformance/api/get_conformance_report_summary/" + id,
+                url: "/conformance/api/get_conformance_report_summary/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     var html_code = '';
@@ -340,7 +340,7 @@
         
         function rerun_conformance_report(id) {
             $.ajax({
-                url: "/conformance/api/rerun_conformance_report/" + id,
+                url: "/conformance/api/rerun_conformance_report/report/" + id,
                 dataType: 'json',
                 success: function(response) {
                     if (response.status == 'OK') {
@@ -399,7 +399,7 @@
   
 {% block main %}
 
-{{ conformance_report_dialog(form.conformance_report_dialog_software_profile, form.match_criteria, form.region, form.role, form.software) }}
+{{ conformance_report_dialog(conformance_report_dialog_form) }}
 {{ make_conform_dialog(system_option.enable_cco_lookup, select_server_form.select_server, select_server_form.select_server_directory,
     server_time, install_actions, make_conform_dialog_form.software_packages, make_conform_dialog_form.scheduled_time,
     make_conform_dialog_form.scheduled_time_UTC) }}
@@ -454,7 +454,7 @@
                 <div id="conformance" class="tab-pane fade">
                     <div class="row">
                         <div>
-                        {{ edit_field(form.conformance_reports, label_field_width="col-sm-2", field_width="col-sm-5", class="form-control") }}
+                        {{ edit_field(conformance_form.conformance_reports, label_field_width="col-sm-2", field_width="col-sm-5", class="form-control") }}
                         </div>
                         <div class="btn-group pull-right">      
                             <button id="export" type="button" class="btn btn-default">        

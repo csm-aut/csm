@@ -113,6 +113,7 @@ class PackageType:
     SMU_IN_TRANSIT = 'SMU In-transit'
     SERVICE_PACK = 'Service Pack'
     PACKAGE = 'Package'
+    SOFTWARE = 'Software'
         
 class UserPrivilege:
     ADMIN = 'Admin'

@@ -6,7 +6,6 @@
  */
 
 var host_selector;
-var selected_software_profile_name;
 
 $(function() {
 

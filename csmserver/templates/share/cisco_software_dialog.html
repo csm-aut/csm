@@ -43,7 +43,7 @@ Caller may provide the following WTForms elements with the following IDs
     </div>
 </div>
 
-<div id="cisco-software-dialog" data-cco-lookup-enabled="{{ cco_lookup_enable }}" class="modal" role="dialog">
+<div id="cisco-software-dialog" data-hostname="" data-cco-lookup-enabled="{{ cco_lookup_enable }}" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" class="form-horizontal">
             <div class="modal-content">
@@ -88,6 +88,10 @@ Caller may provide the following WTForms elements with the following IDs
 
                         {{ edit_field(server_directory, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}
                     {% endif %}
+                    <span class="label" style="border: 1px solid; border-color: Black; background-color: #FFFFCC; color: Black;">Posted Within a Week</span>
+                    <span class="label" id="not-applicable-panel" title="The required package bundles are not on the host" style="border: 1px solid; border-color: Black; background-color: #D3D3D3; color: Black;">Not Applicable</span>
+                    <span class="label" id="installed-packages-highlight-panel" style="border: 1px solid; border-color: Black; background-color: #DFF0D8; color: Black;">Installed Packages</span>
+                    <span class="pull-right" id="installed-packages-checkbox-panel"><input id="hide-installed-packages-checkbox" type="checkbox">&nbsp;Filter Installed Packages</span>
                 </div>
                 <div class="modal-body">
                     <!-- upper section -->

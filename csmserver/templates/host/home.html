@@ -31,7 +31,7 @@
         });
 
         $('#search-region-selector').on('change', function(e) {
-            on_refresh_host_table($(this).val());
+            refresh_host_table($(this).val());
         });
 
         $(".host-delete-link").on("click", function() {
@@ -94,6 +94,8 @@
             bootbox.alert(message);
         }
 
+        var selected_region_id = $.cookie('main-selected-region') == null ? 0 : $.cookie('main-selected-region');
+
         var host_table = $("#managed-host-datatable").dataTable({
             "order": [
                 [0, "asc"]
@@ -136,13 +138,18 @@
                     return '<a href="/hosts/' + data + '/schedule_install/">Install</a>';
                 }
             }, ],
+            "ajax": {
+                "url": "/api/get_managed_hosts/region/" + selected_region_id,
+            }
         }).on('draw.dt', function(e, settings, json) {
             $('#region_hosts_count').html(host_table.api().page.info().recordsTotal);
         });
 
-        var selected_region_id = $.cookie('main-selected-region') == null ? 0 : $.cookie('main-selected-region');
-        on_refresh_host_table(selected_region_id);
+        // Initialize
+        update_host_platform_table(selected_region_id);
+        update_region_name(selected_region_id);
 
+        /*
         function on_refresh_host_table(region_id) {
             $.ajax({
                 url: "/api/get_region_host_count/region/" + region_id,
@@ -163,12 +170,21 @@
                 }
             });
         }
+        */
 
         function refresh_host_table(region_id) {
             $.cookie('main-selected-region', region_id);
             host_table.api().ajax.url("/api/get_managed_hosts/region/" + region_id).load();
-            host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + region_id).load();
+            update_host_platform_table(region_id);
+            update_region_name(region_id);
 
+        }
+
+        function update_host_platform_table(region_id) {
+            host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + region_id).load();
+        }
+
+        function update_region_name(region_id) {
             $.ajax({
                 url: "/api/get_region_name/region/" + region_id,
                 dataType: 'json',
@@ -330,7 +346,7 @@
     <!-- upper section -->
     <div class="row">
         <div class="col-sm-3">
-            <span><strong>Region:&nbsp;</strong></span><span id='selected-region'></span>
+            <span><strong>Selected Region:&nbsp;</strong></span><span id='selected-region'></span>
             <hr>
             <div class="panel panel-info">
                 <div class="panel-heading">CSM Server</div>

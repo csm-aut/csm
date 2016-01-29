@@ -19,7 +19,6 @@ $(function() {
      install_history_table = $("#install-history-datatable").dataTable({
          "order": [[ 2, "desc" ]],
          "scrollY": 250,
-         "pageLength": 100,
          "columnDefs": [ 
          {
              "sortable": false,
@@ -62,7 +61,7 @@ $(function() {
 
 function display_install_history_dialog(hostname_list) {
     initialize_install_history_dialog();
-            
+
     $('#install-history-dialog').modal({show:true, backdrop:'static'})
     if (hostname_list.length == 1) {
         var hostname = hostname_list[0];

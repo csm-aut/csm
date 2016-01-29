@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% from 'host/common.html' import edit_field %}
+{% from 'share/select_server.html' import select_server %}
+
+{% block extra_head %}
+
+<script src="/static/x-wizard-1.1/assets/js/jquery.bootstrap.wizard.js" type="text/javascript"></script>
+<link href="/static/x-wizard-1.1/assets/css/gsdk-base-modified.css" rel="stylesheet" />
+
+<script src="/static/duallistbox/dist/dual-list-box.js"></script>
+<script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+<script src="/static/jquery/js/common-utils.js"></script>
+<script src="/static/jquery/js/select_files.js"></script>
+<script src="/static/jquery/js/select_server.js"></script>
+
+<script>
+
+$(function() {
+    var browse_spinner = $('#browse-spinner');
+    browse_spinner.hide();
+    initialize_server_by_region(0);
+
+    $('.wizard-card').bootstrapWizard({
+        'tabClass': 'nav nav-pills',
+        'nextSelector': '.btn-next',
+        'previousSelector': '.btn-previous',
+
+        onInit : function(tab, navigation, index){
+
+            //check number of tabs and fill the entire row
+            var $total = navigation.find('li').length;
+            $width = 100/$total;
+
+            $display_width = $(document).width();
+            if($display_width < 600 && $total > 3){
+                $width = 50;
+            }
+
+            navigation.find('li').css('width',$width + '%');
+
+        },
+        onNext: function(tab, navigation, index){
+            if(index == 1){
+                var selected = file_selector.get_selected_items();
+                tar_contents_table.api().ajax.url("/tools/api/get_tar_contents?files[]=" + selected).load();
+            }
+        },
+        onTabClick : function(tab, navigation, index){
+            // Disable the possibility to click on tabs
+            return false;
+        },
+        onTabShow: function(tab, navigation, index) {
+            var $total = navigation.find('li').length;
+            var $current = index+1;
+
+            var wizard = navigation.closest('.wizard-card');
+
+            // If it's the last tab then hide the last button and show the finish instead
+            if($current >= $total) {
+                $(wizard).find('.btn-next').hide();
+                $(wizard).find('.btn-finish').show();
+            } else {
+                $(wizard).find('.btn-next').show();
+                $(wizard).find('.btn-finish').hide();
+            }
+        }
+    });
+
+    var tar_contents_table = $("#tar-contents-datatable").dataTable({
+        "order": [
+            [ 2, "asc" ]
+        ],
+        "pageLength": 100,
+        "scrollY": 250,
+        "columnDefs": [{
+            "sortable": false,
+            "targets": 0,
+            "data" : 'file',
+            "render": function ( data, type, row ) {
+                return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
+            }
+        }, {
+            "targets": 1,
+            "data" : 'filename'
+        }, {
+            "targets": 2,
+            "data": 'source_tar'
+        } ]
+    });
+
+    $('#on-finish-submit').on('click', function(e) {
+        if ($('#select_server').val() == -1) {
+            bootbox.alert('Server repository has not been specified.');
+            return false;
+        }
+        browse_spinner.show();
+        var tar_contents = "";
+        $('.check').each(function(index) {
+            if (this.checked) {
+                tar_contents += $(this).val() + '\n';
+            }
+        });
+
+        var sps = sp_file_selector.get_selected_items();
+        var source_tars = file_selector.get_selected_items();
+        var new_tar_name = $('#new_tar_name').val();
+
+        $.ajax({
+            url: "/tools/api/create_tar_file",
+            dataType: 'json',
+            data: {
+                source_tars: source_tars,
+                tar_contents: tar_contents,
+                sps: sps,
+                server: $('#select_server').val(),
+                server_name: $('#select_server').text(),
+                server_directory: $('#select_server_directory').val(),
+                new_tar_name: new_tar_name
+            },
+            success: function(data) {
+                browse_spinner.hide();
+                //$('#on-finish-submit').prop("disabled", "False");
+                if (data.status == 'OK') {
+                        bootbox.alert("Tar creation has been successful!", function() {
+                        window.location = "{{ url_for('tools.create_tar_file') }}";
+                    });
+                } else {
+                    bootbox.alert('<img src="/static/error.png">&nbsp;Following errors were encountered: <br><br>' + comma2br(data.status));
+                }
+            },
+            error: function(XMLHttpRequest, textStatus, errorThrown) {
+                browse_spinner.hide();
+                //$('#on-finish-submit').prop("disabled", "False");
+                alert(errorThrown);
+            }
+        });
+
+        return false;
+    });
+
+
+    $('#tar-contents-check-all').click(function () {
+        toggle_check_all(tar_contents_table, this);
+    });
+
+    function toggle_check_all(data_table, this_instance) {
+        var filtered_rows = data_table.$('tr', {"filter": "applied"});
+        for (var i = 0; i < filtered_rows.length; i++) {
+          $(filtered_rows[i]).find('.check').prop('checked', this_instance.checked);
+        }
+    }
+
+});
+
+</script>
+
+<style>
+    .nav-pills>li>a {
+        border-radius: 0px;
+    }
+</style>
+
+{% endblock extra_head %}
+
+{% block main %}
+<form id="form" class="form-horizontal">
+<div class="row">
+    <div class="col-sm-8 col-sm-offset-2">
+        <!--      Wizard container        -->
+        <div id="wizard-dialog" class="wizard-container">
+            <div class="card wizard-card wizard-border csm-blue" id="wizard">
+                <form class="form-horizontal" method="post">
+                    <div class="wizard-header">
+                        <h3>
+                            Create Tar File <br>
+                        </h3>
+                    </div>
+                    <ul>
+                        <li><a href="#tar_file_list" data-toggle="tab">TAR FILES</a></li>
+                        <li><a href="#tar_contents_list" data-toggle="tab">TAR CONTENTS</a></li>
+                        <li><a href="#sp_file_list" data-toggle="tab">ADDITIONAL FILES</a></li>
+                        <li><a href="#select_server_tab" data-toggle="tab">SERVER REPOSITORY</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane" id="tar_file_list">
+                            <div class="col-sm-12">
+                                <div class="form-group row">
+                                    <h4 class="info-text">Listed below are all Software Tar files in csm_data/repository.</h4>
+                                    <select id="file-selector" name="file-selector" multiple="multiple" data-title="Tar-Files" data-json=false></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="tar_contents_list">
+                            <table cellspacing="0" class="display table" id="tar-contents-datatable">
+                                <thead>
+                                  <tr>
+                                    <th>
+                                        <center><input type='checkbox' id='tar-contents-check-all'></center>
+                                    </th>
+                                    <th>File Name</th>
+                                    <th>Source Tar</th>
+                                  </tr>
+                                </thead>
+                              </table>
+                        </div>
+                        <div class="tab-pane" id="sp_file_list">
+                            <div class="col-sm-12">
+                                <div class="form-group row">
+                                    <h4 class="info-text">Listed below are all additional files in csm_data/repository.</h4>
+                                    <select id="sp-file-selector" name="sp-file-selector" multiple="multiple" data-title="Files" data-json=false></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="select_server_tab">
+                            {{ edit_field(form.new_tar_name, class="form-control") }}
+                            {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                        </div>
+                    </div>
+                    <div class="wizard-footer">
+                        <div class="pull-right">
+                            <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                            <img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+                            <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                        </div>
+                        <div class="pull-left">
+                            <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- wizard container -->
+    </div>
+</div>
+</form>
+
+{% endblock main %}
