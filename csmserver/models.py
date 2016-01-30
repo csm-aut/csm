@@ -737,6 +737,7 @@ class SystemOption(Base):
     ldap_server_url = Column(String(100))
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)
+    enable_user_credential_for_host = Column(Boolean, default=False)
     
     @property
     def default_host_password(self):

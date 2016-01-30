@@ -303,13 +303,8 @@ def generate_file_diff(filename1, filename2):
     diff = dmp.diff_main(text1, text2)
 
     dmp.diff_cleanupSemantic(diff)
-    ds = dmp.diff_prettyHtml(diff)
 
-    # Do some cleanup work here
-    ds = ds.replace(' ', '&nbsp;')
-    ds = ds.replace('ins&nbsp;style', 'ins style')
-    ds = ds.replace('del&nbsp;style', 'del style')
-    return ds
+    return dmp.diff_prettyHtml(diff)
 
 
 def generate_ip_range(start_ip, end_ip):

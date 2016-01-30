@@ -124,6 +124,7 @@ from common import can_create
 from common import create_or_update_install_job
 from common import create_download_jobs
 from common import get_download_job_key
+from common import get_last_successful_pre_upgrade_job
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -2024,6 +2025,8 @@ def admin_console():
         
         if len(admin_console_form.default_host_password.data) > 0: 
             system_option.default_host_password = admin_console_form.default_host_password.data
+
+        system_option.enable_user_credential_for_host = admin_console_form.enable_user_credential_for_host.data
          
         db_session.commit()
         
@@ -2048,6 +2051,7 @@ def admin_console():
         admin_console_form.default_host_username.data = system_option.default_host_username
         admin_console_form.enable_cco_lookup.data = system_option.enable_cco_lookup
         admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
+        admin_console_form.enable_user_credential_for_host.data = system_option.enable_user_credential_for_host
 
         if smtp_server is not None:
             smtp_form.server.data = smtp_server.server
@@ -2222,58 +2226,45 @@ def host_session_log(hostname, table, id):
         abort(404)
 
     file_pairs = {}
-    log_content = ''
+    log_file_contents = ''
 
     if os.path.isdir(log_file_path):
         # Returns all files under the requested directory
-        file_list = get_file_list(log_file_path)
+        log_file_list = get_file_list(log_file_path)
+        diff_file_list = [filename for filename in log_file_list if '.diff' in filename]
 
-        # Get the Pre-Upgrade file list if the Post-Upgrade file list is being viewed.
-        # An example of a Post-Upgrade log file is 'show-isis-neighbor-summary.POST-UPGRADE.log'
-        pre_upgrade_file_path = ''
-        pre_upgrade_file_list = []
-        if sum([1 for filename in file_list if 'POST-UPGRADE' in filename]) > 0:
-            pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, record.host_id)
-            if pre_upgrade_job is not None:
-                pre_upgrade_file_path = pre_upgrade_job.session_log
-                pre_upgrade_file_list = get_file_list(get_log_directory() + pre_upgrade_file_path)
-
-        for filename in file_list:
-            counterpart = ''
-            if 'POST-UPGRADE' in filename and filename.replace('POST-UPGRADE', 'PRE-UPGRADE') in pre_upgrade_file_list:
-                counterpart = pre_upgrade_file_path + os.sep + filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
-
-            file_pairs[file_path + os.sep + filename] = counterpart
+        for filename in log_file_list:
+            diff_file_path = ''
+            if '.diff' not in filename:
+                if filename + '.diff' in diff_file_list:
+                    diff_file_path = os.path.join(file_path, filename + '.diff')
+                file_pairs[os.path.join(file_path, filename)] = diff_file_path
 
         file_pairs = collections.OrderedDict(sorted(file_pairs.items()))
     else:        
         with io.open(log_file_path, "rt", encoding='latin-1') as fo:
-            log_content = fo.read()
+            log_file_contents = fo.read()
 
     return render_template('host/session_log.html', hostname=hostname, table=table,
-                           record_id=id, file_pairs=file_pairs, log_content=log_content,
+                           record_id=id, file_pairs=file_pairs, log_file_contents=log_file_contents,
                            is_file=os.path.isfile(log_file_path))
-
-
-def get_last_successful_pre_upgrade_job(db_session, host_id):
-    return db_session.query(InstallJobHistory). \
-        filter((InstallJobHistory.host_id == host_id),
-               and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
-        order_by(InstallJobHistory.status_time.desc()).first()
 
 
 @app.route('/api/get_session_log_file_diff/hostname/<hostname>')
 @login_required
 def api_get_session_log_file_diff(hostname):
     """
-    An example of the post_upgrade_log_file_path is
-        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.log'
+    An example of the post_upgrade_file_path is
+        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.txt'
+    An example of the diff_file_path is
+        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.txt.diff'
     """
     record_id = request.args.get("record_id")
-    post_upgrade_log_file_path = request.args.get("post_upgrade_log_file_path")
+    post_upgrade_file_path = request.args.get("post_upgrade_file_path")
+    diff_file_path = request.args.get("diff_file_path")
 
-    if is_empty(hostname) or is_empty(post_upgrade_log_file_path):
-        return jsonify({'status': 'Either hostname or post_upgrade_log_file_path is empty.'})
+    if is_empty(hostname) or is_empty(diff_file_path):
+        return jsonify({'status': 'Either hostname or diff file is missing.'})
 
     db_session = DBSession()
     host = get_host(db_session, hostname)
@@ -2281,37 +2272,27 @@ def api_get_session_log_file_diff(hostname):
     if host is None:
         return jsonify({'status': 'Hostname {} does not exist.'.format(hostname)})
 
-    install_job_history = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == record_id).first()
-    if install_job_history is None:
-        return jsonify({'status': 'The job history is no longer available.'})
+    post_upgrade_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == record_id).first()
+    if post_upgrade_job is None:
+        return jsonify({'status': 'The Post-Upgrade job is no longer available.'})
 
     pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, host.id)
     if pre_upgrade_job is None:
         return jsonify({'status': 'No previous Pre-Upgrade job found.'})
 
-    post_upgrade_log_filename = os.path.basename(post_upgrade_log_file_path)
-    pre_upgrade_log_filename = post_upgrade_log_filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
+    post_upgrade_filename = os.path.basename(post_upgrade_file_path)
+    pre_upgrade_filename = post_upgrade_filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
 
-    # This is the complete file path to reach the file.
-    pre_upgrade_log_file_path = os.path.join(get_log_directory() + pre_upgrade_job.session_log,
-                                             pre_upgrade_log_filename)
-    if not os.path.isfile(pre_upgrade_log_file_path):
-        return jsonify({'status': 'This file "{}" cannot be found in last Pre-Upgrade job.'.format(pre_upgrade_log_filename)})
-
-    post_upgrade_log_file_path = os.path.join(get_log_directory(), post_upgrade_log_file_path)
-    if not os.path.isfile(post_upgrade_log_file_path):
-        return jsonify({'status': 'The Post-Upgrade log, "{}" cannot be found anymore.'.format(post_upgrade_log_filename)})
-
-    file_diff = generate_file_diff(pre_upgrade_log_file_path, post_upgrade_log_file_path)
+    file_diff_contents = ''
+    with io.open(os.path.join(get_log_directory(), diff_file_path), "rt", encoding='latin-1') as fo:
+        file_diff_contents = fo.read()
 
     data = [
-        {'file1': pre_upgrade_log_filename,
+        {'file1': pre_upgrade_filename,
          'file1_created_time': get_datetime_string(pre_upgrade_job.created_time),
-         'file2': post_upgrade_log_filename,
-         'file2_created_time': get_datetime_string(install_job_history.created_time),
-         'insertions': file_diff.count('ins style'),
-         'deletions': file_diff.count('del style'),
-         'file_diff': file_diff}
+         'file2': post_upgrade_filename,
+         'file2_created_time': get_datetime_string(post_upgrade_job.created_time),
+         'file_diff_contents': file_diff_contents}
     ]
 
     return jsonify(**{'data': data})

@@ -44,6 +44,7 @@ from models import Package
 from models import InstallJob
 from models import SMUMeta
 from models import DownloadJob
+from models import InstallJobHistory
 from models import get_download_job_key_dict
 
 from database import DBSession
@@ -407,6 +408,12 @@ def is_pending_on_download(db_session, filename, server_id, server_directory):
 
     return False
 
+
+def get_last_successful_pre_upgrade_job(db_session, host_id):
+    return db_session.query(InstallJobHistory). \
+        filter((InstallJobHistory.host_id == host_id),
+               and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
+        order_by(InstallJobHistory.status_time.desc()).first()
 
 def get_download_job_key(user_id, filename, server_id, server_directory):
     return "{}{}{}{}".format(user_id, filename, server_id, server_directory)

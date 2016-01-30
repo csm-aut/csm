@@ -166,6 +166,7 @@ class AdminConsoleForm(Form):
     ldap_server_url = StringField('LDAP Server URL')
     enable_cco_lookup = HiddenField("Enable CCO Connection")
     cco_lookup_time = HiddenField("Last Retrieval")
+    enable_user_credential_for_host = HiddenField("Use CSM Server User Credential")
 
 
 class SMTPForm(Form):

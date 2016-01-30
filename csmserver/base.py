@@ -54,6 +54,10 @@ class ConnectionContext(Context):
         Context.__init__(self)
         self.host = host
 
+    @property
+    def hostname(self):
+        return self.host.hostname
+
     def load_data(self, key):
         return self.host.context[0].data.get(key)
 
@@ -85,9 +89,15 @@ class ConnectionContext(Context):
                 except:
                     pass
 
+            system_option = SystemOption.get(self.db_session)
+
+            username = connection.username
+            password = connection.password
+            if system_option.enable_user_credential_for_host:
+                pass
+
             default_username = None
             default_password = None
-            system_option = SystemOption.get(self.db_session)
 
             if system_option.enable_default_host_authentication:
                 default_username = system_option.default_host_username
@@ -101,8 +111,8 @@ class ConnectionContext(Context):
 
                     host_urls.append(make_url(
                         connection_type=connection.connection_type,
-                        username=connection.username,
-                        password=connection.password,
+                        username=username,
+                        password=password,
                         host_or_ip=host_or_ip,
                         port_number=port_number,
                         default_username=default_username,
