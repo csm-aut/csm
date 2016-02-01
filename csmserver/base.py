@@ -35,6 +35,8 @@ from utils import make_url
 from constants import get_temp_directory
 from constants import get_log_directory
 
+from common import get_user_by_id
+
 
 class Context(object):
     def __init__(self):
@@ -50,9 +52,10 @@ class Context(object):
 
 
 class ConnectionContext(Context):
-    def __init__(self, host):
+    def __init__(self, db_session, host):
         Context.__init__(self)
         self.host = host
+        self.db_session = db_session
 
     @property
     def hostname(self):
@@ -69,6 +72,9 @@ class ConnectionContext(Context):
 
     @property
     def host_urls(self):
+        return self.make_urls()
+
+    def make_urls(self, preferred_host_username=None, preferred_host_password=None):
         urls = []
 
         if len(self.host.connection_param) > 0:
@@ -89,16 +95,16 @@ class ConnectionContext(Context):
                 except:
                     pass
 
-            system_option = SystemOption.get(self.db_session)
-
             username = connection.username
             password = connection.password
-            if system_option.enable_user_credential_for_host:
-                pass
+            if not is_empty(preferred_host_username) and not is_empty(preferred_host_password):
+                username = preferred_host_username
+                password = preferred_host_password
 
             default_username = None
             default_password = None
 
+            system_option = SystemOption.get(self.db_session)
             if system_option.enable_default_host_authentication:
                 default_username = system_option.default_host_username
                 default_password = system_option.default_host_password
@@ -125,9 +131,8 @@ class ConnectionContext(Context):
 
 class SoftwareContext(ConnectionContext):
     def __init__(self, db_session, host):
-        ConnectionContext.__init__(self, host)
+        ConnectionContext.__init__(self, db_session, host)
         self.host = host
-        self.db_session = db_session
 
         self.committed_cli = None
         self.active_cli = None
@@ -189,6 +194,16 @@ class InstallContext(SoftwareContext):
             self._operation_id = int(value)
         except Exception:
             self._operation_id = -1
+
+    @property
+    def host_urls(self):
+        system_option = SystemOption.get(self.db_session)
+        if system_option.enable_user_credential_for_host:
+            user = get_user_by_id(self.db_session, self.install_job.user_id)
+            if user is not None:
+                return self.make_urls(user.username, user.host_password)
+
+        return self.make_urls()
 
     @property 
     def server_repository_url(self):

@@ -28,7 +28,8 @@ from models import Host
 from models import HostContext
 
 sql_statements = [
-    'alter table system_option add enable_user_credential_for_host BOOLEAN default 0'
+    'alter table system_option add enable_user_credential_for_host BOOLEAN default 0',
+    'alter table user add host_password VARCHAR(100)'
     ]
 
 class SchemaMigrate(BaseMigrate):
