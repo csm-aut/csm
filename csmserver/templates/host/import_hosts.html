@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% from 'host/common.html' import edit_field %}
+{% from 'host/ip_range_dialog.html' import ip_range_dialog %}
 
 {% block extra_head %}
 <script>
@@ -31,6 +32,14 @@ $(function() {
         });
 
         return false;
+    });
+
+    $('#import_range').on('click', function(e) {
+        //display_ip_range_dialog();
+        $('#ip-range-dialog').modal({
+            show: true,
+            backdrop: 'static'
+        });
     });
 
     $('.wizard-card').bootstrapWizard({
@@ -83,6 +92,91 @@ $(function() {
         }
     });
 
+    $('#on-ip-range-dialog-done').on('click', function(e) {
+        if(validate_ip_range_input() == false){
+            return false;
+        }
+        var role = $('#role').val()
+        if(role.indexOf(',') >= 0){
+            role = '"' + role + '"';
+        }
+
+        var step = $('#step').val()
+        if(step == '' || !$.isNumeric(step)){
+            step = 1;
+        } else {
+            step = parseInt(step);
+        }
+
+        $.ajax({
+            url: "/host_import/api/generate_ip_range",
+            dataType: 'json',
+            type: 'POST',
+            data: {
+                data_list: trim_lines($('#data_list').val()),
+                beginIP: $('#beginIP').val(),
+                endIP: $('#endIP').val(),
+                step: step,
+                region2: $('#region2').val(),
+                role: role,
+                connection: $('#connection_type').val(),
+                username: $('#username').val(),
+                password: $('#password').val()
+            },
+            success: function(data) {
+                if(data.status == 'OK'){
+                    old_data_list = trim_lines($('#data_list').val())
+                    new_data_list = old_data_list + data.data_list
+                    $('#data_list').val(new_data_list);
+                } else {
+                    bootbox.alert(data.status)
+                }
+            }
+        });
+
+    });
+
+    function validate_ip_range_input(){
+        beginIP = $('#beginIP').val()
+        endIP = $('#endIP').val()
+
+        if(beginIP == '' || endIP == ''){
+            bootbox.alert("You must specify a beginning and an ending IP address.");
+            return false;
+        }
+
+        begin = beginIP.split('.');
+        end = endIP.split('.');
+        if(begin.length != 4 || end.length != 4){
+            bootbox.alert("An invalid IP address has been entered");
+            return false;
+        }
+
+        for (i=0; i<4; i++) {
+            b = parseInt(begin[i]);
+            e = parseInt(end[i]);
+
+            if(b > 255 || e > 255){
+                bootbox.alert("An invalid IP address has been entered.");
+                return false;
+            }
+        }
+
+        for (i=0; i<4; i++) {
+            b = parseInt(begin[i]);
+            e = parseInt(end[i]);
+
+            if (b < e){
+                return true;
+            } else if (b > e){
+                bootbox.alert("Beginning IP cannot be greater than ending IP.");
+                return false
+            }
+        }
+
+        bootbox.alert("Beginning and ending IPs cannot be the same.");
+        return false;
+    }
 
 });
 
@@ -90,6 +184,9 @@ $(function() {
 {% endblock extra_head %}
 
 {% block main %}
+
+{{ ip_range_dialog(ip_range_dialog_form) }}
+
 <div class="row">
     <div class="col-sm-8 col-sm-offset-2">
         <!--      Wizard container        -->
@@ -145,6 +242,7 @@ $(function() {
                     <div class="wizard-footer">
                         <div class="pull-right">
                             <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                            <input type="button" class="btn btn-fill btn-finish btn-default btn-wd btn-sm" name="import_range" id="import_range" value="Use IP Range" />
                             <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
                         </div>
                         <div class="pull-left">

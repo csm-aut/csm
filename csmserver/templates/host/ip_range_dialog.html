@@ -1,0 +1,38 @@
+{% from 'host/common.html' import edit_field %}
+
+{% macro ip_range_dialog(ip_range_dialog_form) %}
+
+<div id="ip-range-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="close" data-dismiss="modal">x</button>
+                <div class="card wizard-card csm-blue" id="ip-range-dialog-wizard">
+                    <form class="form-horizontal" method="post">
+                        <div class="tab-content nav nav-pills">
+                            <legend>IP Range Information</legend>
+                            {{ edit_field(ip_range_dialog_form.beginIP, field_width="col-sm-6", class="form-control") }}
+                            {{ edit_field(ip_range_dialog_form.endIP, field_width="col-sm-6", class="form-control") }}
+                            {{ edit_field(ip_range_dialog_form.step, field_width="col-sm-6", class="form-control") }}
+                            <legend>Host Information</legend>
+                            {{ edit_field(ip_range_dialog_form.region2, field_width="col-sm-6", class="form-control") }}
+                            {{ edit_field(ip_range_dialog_form.role, field_width="col-sm-6", class="form-control") }}
+                            {{ edit_field(ip_range_dialog_form.connection_type, field_width="col-sm-6", class="form-control") }}
+                            {{ edit_field(ip_range_dialog_form.username, field_width="col-sm-6", class="form-control") }}
+                            {{ edit_field(ip_range_dialog_form.password, field_width="col-sm-6", class="form-control") }}
+                        </div>
+                        <div class="wizard-footer">
+                            <div align="center">
+                                <input id='on-ip-range-dialog-done' data-dismiss="modal" type='button' class='btn btn-fill btn-primary btn-wd btn-sm' name='ip-range-done' value='Generate' />
+                                <input type="button" id="cancel" class="btn btn-fill btn-wd btn-sm" data-dismiss="modal" value="Cancel" />
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endmacro %}

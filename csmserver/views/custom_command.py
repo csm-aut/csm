@@ -55,7 +55,6 @@ def api_get_command_profiles():
     for profile in custom_profiles:
         row = {'id'          : profile.id,
                'profile_name': profile.profile_name,
-               'description' : profile.description,
                'command_list': profile.command_list,
                'created_by'  : profile.created_by}
 
@@ -80,7 +79,6 @@ def command_profile_create():
 
         command_profile = CustomCommandProfile(
             profile_name=form.profile_name.data,
-            description=form.description.data,
             command_list=','.join([l for l in form.command_list.data.splitlines() if l]),
             created_by=current_user.username
         )
@@ -113,7 +111,6 @@ def command_profile_edit(profile_name):
                                    form=form, duplicate_error=True)
 
         command_profile.profile_name = form.profile_name.data
-        command_profile.description = form.description.data
         command_profile.command_list = ','.join([l for l in form.command_list.data.splitlines() if l]),
 
         db_session.commit()
@@ -121,7 +118,6 @@ def command_profile_edit(profile_name):
         return redirect(url_for('custom_command.home'))
     else:
         form.profile_name.data = command_profile.profile_name
-        form.description.data = command_profile.description
         if command_profile.command_list is not None:
             form.command_list.data = '\n'.join(command_profile.command_list.split(','))
 
@@ -151,5 +147,4 @@ def get_command_profile(db_session, profile_name):
 
 class CustomCommandProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
-    description = StringField('Description', [required(), Length(max=100)])
     command_list = TextAreaField('Commands')

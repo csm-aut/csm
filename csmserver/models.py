@@ -867,7 +867,6 @@ class CustomCommandProfile(Base):
 
     id = Column(Integer, primary_key=True)
     profile_name = Column(String(50))
-    description = Column(Text)
     command_list = Column(Text)
     created_by = Column(String(50))
 

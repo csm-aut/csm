@@ -44,18 +44,15 @@
                 }
             }, {
                 "targets": 1,
-                "data": 'description',
-            },{
-                "targets": 2,
                 "data": 'command_list',
                 "render": function(data, type, row) {
                     return insert_slider(comma2br(data), row['id']);
                 }
             },{
-                "targets": 3,
+                "targets": 2,
                 "data": 'created_by',
             }, {
-                "targets": 4,
+                "targets": 3,
                 "data": 'profile_name',
                 "render": function(data, type, row) {
                     return '<a class="data-delete-link" href="javascript://"  \
@@ -83,43 +80,6 @@
                 return '&nbsp;';
             }
         }
-
-        /*      
-        function display_conformance_report_software_profile_packages(id) {
-            $.ajax({
-                url: "/conformance/api/get_conformance_report_software_profile_packages/report/" + id,
-                dataType: 'json',
-                success: function(response) {
-                    var html_code = '<ul>';
-                    $.each(response, function(index, element) {
-                        for (i = 0; i < element.length; i++) {
-                            html_code += '<li>' + element[i].software_profile_package;
-                            if (element[i].description.length > 0) {
-                                html_code += ' - ' + element[i].description;
-                            }
-                            html_code += '</li>';
-                        }
-                    });
-
-                    html_code += '</ul>';
-
-                    $('#software-profile-package-info').html(html_code);
-                }
-            });
-        }
-        */
-/*
-        $('.btn-toggle').click(function() {
-            $(this).find('.btn').toggleClass('active');  
-    
-            if ($(this).find('.btn-primary').size()>0) {
-    	        $(this).find('.btn').toggleClass('btn-primary');
-            }
-    
-            $(this).find('.btn').toggleClass('btn-default');       
-        });
- 
-*/       
     });
 </script>
 
@@ -152,7 +112,6 @@
                         <thead>
                             <tr>
                                 <th>Profile Name</th>
-                                <th>Description</th>
                                 <th>Command List</th>
                                 <th>Created By</th>
                                 <th>Action</th>
