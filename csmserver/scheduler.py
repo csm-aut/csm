@@ -43,8 +43,8 @@ import shutil
 
 
 class InventoryManagerScheduler(threading.Thread):
-    def __init__(self, name, num_threads=None):
-        threading.Thread.__init__(self, name = name)
+    def __init__(self, name):
+        threading.Thread.__init__(self, name=name)
         
     def run(self):
         db_session = DBSession()   
@@ -90,7 +90,7 @@ class InventoryManagerScheduler(threading.Thread):
             if system_option.enable_inventory:
                 inventory_jobs = db_session.query(InventoryJob).all()
 
-                if len(inventory_jobs)> 0:
+                if len(inventory_jobs) > 0:
                     for inventory_job in inventory_jobs:
                         inventory_job.pending_submit = True
                     db_session.commit()
@@ -126,7 +126,7 @@ class InventoryManagerScheduler(threading.Thread):
         skip_count = 0   
         current_host_id = -1
         
-        inventory_jobs = db_session.query(InventoryJobHistory)\
+        inventory_jobs = db_session.query(InventoryJobHistory) \
             .order_by(InventoryJobHistory.host_id, InventoryJobHistory.created_time.desc())
     
         for inventory_job in inventory_jobs:
@@ -152,7 +152,7 @@ class InventoryManagerScheduler(threading.Thread):
         skip_count = 0   
         current_host_id = -1
         
-        install_jobs = db_session.query(InstallJobHistory)\
+        install_jobs = db_session.query(InstallJobHistory) \
             .order_by(InstallJobHistory.host_id, InstallJobHistory.created_time.desc())
     
         for install_job in install_jobs:
@@ -178,7 +178,7 @@ class InventoryManagerScheduler(threading.Thread):
         skip_count = 0   
         current_user_id = -1
         
-        download_jobs = db_session.query(DownloadJobHistory)\
+        download_jobs = db_session.query(DownloadJobHistory) \
             .order_by(DownloadJobHistory.user_id, DownloadJobHistory.created_time.desc())
     
         for download_job in download_jobs:
@@ -194,7 +194,7 @@ class InventoryManagerScheduler(threading.Thread):
         db_session.commit()
 
         # Deleting old CreateTarJobs
-        create_tar_jobs = db_session.query(CreateTarJob).filter().all
+        create_tar_jobs = db_session.query(CreateTarJob).all
 
         for create_tar_job in create_tar_jobs:
             if create_tar_job.status == JobStatus.COMPLETED or create_tar_job.status == JobStatus.FAILED:
@@ -204,4 +204,3 @@ class InventoryManagerScheduler(threading.Thread):
         
 if __name__ == '__main__':
     pass
-    

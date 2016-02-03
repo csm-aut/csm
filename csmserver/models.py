@@ -95,6 +95,9 @@ class User(Base):
     fullname = Column(String(100), nullable=False)
     email = Column(String(200), nullable=False)
     active = Column(Boolean, default=True)
+
+    # host password is used when CSM Server user credential is used for host login.
+    _host_password = Column('host_password', String(100))
     
     # Note the lack of parenthesis after datetime.utcnow.  This is the correct way
     # so SQLAlchemhy can make a run time call during row insertion.
@@ -133,7 +136,19 @@ class User(Base):
     def _set_password(self, password):
         if password:
             password = password.strip()
+
+        self.host_password = password
         self._password = generate_password_hash(password)
+
+    @property
+    def host_password(self):
+        global encrypt_dict
+        return decode(encrypt_dict, self._host_password)
+
+    @host_password.setter
+    def host_password(self, value):
+        global encrypt_dict
+        self._host_password = encode(encrypt_dict, value)
 
     password_descriptor = property(_get_password, _set_password)
     password = synonym('_password', descriptor=password_descriptor)
@@ -159,13 +174,13 @@ class User(Base):
         ldap_authenticated = False
 
         try:
-            if not is_empty(username) and not is_empty(password):
+            if system_option.enable_ldap_auth and not is_empty(username) and not is_empty(password):
                 ldap_authenticated = ldap_auth(system_option, username, password)
         except CSMLDAPException:
             # logger.exception("authenticate hit exception")
             pass
         
-        user = query(cls).filter(cls.username==username).first()
+        user = query(cls).filter(cls.username == username).first()
         if ldap_authenticated:
             if user is None:
                 # Create a LDAP user with Network Administrator privilege
@@ -182,7 +197,15 @@ class User(Base):
         
         if not user.active:
             return user, False
-        
+
+        authenticated = user.check_password(password)
+
+        # This is for backward compatibility.  Existing users before the feature "Use CSM Server User Credential"
+        # will need to have their password encrypted for device installation authentication.
+        if authenticated and is_empty(user.host_password):
+            user.host_password = password
+            db_session.commit()
+
         return user, user.check_password(password)
     
     @staticmethod
@@ -726,8 +749,8 @@ class SystemOption(Base):
     inventory_hour = Column(Integer, default=0)
     inventory_history_per_host = Column(Integer, default=10)
     download_history_per_user = Column(Integer, default=100)
-    install_history_per_host = Column(Integer, default=1000)
-    total_system_logs = Column(Integer, default=10000)
+    install_history_per_host = Column(Integer, default=100)
+    total_system_logs = Column(Integer, default=2000)
     enable_default_host_authentication = Column(Boolean, default=False)
     default_host_username = Column(String(50))
     _default_host_password = Column('default_host_password', String(100))
@@ -737,6 +760,7 @@ class SystemOption(Base):
     ldap_server_url = Column(String(100))
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)
+    enable_user_credential_for_host = Column(Boolean, default=False)
     
     @property
     def default_host_password(self):

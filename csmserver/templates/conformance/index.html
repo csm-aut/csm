@@ -83,7 +83,7 @@
                 return;
             }
             
-            message = "Re-Run will create a new report based on the currently selected report's criteria and hosts.  OK to continue?";
+            message = "Re-Run will create a new report based on the previously selected report's criteria and hosts.  OK to continue?";
             bootbox.confirm(message, function(result) {
                 if (result) {
                     rerun_conformance_report(id);
