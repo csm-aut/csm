@@ -17,37 +17,28 @@
         $(".open-file-diff-dialog").on("click", function() {
             var hostname = $(this).attr('data-hostname');
             var record_id = $(this).attr('data-record-id');
+            var post_upgrade_file_path = $(this).attr('data-post-upgrade-file-path');
+            var diff_file_path = $(this).attr('data-diff-file-path');
 
-            var post_upgrade_log_file_path = $(this).attr('data-file-path');
-
-            get_file_diff(hostname, record_id, post_upgrade_log_file_path);
+            get_file_diff(hostname, record_id, post_upgrade_file_path, diff_file_path);
         });
 
-        function get_file_diff(hostname, record_id, post_upgrade_log_file_path) {
+        function get_file_diff(hostname, record_id, post_upgrade_file_path, diff_file_path) {
             spinner.show();
 
             $.ajax({
                 url: "{{ url_for('api_get_session_log_file_diff', hostname=hostname) }}",
                 dataType: 'json',
-                data: { record_id: record_id, post_upgrade_log_file_path: post_upgrade_log_file_path } ,
+                data: { record_id: record_id, post_upgrade_file_path: post_upgrade_file_path, diff_file_path: diff_file_path } ,
                 success: function(response) {
                     if (response.status != null) {
                         bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;" + response.status);
                     } else {
                         $.each(response, function(index, element) {
-                            var file_diff = element[0].file_diff;
 
-                            $('#file1').html(element[0].file1 + ' (' + convertToLocaleString(element[0].file1_created_time) + ')');
-                            $('#file2').html(element[0].file2 + ' (' + convertToLocaleString(element[0].file2_created_time) + ')');
-
-                            var html_code = '';
-                            html_code += '<ins style="background:#e6ffe6;">Insertions</ins>:&nbsp;' + element[0].insertions;
-                            html_code += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
-                            html_code += '<del style="background:#ffe6e6;">Deletions</del>:&nbsp;' + element[0].deletions;
-
-                            $('#status').html(html_code);
-
-                            $('#file-diff-results').html('<tt>' + file_diff + '</tt>');
+                            $('#file1').html(element[0].file1 + ' (created on ' + convertToLocaleString(element[0].file1_created_time) + ')');
+                            $('#file2').html(element[0].file2 + ' (created on ' + convertToLocaleString(element[0].file2_created_time) + ')');
+                            $('#file-diff-results').html('<tt>' + element[0].file_diff_contents + '</tt>');
 
                             $('#file-diff-dialog').modal({show:true, backdrop:'static'});
                         });
@@ -65,7 +56,7 @@
     }
     div#file-diff-results{
         width: 800px;
-        height: 500px;
+        height: 450px;
         overflow: scroll;
     }
 </style>
@@ -85,17 +76,9 @@
                     <h4>File Compare</h4>
                     File 1: <span id="file1"></span><br>
                     File 2: <span id="file2"></span><br>
-                    Status: <span id="status"></span><br>
                 </div>
                 <div class="modal-body">
                     <div id="file-diff-results"></div>
-                </div>
-                <div class="modal-footer">
-                    <div class="form-actions">
-                        <div class="btn col-sm-offset-4">
-                            <button class="btn-primary" data-dismiss="modal">OK</button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </form>
@@ -113,7 +96,7 @@
             <tbody>
                 <tr>
                     <td>
-                        <pre>{{ log_content }}</pre>
+                        <pre>{{ log_file_contents }}</pre>
                     </td>
                 </tr>
             </tbody>
@@ -128,7 +111,7 @@
                 </div>
                 <div class="panel-body pull-center">
                     <table  class="table table-striped">
-                        {% for entry, counterpart in file_pairs.iteritems() %}
+                        {% for entry, diff_file_path in file_pairs.iteritems() %}
                         <tr>
                             <td>
                                 <a href="{{ url_for('download_session_log') }}?file_path={{ entry }}">
@@ -139,9 +122,9 @@
                                 <a href="{{ url_for('host_session_log', hostname=hostname, table=table, id=record_id) }}?file_path={{ entry }}" >{{ entry }}</a>
                             </td>
 
-                            {% if counterpart | length > 0 %}
+                            {% if diff_file_path | length > 0 %}
                             <td>
-                                <a class="open-file-diff-dialog" data-record-id="{{ record_id }}" data-hostname="{{ hostname }}" data-file-path="{{ entry }}" data-counterpart-file-path="{{ counterpart }}" href="javascript://">
+                                <a class="open-file-diff-dialog" data-record-id="{{ record_id }}" data-hostname="{{ hostname }}" data-post-upgrade-file-path="{{ entry }}" data-diff-file-path="{{ diff_file_path }}" href="javascript://">
                                     <img title="Compare with last Pre-Upgrade log" src="{{ url_for('static', filename='file_diff.png') }}">
                                 </a>
                             </td>

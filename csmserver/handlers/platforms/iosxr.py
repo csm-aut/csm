@@ -29,8 +29,19 @@ from parsers.loader import get_package_parser_class
 import condoor
 
 from horizon.plugin_manager import PluginManager
+from models import get_db_session_logger
+
+from constants import InstallAction
+from constants import get_log_directory
+
+from common import get_last_successful_pre_upgrade_job
+
+from utils import get_file_list
+from utils import generate_file_diff
 
 import time
+import os
+import re
 
 
 #import logging
@@ -105,4 +116,56 @@ class BaseInstallHandler(BaseHandler):
         except condoor.GeneralError as e:
             ctx.post_status = e.message
             ctx.success = False
+        finally:
+            try:
+                if ctx.requested_action == InstallAction.POST_UPGRADE:
+                    self.generate_post_upgrade_file_diff(ctx)
+            except:
+                logger = get_db_session_logger(ctx.db_session)
+                logger.exception('generate_post_upgrade_file_diff hit exception.')
 
+    def generate_post_upgrade_file_diff(self, ctx):
+        """
+        Search for the last Pre-Upgrade job and generate file diffs.
+        """
+        if not (os.path.isdir(ctx.log_directory)):
+            return
+
+        pre_upgrade_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
+        if pre_upgrade_job is None:
+            return
+
+        pre_upgrade_file_directory = os.path.join(get_log_directory(), pre_upgrade_job.session_log)
+        post_upgrade_file_directory = ctx.log_directory
+        pre_upgrade_file_list = get_file_list(pre_upgrade_file_directory)
+        post_upgrade_file_list = get_file_list(post_upgrade_file_directory)
+
+        for filename in post_upgrade_file_list:
+            if 'POST-UPGRADE' in filename and filename.replace('POST-UPGRADE', 'PRE-UPGRADE') in pre_upgrade_file_list:
+                post_upgrade_file_path = os.path.join(post_upgrade_file_directory, filename)
+                pre_upgrade_file_path = os.path.join(
+                    pre_upgrade_file_directory, filename.replace('POST-UPGRADE', 'PRE-UPGRADE'))
+
+                if os.path.isfile(pre_upgrade_file_path) and os.path.isfile(post_upgrade_file_path):
+                    results = generate_file_diff(pre_upgrade_file_path, post_upgrade_file_path)
+                    # Are there any changes in the logs
+                    insertion_count = results.count('ins style')
+                    deletion_count = results.count('del style')
+
+                    if insertion_count > 0 or deletion_count > 0:
+                        results = results.replace(' ', '&nbsp;')
+
+                        # Performs a one-pass replacements
+                        rep = {"ins&nbsp;style": "ins style", "del&nbsp;style": "del style", "&para;": ''}
+                        rep = dict((re.escape(k), v) for k, v in rep.iteritems())
+                        pattern = re.compile("|".join(rep.keys()))
+                        results = pattern.sub(lambda m: rep[re.escape(m.group(0))], results)
+
+                        # Add insertion and deletion status
+                        html_code = '<ins style="background:#e6ffe6;">Insertions</ins>:&nbsp;' + str(insertion_count) + \
+                                    '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + \
+                                    '<del style="background:#ffe6e6;">Deletions</del>:&nbsp;' + str(deletion_count) + \
+                                    '<hr>'
+                        diff_file_name = os.path.join(post_upgrade_file_directory, filename + '.diff')
+                        with open(diff_file_name, 'w') as fo:
+                            fo.write(html_code + results)
