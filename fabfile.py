@@ -193,7 +193,7 @@ def install():
     install_csm()
     install_pip_requirements()
     start()
-    local("open http://localhost:5000")
+    #local("open http://localhost:5000")
 
 
 def deploy():
