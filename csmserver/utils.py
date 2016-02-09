@@ -181,36 +181,32 @@ def make_url(connection_type, username, password, host_or_ip, port_number,
 
     """
     url = '{}://'.format(connection_type)
-    
+
     no_username = False
     no_password = False
-    
-    # Set the default username and password only if both username and password have not been specified
-    if is_empty(username) and is_empty(password):
-        if default_username is not None:
-            username = default_username
-        if default_password is not None:
-            password = default_password
-    
+
+    if not is_empty(default_username) and not is_empty(default_password):
+        username = default_username
+        password = default_password
+
     if not is_empty(username):
         url += '{}'.format(username)
     else:
         no_username = True
-        
+
     if not is_empty(password):
         url += ':{}'.format(password)
     else:
         no_password = True
-           
+
     if no_username and no_password:
         url += '{}'.format(host_or_ip)
     else:
         url += '@{}'.format(host_or_ip)
-    
-    # It is possible there may be multiple ports separated by comma
+
     if not is_empty(port_number):
-        url += ':{}'.format(port_number) 
-  
+        url += ':{}'.format(port_number)
+
     return url
 
 
