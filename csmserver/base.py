@@ -27,6 +27,7 @@ from constants import ServerType
 from models import Server
 from models import JumpHost
 from models import SystemOption
+from models import CustomCommandProfile
 
 from utils import concatenate_dirs
 from utils import is_empty
@@ -162,8 +163,11 @@ class InstallContext(SoftwareContext):
         SoftwareContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
-        self._custom_commands = []
-    
+        #self._custom_commands = []
+        custom_command_profile_id = self.install_job.custom_command_profile_id
+        profile = self.db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == custom_command_profile_id).first()
+        self._custom_commands = profile.command_list.split(',')
+
     @property
     def software_packages(self):
         return self.install_job.packages.split(',')

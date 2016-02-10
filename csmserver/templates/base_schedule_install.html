@@ -80,6 +80,10 @@
     </div>
 </div>
 
+<div id="custom-command-profile-panel">
+    {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
+</div>
+
 <div id="dependency-panel">
     {{ edit_field(form.dependency, field_width="col-sm-6", class="form-control") }}
 </div>
@@ -174,7 +178,8 @@ $(function() {
         $('#remove-widget-panel').hide();
         $('#deactivate-widget-panel').hide();
         $('#software-packages-panel').hide();
-        $('#dependency-panel').hide(); 
+        $('#custom-command-profile-panel').hide();
+        $('#dependency-panel').hide();
 
         if (has_one_of_these_only(install_actions, [INSTALL_REMOVE])) {
 
@@ -197,6 +202,11 @@ $(function() {
         } else if (has_one_of_these(install_actions, [INSTALL_ACTIVATE])) {
 
             $('#activate-widget-panel').show();
+        }
+
+        if (has_one_of_these(install_actions, [PRE_UPGRADE, POST_UPGRADE])) {
+
+            $('#custom-command-profile-panel').show();
         }
 
         should_enable_software_packages_panel();

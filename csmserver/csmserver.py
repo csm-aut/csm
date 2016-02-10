@@ -97,6 +97,7 @@ from common import fill_dependencies
 from common import fill_dependency_from_host_install_jobs
 from common import fill_regions    
 from common import fill_jump_hosts
+from common import fill_custom_command_profiles
 from common import get_host
 from common import get_host_list
 from common import get_jump_host_by_id
@@ -1725,7 +1726,7 @@ def schedule_install():
     """
     if not can_install(current_user):
         abort(401)
-         
+
     db_session = DBSession()
     form = ScheduleInstallForm(request.form)
     
@@ -1757,6 +1758,7 @@ def schedule_install():
                     server = form.hidden_server.data
                     server_directory = form.hidden_server_directory.data
                     pending_downloads = form.hidden_pending_downloads.data
+                    #custom_command_profile = form.custom_command_profile.data
        
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -1890,6 +1892,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     fill_servers(form.cisco_dialog_server.choices, region_servers, False)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs,
                                            (-1 if install_job is None else install_job.id))
+    fill_custom_command_profiles(form.custom_command_profile.choices)
         
     if request.method == 'POST':
         if install_job is not None:
@@ -1904,6 +1907,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server = form.hidden_server.data
         server_directory = form.hidden_server_directory.data
         pending_downloads = form.hidden_pending_downloads.data
+        custom_command_profile = form.custom_command_profile.data
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
@@ -1912,7 +1916,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                          scheduled_time=scheduled_time, software_packages=software_packages, server=server,
                                          server_directory=server_directory, pending_downloads=pending_downloads,
-                                         dependency=dependency, install_job=install_job)
+                                         custom_command_profile=custom_command_profile, dependency=dependency,
+                                         install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
@@ -1926,6 +1931,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                                                software_packages=software_packages, server=server,
                                                                server_directory=server_directory,
                                                                pending_downloads=pending_downloads,
+                                                               custom_command_profile=custom_command_profile,
                                                                dependency=dependency, install_job=install_job)
                 dependency = new_install_job.id
                    

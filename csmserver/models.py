@@ -476,6 +476,7 @@ class InstallJob(Base):
     
     host_id = Column(Integer, ForeignKey('host.id'))     
     user_id = Column(Integer, ForeignKey('user.id'))
+    custom_command_profile_id = Column(Integer, ForeignKey('custom_command_profile.id'))
 
     def set_status(self, status):
         self.status = status
