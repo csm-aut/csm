@@ -1,0 +1,14 @@
+[Core]
+Name = Pre-Migrate
+Module = pre_migrate
+
+[CSM]
+Phases = Pre-Migrate
+Platforms = ASR9K
+
+[Documentation]
+Author = Joy Dai
+Version = 1.0
+Website = https://github.com/csm-aut/csm
+Description = This plugin does all the preparation work before the system can be migrated from classic XR to eXR.
+

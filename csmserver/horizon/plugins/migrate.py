@@ -1,5 +1,5 @@
 # =============================================================================
-# migrate_system.py - plugin for migrating classic XR to eXR/fleXR
+# migrate.py - plugin for migrating classic XR to eXR/fleXR
 #
 # Copyright (c)  2013, Cisco Systems
 # All rights reserved.
@@ -30,23 +30,22 @@
 
 import re
 import time
-from .plugin import PluginError, IPlugin
-from ..package_lib import parse_exr_show_sdr, validate_exr_node_state
-from ..plugin_lib import wait_for_reload
+from horizon.plugin import PluginError, Plugin
+from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
+from horizon.plugin_lib import wait_for_reload, get_package
 
 from condoor.exceptions import CommandTimeoutError
 
 
 
 
-# waiting long time (5 minutes)
-TIME_OUT = 60
 SCRIPT_BACKUP_CONFIG = "harddiskb:/classic.cfg"
 SCRIPT_BACKUP_ADMIN_CONFIG = "harddiskb:/admin.cfg"
 
+MIGRATION_TIME_OUT = 3600
+NODES_COME_UP_TIME_OUT = 3600
 
-
-class MigrateSystemToExrPlugin(IPlugin):
+class MigratePlugin(Plugin):
 
     """
     A plugin for migrating from XR to eXR/fleXR
@@ -56,11 +55,6 @@ class MigrateSystemToExrPlugin(IPlugin):
     Arguments:
     T.B.D.
     """
-    NAME = "MIGRATE_SYSTEM_TO_EXR"
-    DESCRIPTION = "XR TO EXR SYSTEM MIGRATION"
-    TYPE = "MIGRATE_SYSTEM"
-    VERSION = "0.0.1"
-
 
     """
     @staticmethod
@@ -87,60 +81,13 @@ class MigrateSystemToExrPlugin(IPlugin):
 
         device.send("run", wait_for_string="#")
 
-        if len(nodes) > 1:
-            manager.log("Detected dual RP/RSP system.")
-
-            output = device.send("show_platform", wait_for_string="#")
-            node_name = re.search("My card name is -node(\d+_(RS?P)(\d)_CPU\d)-", output)
-            if not node_name:
-                manager.error("Failed to retrieve the node name from 'show_platform'. Please check session.log.")
-
-            active_node = node_name.group(1).replace("_", "/")
-
-            for node in nodes:
-
-                if node != active_node:
-                    output = device.send("iox_on {} ksh /pkg/bin/migrate_to_eXR -b eUSB -e 6".format(node), wait_for_string="#")
-
-                    #MigrateSystemToExrPlugin._check_migration_script_output(manager, device, output)
-
-        output = device.send("ksh /pkg/bin/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
-
-        MigrateSystemToExrPlugin._check_migration_script_output(manager, device, output)
+        output = device.send("ksh /harddisk:/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
 
         device.send("exit")
 
-        """
-        device.send("run", wait_for_string="#")
-
-        output = device.send("show_platform", wait_for_string="#")
-        match = re.search("Act RP = (\d+) Stby (f{8}|\d+)", output)
-
-        standby_node_num = match.group(2)
-
-        if standby_node_num != "ffffffff":
-
-            manager.log("Detected dual RP/RSP system.")
-            node_name = re.search("My card name is -node(\d+_(RS?P)(\d)_CPU\d)-", output)
-
-            if not node_name:
-                manager.error("Failed to retrieve the node name from 'show_platform'. Please check session.log.")
-
-            standby_node_name = node_name.group(1).replace("_", "/").replace(node_name.group(2) + node_name.group(3), node_name.group(2) + standby_node_num)
+        MigratePlugin._check_migration_script_output(manager, device, output)
 
 
-            output = device.send("iox_on {} ksh /pkg/bin/migrate_to_eXR -b eUSB -e 6".format(standby_node_name))
-
-            #MigrateSystemToExrPlugin._check_migration_script_output(manager, device, output)
-
-
-        output = device.send("ksh /pkg/bin/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
-
-
-        MigrateSystemToExrPlugin._check_migration_script_output(manager, device, output)
-
-        device.send("exit")
-        """
         return True
 
     @staticmethod
@@ -151,7 +98,7 @@ class MigrateSystemToExrPlugin(IPlugin):
         lines = output.splitlines()
         for line in lines:
             if "No such file" in line:
-                manager.error("Migration script is not found in /pkg/bin. Please upgrade your image to get access to the migration scripts under /pkg/bin/")
+                manager.error("Found file missing when running migration script. Please check session.log.")
             if "Error:" in line:
                 manager.error("Error when running migration script. Please check session.log.")
             if "Failed to correctly write emt_mode" in line:
@@ -173,9 +120,9 @@ class MigrateSystemToExrPlugin(IPlugin):
     @staticmethod
     def _reload_all(manager, device):
 
-        device.reload(reload_timeout=2000)
+        device.reload(reload_timeout=MIGRATION_TIME_OUT)
 
-        #return MigrateSystemToExrPlugin._wait_for_reload(manager, device)
+        #return MigratePlugin._wait_for_reload(manager, device)
         return wait_for_reload(manager, device)
 
 
@@ -183,14 +130,14 @@ class MigrateSystemToExrPlugin(IPlugin):
     @staticmethod
     def _wait_for_reload(manager, device):
         """
-         Wait for system to come up with max timeout as 25 Minutes
+         Wait for system to come up with max timeout as 1 hour + 1 hour
 
         """
         device.disconnect()
         time.sleep(60)
 
-        device.reconnect(max_timeout=1500)  # 25 * 60 = 1500
-        timeout = 3600
+        device.reconnect(max_timeout=MIGRATION_TIME_OUT)  # 60 * 60 = 3600
+        timeout = NODES_COME_UP_TIME_OUT
         poll_time = 30
         time_waited = 0
         xr_run = "IOS XR RUN"
@@ -220,29 +167,23 @@ class MigrateSystemToExrPlugin(IPlugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-        ctx = device.get_property("ctx")
 
-        filename = ctx.host.hostname
-
-
-        manager.log(MigrateSystemToExrPlugin.NAME + " Plugin is running")
+        filename = manager.csm.host.hostname
 
 
         #self._post_status("Adding ipxe.efi to device")
         #self._copy_file_to_device(device, repo_str, 'ipxe.efi', 'harddiskb:/efi/boot/grub.efi')
-        """
 
+        """
         manager.log("Run migration script to set boot mode and image path in device")
-        success = MigrateSystemToExrPlugin._run_migration_script(manager, device)
+        MigratePlugin._run_migration_script(manager, device)
+        """
 
         # checked: reload router, now we have flexr-capable fpd
-        """
-        if 1:
-            manager.log("Reload device to boot eXR")
-            MigrateSystemToExrPlugin._reload_all(manager, device)
+        manager.log("Reload device to boot eXR")
+        MigratePlugin._reload_all(manager, device)
 
-        device.discovery()
-
+        get_package(device, manager)
 
         return True
 

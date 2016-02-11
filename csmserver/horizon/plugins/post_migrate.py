@@ -39,16 +39,16 @@ import os
 #"""
 
 
-from .plugin import PluginError, IPlugin
-from ..package_lib import parse_exr_show_sdr, validate_exr_node_state
+from horizon.plugin import PluginError, Plugin
+from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
 from condoor.exceptions import CommandTimeoutError, CommandSyntaxError
-from .premigrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE
+from horizon.plugins.pre_migrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE
 from condoor import TIMEOUT
 
 
 _INVALID_INPUT = "Invalid input detected"
 
-class PostMigratePlugin(IPlugin):
+class PostMigratePlugin(Plugin):
 
     """
     A plugin for migrating from XR to eXR/fleXR
@@ -255,50 +255,41 @@ class PostMigratePlugin(IPlugin):
                 if num_need_reload > 0:
                     print "need reload"
                     manager.log("Finished upgrading FPD(s). Now reloading the device to complete the upgrade.")
-                    return PostMigratePlugin._reload_all_in_admin(device)
+                    device.send("exit")
+                    return PostMigratePlugin._reload_all(device)
                 return True
 
         # Some FPDs didn't finish upgrade
         return False
 
     @staticmethod
-    def _reload_all_in_admin(device):
+    def _reload_all(manager, device):
 
-        device.send("hw-module location all reload", wait_for_string="\?")
+        device.reload(reload_timeout=3600)
 
-        try:
-            output = device.send("yes")
-            device.send("\r")
-        except CommandTimeoutError:
-            print "Reload command - expected to timeout"
+        return PostMigratePlugin._wait_for_reload(manager, device)
 
-        return PostMigratePlugin._wait_for_reload(device)
 
 
 
     @staticmethod
-    def _wait_for_reload(device):
+    def _wait_for_reload(manager, device):
         """
-         Wait for system to come up with max timeout as 30 Minutes
+         Wait for system to come up with max timeout as 1 hour + 1 hour
 
         """
-        print "device trying to reconnect..."
-        status = device.reconnect()
-        print "device finished reconnecting..."
-        # Connection to device failed
-        if not status :
-            return status
+        device.disconnect()
+        time.sleep(60)
 
-        # Connection to device is established , now look for all nodes to xr run state
-        timeout = 1500
+        device.reconnect(max_timeout=3600)  # 60 * 60 = 3600
+        timeout = 3600
         poll_time = 30
         time_waited = 0
         xr_run = "IOS XR RUN"
 
-        success = False
         cmd = "show sdr"
-        print "Waiting for all nodes to come up"
-        time.sleep(60)
+        manager.log("Waiting for all nodes to come up")
+        time.sleep(100)
         while 1:
             # Wait till all nodes are in XR run state
             time_waited += poll_time
@@ -312,25 +303,24 @@ class PostMigratePlugin(IPlugin):
                     return True
 
         # Some nodes did not come to run state
+        manager.error("Not all nodes have came up: {}".format(output))
+        # this will never be executed
         return False
-
-
 
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-        ctx = device.get_property("ctx")
 
-        fileloc = ctx.migration_directory
+        fileloc = manager.csm.migration_directory
 
         try:
-            best_effort_config = ctx.post_migrate_config_handling_option
+            best_effort_config = manager.csm.post_migrate_config_handling_option
         except AttributeError:
             manager.error("No configuration handling option selected when scheduling post-migrate.")
 
 
-        filename = ctx.host.hostname
+        filename = manager.csm.host.hostname
 
 
         manager.log("Waiting for all nodes to come to FINAL Band.")
@@ -363,6 +353,6 @@ class PostMigratePlugin(IPlugin):
         if file_exists:
             PostMigratePlugin._load_nonadmin_config(manager, device, XR_CONFIG_ON_DEVICE, best_effort_config)
 
-        PostMigratePlugin._check_fpds_for_upgrade(manager, device)
+        #PostMigratePlugin._check_fpds_for_upgrade(manager, device)
 
         #self._reload_all(device)

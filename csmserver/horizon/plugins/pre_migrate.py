@@ -36,33 +36,37 @@ from database import DBSession
 from models import Server
 
 
-from .plugin import PluginError, IPlugin
-from .install_add import InstallAddPlugin
-from .install_act import InstallActivatePlugin
-from .install_commit import InstallCommitPlugin
-from .node_status import NodeStatusPlugin
-
+from horizon.plugin import PluginError, Plugin
+"""
+from horizon.plugins.install_add import InstallAddPlugin
+from horizon.plugins.install_act import InstallActivatePlugin
+from horizon.plugins.install_commit import InstallCommitPlugin
+from horizon.plugins.node_status.asr9k.node_status import NodeStatusPlugin
+"""
 from condoor import TIMEOUT
 
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 
-NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
+#NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
+NOX_64_BINARY = "nox-linux-64.bin"
 NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_FOR_MAC = "nox-mac64"
 
-TIMEOUT_FOR_COPY_CONFIG = 1000
+TIMEOUT_FOR_COPY_CONFIG = 3600
+TIMEOUT_FOR_COPY_ISO = 3600
+TIMEOUT_FOR_FPD_UPGRADE = 9600
 
-TIMEOUT_FOR_COPY_ISO = 1000
 ISO_FULL_IMAGE_NAME = "asr9k-full-x64.iso"
 ISO_MINI_IMAGE_NAME = "asr9k-mini-x64.iso"
+ISO_LOCATION = "harddiskb:/"
 
 
 #ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
 #LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
 NODE = '[-|\s](\d+/(?:RS?P)?\d+/CPU\d+)'
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
-MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.0'
+MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.1'
 
 
 XR_CONFIG_IN_CSM = "xr.cfg"
@@ -77,7 +81,7 @@ XR_CONFIG_ON_DEVICE = "iosxr.cfg"
 ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
 ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
 
-class PreMigratePlugin(IPlugin):
+class PreMigratePlugin(Plugin):
 
     """
     A plugin for migrating from XR to eXR/fleXR
@@ -149,7 +153,7 @@ class PreMigratePlugin(IPlugin):
         events = [device.prompt, CONFIRM_IP, CONFIRM_FILENAME, OK, TIMEOUT, FILE_EXISTS]
         transitions = [
             (CONFIRM_IP, [0], 1, send_newline, 0),
-            (CONFIRM_FILENAME, [1], 2, send_newline, 600),
+            (CONFIRM_FILENAME, [1], 2, send_newline, TIMEOUT_FOR_COPY_CONFIG),
             (OK, [2], 3, None, 10),
             (device.prompt, [3], -1, None, 0),
             (TIMEOUT, [0, 1, 2, 3], 4, None, 0),
@@ -363,28 +367,28 @@ class PreMigratePlugin(IPlugin):
                         pie_packages.append(package)
 
                 if len(pie_packages) != 1:
-                    manager.error("Release version is below 6.0.0, please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must contain '.pie'")
+                    manager.error("Release version is below {}, please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must contain '.pie'".format(MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD))
 
 
                 """
                 Step 1: Install add the FPD SMU
                 """
                 manager.log("FPD upgrade - install add the FPD SMU...")
-                PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
+                #PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
 
 
                 """
                 Step 2: Install activate the FPD SMU
                 """
                 manager.log("FPD upgrade - install activate the FPD SMU...")
-                PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
+                #PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
 
 
                 """
                 Step 3: Install commit the FPD SMU
                 """
                 manager.log("FPD upgrade - install commit the FPD SMU...")
-                PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
+                #PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
 
 
 
@@ -437,13 +441,15 @@ class PreMigratePlugin(IPlugin):
                 CONFIRM_CONTINUE = re.compile("Continue\? \[confirm\]")
                 CONFIRM_SECOND_TIME = re.compile("Continue \? \[no\]:")
                 SUCCESS = re.compile("Successfully (?:downgraded|upgraded).+{}".format(fpdtype))
+                FAIL = re.compile("FPD upgrade execution failed")
                 UPGRADE_END = re.compile("FPD upgrade has ended.")
 
                 events = [device.prompt, CONFIRM_CONTINUE, CONFIRM_SECOND_TIME, SUCCESS, TIMEOUT, UPGRADE_END]
                 transitions = [
                     (CONFIRM_CONTINUE, [0], 1, send_newline, 10),
-                    (CONFIRM_SECOND_TIME, [1], 2, send_yes, 9600),
+                    (CONFIRM_SECOND_TIME, [1], 2, send_yes, TIMEOUT_FOR_FPD_UPGRADE),
                     (SUCCESS, [2], 3, None, 60),
+                    (FAIL, [2, 3], 5, None, 0),
                     (UPGRADE_END, [3], 4, None, 0),
                     (device.prompt, [4], -1, None, 0),
                     (TIMEOUT, [0, 1, 2, 3, 4], 5, None, 0),
@@ -458,12 +464,9 @@ class PreMigratePlugin(IPlugin):
 
     @staticmethod
     def _create_config_logs(manager, device, csvfile, supported_log_name, unsupported_log_name, hostname, filename):
-        ctx = device.get_property("ctx")
-        if not ctx or not ctx.log_directory:
-            manager.error("Cannot fetch the log directory in csm_ctx from plugin.")
 
-        supported_config_log = ctx.log_directory + os.sep + supported_log_name
-        unsupported_config_log = ctx.log_directory + os.sep + unsupported_log_name
+        supported_config_log = manager.csm.log_directory + os.sep + supported_log_name
+        unsupported_config_log = manager.csm.log_directory + os.sep + unsupported_log_name
         try:
             with open(supported_config_log, 'w') as supp_log:
                 with open(unsupported_config_log, 'w') as unsupp_log:
@@ -498,7 +501,7 @@ class PreMigratePlugin(IPlugin):
             print(type(inst))
             print(inst.args)
             print(inst)
-            PreMigratePlugin._disconnect_and_raise_error(manager, device, "Error writing diagnostic files - in {} during configuration migration.".format(ctx.log_directory))
+            PreMigratePlugin._disconnect_and_raise_error(manager, device, "Error writing diagnostic files - in {} during configuration migration.".format(manager.csm.log_directory))
 
     @staticmethod
     def _handle_configs(manager, device, hostname, repo_url, fileloc, nox_to_use, config_filename):
@@ -509,7 +512,6 @@ class PreMigratePlugin(IPlugin):
 
         manager.log("Saving the current configurations on device into server repository and csm_data")
         PreMigratePlugin._copy_config_to_repo(manager, device, repo_url, xr_config_name_in_repo)
-
 
         PreMigratePlugin._copy_config_to_repo(manager, device, repo_url, admin_config_name_in_repo, admin="admin ")
 
@@ -550,7 +552,7 @@ class PreMigratePlugin(IPlugin):
                 # iosxr.cfg
                 config_names_on_device.append(XR_CONFIG_ON_DEVICE)
 
-            PreMigratePlugin._copy_files_to_device(manager, device, repo_url, config_names_in_repo, ["harddiskb:/{}".format(config_name) for config_name in config_names_on_device], timeout=TIMEOUT_FOR_COPY_CONFIG)
+            PreMigratePlugin._copy_files_to_device(manager, device, repo_url, config_names_in_repo, [ISO_LOCATION + config_name for config_name in config_names_on_device], timeout=TIMEOUT_FOR_COPY_CONFIG)
 
     @staticmethod
     def _copy_iso_to_device(manager, device, packages, repo_url):
@@ -559,7 +561,7 @@ class PreMigratePlugin(IPlugin):
             if ".iso" in package:
                 if found_iso == False and (package == ISO_FULL_IMAGE_NAME or package == ISO_MINI_IMAGE_NAME):
                     found_iso = True
-                    PreMigratePlugin._copy_files_to_device(manager, device, repo_url, [package], ["harddiskb:/{}".format(package)], timeout=TIMEOUT_FOR_COPY_ISO)
+                    PreMigratePlugin._copy_files_to_device(manager, device, repo_url, [package], [ISO_LOCATION + package], timeout=TIMEOUT_FOR_COPY_ISO)
                 else:
                     manager.error("Please make sure that the only ISO image you select on your server repository is {} or {}.".format(ISO_FULL_IMAGE_NAME, ISO_MINI_IMAGE_NAME))
 
@@ -587,11 +589,11 @@ class PreMigratePlugin(IPlugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-        ctx = device.get_property("ctx")
+
 
         server_repo_url = None
         try:
-            server_repo_url = ctx.server_repository_url
+            server_repo_url = manager.csm.server_repository_url
         except AttributeError:
             pass
 
@@ -599,19 +601,19 @@ class PreMigratePlugin(IPlugin):
             manager.error("No repository provided.")
 
         try:
-            packages = ctx.software_packages
+            packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No package list provided")
 
         try:
-            config_filename = ctx.pre_migrate_config_filename
+            config_filename = manager.csm.pre_migrate_config_filename
         except AttributeError:
             pass
 
 
-        host_directory_name = ctx.host.hostname
+        host_directory_name = manager.csm.host.hostname
 
-        fileloc = ctx.migration_directory + host_directory_name
+        fileloc = manager.csm.migration_directory + host_directory_name
 
         if not os.path.exists(fileloc):
             os.makedirs(fileloc)
@@ -628,18 +630,19 @@ class PreMigratePlugin(IPlugin):
 
         PreMigratePlugin._ping_repository_check(manager, device, server_repo_url)
 
+        """
         try:
             NodeStatusPlugin.start(manager, device)
         except PluginError:
             manager.error("Not all nodes are in correct states. Pre-Migrate aborted. Please check session.log to trouble-shoot.")
-        
+        """
         manager.log("Resizing eUSB partition.")
         PreMigratePlugin._resize_eusb(manager, device)
 
 
-        nox_to_use = ctx.migration_directory + PreMigratePlugin._find_nox_to_use()
+        nox_to_use = manager.csm.migration_directory + PreMigratePlugin._find_nox_to_use()
 
-        nox_to_use = ctx.migration_directory + NOX_FOR_MAC
+        nox_to_use = manager.csm.migration_directory + NOX_FOR_MAC
 
         if not os.path.isfile(nox_to_use):
             manager.error("The configuration conversion tool {} is missing. CSM should have downloaded it from CCO when migration actions were scheduled.".format(nox_to_use))
