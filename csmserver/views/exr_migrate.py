@@ -35,7 +35,8 @@ import subprocess
 import requests
 from smu_info_loader import IOSXR_URL
 
-NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
+#NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
+NOX_64_BINARY = "nox-linux-64.bin"
 NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 
@@ -372,7 +373,7 @@ def get_file_http(filename, destination):
 def get_install_migrations_dict():
     return {
         "premigrate": InstallAction.PRE_MIGRATE,
-        "migrate": InstallAction.MIGRATE_SYSTEM_TO_EXR,
+        "migrate": InstallAction.MIGRATE_SYSTEM,
         "postmigrate": InstallAction.POST_MIGRATE,
         "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
@@ -386,7 +387,7 @@ def fill_dependencies_for_migration(choices):
     # The install action is listed in implicit ordering.  This ordering
     # is used to formulate the dependency.
     choices.append((InstallAction.PRE_MIGRATE, InstallAction.PRE_MIGRATE))
-    choices.append((InstallAction.MIGRATE_SYSTEM_TO_EXR, InstallAction.MIGRATE_SYSTEM_TO_EXR))
+    choices.append((InstallAction.MIGRATE_SYSTEM, InstallAction.MIGRATE_SYSTEM))
     choices.append((InstallAction.POST_MIGRATE, InstallAction.POST_MIGRATE))
 
 class ScheduleMigrationForm(Form):

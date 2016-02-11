@@ -109,7 +109,7 @@
             submit_spinner.hide();
 
             var PRE_MIGRATE = "{{ install_action.premigrate }}";
-            var MIGRATE_SYSTEM_TO_EXR = "{{ install_action.migrate }}";
+            var MIGRATE_SYSTEM = "{{ install_action.migrate }}";
             var POST_MIGRATE = "{{ install_action.postmigrate }}";
             var ALL_FOR_MIGRATE = "{{ install_action.allformigrate }}";
 
@@ -132,7 +132,7 @@
             $('#install_action').on('change', function (e) {
                 var install_actions = $(this).val();
                 if (has_one_of_these(install_actions, [ALL_FOR_MIGRATE])) {
-                    $("#install_action").val([PRE_MIGRATE, MIGRATE_SYSTEM_TO_EXR, POST_MIGRATE]).trigger('change');
+                    $("#install_action").val([PRE_MIGRATE, MIGRATE_SYSTEM, POST_MIGRATE]).trigger('change');
                 }
                 toggle_ui();
             });
@@ -165,7 +165,7 @@
 
                 var install_actions = $('#install_action').val();
 
-                if ($('#hidden_edit').val() == 'True' && has_one_of_these(install_actions, [MIGRATE_SYSTEM_TO_EXR])) {
+                if ($('#hidden_edit').val() == 'True' && has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
                     on_submit();
 
                 } else {
