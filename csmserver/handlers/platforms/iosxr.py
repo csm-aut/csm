@@ -28,7 +28,13 @@ from parsers.loader import get_package_parser_class
 
 import condoor
 
-from horizon.plugin_manager import PluginManager
+try:
+    from csmpe import CSMPluginManager
+    csmpe_installed = True
+except ImportError:
+    from horizon.plugin_manager import PluginManager
+    csmpe_installed = False
+
 from models import get_db_session_logger
 
 from constants import InstallAction
@@ -110,9 +116,15 @@ class BaseInventoryHandler(BaseHandler):
 class BaseInstallHandler(BaseHandler):                         
     def execute(self, ctx):
 
-        pm = PluginManager()
+        if csmpe_installed:
+            pm = CSMPluginManager(ctx)
+        else:
+            pm = PluginManager()
         try:
-            pm.run(ctx)
+            if csmpe_installed:
+                pm.dispatch("run")
+            else:
+                pm.run(ctx)
         except condoor.GeneralError as e:
             ctx.post_status = e.message
             ctx.success = False
