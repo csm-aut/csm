@@ -37,7 +37,6 @@ import tarfile
 import re
 
 from constants import get_log_directory
-from constants import DefaultHostAuthenticationChoice
 from __builtin__ import True
 
 
@@ -168,9 +167,7 @@ def get_file_list(directory, filter=None):
     return sorted(result_list)
 
 
-def make_url(connection_type, host_username, host_password, host_or_ip, port_number,
-             default_host_username=None, default_host_password=None,
-             default_host_authentication_choice=DefaultHostAuthenticationChoice.ALL_HOSTS):
+def make_url(connection_type, host_username, host_password, host_or_ip, port_number):
     """
     Creates a connection URL such as
 
@@ -187,13 +184,6 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
 
     no_host_username = False
     no_host_password = False
-
-    if not is_empty(default_host_username) and not is_empty(default_host_password):
-        if default_host_authentication_choice == DefaultHostAuthenticationChoice.ALL_HOSTS or \
-            (default_host_authentication_choice == DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD and \
-                is_empty(host_username) and is_empty(host_password)):
-            host_username = default_host_username
-            host_password = default_host_password
 
     if not is_empty(host_username):
         url += '{}'.format(host_username)

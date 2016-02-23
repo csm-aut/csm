@@ -36,6 +36,7 @@ from constants import get_temp_directory
 from constants import get_log_directory
 
 from common import get_user_by_id
+from constants import DefaultHostAuthenticationChoice
 
 
 class Context(object):
@@ -95,20 +96,23 @@ class ConnectionContext(Context):
                 except:
                     pass
 
-            username = connection.username
-            password = connection.password
+            host_username = connection.username
+            host_password = connection.password
 
             if not is_empty(preferred_host_username) and not is_empty(preferred_host_password):
-                username = preferred_host_username
-                password = preferred_host_password
-
-            default_host_username = None
-            default_host_password = None
-
-            system_option = SystemOption.get(self.db_session)
-            if system_option.enable_default_host_authentication:
-                default_host_username = system_option.default_host_username
-                default_host_password = system_option.default_host_password
+                host_username = preferred_host_username
+                host_password = preferred_host_password
+            else:
+                system_option = SystemOption.get(self.db_session)
+                if system_option.enable_default_host_authentication:
+                    if not is_empty(system_option.default_host_username) and not is_empty(system_option.default_host_password):
+                        if system_option.default_host_authentication_choice == DefaultHostAuthenticationChoice.ALL_HOSTS or \
+                            (system_option.default_host_authentication_choice ==
+                                DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD and
+                                is_empty(host_username) and
+                                is_empty(host_password)):
+                            host_username = system_option.default_host_username
+                            host_password = system_option.default_host_password
 
             for host_or_ip in connection.host_or_ip.split(','):
                 for port_number in connection.port_number.split(','):
@@ -118,13 +122,10 @@ class ConnectionContext(Context):
 
                     host_urls.append(make_url(
                         connection_type=connection.connection_type,
-                        host_username=username,
-                        host_password=password,
+                        host_username=host_username,
+                        host_password=host_password,
                         host_or_ip=host_or_ip,
-                        port_number=port_number,
-                        default_host_username=default_host_username,
-                        default_host_password=default_host_password,
-                        default_host_authentication_choice=system_option.default_host_authentication_choice))
+                        port_number=port_number))
 
                     urls.append(host_urls)
 
