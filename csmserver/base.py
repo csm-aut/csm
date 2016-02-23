@@ -88,8 +88,8 @@ class ConnectionContext(Context):
                     if jump_host is not None:
                         jump_host_url = make_url(
                             connection_type=jump_host.connection_type,
-                            username=jump_host.username,
-                            password=jump_host.password,
+                            host_username=jump_host.username,
+                            host_password=jump_host.password,
                             host_or_ip=jump_host.host_or_ip,
                             port_number=jump_host.port_number)
                 except:
@@ -97,17 +97,18 @@ class ConnectionContext(Context):
 
             username = connection.username
             password = connection.password
+
             if not is_empty(preferred_host_username) and not is_empty(preferred_host_password):
                 username = preferred_host_username
                 password = preferred_host_password
 
-            default_username = None
-            default_password = None
+            default_host_username = None
+            default_host_password = None
 
             system_option = SystemOption.get(self.db_session)
             if system_option.enable_default_host_authentication:
-                default_username = system_option.default_host_username
-                default_password = system_option.default_host_password
+                default_host_username = system_option.default_host_username
+                default_host_password = system_option.default_host_password
 
             for host_or_ip in connection.host_or_ip.split(','):
                 for port_number in connection.port_number.split(','):
@@ -117,12 +118,13 @@ class ConnectionContext(Context):
 
                     host_urls.append(make_url(
                         connection_type=connection.connection_type,
-                        username=username,
-                        password=password,
+                        host_username=username,
+                        host_password=password,
                         host_or_ip=host_or_ip,
                         port_number=port_number,
-                        default_username=default_username,
-                        default_password=default_password))
+                        default_host_username=default_host_username,
+                        default_host_password=default_host_password,
+                        default_host_authentication_choice=system_option.default_host_authentication_choice))
 
                     urls.append(host_urls)
 

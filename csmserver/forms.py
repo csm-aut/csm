@@ -23,9 +23,15 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from wtforms import Form, validators
+from wtforms import RadioField
 from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
 from wtforms.validators import Length, required
-from constants import Platform, ConnectionType, ServerType, UserPrivilege, SMTPSecureConnection
+from constants import Platform
+from constants import ConnectionType
+from constants import ServerType
+from constants import UserPrivilege
+from constants import SMTPSecureConnection
+from constants import DefaultHostAuthenticationChoice
 
 
 class LoginForm(Form):
@@ -159,9 +165,14 @@ class AdminConsoleForm(Form):
     install_history_per_host = IntegerField('Install History Per Host', [validators.NumberRange(min=10, max=1000)])
     download_history_per_user = IntegerField('SMU/SP Download History Per User', [validators.NumberRange(min=10, max=100)])
     total_system_logs = IntegerField('Total System Logs', [validators.NumberRange(min=100, max=100000)])
-    enable_default_host_authentication = HiddenField("Enable Default Host Authentication")
+    enable_default_host_authentication = HiddenField("Use Default Host Authentication")
     default_host_username = StringField('Default Host Username')
     default_host_password = PasswordField('Default Host Password')
+    default_host_authentication_choice = RadioField('Apply To',
+                                 choices=[(DefaultHostAuthenticationChoice.ALL_HOSTS,
+                                           'All Hosts'),
+                                          (DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD,
+                                           'Hosts with no Specified Username and Password')])
     enable_ldap_auth = HiddenField("Enable LDAP")
     ldap_server_url = StringField('LDAP Server URL')
     enable_cco_lookup = HiddenField("Enable CCO Connection")

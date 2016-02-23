@@ -133,3 +133,8 @@ class SMTPSecureConnection:
 class ProxyAgent:
     CSM_SERVER = 'CSM Server'
     HOST_AGENT = 'Host Agent'
+
+
+class DefaultHostAuthenticationChoice:
+    ALL_HOSTS = "1"
+    HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD = "2"

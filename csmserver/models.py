@@ -29,7 +29,6 @@ from sqlalchemy.ext import mutable
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, synonym
 
-from utils import make_url
 from utils import is_empty
 from salts import encode, decode
 
@@ -754,6 +753,7 @@ class SystemOption(Base):
     enable_default_host_authentication = Column(Boolean, default=False)
     default_host_username = Column(String(50))
     _default_host_password = Column('default_host_password', String(100))
+    default_host_authentication_choice = Column(String(10), default="1")
     base_url = Column(String(100))
     enable_ldap_auth = Column(Boolean, default=False)
     enable_ldap_host_auth = Column(Boolean, default=False)
