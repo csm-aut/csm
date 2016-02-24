@@ -101,6 +101,15 @@ function validateSelectHost(){
 
       $('#hidden_server').val(server == null ? -1 : server);
       $('#hidden_server_directory').val(server_directory == null ? '' : server_directory);
+
+
+        if (server != null && server != -1) {
+            $('#server_dialog_server').val(server);
+            server_software_retrieve_file_list(server, $('#server_dialog_server_directory'), server_directory);
+        } else {
+            server_software_selector.initialize([], []);
+        }
+
     }
 
 
@@ -146,10 +155,13 @@ function validateSelectPackages(){
         }
 
     }
+    $('#hidden_server').val($('#server_dialog_server').val());
+    $('#hidden_server_name').val($('#server_dialog_server option:selected').text());
+    $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
+
     region_id = $('#region option:selected').val()
     $.cookie('region-' + region_id + '-server', $('#hidden_server').val(), { path: '/' });
     $.cookie('region-' + region_id + '-server-directory', $('#hidden_server_directory').val(), { path: '/' });
-
 
 	return true;
 

@@ -37,12 +37,12 @@ from models import Server
 
 
 from horizon.plugin import PluginError, Plugin
-"""
+
 from horizon.plugins.install_add import InstallAddPlugin
-from horizon.plugins.install_act import InstallActivatePlugin
+from horizon.plugins.install_activate import InstallActivatePlugin
 from horizon.plugins.install_commit import InstallCommitPlugin
 from horizon.plugins.node_status.asr9k.node_status import NodeStatusPlugin
-"""
+
 from condoor import TIMEOUT
 
 
@@ -66,6 +66,7 @@ ISO_LOCATION = "harddiskb:/"
 #LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
 NODE = '[-|\s](\d+/(?:RS?P)?\d+/CPU\d+)'
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
+
 MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.1'
 
 
@@ -160,7 +161,7 @@ class PreMigratePlugin(Plugin):
             (FILE_EXISTS, [2], 4, error, 0)
         ]
         manager.log("Copying {}configuration on device to {}".format(admin, repository))
-        if not device.run_fsm(PreMigratePlugin.DESCRIPTION, command, events, transitions, timeout=10):
+        if not device.run_fsm(PreMigratePlugin.DESCRIPTION, command, events, transitions, timeout=20):
             manager.error("Failed to copy running-config to your repository. Please check session.log for error and fix the issue.")
             return False
         """
@@ -228,13 +229,13 @@ class PreMigratePlugin(Plugin):
             transitions = [
                 (CONFIRM_FILENAME, [0], 1, send_newline, timeout),
                 (CONFIRM_OVERWRITE, [1], 2, send_newline, timeout),
-                (COPIED, [1, 2], 3, None, 10),
+                (COPIED, [1, 2], 3, None, 20),
                 (device.prompt, [3], -1, None, 0),
                 (TIMEOUT, [0, 1, 2, 3], 4, None, 0),
                 (NO_SUCH_FILE, [0, 1, 2, 3], 4, error, 0)
             ]
             manager.log("Copying {}/{} to {} on device".format(repository, source_filenames[x], dest_files[x]))
-            if not device.run_fsm(PreMigratePlugin.DESCRIPTION, command, events, transitions, timeout=10):
+            if not device.run_fsm(PreMigratePlugin.DESCRIPTION, command, events, transitions, timeout=20):
                 manager.error("Error copying {}/{} to {} on device".format(repository, source_filenames[x], dest_files[x]))
 
             output = device.send("dir {}".format(dest_files[x]))
@@ -319,13 +320,14 @@ class PreMigratePlugin(Plugin):
         location_to_subtypes_need_upgrade = {}
 
         for fpdtype in FPDS_CHECK_FOR_UPGRADE:
-            match = re.search(NODE + "[-.A-Z0-9a-z\s]*?" + fpdtype + "[-.A-Z0-9a-z\s]*?(No|Yes)", fpdtable)
+            match_iter = re.finditer(NODE + "[-.A-Z0-9a-z\s]*?" + fpdtype + "[-.A-Z0-9a-z\s]*?(No|Yes)", fpdtable)
 
-            if match:
+            for match in match_iter:
                 if match.group(2) == "Yes":
                     if not match.group(1) in location_to_subtypes_need_upgrade:
                         location_to_subtypes_need_upgrade[match.group(1)] = []
                     location_to_subtypes_need_upgrade[match.group(1)].append(fpdtype)
+
 
         return location_to_subtypes_need_upgrade
 
@@ -338,6 +340,8 @@ class PreMigratePlugin(Plugin):
         # check for the FPD version, if FPD needs upgrade,
 
         location_to_subtypes_need_upgrade = PreMigratePlugin._check_fpd(device)
+
+        print "location_to_subtypes_need_upgrade = " + str(location_to_subtypes_need_upgrade)
 
         if location_to_subtypes_need_upgrade:
 
@@ -357,7 +361,6 @@ class PreMigratePlugin(Plugin):
 
             release_version = match.group(1)
 
-
             if release_version < MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD:
 
 
@@ -367,35 +370,39 @@ class PreMigratePlugin(Plugin):
                         pie_packages.append(package)
 
                 if len(pie_packages) != 1:
-                    manager.error("Release version is below {}, please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must contain '.pie'".format(MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD))
+                    manager.error("Please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must end with '.pie'")
+
+                name_of_fpd_smu = pie_packages[0].split(".pie")[0]
+
+                install_summary = device.send("show install active summary")
+
+                match = re.search(name_of_fpd_smu, install_summary)
+
+                if not match:
+
+                    #Step 1: Install add the FPD SMU
+                    manager.log("FPD upgrade - install add the FPD SMU...")
+                    PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
 
 
-                """
-                Step 1: Install add the FPD SMU
-                """
-                manager.log("FPD upgrade - install add the FPD SMU...")
-                #PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
+                    #Step 2: Install activate the FPD SMU
+                    manager.log("FPD upgrade - install activate the FPD SMU...")
+                    PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
 
 
-                """
-                Step 2: Install activate the FPD SMU
-                """
-                manager.log("FPD upgrade - install activate the FPD SMU...")
-                #PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
+                    #Step 3: Install commit the FPD SMU
+                    manager.log("FPD upgrade - install commit the FPD SMU...")
+                    PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
 
-
-                """
-                Step 3: Install commit the FPD SMU
-                """
-                manager.log("FPD upgrade - install commit the FPD SMU...")
-                #PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
+                else:
+                    manager.log("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
 
 
 
             """
             Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
             """
-            #PreMigratePlugin._upgrade_all_fpds(manager, device, location_to_subtypes_need_upgrade)
+            PreMigratePlugin._upgrade_all_fpds(manager, device, location_to_subtypes_need_upgrade)
 
 
         return True
@@ -440,23 +447,27 @@ class PreMigratePlugin(Plugin):
 
                 CONFIRM_CONTINUE = re.compile("Continue\? \[confirm\]")
                 CONFIRM_SECOND_TIME = re.compile("Continue \? \[no\]:")
-                SUCCESS = re.compile("Successfully (?:downgraded|upgraded).+{}".format(fpdtype))
+                IN_PROGRESS = re.compile("FPD upgrade in progress.")
+                SUCCESS = re.compile(".*Successfully (?:downgraded|upgraded).+{}".format(location))
                 FAIL = re.compile("FPD upgrade execution failed")
                 UPGRADE_END = re.compile("FPD upgrade has ended.")
 
-                events = [device.prompt, CONFIRM_CONTINUE, CONFIRM_SECOND_TIME, SUCCESS, TIMEOUT, UPGRADE_END]
+                events = [device.prompt, CONFIRM_CONTINUE, CONFIRM_SECOND_TIME, IN_PROGRESS, SUCCESS, TIMEOUT, UPGRADE_END]
                 transitions = [
-                    (CONFIRM_CONTINUE, [0], 1, send_newline, 10),
+                    (CONFIRM_CONTINUE, [0], 1, send_newline, TIMEOUT_FOR_FPD_UPGRADE),
                     (CONFIRM_SECOND_TIME, [1], 2, send_yes, TIMEOUT_FOR_FPD_UPGRADE),
-                    (SUCCESS, [2], 3, None, 60),
-                    (FAIL, [2, 3], 5, None, 0),
-                    (UPGRADE_END, [3], 4, None, 0),
+                    (IN_PROGRESS, [1, 2], 2, None, 5400),
+                    (SUCCESS, [1, 2], 3, None, 120),
+                    (FAIL, [1, 2, 3], 5, None, 120),
+                    (UPGRADE_END, [3], 4, None, 120),
+                    (UPGRADE_END, [2], 5, None, 10),
                     (device.prompt, [4], -1, None, 0),
-                    (TIMEOUT, [0, 1, 2, 3, 4], 5, None, 0),
+                    (device.prompt, [1, 2], 5, None, 5),
+                    (TIMEOUT, [0, 1, 2, 3, 4, 5], 5, None, 20),
 
                 ]
 
-                if not device.run_fsm(PreMigratePlugin.DESCRIPTION, "admin upgrade hw-module fpd {} force location {}".format(fpdtype, location), events, transitions, timeout=10):
+                if not device.run_fsm(PreMigratePlugin.DESCRIPTION, "admin upgrade hw-module fpd {} force location {}".format(fpdtype, location), events, transitions, timeout=30):
                     manager.error("Failed to force upgrade FPD subtype {} on location {}".format(fpdtype, location))
 
 
@@ -630,12 +641,12 @@ class PreMigratePlugin(Plugin):
 
         PreMigratePlugin._ping_repository_check(manager, device, server_repo_url)
 
-        """
+
         try:
             NodeStatusPlugin.start(manager, device)
         except PluginError:
             manager.error("Not all nodes are in correct states. Pre-Migrate aborted. Please check session.log to trouble-shoot.")
-        """
+
         manager.log("Resizing eUSB partition.")
         PreMigratePlugin._resize_eusb(manager, device)
 

@@ -88,12 +88,15 @@ class PostMigratePlugin(Plugin):
             return True
 
         UNCOMMITTED_CHANGES = re.compile("Uncommitted changes found, commit them\? \[yes/no/CANCEL\]")
+        UNCOMMITTED_CHANGES_2 = re.compile("Uncommitted changes found, commit them before exiting\(yes/no/cancel\)\? \[cancel\]")
         RUN_PROMPT = re.compile("#")
 
-        events = [UNCOMMITTED_CHANGES, RUN_PROMPT, TIMEOUT]
+        events = [UNCOMMITTED_CHANGES, UNCOMMITTED_CHANGES_2, RUN_PROMPT, TIMEOUT]
         transitions = [
             (UNCOMMITTED_CHANGES, [0], 1, send_no, 20),
-            (RUN_PROMPT, [0, 1], -1, None, 0),
+            (UNCOMMITTED_CHANGES_2, [0], 1, send_no, 20),
+            (RUN_PROMPT, [0], 0, None, 0),
+            (RUN_PROMPT, [1], -1, None, 0),
             (TIMEOUT, [0, 1], 2, None, 0),
 
         ]
@@ -256,7 +259,7 @@ class PostMigratePlugin(Plugin):
                     print "need reload"
                     manager.log("Finished upgrading FPD(s). Now reloading the device to complete the upgrade.")
                     device.send("exit")
-                    return PostMigratePlugin._reload_all(device)
+                    return PostMigratePlugin._reload_all(manager, device)
                 return True
 
         # Some FPDs didn't finish upgrade
@@ -265,7 +268,7 @@ class PostMigratePlugin(Plugin):
     @staticmethod
     def _reload_all(manager, device):
 
-        device.reload(reload_timeout=3600)
+        device.reload(reload_timeout=3600, os=device.os_type)
 
         return PostMigratePlugin._wait_for_reload(manager, device)
 
@@ -275,21 +278,20 @@ class PostMigratePlugin(Plugin):
     @staticmethod
     def _wait_for_reload(manager, device):
         """
-         Wait for system to come up with max timeout as 1 hour + 1 hour
+         Wait for system to come up with max timeout as 30 min
 
         """
         device.disconnect()
-        time.sleep(60)
+        #time.sleep(10)
 
-        device.reconnect(max_timeout=3600)  # 60 * 60 = 3600
-        timeout = 3600
+        device.reconnect(max_timeout=300)
+        timeout = 1800
         poll_time = 30
         time_waited = 0
         xr_run = "IOS XR RUN"
 
         cmd = "show sdr"
         manager.log("Waiting for all nodes to come up")
-        time.sleep(100)
         while 1:
             # Wait till all nodes are in XR run state
             time_waited += poll_time
@@ -353,6 +355,5 @@ class PostMigratePlugin(Plugin):
         if file_exists:
             PostMigratePlugin._load_nonadmin_config(manager, device, XR_CONFIG_ON_DEVICE, best_effort_config)
 
-        #PostMigratePlugin._check_fpds_for_upgrade(manager, device)
+        PostMigratePlugin._check_fpds_for_upgrade(manager, device)
 
-        #self._reload_all(device)

@@ -481,7 +481,7 @@
                                                 <div class="form-actions">
                                                     <button id="on-submit" type="button"
                                                             class="btn btn-primary btn-finish" name='finish'
-                                                            value='Schedule' data-dismiss="modal">
+                                                            value='Schedule'>
                                                       {% if install_job != null and install_job.status == 'failed' %}
                                                           Re-Submit
                                                       {% else %}
@@ -497,8 +497,9 @@
                                                 <!--input type='button' class='btn btn-default btn-cancel' name='cancel'
                                                        value='Cancel' data-dismiss="modal"-->
                                             </div>
-                                            <img id="submit-spinner"
-                                                 src="{{ url_for('static', filename='spinner.gif') }}">
+                                            <span class="submit-spinner">
+                                                <center><img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center>
+                                            </span>
 
                                             <div class="clearfix"></div>
                                         </div>

@@ -34,9 +34,15 @@ from horizon.plugin import PluginError, Plugin
 from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
 from horizon.plugin_lib import wait_for_reload, get_package
 
-from condoor.exceptions import CommandTimeoutError
+from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, PASSWORD_OK, PRESS_RETURN,UNABLE_TO_CONNECT
+from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
+from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
+from pexpect import TIMEOUT, EOF
 
+from csmserver.common import get_host
+from csmserver.database import DBSession
 
+XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
 
 SCRIPT_BACKUP_CONFIG = "harddiskb:/classic.cfg"
@@ -116,14 +122,75 @@ class MigratePlugin(Plugin):
         else:
             manager.log("The admin running-config is backed up in {}".format(SCRIPT_BACKUP_CONFIG))
 
+    @staticmethod
+    def _configure_authentication(manager, device):
+
+        db_session = DBSession()
+
+        host = get_host(db_session, device.hostname)
+        if host is None:
+            manager.error("Cannot find the current host {} in the database.".format(device.hostname))
+
+        connection_param = host.connection_param[0]
+
+        def send_return(ctx):
+            ctx.ctrl.send("\r\n")
+            return True
+
+        def send_username(ctx):
+            ctx.ctrl.send(connection_param.username)
+            return True
+
+        def send_password(ctx):
+            ctx.ctrl.send(connection_param.password)
+            return True
+
+
+        events = [ESCAPE_CHAR, PASSWORD_OK, SET_USERNAME, SET_PASSWORD, USERNAME_PROMPT, PASSWORD_PROMPT,
+                 XR_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
+                 CONNECTION_REFUSED, RESET_BY_PEER, PERMISSION_DENIED,
+                 AUTH_FAILED, TIMEOUT, EOF]
+
+        transitions = [
+            (ESCAPE_CHAR, [0, 1], 1, None, 20),
+            (PASSWORD_OK, [0, 1], 1, send_return, 10),
+            (PASSWORD_OK, [6], 6, send_return, 10),
+            (PRESS_RETURN, [0, 1], 1, send_return, 10),
+            (PRESS_RETURN, [6], 6, send_return, 10),
+            (SET_USERNAME, [0, 1, 2, 3], 4, send_username, 20),
+            (SET_USERNAME, [4], 4, None, 1),
+            (SET_PASSWORD, [4], 5, send_password, 10),
+            (SET_PASSWORD, [5], 6, send_password, 10),
+            (USERNAME_PROMPT, [0, 1, 6, 7], 8, send_username, 10),
+            (USERNAME_PROMPT, [8], 8, None, 10),
+            (PASSWORD_PROMPT, [8], 9, send_password, 30),
+            (XR_PROMPT, [9, 10], -1, None, 10),
+
+
+            (UNABLE_TO_CONNECT, [0, 1], 11, ConnectionError("Unable to connect", device.hostname), 10),
+            (CONNECTION_REFUSED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, ConnectionError("Connection refused", device.hostname), 1),
+            (RESET_BY_PEER, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, ConnectionError("Connection reset by peer", device.hostname), 1),
+            (PERMISSION_DENIED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, ConnectionAuthenticationError("Permission denied", device.hostname), 1),
+            (AUTH_FAILED, [6, 9], 11, ConnectionAuthenticationError("Authentication failed", device.hostname), 1),
+            (TIMEOUT, [0], 1, None, 20),
+            (TIMEOUT, [1], 2, None, 40),
+            (TIMEOUT, [2], 3, None, 60),
+            (TIMEOUT, [3, 7], 11, ConnectionError("Timeout waiting to connect", device.hostname), 10),
+            (TIMEOUT, [6], 7, None, 20),
+            (TIMEOUT, [9], 10, None, 60),
+        ]
+
+        if not device.run_fsm(MigratePlugin.DESCRIPTION, "", events, transitions, timeout=30):
+            manager.error("Failed to connect to device after reload.")
+
 
     @staticmethod
     def _reload_all(manager, device):
 
         device.reload(reload_timeout=MIGRATION_TIME_OUT)
 
-        #return MigratePlugin._wait_for_reload(manager, device)
-        return wait_for_reload(manager, device)
+        return MigratePlugin._wait_for_reload(manager, device)
+        #return wait_for_reload(manager, device)
 
 
 
@@ -133,10 +200,12 @@ class MigratePlugin(Plugin):
          Wait for system to come up with max timeout as 1 hour + 1 hour
 
         """
-        device.disconnect()
-        time.sleep(60)
+        MigratePlugin._configure_authentication(manager, device)
 
-        device.reconnect(max_timeout=MIGRATION_TIME_OUT)  # 60 * 60 = 3600
+        #device.disconnect()
+        #time.sleep(60)
+
+        #device.reconnect(max_timeout=MIGRATION_TIME_OUT)  # 60 * 60 = 3600
         timeout = NODES_COME_UP_TIME_OUT
         poll_time = 30
         time_waited = 0
@@ -167,23 +236,21 @@ class MigratePlugin(Plugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
+        """
 
         filename = manager.csm.host.hostname
 
-
-        #self._post_status("Adding ipxe.efi to device")
-        #self._copy_file_to_device(device, repo_str, 'ipxe.efi', 'harddiskb:/efi/boot/grub.efi')
-
-        """
         manager.log("Run migration script to set boot mode and image path in device")
         MigratePlugin._run_migration_script(manager, device)
-        """
+
 
         # checked: reload router, now we have flexr-capable fpd
         manager.log("Reload device to boot eXR")
         MigratePlugin._reload_all(manager, device)
 
         get_package(device, manager)
+        """
+        MigratePlugin._configure_authentication(manager, device)
 
         return True
 
