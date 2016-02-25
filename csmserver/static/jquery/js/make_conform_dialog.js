@@ -13,6 +13,7 @@ var make_conform_dialog_spinner;
 $(function() {
     make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
     make_conform_dialog_spinner.hide()
+    $('#custom-command-profile-panel').hide();
 
     var server_time_as_locale_time = convertToLocaleString($('#make-conform-dialog').attr('data-server-time'));
 
@@ -30,7 +31,12 @@ $(function() {
     $('#install_action').on('change', function(e) {
         var install_actions = $(this).val();
         if (has_one_of_these(install_actions, ['ALL'])) {
-            $("#install_action").val(['Pre-Upgrade', 'Install Add', 'Activate', 'Post-Upgrade', 'Commit']).trigger('change');
+            $("#install_action").val(['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit']).trigger('change');
+        }
+        if (has_one_of_these(install_actions, ['Pre-Upgrade', 'Post-Upgrade', 'ALL'])) {
+            $('#custom-command-profile-panel').show();
+        } else {
+            $('#custom-command-profile-panel').hide();
         }
     });
 
@@ -144,7 +150,8 @@ $(function() {
                 software_packages: trim_lines($('#software_packages').val()),
                 server: $('#select_server').val(),
                 server_directory: $('#select_server_directory').val(),
-                pending_downloads: validate_object.pending_downloads
+                pending_downloads: validate_object.pending_downloads,
+                custom_command_profile: $('#custom_command_profile').val()
             },
             success: function(data) {
                 if (data.status == 'OK') {

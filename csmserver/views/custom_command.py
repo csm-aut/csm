@@ -147,4 +147,4 @@ def get_command_profile(db_session, profile_name):
 
 class CustomCommandProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
-    command_list = TextAreaField('Commands')
+    command_list = TextAreaField('CLI Commands')

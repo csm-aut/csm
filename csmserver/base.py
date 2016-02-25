@@ -163,10 +163,12 @@ class InstallContext(SoftwareContext):
         SoftwareContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
-        #self._custom_commands = []
         custom_command_profile_id = self.install_job.custom_command_profile_id
         profile = self.db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == custom_command_profile_id).first()
-        self._custom_commands = profile.command_list.split(',')
+        if profile:
+            self._custom_commands = profile.command_list.split(',')
+        else:
+            self._custom_commands = []
 
     @property
     def software_packages(self):

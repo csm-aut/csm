@@ -153,6 +153,7 @@ from smu_utils import SMU_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
 from cisco_service.bsd_service import BSDServiceHandler
+from cisco_service.bug_service import BugServiceHandler
 
 from package_utils import get_target_software_package_list
 from restful import restful_api
@@ -1758,7 +1759,6 @@ def schedule_install():
                     server = form.hidden_server.data
                     server_directory = form.hidden_server_directory.data
                     pending_downloads = form.hidden_pending_downloads.data
-                    #custom_command_profile = form.custom_command_profile.data
        
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -3182,6 +3182,47 @@ def is_smu_applicable(host_packages, required_package_bundles):
             return False
 
     return True
+
+
+@app.route('/api/get_ddts_details/ddts_id/<ddts_id>')
+@login_required
+def api_get_ddts_details(ddts_id):
+    username = Preferences.get(DBSession(), current_user.id).cco_username
+    password = Preferences.get(DBSession(), current_user.id).cco_password
+    bsh = BugServiceHandler(username, password, ddts_id)
+    bug_info = bsh.get_bug_info()
+
+    info = {}
+
+    statuses = {'O' : 'Open',
+                'F' : 'Fixed',
+                'T' : 'Terminated'}
+
+    severities = {'1' : "1 Catastrophic",
+                  '2' : "2 Severe",
+                  '3' : "3 Moderate",
+                  '4' : "4 Minor",
+                  '5' : "5 Cosmetic",
+                  '6' : "6 Enhancement"}
+
+    info['status'] = statuses[bsh.get_json_value(bug_info, 'status')] if bsh.get_json_value(bug_info, 'status') in statuses else bsh.get_json_value(bug_info, 'status')
+    info['product'] = bsh.get_json_value(bug_info, 'product')
+    info['severity'] = severities[bsh.get_json_value(bug_info, 'severity')] if bsh.get_json_value(bug_info, 'severity') in severities else bsh.get_json_value(bug_info, 'severity')
+    info['headline'] = bsh.get_json_value(bug_info, 'headline')
+    info['support_case_count'] = bsh.get_json_value(bug_info, 'support_case_count')
+    info['last_modified_date'] = bsh.get_json_value(bug_info, 'last_modified_date')
+    info['bug_id'] = bsh.get_json_value(bug_info, 'bug_id')
+    info['created_date'] = bsh.get_json_value(bug_info, 'created_date')
+    info['duplicate_of'] = bsh.get_json_value(bug_info, 'duplicate_of')
+    info['description'] = bsh.get_json_value(bug_info, 'description').replace('\n', '<br>') if bsh.get_json_value(bug_info, 'description') else None
+
+    info['known_affected_releases'] = bsh.get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') if bsh.get_json_value(bug_info, 'known_affected_releases') else None
+    info['known_fixed_releases'] = bsh.get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') if bsh.get_json_value(bug_info, 'known_fixed_releases') else None
+
+    info['ErrorDescription'] = bsh.get_json_value(bug_info, 'ErrorDescription')
+    info['SuggestedAction'] = bsh.get_json_value(bug_info, 'SuggestedAction')
+
+    return jsonify(**{'data': info})
 
 
 @app.route('/api/get_smu_details/smu_id/<smu_id>')

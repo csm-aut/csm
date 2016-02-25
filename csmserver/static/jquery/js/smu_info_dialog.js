@@ -104,6 +104,33 @@ function display_smu_details(table, title, smu_id) {
     });
 }
 
+function display_ddts_details(table, title, ddts_id) {
+    $.ajax({
+        url: "/api/get_ddts_details/ddts_id/" + ddts_id,
+        dataType: 'json',
+        success: function(data) {
+            var html = '';
+            $.each(data, function(index, element) {
+                html += create_html_table_row_with_commas('DDTS ID', element['bug_id']);
+                html += create_html_table_row_with_commas('Headline', element['headline']);
+                html += create_html_table_row_with_commas('Description', element['description']);
+                html += create_html_table_row_with_commas('Last Modified', element['last_modified_date']);
+                html += create_html_table_row_with_commas('Status', element['status']);
+                html += create_html_table_row_with_commas('Severity', element['severity']);
+                html += create_html_table_row_with_commas('Product', element['product']);
+                html += create_html_table_row_with_commas('Known Affected Releases', element['known_affected_releases']);
+                html += create_html_table_row_with_commas('Known Fixed Releases', element['known_fixed_releases']);
+                html += create_html_table_row_with_commas('Support Cases', element['support_case_count']);
+                html += create_html_table_row_with_commas('Error Description', element['ErrorDescription']);
+                html += create_html_table_row_with_commas('Suggested Action', element['SuggestedAction']);
+
+                title.text('DDTS ID: ' + ddts_id);
+                table.html(html);
+            });
+        }
+    });
+}
+
 function create_hyperlink_html_table_row(field, smu_id_list, smu_name_list) {
     var html_code = '';
     if (smu_id_list != null && smu_id_list.length > 0) {

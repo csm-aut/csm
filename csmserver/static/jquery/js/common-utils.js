@@ -20,6 +20,15 @@ function create_html_table_row(field, value) {
     }
 }
 
+function create_html_table_row_with_commas(field, value){
+    var html_code = '';
+    if (value != null && value.length > 0){
+        html_code += '<tr><td>' + field + '</td><td>' + value + '</td></tr>';
+    }
+
+    return html_code;
+}
+
 function get_acceptable_string(input_string) {
     return input_string.replace(/[^a-z0-9()._-\s]/gi, '').replace(/\s+/g, " ");
 }
