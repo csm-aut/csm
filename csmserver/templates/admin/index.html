@@ -326,7 +326,7 @@
                                         </div>
 
                                         {{ edit_field(admin_console_form.default_host_username, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control") }}
-                                        {{ edit_field(admin_console_form.default_host_password, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control", placeholder="Use Password on File") }}
+                                        {{ edit_field(admin_console_form.default_host_password, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control", placeholder=admin_console_form.default_host_password_placeholder) }}
 
                                         <p></p>
                                         Apply the Default Host Authentication to:
@@ -443,7 +443,7 @@
                                         </div>
                                         {{ edit_field(smtp_form.username, autocomplete="off", label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
                                         {{ edit_field(smtp_form.password, autocomplete="off", label_field_width="col-sm-5", field_width="col-sm-6", class="form-control",
-                                            placeholder="Use Password on File") }}
+                                            placeholder=smtp_form.password_placeholder) }}
                                         {{ edit_field(smtp_form.secure_connection, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
                                         <!--
                                             <div class="btn-group pull-right">

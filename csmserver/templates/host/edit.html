@@ -41,6 +41,7 @@
                             success: function(response) {
                                 if (response.status == 'OK') {
                                     bootbox.alert("Password has been removed.");
+                                    $('#password').attr("placeholder", "No Password Specified.");
                                 } else {
                                     bootbox.alert("Unable to remove password.");
                                 }
@@ -255,7 +256,7 @@
                         {% set extra_field ='<a href="javascript://" id="remove-password">
                         <img src=\"/static/remove.png\" title="Click to Remove Password on File"></a>' %}
                         {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field,
-                            placeholder="Use Password on File") }}
+                            placeholder=form.password_placeholder) }}
                     {% else %}
                         {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
                     {% endif %}

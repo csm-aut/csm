@@ -721,7 +721,11 @@ def host_edit(hostname):
         form.jump_host.data = host.connection_param[0].jump_host_id
         form.connection_type.data = host.connection_param[0].connection_type
         form.port_number.data = host.connection_param[0].port_number
-        
+        if host.connection_param[0].password != '':
+            form.password_placeholder = 'Use Password on File'
+        else:
+            form.password_placeholder = 'No Password Specified'
+
         return render_template('host/edit.html', form=form)
 
    
@@ -841,7 +845,11 @@ def jump_host_edit(hostname):
         form.username.data = host.username
         form.connection_type.data = host.connection_type
         form.port_number.data = host.port_number
-        
+        if host.password != '':
+            form.password_placeholder = 'Use Password on File'
+        else:
+            form.password_placeholder = 'No Password Specified'
+
         return render_template('jump_host/edit.html', form=form)
 
 
@@ -2064,6 +2072,11 @@ def admin_console():
         admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
         admin_console_form.enable_user_credential_for_host.data = system_option.enable_user_credential_for_host
 
+        if system_option.default_host_password != None:
+            admin_console_form.default_host_password_placeholder = 'Use Password on File'
+        else:
+            admin_console_form.default_host_password_placeholder = 'No Password Specified'
+
         if smtp_server is not None:
             smtp_form.server.data = smtp_server.server
             smtp_form.server_port.data = smtp_server.server_port
@@ -2071,7 +2084,12 @@ def admin_console():
             smtp_form.use_authentication.data = smtp_server.use_authentication
             smtp_form.username.data = smtp_server.username
             smtp_form.secure_connection.data = smtp_server.secure_connection
-            
+            if smtp_server.password != None:
+                smtp_form.password_placeholder = 'Use Password on File'
+            else:
+                smtp_form.password_placeholder = 'No Password Specified'
+
+
         return render_template('admin/index.html',
                                admin_console_form=admin_console_form,
                                smtp_form=smtp_form,
@@ -3010,7 +3028,11 @@ def user_preferences():
     else:
         preferences = user.preferences[0]
         form.cco_username.data = preferences.cco_username
-       
+        if user.preferences[0].cco_password != None:
+            form.password_placeholder = 'Use Password on File'
+        else:
+            form.password_placeholder = 'No Password Specified'
+
     return render_template('csm_client/preferences.html', form=form,
                            platforms_and_releases=get_platforms_and_releases_dict(db_session))
 
