@@ -280,7 +280,7 @@
                                     <h4>LDAP Authentication</h4>
                                 </div>
                                 <div class="panel-body">
-                                    If LDAP is enabled, the designated LDAP Server will be used for CSM Server user login authentication.
+                                    If enabled, the designated LDAP Server will be used for CSM Server user login authentication.
                                     An example of an LDAP Server URL is ldaps://ds.cisco.com:636.
                                     <hr>
                                     <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
@@ -310,23 +310,9 @@
                                         <h4>Host Authentication</h4>
                                     </div>
                                     <div class="panel-body">
-                                        If enabled, CSM Server User Credential will be used for host authentication during software installation.
-                                        This will not affect the daily software inventory retrieval as it will still use the username and password specified for the host.
-                                        <hr>
-                                        <div class="form-group ">
-                                            <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_user_credential_for_host.id }}">{{ admin_console_form.enable_user_credential_for_host.label.text }}</label>
-                                            <div class=col-sm-6>
-                                                <div class="btn-group btn-toggle" id="enable-user-credential-for-host-yes-or-no">
-                                                    <button type="button" id="enable-user-credential-for-host-yes-button" class="btn" data-value=1>Yes</button>
-                                                    <button type="button" id="enable-user-credential-for-host-no-button" class="btn" data-value=0>No</button>
-                                                </div>
-                                            </div>
-                                            <input class="form-control" id="{{ admin_console_form.enable_user_credential_for_host.id }}" name="{{ admin_console_form.enable_user_credential_for_host.id }}" type="hidden" value="{{ admin_console_form.enable_user_credential_for_host.data }}">
-                                        </div>
-                                        <hr>
-                                        If Default Host Authentication is enabled, the default host username and password
-                                        will be used for hosts that do not have username and password specified.
-                                        <hr>
+                                        If enabled, the default host username and password will be used for device authentication.
+                                        <p></p>
+
                                         <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
                                         <div class="form-group ">
                                             <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_default_host_authentication.id }}">{{ admin_console_form.enable_default_host_authentication.label.text }}</label>
@@ -338,8 +324,39 @@
                                             </div>
                                             <input class="form-control" id="{{ admin_console_form.enable_default_host_authentication.id }}" name="{{ admin_console_form.enable_default_host_authentication.id }}" type="hidden" value="{{ admin_console_form.enable_default_host_authentication.data }}">
                                         </div>
+
                                         {{ edit_field(admin_console_form.default_host_username, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control") }}
                                         {{ edit_field(admin_console_form.default_host_password, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control", placeholder="Use Password on File") }}
+
+                                        <p></p>
+                                        Apply the Default Host Authentication to:
+                                        <p></p>
+
+                                        <div class="row">
+                                            <div class="form-group ">
+                                                <label class="col-sm-2 control-label" id="label_default_host_authentication_choice"></label>
+                                                <div class=col-sm-10>
+                                                    {{ admin_console_form.default_host_authentication_choice }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        If enabled, CSM Server User Credential will be used for device authentication during software installation.
+                                        This will not affect the daily software inventory retrieval as it will still use the host username and password
+                                        (or if the Default Host Authentication is enabled, the default host username and password will be used).
+                                        <p></p>
+                                        <div class="form-group ">
+                                            <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_user_credential_for_host.id }}">{{ admin_console_form.enable_user_credential_for_host.label.text }}</label>
+                                            <div class=col-sm-6>
+                                                <div class="btn-group btn-toggle" id="enable-user-credential-for-host-yes-or-no">
+                                                    <button type="button" id="enable-user-credential-for-host-yes-button" class="btn" data-value=1>Yes</button>
+                                                    <button type="button" id="enable-user-credential-for-host-no-button" class="btn" data-value=0>No</button>
+                                                </div>
+                                            </div>
+                                            <input class="form-control" id="{{ admin_console_form.enable_user_credential_for_host.id }}" name="{{ admin_console_form.enable_user_credential_for_host.id }}" type="hidden" value="{{ admin_console_form.enable_user_credential_for_host.data }}">
+                                        </div>
+
+
                                     </div>
                                 </div>
                             </div>

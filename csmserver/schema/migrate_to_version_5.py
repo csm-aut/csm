@@ -31,7 +31,8 @@ sql_statements = [
     'alter table system_option add enable_user_credential_for_host BOOLEAN default 0',
     'alter table user add host_password VARCHAR(100)',
     'alter table install_job add column custom_command_profile_id int(11)',
-    'alter table install_job add foreign key (custom_command_profile_id) references custom_command_profile(id)'
+    'alter table install_job add foreign key (custom_command_profile_id) references custom_command_profile(id)',
+    'alter table system_option add default_host_authentication_choice VARCHAR(10) default "1"'
     ]
 
 class SchemaMigrate(BaseMigrate):

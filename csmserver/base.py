@@ -37,6 +37,7 @@ from constants import get_temp_directory
 from constants import get_log_directory
 
 from common import get_user_by_id
+from constants import DefaultHostAuthenticationChoice
 
 
 class Context(object):
@@ -89,26 +90,30 @@ class ConnectionContext(Context):
                     if jump_host is not None:
                         jump_host_url = make_url(
                             connection_type=jump_host.connection_type,
-                            username=jump_host.username,
-                            password=jump_host.password,
+                            host_username=jump_host.username,
+                            host_password=jump_host.password,
                             host_or_ip=jump_host.host_or_ip,
                             port_number=jump_host.port_number)
                 except:
                     pass
 
-            username = connection.username
-            password = connection.password
+            host_username = connection.username
+            host_password = connection.password
+
             if not is_empty(preferred_host_username) and not is_empty(preferred_host_password):
-                username = preferred_host_username
-                password = preferred_host_password
-
-            default_username = None
-            default_password = None
-
-            system_option = SystemOption.get(self.db_session)
-            if system_option.enable_default_host_authentication:
-                default_username = system_option.default_host_username
-                default_password = system_option.default_host_password
+                host_username = preferred_host_username
+                host_password = preferred_host_password
+            else:
+                system_option = SystemOption.get(self.db_session)
+                if system_option.enable_default_host_authentication:
+                    if not is_empty(system_option.default_host_username) and not is_empty(system_option.default_host_password):
+                        if system_option.default_host_authentication_choice == DefaultHostAuthenticationChoice.ALL_HOSTS or \
+                            (system_option.default_host_authentication_choice ==
+                                DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD and
+                                is_empty(host_username) and
+                                is_empty(host_password)):
+                            host_username = system_option.default_host_username
+                            host_password = system_option.default_host_password
 
             for host_or_ip in connection.host_or_ip.split(','):
                 for port_number in connection.port_number.split(','):
@@ -118,12 +123,10 @@ class ConnectionContext(Context):
 
                     host_urls.append(make_url(
                         connection_type=connection.connection_type,
-                        username=username,
-                        password=password,
+                        host_username=host_username,
+                        host_password=host_password,
                         host_or_ip=host_or_ip,
-                        port_number=port_number,
-                        default_username=default_username,
-                        default_password=default_password))
+                        port_number=port_number))
 
                     urls.append(host_urls)
 

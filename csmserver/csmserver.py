@@ -89,6 +89,7 @@ from constants import BUG_SEARCH_URL
 from constants import get_log_directory
 from constants import get_repository_directory
 from constants import get_temp_directory
+from constants import DefaultHostAuthenticationChoice
 
 from common import get_last_successful_inventory_elapsed_time 
 from common import get_host_active_packages 
@@ -2014,7 +2015,7 @@ def admin_console():
         system_option.can_schedule = admin_console_form.can_schedule.data
         system_option.can_install = admin_console_form.can_install.data  
         system_option.enable_email_notify = admin_console_form.enable_email_notify.data 
-        system_option.enable_inventory = admin_console_form.enable_inventory.data 
+        system_option.enable_inventory = admin_console_form.enable_inventory.data
         
         # The LDAP UI may be hidden if it is not supported.
         # In this case, the flag is not set.
@@ -2027,7 +2028,8 @@ def admin_console():
         system_option.download_history_per_user = admin_console_form.download_history_per_user.data
         system_option.install_history_per_host = admin_console_form.install_history_per_host.data
         system_option.total_system_logs = admin_console_form.total_system_logs.data
-        system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data 
+        system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data
+        system_option.default_host_authentication_choice = admin_console_form.default_host_authentication_choice.data
         system_option.enable_cco_lookup = admin_console_form.enable_cco_lookup.data
         system_option.default_host_username = admin_console_form.default_host_username.data
         
@@ -2056,6 +2058,7 @@ def admin_console():
         admin_console_form.install_history_per_host.data = system_option.install_history_per_host
         admin_console_form.total_system_logs.data = system_option.total_system_logs
         admin_console_form.enable_default_host_authentication.data = system_option.enable_default_host_authentication
+        admin_console_form.default_host_authentication_choice.data = system_option.default_host_authentication_choice
         admin_console_form.default_host_username.data = system_option.default_host_username
         admin_console_form.enable_cco_lookup.data = system_option.enable_cco_lookup
         admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
@@ -2760,8 +2763,8 @@ def check_host_reachability():
         db_session = DBSession()
         jump_host = get_jump_host_by_id(db_session=db_session, id=jump_host_id)
         if jump_host is not None:
-            url = make_url(connection_type=jump_host.connection_type, username=jump_host.username,
-                           password=jump_host.password, host_or_ip=jump_host.host_or_ip,
+            url = make_url(connection_type=jump_host.connection_type, host_username=jump_host.username,
+                           host_password=jump_host.password, host_or_ip=jump_host.host_or_ip,
                            port_number=jump_host.port_number)
             urls.append(url)
     
@@ -2773,21 +2776,22 @@ def check_host_reachability():
         if host is not None:
             password = host.connection_param[0].password
             
-    default_username = None
-    default_password = None
+    default_host_username = None
+    default_host_password = None
     system_option = SystemOption.get(db_session)
     if system_option.enable_default_host_authentication:
-        default_username = system_option.default_host_username
-        default_password = system_option.default_host_password
+        default_host_username = system_option.default_host_username
+        default_host_password = system_option.default_host_password
                 
     url = make_url(
         connection_type=connection_type,
-        username=username, 
-        password=password, 
+        host_username=username,
+        host_password=password,
         host_or_ip=host_or_ip, 
         port_number=port_number,
-        default_username=default_username,
-        default_password=default_password)
+        default_host_username=default_host_username,
+        default_host_password=default_host_password,
+        default_host_authentication_choice=system_option.default_host_authentication_choice)
     urls.append(url)
     
     return jsonify({'status': 'OK'}) if is_connection_valid(platform, urls) else jsonify({'status': 'Failed'})

@@ -25,6 +25,7 @@
 from os import listdir, sep, path, makedirs
 from os.path import isfile, join
 from diff_match_patch import diff_match_patch
+from urlparse import urlparse
 
 import re
 import sys
@@ -166,8 +167,7 @@ def get_file_list(directory, filter=None):
     return sorted(result_list)
 
 
-def make_url(connection_type, username, password, host_or_ip, port_number,
-             default_username=None, default_password=None):
+def make_url(connection_type, host_username, host_password, host_or_ip, port_number):
     """
     Creates a connection URL such as
 
@@ -181,36 +181,28 @@ def make_url(connection_type, username, password, host_or_ip, port_number,
 
     """
     url = '{}://'.format(connection_type)
-    
-    no_username = False
-    no_password = False
-    
-    # Set the default username and password only if both username and password have not been specified
-    if is_empty(username) and is_empty(password):
-        if default_username is not None:
-            username = default_username
-        if default_password is not None:
-            password = default_password
-    
-    if not is_empty(username):
-        url += '{}'.format(username)
+
+    no_host_username = False
+    no_host_password = False
+
+    if not is_empty(host_username):
+        url += '{}'.format(host_username)
     else:
-        no_username = True
-        
-    if not is_empty(password):
-        url += ':{}'.format(password)
+        no_host_username = True
+
+    if not is_empty(host_password):
+        url += ':{}'.format(host_password)
     else:
-        no_password = True
-           
-    if no_username and no_password:
+        no_host_password = True
+
+    if no_host_username and no_host_password:
         url += '{}'.format(host_or_ip)
     else:
         url += '@{}'.format(host_or_ip)
-    
-    # It is possible there may be multiple ports separated by comma
+
     if not is_empty(port_number):
-        url += ':{}'.format(port_number) 
-  
+        url += ':{}'.format(port_number)
+
     return url
 
 
@@ -237,11 +229,15 @@ def trim_last_slash(s):
 
 def get_base_url(url):
     """
-    Returns the base URL including the port numbetr
-    e.g. (localhost:50000)
+    Returns the base URL including the port number
+    e.g. (http://localhost:5000)
     """
-    url = url.replace('http://', '')
-    return 'http://' + url[:url.find('/')] 
+    parsed = urlparse(url)
+    base_url = "{}://{}".format(parsed.scheme, parsed.hostname)
+    if parsed.port is not None:
+        base_url += ":{}".format(parsed.port)
+
+    return base_url
 
 
 def is_empty(obj):
