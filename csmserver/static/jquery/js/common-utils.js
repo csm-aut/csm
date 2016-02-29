@@ -23,7 +23,7 @@ function create_html_table_row(field, value) {
 function create_html_table_row_with_commas(field, value){
     var html_code = '';
     if (value != null && value.length > 0){
-        html_code += '<tr><td>' + field + '</td><td>' + value + '</td></tr>';
+        html_code += '<tr><td>' + field + '</td><td class="value">' + value + '</td></tr>';
     }
 
     return html_code;

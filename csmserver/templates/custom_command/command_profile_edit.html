@@ -16,6 +16,8 @@
         var spinner = $('#spinner');
         spinner.hide();
 
+        $('#command_list').attr("wrap", "off");
+
         $('#form').submit(function() {
             var current_form = this;
             var profile_name = $('#profile_name').val();
