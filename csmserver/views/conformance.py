@@ -550,7 +550,6 @@ def api_create_install_jobs():
     server_directory = request.form['server_directory']
     pending_downloads = request.form['pending_downloads']
     custom_command_profiles = request.form['custom_command_profile']
-    print custom_command_profiles
 
     host = get_host(db_session, hostname)
 
