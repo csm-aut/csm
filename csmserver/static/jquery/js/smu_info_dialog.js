@@ -96,7 +96,6 @@ function display_smu_details(table, title, smu_id, ddts_spinner) {
                 html += create_hyperlink_html_table_row('Supersedes', element[0].supersedes_smu_ids, element[0].supersedes);
                 html += create_hyperlink_html_table_row('Superseded By', element[0].superseded_by_smu_ids, element[0].superseded_by);
 
-                ddts_spinner.hide();
                 title.text('SMU Name: ' + element[0].name);
                 table.html(html);
 
@@ -125,6 +124,7 @@ function display_ddts_details(table, title, ddts_id) {
                 html += create_html_table_row_with_commas('Error Description', element['ErrorDescription']);
                 html += create_html_table_row_with_commas('Suggested Action', element['SuggestedAction']);
 
+                ddts_spinner.hide();
                 title.text('DDTS ID: ' + ddts_id);
                 table.html(html);
 
