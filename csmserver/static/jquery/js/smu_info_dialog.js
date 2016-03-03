@@ -72,7 +72,7 @@ $(document)
         setModalsAndBackdropsOrder();
     });
 
-function display_smu_details(table, title, smu_id, ddts_spinner) {
+function display_smu_details(table, title, smu_id) {
     $.ajax({
         url: "/api/get_smu_details/smu_id/" + smu_id,
         dataType: 'json',
@@ -104,7 +104,7 @@ function display_smu_details(table, title, smu_id, ddts_spinner) {
     });
 }
 
-function display_ddts_details(table, title, ddts_id) {
+function display_ddts_details(table, title, ddts_id, ddts_spinner) {
     $.ajax({
         url: "/api/get_ddts_details/ddts_id/" + ddts_id,
         dataType: 'json',
