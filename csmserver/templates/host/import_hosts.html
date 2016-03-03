@@ -55,7 +55,7 @@ $(function() {
 
            $display_width = $(document).width();
 
-           if($display_width < 600 && $total > 3){
+           if ($display_width < 600 && $total > 3) {
                $width = 50;
            }
 
@@ -63,7 +63,7 @@ $(function() {
 
         },
         onNext: function(tab, navigation, index){
-            if(index == 1){
+            if (index == 1) {
                 if ($('#region option:selected').val() == -1) {
                     bootbox.alert("Region has not been specified.");
                     return false;
@@ -82,7 +82,7 @@ $(function() {
             var wizard = navigation.closest('.wizard-card');
 
             // If it's the last tab then hide the last button and show the finish instead
-            if($current >= $total) {
+            if ($current >= $total) {
                 $(wizard).find('.btn-next').hide();
                 $(wizard).find('.btn-finish').show();
             } else {
@@ -93,16 +93,16 @@ $(function() {
     });
 
     $('#on-ip-range-dialog-done').on('click', function(e) {
-        if(validate_ip_range_input() == false){
+        if (validate_ip_range_input() == false) {
             return false;
         }
         var role = $('#role').val()
-        if(role.indexOf(',') >= 0){
+        if (role.indexOf(',') >= 0) {
             role = '"' + role + '"';
         }
 
         var step = $('#step').val()
-        if(step == '' || !$.isNumeric(step)){
+        if (step == '' || !$.isNumeric(step)) {
             step = 1;
         } else {
             step = parseInt(step);
@@ -140,14 +140,14 @@ $(function() {
         beginIP = $('#beginIP').val()
         endIP = $('#endIP').val()
 
-        if(beginIP == '' || endIP == ''){
+        if (beginIP == '' || endIP == '') {
             bootbox.alert("You must specify a beginning and an ending IP address.");
             return false;
         }
 
         begin = beginIP.split('.');
         end = endIP.split('.');
-        if(begin.length != 4 || end.length != 4){
+        if (begin.length != 4 || end.length != 4) {
             bootbox.alert("An invalid IP address has been entered");
             return false;
         }
@@ -156,7 +156,7 @@ $(function() {
             b = parseInt(begin[i]);
             e = parseInt(end[i]);
 
-            if(b > 255 || e > 255){
+            if (b > 255 || e > 255) {
                 bootbox.alert("An invalid IP address has been entered.");
                 return false;
             }
@@ -166,9 +166,9 @@ $(function() {
             b = parseInt(begin[i]);
             e = parseInt(end[i]);
 
-            if (b < e){
+            if (b < e) {
                 return true;
-            } else if (b > e){
+            } else if (b > e) {
                 bootbox.alert("Beginning IP cannot be greater than ending IP.");
                 return false
             }

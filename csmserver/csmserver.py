@@ -1916,7 +1916,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server = form.hidden_server.data
         server_directory = form.hidden_server_directory.data
         pending_downloads = form.hidden_pending_downloads.data
-        custom_command_profile = form.custom_command_profile.data
+        custom_command_profile = (',').join([str(i) for i in form.custom_command_profile.data])
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any

@@ -19,6 +19,10 @@ $(function() {
 
     $("#install_action").select2({});
 
+    $("#custom_command_profile").select2({
+        placeholder: 'Optional'
+    });
+
     var datetimepicker = $(".form_datetime").datetimepicker({
         format: "mm/dd/yyyy HH:ii P",
         showMeridian: true,
@@ -138,6 +142,11 @@ $(function() {
         var hostname = $('#make-conform-dialog').data('hostname');
         var install_action = $('#install_action').val();
 
+        if ($('#custom_command_profile').val() != null) {
+            var custom_command_string = $('#custom_command_profile').val().join(",");
+        } else {
+            var custom_command_string = $('#custom_command_profile').val();
+        }
 
         $.ajax({
             url: "/conformance/api/create_install_jobs",
@@ -151,7 +160,7 @@ $(function() {
                 server: $('#select_server').val(),
                 server_directory: $('#select_server_directory').val(),
                 pending_downloads: validate_object.pending_downloads,
-                custom_command_profile: $('#custom_command_profile').val()
+                custom_command_profile: custom_command_string
             },
             success: function(data) {
                 if (data.status == 'OK') {

@@ -142,6 +142,10 @@ $(function() {
     $("#install_action").select2({
         placeholder: 'Select Desirable Install Actions'
     });
+
+    $("#custom_command_profile").select2({
+        placeholder: 'Optional'
+    });
     
     $("#install_action").val("{{ form.install_action.data }}").trigger("change");
 

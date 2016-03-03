@@ -292,14 +292,6 @@
             "?filter=" + filter_option).load();
         }
 
-        //smu_table.on("click", ".show-ddts-details", function() {
-        //    open_ddts_url($(this).attr('ddts_url'));
-        //});
-
-        //sp_table.on("click", ".show-ddts-details", function() {
-        //    open_ddts_url($(this).attr('ddts_url'));
-        //});
-
         function open_ddts_url(url) {
             if (cco_lookup_enabled) {
                 window.open(url, '_blank');
@@ -479,8 +471,7 @@
                     show: true
                 })
                 ddts_spinner.show();
-                display_ddts_details($('#ddts-details-table'), $('#ddts-name-title'), ddts_id)
-                ddts_spinner.hide();
+                display_ddts_details($('#ddts-details-table'), $('#ddts-name-title'), ddts_id, ddts_spinner)
             } else {
                 bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing CCO connection.");
             }

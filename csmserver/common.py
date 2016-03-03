@@ -132,6 +132,8 @@ def fill_custom_command_profiles(choices):
     db_session = DBSession()
     try:
         profiles = get_custom_command_profiles_list(db_session)
+
+        # TODO remove this line
         if profiles is not None:
             for profile in profiles:
                 choices.append((profile.id, profile.profile_name))
@@ -351,7 +353,7 @@ def create_or_update_install_job(
     install_job.user_id = current_user.id
 
     if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE:
-        install_job.custom_command_profile_id = custom_command_profile if custom_command_profile > 0 else None
+        install_job.custom_command_profile_id = custom_command_profile if custom_command_profile else None
 
     # Resets the following fields
     install_job.status = None

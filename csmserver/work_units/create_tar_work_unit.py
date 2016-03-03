@@ -117,10 +117,10 @@ class CreateTarWorkUnit(WorkUnit):
                 self.db_session.commit()
 
             except Exception:
-                logger.exception('Exception while creating %s requested by %s - job id = %s',
-                                  new_tar_name, created_by, self.job_id)
                 self.create_tar_job.set_status(JobStatus.FAILED)
                 self.db_session.commit()
+                logger.exception('Exception while creating %s requested by %s - job id = %s',
+                                  new_tar_name, created_by, self.job_id)
                 shutil.rmtree(temp_path, onerror=self.handleRemoveReadonly)
                 os.remove(temp_path + '.tar')
 

@@ -549,7 +549,8 @@ def api_create_install_jobs():
     server = request.form['server']
     server_directory = request.form['server_directory']
     pending_downloads = request.form['pending_downloads']
-    custom_command_profile = int(request.form['custom_command_profile'])
+    custom_command_profiles = request.form['custom_command_profile']
+    print custom_command_profiles
 
     host = get_host(db_session, hostname)
 
@@ -565,7 +566,7 @@ def api_create_install_jobs():
                                                            software_packages=software_packages,
                                                            server=server, server_directory=server_directory,
                                                            pending_downloads=pending_downloads,
-                                                           custom_command_profile=custom_command_profile,
+                                                           custom_command_profile=custom_command_profiles,
                                                            dependency=dependency)
             dependency = new_install_job.id
 
@@ -612,4 +613,4 @@ class MakeConformDialogForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
     scheduled_time = StringField('Scheduled Time', [required()])
     software_packages = TextAreaField('Software Packages')
-    custom_command_profile = SelectField('Custom Command Profile', coerce=int, choices=[(-1, '')])
+    custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])

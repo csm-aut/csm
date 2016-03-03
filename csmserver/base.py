@@ -166,12 +166,18 @@ class InstallContext(SoftwareContext):
         SoftwareContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
-        custom_command_profile_id = self.install_job.custom_command_profile_id
-        profile = self.db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == custom_command_profile_id).first()
-        if profile:
-            self._custom_commands = profile.command_list.split(',')
-        else:
-            self._custom_commands = []
+
+        self._custom_commands = []
+        custom_command_profile_ids = self.install_job.custom_command_profile_id
+        if custom_command_profile_ids:
+            for id in custom_command_profile_ids.split(','):
+                profile = self.db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == id).first()
+                if profile:
+                    for command in profile.command_list.split(','):
+                        if command not in self._custom_commands:
+                            self._custom_commands.append(command)
+
+
 
     @property
     def software_packages(self):
