@@ -326,5 +326,21 @@ def generate_ip_range(start_ip, end_ip):
     return ip_range
 
 
+def get_json_value(json_object, key):
+    if isinstance(json_object, dict):
+        for k, v in json_object.items():
+            if k == key:
+                return v
+            value = get_json_value(v, key)
+            if value is not None:
+                return value
+    elif isinstance(json_object, list):
+        for v in json_object:
+            value = get_json_value(v, key)
+            if value is not None:
+                return value
+    else:
+        return None
+
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

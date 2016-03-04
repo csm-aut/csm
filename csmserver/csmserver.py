@@ -142,6 +142,7 @@ from utils import get_base_url
 from utils import is_ldap_supported
 from utils import remove_extra_spaces
 from utils import generate_file_diff
+from utils import get_json_value
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -3235,22 +3236,22 @@ def api_get_ddts_details(ddts_id):
                   '5' : "5 Cosmetic",
                   '6' : "6 Enhancement"}
 
-    info['status'] = statuses[bsh.get_json_value(bug_info, 'status')] if bsh.get_json_value(bug_info, 'status') in statuses else bsh.get_json_value(bug_info, 'status')
-    info['product'] = bsh.get_json_value(bug_info, 'product')
-    info['severity'] = severities[bsh.get_json_value(bug_info, 'severity')] if bsh.get_json_value(bug_info, 'severity') in severities else bsh.get_json_value(bug_info, 'severity')
-    info['headline'] = bsh.get_json_value(bug_info, 'headline')
-    info['support_case_count'] = bsh.get_json_value(bug_info, 'support_case_count')
-    info['last_modified_date'] = bsh.get_json_value(bug_info, 'last_modified_date')
-    info['bug_id'] = bsh.get_json_value(bug_info, 'bug_id')
-    info['created_date'] = bsh.get_json_value(bug_info, 'created_date')
-    info['duplicate_of'] = bsh.get_json_value(bug_info, 'duplicate_of')
-    info['description'] = bsh.get_json_value(bug_info, 'description').replace('\n', '<br>') if bsh.get_json_value(bug_info, 'description') else None
+    info['status'] = statuses[get_json_value(bug_info, 'status')] if get_json_value(bug_info, 'status') in statuses else get_json_value(bug_info, 'status')
+    info['product'] = get_json_value(bug_info, 'product')
+    info['severity'] = severities[get_json_value(bug_info, 'severity')] if get_json_value(bug_info, 'severity') in severities else get_json_value(bug_info, 'severity')
+    info['headline'] = get_json_value(bug_info, 'headline')
+    info['support_case_count'] = get_json_value(bug_info, 'support_case_count')
+    info['last_modified_date'] = get_json_value(bug_info, 'last_modified_date')
+    info['bug_id'] = get_json_value(bug_info, 'bug_id')
+    info['created_date'] = get_json_value(bug_info, 'created_date')
+    info['duplicate_of'] = get_json_value(bug_info, 'duplicate_of')
+    info['description'] = get_json_value(bug_info, 'description').replace('\n', '<br>') if get_json_value(bug_info, 'description') else None
 
-    info['known_affected_releases'] = bsh.get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') if bsh.get_json_value(bug_info, 'known_affected_releases') else None
-    info['known_fixed_releases'] = bsh.get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') if bsh.get_json_value(bug_info, 'known_fixed_releases') else None
+    info['known_affected_releases'] = get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_affected_releases') else None
+    info['known_fixed_releases'] = get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_fixed_releases') else None
 
-    info['ErrorDescription'] = bsh.get_json_value(bug_info, 'ErrorDescription')
-    info['SuggestedAction'] = bsh.get_json_value(bug_info, 'SuggestedAction')
+    info['ErrorDescription'] = get_json_value(bug_info, 'ErrorDescription')
+    info['SuggestedAction'] = get_json_value(bug_info, 'SuggestedAction')
 
     return jsonify(**{'data': info})
 

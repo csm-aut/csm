@@ -24,6 +24,7 @@
 # =============================================================================
 import json
 import requests
+from utils import get_json_value as utils_get_json_value
 
 HTTP_ACCESS_TOKEN_URL = "https://cloudsso.cisco.com/as/token.oauth2"
 BSD_ACCESS_TOKEN = "access_token"
@@ -45,17 +46,4 @@ class BaseServiceHandler(object):
         print(heading, data)
 
     def get_json_value(self, json_object, key):
-        if isinstance(json_object, dict):
-            for k, v in json_object.items():
-                if k == key:
-                    return v
-                value = self.get_json_value(v, key)
-                if value is not None:
-                    return value
-        elif isinstance(json_object, list):
-            for v in json_object:
-                value = self.get_json_value(v, key)
-                if value is not None:
-                    return value
-        else:
-            return None
+        return utils_get_json_value(json_object, key)
