@@ -3216,7 +3216,11 @@ def api_get_ddts_details(ddts_id):
     username = Preferences.get(DBSession(), current_user.id).cco_username
     password = Preferences.get(DBSession(), current_user.id).cco_password
     bsh = BugServiceHandler(username, password, ddts_id)
-    bug_info = bsh.get_bug_info()
+    try:
+        bug_info = bsh.get_bug_info()
+    except Exception:
+        logger.exception('api_get_ddts_details hit exception')
+        return jsonify(**{'data':{'ErrorMsg': 'Could not retrieve bug information.'}})
 
     info = {}
 

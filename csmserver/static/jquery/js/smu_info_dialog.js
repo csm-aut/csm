@@ -123,12 +123,11 @@ function display_ddts_details(table, title, ddts_id, ddts_spinner) {
                 html += create_html_table_row_with_commas('Support Cases', element['support_case_count']);
                 html += create_html_table_row_with_commas('Error Description', element['ErrorDescription']);
                 html += create_html_table_row_with_commas('Suggested Action', element['SuggestedAction']);
+                html += create_html_table_row_with_commas('Error', element['ErrorMsg']);
 
                 ddts_spinner.hide();
                 title.text('DDTS ID: ' + ddts_id);
                 table.html(html);
-
-                // put hide spinner here (pass it)
             });
         }
     });
