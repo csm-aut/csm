@@ -22,7 +22,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from handlers.platforms.iosxr import BaseConnectionHandler, BaseInventoryHandler, BaseInstallHandler
+from handlers.loader import BaseConnectionHandler
+from handlers.platforms.iosxr import BaseInventoryHandler, BaseInstallHandler
 
 class ConnectionHandler(BaseConnectionHandler):
     def execute(self, ctx):

@@ -13,7 +13,6 @@ $(function() {
             type: "POST",
             dataType: 'json',
             data: {
-                platform: $('#platform').val(),
                 region: $('#region').val(),
                 data_list: trim_lines($('#data_list').val()),
             },
@@ -206,7 +205,6 @@ $(function() {
                         <div class="tab-pane" id="general">
                             <div class="row">
                                 <h4 class="info-text">If the import data does not contain a region, the region selected below will be used.</h4>
-                                {{ edit_field(form.platform, field_width="col-sm-4", class="form-control") }}
                                 {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
                             </div>
                         </div>

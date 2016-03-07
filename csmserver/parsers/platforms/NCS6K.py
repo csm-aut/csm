@@ -30,7 +30,7 @@ from parsers.platforms.iosxr import BaseCLIPackageParser
 import re
 
 class CLIPackageParser(BaseCLIPackageParser):
-    def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):        
+    def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):
         inactive_packages = {}
         active_packages = {}
         committed_packages = {}
@@ -41,10 +41,7 @@ class CLIPackageParser(BaseCLIPackageParser):
         
         if install_active_cli is not None:
             active_packages = self.parse_active_and_committed(install_active_cli, PackageState.ACTIVE)
-            
-            # Derive the software platform and release from the active packages
-            self.set_platform_and_release(host, active_packages)
-        
+
         if install_committed_cli is not None:
             committed_packages = self.parse_active_and_committed(install_committed_cli, PackageState.ACTIVE_COMMITTED)                               
         
@@ -72,20 +69,6 @@ class CLIPackageParser(BaseCLIPackageParser):
             return True
         
         return False
-
-    """
-    Looks for ncs6k-xr-5.0.1 to determine the platform and version
-    """
-    def set_platform_and_release(self, host, packages):
-        if packages is not None:
-            for package in packages.values():
-                # The Package object
-                if '-xr-' in package.name:
-                    tokens = package.name.split('-')
-                    # ['ncs6k', 'xr', '5.0.1']
-                    if len(tokens) == 3:
-                        host.software_platform = tokens[0]
-                        host.software_version = tokens[2]
         
     """
     Used to parse 'show install inactive' CLI output.

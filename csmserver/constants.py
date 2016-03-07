@@ -34,6 +34,7 @@ csm_data
   repository
   temp
 """
+UNKNOWN = 'Unknown'
 DIRECTORY_BASE = '../../csm_data/'
 DIRECTORY_LOG = DIRECTORY_BASE + 'autlogs/'
 DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'

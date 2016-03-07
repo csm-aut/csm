@@ -37,6 +37,7 @@ from database import DBSession
 from database import STRING1, STRING2
 from database import CURRENT_SCHEMA_VERSION
 
+from constants import UNKNOWN
 from constants import JobStatus
 from constants import UserPrivilege
 from constants import ProxyAgent
@@ -253,9 +254,11 @@ class Host(Base):
     
     id = Column(Integer, primary_key=True)
     hostname = Column(String(50), nullable=False, index=True)
-    platform = Column(String(20), nullable=False)
-    software_platform = Column(String(20))
-    software_version = Column(String(20))   
+    family = Column(String(20), default=UNKNOWN)
+    platform = Column(String(20), default=UNKNOWN)
+    software_platform = Column(String(20), default=UNKNOWN)
+    software_version = Column(String(20))
+    os_type = Column(String(20))
     roles = Column(String(100))
     region_id = Column(Integer, ForeignKey('region.id'))
     proxy_agent = Column(String(30), default=ProxyAgent.CSM_SERVER)
@@ -295,6 +298,11 @@ class Host(Base):
                                        order_by="desc(InstallJobHistory.created_time)",
                                        backref="host",
                                        cascade="all, delete, delete-orphan")
+
+    UDIs = relationship("UDI",
+                        order_by="asc(UDI.name)",
+                        backref="host",
+                        cascade="all, delete, delete-orphan")
 
     def get_json(self):
         result = {}
@@ -364,6 +372,17 @@ class ConnectionParam(Base):
     def password(self, value):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
+
+class UDI(Base):
+    __tablename__ = 'udi'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50))
+    description = Column(String(100))
+    pid = Column(String(30))
+    vid = Column(String(10))
+    sn = Column(String(30))
+
+    host_id = Column(Integer, ForeignKey('host.id'))
 
 
 class JumpHost(Base):

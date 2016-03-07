@@ -492,7 +492,7 @@ def get_managed_hosts(region_id):
                 row['platform'] = host.platform
 
                 if host.software_version is not None:
-                    row['software'] = host.software_platform + ' ' + host.software_version
+                    row['software'] = host.software_version + ' (' + host.software_platform + ')'
                 else:
                     row['software'] = 'Unknown'
 
@@ -640,7 +640,6 @@ def host_create():
                 return render_template('host/edit.html', form=form, duplicate_error=True)
             
             host = Host(hostname=form.hostname.data, 
-                        platform=form.platform.data,
                         created_by=current_user.username)
         
             host.inventory_job.append(InventoryJob())
@@ -690,7 +689,6 @@ def host_edit(hostname):
             return render_template('host/edit.html', form=form, duplicate_error=True)
         
         host.hostname = form.hostname.data
-        host.platform = form.platform.data
         host.region_id = form.region.data if form.region.data > 0 else None
         host.roles = remove_extra_spaces(form.roles.data) 
         
@@ -714,7 +712,6 @@ def host_edit(hostname):
     else:
         # Assign the values to form fields
         form.hostname.data = host.hostname
-        form.platform.data = host.platform
         form.region.data = host.region_id
         form.roles.data = host.roles
         form.host_or_ip.data = host.connection_param[0].host_or_ip
@@ -1186,7 +1183,8 @@ def api_get_host_dashboard_cookie(hostname):
         row['region'] = host.region.name if host.region is not None else 'Unknown'
         row['roles'] = host.roles
         row['platform'] = host.platform
-        row['software'] = host.software_version
+        row['software_platform'] = host.software_platform
+        row['software_version'] = host.software_version
         row['host_or_ip'] = connection_param.host_or_ip
         row['username'] = connection_param.username
         row['connection'] = connection_param.connection_type
@@ -2789,31 +2787,31 @@ def check_host_reachability():
     
     db_session = DBSession()
     # The form is in the edit mode and the user clicks Validate Reachability
-    # If there is no password specified, try get it from the database.
+    # If there is no password specified, get it from the database.
     if password == '':
         host = get_host(db_session, hostname)
         if host is not None:
             password = host.connection_param[0].password
-            
-    default_host_username = None
-    default_host_password = None
+
     system_option = SystemOption.get(db_session)
     if system_option.enable_default_host_authentication:
-        default_host_username = system_option.default_host_username
-        default_host_password = system_option.default_host_password
+        if not is_empty(system_option.default_host_username) and not is_empty(system_option.default_host_password):
+            if system_option.default_host_authentication_choice == DefaultHostAuthenticationChoice.ALL_HOSTS or \
+                (system_option.default_host_authentication_choice ==
+                    DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD and
+                    is_empty(username) and is_empty(password)):
+                username = system_option.default_host_username
+                password = system_option.default_host_password
                 
     url = make_url(
         connection_type=connection_type,
         host_username=username,
         host_password=password,
         host_or_ip=host_or_ip, 
-        port_number=port_number,
-        default_host_username=default_host_username,
-        default_host_password=default_host_password,
-        default_host_authentication_choice=system_option.default_host_authentication_choice)
+        port_number=port_number)
     urls.append(url)
     
-    return jsonify({'status': 'OK'}) if is_connection_valid(platform, urls) else jsonify({'status': 'Failed'})
+    return jsonify({'status': 'OK'}) if is_connection_valid(hostname, urls) else jsonify({'status': 'Failed'})
 
 
 @app.route('/api/get_software_package_upgrade_list/hosts/<hostname>/release/<target_release>')

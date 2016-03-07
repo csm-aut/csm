@@ -55,19 +55,6 @@ import re
 #        format='%(asctime)-15s %(levelname)8s: %(message)s',
 #        level=logging.DEBUG)
 
-
-class BaseConnectionHandler(BaseHandler):           
-    def execute(self, ctx):
-
-        # would be nice to get the hostname in context
-        conn = condoor.Connection('host', ctx.host_urls, log_dir=ctx.log_directory)
-        try:
-            conn.connect()
-            ctx.success = True
-        except condoor.ConnectionError as e:
-            ctx.post_status = e.message
-
-        
 class BaseInventoryHandler(BaseHandler):           
     def execute(self, ctx):
         conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
@@ -79,6 +66,7 @@ class BaseInventoryHandler(BaseHandler):
 
         try:
             conn.connect()
+
             if conn.os_type == "XR":
                 ctx.inactive_cli = conn.send('sh install inactive summary')
                 ctx.active_cli = conn.send('sh install active summary')
@@ -88,12 +76,10 @@ class BaseInventoryHandler(BaseHandler):
                 ctx.active_cli = conn.send('sh install active')
                 ctx.committed_cli = conn.send('sh install committed')
 
-            self.get_software(
-                ctx.host,
-                install_inactive_cli=ctx.inactive_cli,
-                install_active_cli=ctx.active_cli,
-                install_committed_cli=ctx.committed_cli)
+            self.get_software(ctx)
             ctx.success = True
+
+            # self.update_udi(ctx)
 
         except condoor.GeneralError as e:
             ctx.post_status = e.message
@@ -101,15 +87,26 @@ class BaseInventoryHandler(BaseHandler):
         finally:
             conn.disconnect()
 
-    def get_software(self, host, install_inactive_cli, install_active_cli, install_committed_cli):
-        package_parser_class = get_package_parser_class(host.platform)
+    def update_udi(self, ctx):
+        from models import UDI
+        host_dict = {'name': 'chassis ASR-9006-AC', 'description': 'ASR 9006 4 Line Card Slot Chassis with V1 AC PEM', 'pid': 'ASR-9006-AC', 'vid': 'V01', 'sn': 'FOX1523H7HA'}
+        ctx.save_data('host', host_dict)
+        new_host_dict = ctx.load_data('host')
+        print('host_dict', new_host_dict)
+
+        udi = UDI(name=new_host_dict['name'], description=new_host_dict['description'],
+                  pid=new_host_dict['pid'], vid=new_host_dict['vid'], sn=new_host_dict['sn'])
+        ctx.host.UDIs = [udi]
+
+    def get_software(self, ctx):
+        package_parser_class = get_package_parser_class(ctx.host.software_platform)
         package_parser = package_parser_class()
         
         return package_parser.get_packages_from_cli(
-            host,
-            install_inactive_cli=install_inactive_cli,
-            install_active_cli=install_active_cli,
-            install_committed_cli=install_committed_cli
+            ctx.host,
+            install_inactive_cli=ctx.inactive_cli,
+            install_active_cli=ctx.active_cli,
+            install_committed_cli=ctx.committed_cli
         )
 
 

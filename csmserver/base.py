@@ -1,4 +1,4 @@
-# =============================================================================
+#=============================================================================
 # Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
@@ -273,8 +273,9 @@ class InstallContext(SoftwareContext):
 
 
 class TestConnectionContext(Context):
-    def __init__(self, urls):
+    def __init__(self, hostname, urls):
         Context.__init__(self)
+        self.hostname = hostname
         self.urls = urls
 
     @property

@@ -62,15 +62,15 @@ class InventoryWorkUnit(WorkUnit):
             if host is None:
                 logger.error('Unable to retrieve host: %s' % host_id)
 
-            handler_class = get_inventory_handler_class(host.platform)
+            ctx = InventoryContext(db_session, host, inventory_job)
+
+            handler_class = get_inventory_handler_class(ctx)
             if handler_class is None:
-                logger.error('Unable to get handler for %s, inventory job %s', host.platform, self.job_id)
+                logger.error('Unable to get handler for %s, inventory job %s', host.software_platform, self.job_id)
 
             inventory_job.set_status(JobStatus.PROCESSING)
             inventory_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, inventory_job.id)
             db_session.commit()
-
-            ctx = InventoryContext(db_session, host, inventory_job)
 
             handler = handler_class()
             handler.execute(ctx)

@@ -133,7 +133,6 @@
 
             var formData = {
                 hostname: '{{ form.hostname.data }}',
-                platform: $('#platform').val(),
                 host_or_ip: host_or_ip,
                 username: $('#username').val(),
                 password: $('#password').val(),
@@ -231,7 +230,6 @@
             {{ alert_duplicate(form.hostname.data, duplicate_error) }}
             {{ edit_field(form.hostname, maxlength=30, field_width="col-sm-4", class="form-control",
                 placeholder="Unique Name on CSM Server") }}
-            {{ edit_field(form.platform, field_width="col-sm-4", class="form-control") }}
             {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
             {{ edit_field(form.roles, field_width="col-sm-4", class="form-control",
             placeholder="Use Comma to Separate Roles") }}

@@ -159,7 +159,6 @@ def get_column_number(header, column_name):
 def api_import_hosts():
     importable_header = [HEADER_FIELD_HOSTNAME, HEADER_FIELD_REGION, HEADER_FIELD_ROLES, HEADER_FIELD_IP,
                          HEADER_FIELD_USERNAME, HEADER_FIELD_PASSWORD, HEADER_FIELD_CONNECTION, HEADER_FIELD_PORT]
-    platform = request.form['platform']
     region_id = request.form['region']
     data_list = request.form['data_list']
 
@@ -235,7 +234,6 @@ def api_import_hosts():
 
         db_host = None
         im_host = Host()
-        im_host.platform = platform
         im_host.region_id = selected_region.id
         im_host.created_by = current_user.username
         im_host.inventory_job.append(InventoryJob())
@@ -280,7 +278,6 @@ def api_import_hosts():
 
         # Import host already exists in the database, just update it
         if db_host is not None:
-            db_host.platform = im_host.platform
             db_host.created_by = im_host.created_by
             db_host.region_id = im_host.region_id
 
@@ -313,9 +310,6 @@ def api_import_hosts():
 
 
 class HostImportForm(Form):
-    platform = SelectField('Platform', coerce=str,
-                           choices=[(Platform.ASR9K, Platform.ASR9K),
-                                    (Platform.CRS, Platform.CRS)])
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     data_list = TextAreaField('')
 

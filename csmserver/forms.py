@@ -26,7 +26,6 @@ from wtforms import Form, validators
 from wtforms import RadioField
 from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
 from wtforms.validators import Length, required
-from constants import Platform
 from constants import ConnectionType
 from constants import ServerType
 from constants import UserPrivilege
@@ -63,9 +62,6 @@ class UserForm(Form):
 
 class HostForm(Form):
     hostname = StringField('Hostname', [required(), Length(max=30)])
-    platform = SelectField('Platform', coerce=str,
-                           choices=[(Platform.ASR9K, Platform.ASR9K),
-                                    (Platform.CRS,Platform.CRS)])
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     roles = StringField('Roles')
     host_or_ip = StringField('Terminal Server or Mgmt. IP', [required(), Length(max=30)])
