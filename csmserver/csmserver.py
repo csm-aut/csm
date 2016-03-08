@@ -492,7 +492,7 @@ def get_managed_hosts(region_id):
                 row['platform'] = host.platform
 
                 if host.software_version is not None:
-                    row['software'] = host.software_version + ' (' + host.software_platform + ')'
+                    row['software'] = host.software_platform + ' (' + host.software_version + ')'
                 else:
                     row['software'] = 'Unknown'
 
