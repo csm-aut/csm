@@ -527,6 +527,7 @@ def get_managed_host_details(region_id):
             row = {} 
             row['hostname'] = host.hostname
             row['platform'] = host.platform
+            row['software'] = host.software_platform + ' (' + host.software_version + ')'
 
             if len(host.connection_param) > 0:
                 connection_param = host.connection_param[0]
@@ -2691,7 +2692,7 @@ def api_get_hosts_by_region(region_id, role, software):
         host_roles = [] if host.roles is None else host.roles.split(',')
         if not selected_roles or any(role in host_roles for role in selected_roles):
             if host.software_platform is not None and host.software_version is not None:
-                host_platform_software = host.software_platform + ' ' + host.software_version
+                host_platform_software = host.software_platform + ' (' + host.software_version + ')'
             else:
                 host_platform_software = 'Unknown'
 
