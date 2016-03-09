@@ -65,8 +65,8 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
-from models import DeviceUDI
 from models import SystemVersion
+from models import System
 from models import Package
 from models import Preferences
 from models import SMUMeta
@@ -99,6 +99,7 @@ from common import fill_dependency_from_host_install_jobs
 from common import fill_regions    
 from common import fill_jump_hosts
 from common import fill_custom_command_profiles
+from common import get_custom_command_profile_by_id
 from common import get_host
 from common import get_host_list
 from common import get_jump_host_by_id
@@ -719,7 +720,7 @@ def host_edit(hostname):
         form.jump_host.data = host.connection_param[0].jump_host_id
         form.connection_type.data = host.connection_param[0].connection_type
         form.port_number.data = host.connection_param[0].port_number
-        if host.connection_param[0].password != '':
+        if not is_empty(host.connection_param[0].password):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
@@ -843,7 +844,7 @@ def jump_host_edit(hostname):
         form.username.data = host.username
         form.connection_type.data = host.connection_type
         form.port_number.data = host.port_number
-        if host.password != '':
+        if not is_empty(host.password):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
@@ -1623,7 +1624,12 @@ def delete_all_downloads(status=None):
 @login_required
 def api_get_server_time():  
     dict = {}
+    db_session = DBSession()
+    system = db_session.query(System).first()
+    start_time = system.start_time
+
     dict['server_time'] = datetime.datetime.utcnow()
+    dict['uptime'] = time_difference_UTC(start_time).strip(' ago')
 
     return jsonify(**{'data': dict})
 
@@ -1975,6 +1981,10 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             if install_job.scheduled_time is not None:
                 form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
         
+            if install_job.custom_command_profile_id:
+                ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
+                form.custom_command_profile.data = ids
+
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url, install_action=get_install_actions_dict())
@@ -1997,7 +2007,6 @@ def admin_console():
     
     smtp_server = get_smtp_server(db_session)
     system_option = SystemOption.get(db_session)
-    device_udi = DeviceUDI.get(db_session)
     
     if request.method == 'POST' and \
         smtp_form.validate() and \
@@ -2071,7 +2080,7 @@ def admin_console():
         admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
         admin_console_form.enable_user_credential_for_host.data = system_option.enable_user_credential_for_host
 
-        if system_option.default_host_password != None:
+        if not is_empty(system_option.default_host_password):
             admin_console_form.default_host_password_placeholder = 'Use Password on File'
         else:
             admin_console_form.default_host_password_placeholder = 'No Password Specified'
@@ -2083,7 +2092,7 @@ def admin_console():
             smtp_form.use_authentication.data = smtp_server.use_authentication
             smtp_form.username.data = smtp_server.username
             smtp_form.secure_connection.data = smtp_server.secure_connection
-            if smtp_server.password != None:
+            if not is_empty(smtp_server.password):
                 smtp_form.password_placeholder = 'Use Password on File'
             else:
                 smtp_form.password_placeholder = 'No Password Specified'
@@ -3027,7 +3036,7 @@ def user_preferences():
     else:
         preferences = user.preferences[0]
         form.cco_username.data = preferences.cco_username
-        if user.preferences[0].cco_password != None:
+        if not is_empty(user.preferences[0].cco_password):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
@@ -3441,29 +3450,6 @@ def api_refresh_all_smu_info():
         return jsonify({'status': 'OK'})
     else:
         return jsonify({'status': 'Failed'})
-
-
-@app.route('/api/get_udi')
-@login_required
-def api_get_udi():
-    """
-    Returns udi info for a platform
-    """
-    db_session = DBSession()
-    udis = get_udi(db_session)
-
-    rows = []
-    if udis is not None:
-        for udi in udis:
-            row = {}
-            row['platform'] = udi.platform
-            row['pid'] = udi.pid
-            row['version'] = udi.version
-            row['serial_number'] = udi.serial_number
-
-            rows.append(row)
-
-    return jsonify(**{'data': rows})
 
 
 @app.route('/api/get_cco_lookup_time')

@@ -741,19 +741,6 @@ class SystemVersion(Base):
         return db_session.query(SystemVersion).first()
 
 
-class DeviceUDI(Base):
-    __tablename__ = 'device_udi'
-    id = Column(Integer, primary_key=True)
-    platform = Column(String(50))
-    pid = Column(String(50))
-    version = Column(String(50))
-    serial_number = Column(String(50))
-
-    @classmethod
-    def get(cls, db_session):
-        return db_session.query(DeviceUDI).first()
-
-
 class SystemOption(Base):
     __tablename__ = 'system_option'
 
@@ -914,6 +901,14 @@ class CustomCommandProfile(Base):
     command_list = Column(Text)
     created_by = Column(String(50))
 
+
+class System(Base):
+    __tablename__ = 'system'
+
+    id = Column(Integer, primary_key=True)
+    start_time = Column(DateTime, default=datetime.datetime.utcnow())
+
+
 Base.metadata.create_all(engine)
 
 
@@ -1015,9 +1010,22 @@ def init_encrypt():
     encrypt_dict = dict(Encrypt.get(db_session).__dict__)
 
 
+def init_sys_time():
+    db_session = DBSession()
+    if db_session.query(System).count() == 0:
+        db_session.add(System())
+        db_session.commit()
+    else:
+        system = db_session.query(System).first()
+        system.start_time = datetime.datetime.utcnow()
+        db_session.commit()
+
+
 def initialize():
     init_user()      
     init_system_option()
+    init_sys_time()
+
 
 init_system_version()
 init_encrypt() 

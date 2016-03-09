@@ -18,7 +18,10 @@
         {% if isEdit %}
             var is_password_panel_visible = false;
             var password_panel = $('#password-panel');
-            password_panel.hide();
+
+            {% if form.password_placeholder != "No Password Specified" %}
+                password_panel.hide();
+            {% endif %}
 
             $('#modify-password').on("click", function() {
                 if (is_password_panel_visible) {

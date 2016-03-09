@@ -230,6 +230,7 @@
                 success: function(data) {
                     $.each(data, function(index, element) {
                         $('#server-time').html(convertToLocaleString(element.server_time));
+                        $('#server-uptime').html(element.uptime);
                     });
                 },
                 error: function(xhr, status, error) {
@@ -361,6 +362,10 @@
                         <tr>
                             <td>Server Time</td>
                             <td id="server-time" ></td>
+                        </tr>
+                        <tr>
+                            <td>Server Uptime</td>
+                            <td id="server-uptime"></td>
                         </tr>
                         <tr>
                             <td>Build Date</td>

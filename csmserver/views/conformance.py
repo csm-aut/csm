@@ -612,4 +612,4 @@ class MakeConformDialogForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
     scheduled_time = StringField('Scheduled Time', [required()])
     software_packages = TextAreaField('Software Packages')
-    custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])
+    custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[('', '')])
