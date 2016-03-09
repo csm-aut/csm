@@ -55,20 +55,20 @@ class InstallCommitPlugin(Plugin):
             watch_operation(manager, device, op_id)
         else:
             manager.log_install_errors(output)
-            manager.error("Operation ID not found")
+            manager.error("Operation ID not found.")
 
         cmd = "admin show install log {} detail".format(op_id)
         output = device.send(cmd)
 
         if re.search(failed_oper, output):
             manager.log_install_errors(output)
-            manager.error("Install operation failed")
+            manager.error("Install operation failed.")
 
         if re.search(completed_with_failure, output):
             manager.log_install_errors(output)
-            manager.log("Completed with failure but failure was after Point of No Return")
+            manager.log("Completed with failure but failure was after Point of No Return.")
 
         elif re.search(success_oper, output):
-            manager.log("Operation {} finished successfully".format(op_id))
+            manager.log("Operation {} finished successfully.".format(op_id))
 
         get_package(device, manager)
