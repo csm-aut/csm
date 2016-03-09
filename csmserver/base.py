@@ -288,19 +288,3 @@ class TestConnectionContext(Context):
     @property
     def host_urls(self):
         return self.urls
-
-
-class BaseHandler(object):
-    def execute(self, ctx):
-        raise NotImplementedError("Children must override execute")
-
-
-class BaseConnection(object):
-    def login(self):       
-        raise NotImplementedError("Children must override login")
-    
-    def send_command(self):
-        raise NotImplementedError("Children must override send_command")
-    
-    def logout(self):
-        raise NotImplementedError("Children must override logout")
