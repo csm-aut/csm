@@ -38,7 +38,7 @@
 
                             $('#file1').html(element[0].file1 + ' (created on ' + convertToLocaleString(element[0].file1_created_time) + ')');
                             $('#file2').html(element[0].file2 + ' (created on ' + convertToLocaleString(element[0].file2_created_time) + ')');
-                            $('#file-diff-results').html('<tt>' + element[0].file_diff_contents + '</tt>');
+                            $('#file-diff-results').html(element[0].file_diff_contents);
 
                             $('#file-diff-dialog').modal({show:true, backdrop:'static'});
                         });
