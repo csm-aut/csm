@@ -123,7 +123,7 @@ class BaseHandler(object):
                                     '<hr>'
                         diff_file_name = os.path.join(post_upgrade_file_directory, filename + '.diff')
                         with open(diff_file_name, 'w') as fo:
-                            fo.write('<tt>' + html_code + results + '</tt>')
+                            fo.write('<pre>' + html_code + results + '</pre>')
 
 
 class BaseConnectionHandler(BaseHandler):
