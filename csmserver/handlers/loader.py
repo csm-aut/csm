@@ -110,12 +110,12 @@ class BaseHandler(object):
 
         for filename in target_file_list:
             if target_string in filename and filename.replace(target_string, source_string) in source_file_list:
-                post_upgrade_file_path = os.path.join(target_file_directory, filename)
-                pre_upgrade_file_path = os.path.join(
+                target_file_path = os.path.join(target_file_directory, filename)
+                source_file_path = os.path.join(
                     source_file_directory, filename.replace(target_string, source_string))
 
-                if os.path.isfile(pre_upgrade_file_path) and os.path.isfile(post_upgrade_file_path):
-                    results = generate_file_diff(pre_upgrade_file_path, post_upgrade_file_path)
+                if os.path.isfile(source_file_path) and os.path.isfile(target_file_path):
+                    results = generate_file_diff(source_file_path, target_file_path)
                     # Are there any changes in the logs
                     insertion_count = results.count('ins style')
                     deletion_count = results.count('del style')
