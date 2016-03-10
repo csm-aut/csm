@@ -96,16 +96,23 @@ class BaseHandler(object):
         if pre_upgrade_job is None:
             return
 
-        pre_upgrade_file_directory = os.path.join(get_log_directory(), pre_upgrade_job.session_log)
-        post_upgrade_file_directory = ctx.log_directory
-        pre_upgrade_file_list = get_file_list(pre_upgrade_file_directory)
-        post_upgrade_file_list = get_file_list(post_upgrade_file_directory)
+        source_file_directory = os.path.join(get_log_directory(), pre_upgrade_job.session_log)
+        target_file_directory = ctx.log_directory
 
-        for filename in post_upgrade_file_list:
-            if 'POST-UPGRADE' in filename and filename.replace('POST-UPGRADE', 'PRE-UPGRADE') in pre_upgrade_file_list:
-                post_upgrade_file_path = os.path.join(post_upgrade_file_directory, filename)
+        self.generate_file_diff(source_string='PRE-UPGRADE',
+                                target_string='POST-UPGRADE',
+                                source_file_directory=source_file_directory,
+                                target_file_directory=target_file_directory)
+
+    def generate_file_diff(self, source_string, target_string, source_file_directory, target_file_directory):
+        source_file_list = get_file_list(source_file_directory)
+        target_file_list = get_file_list(target_file_directory)
+
+        for filename in target_file_list:
+            if target_string in filename and filename.replace(target_string, source_string) in source_file_list:
+                post_upgrade_file_path = os.path.join(target_file_directory, filename)
                 pre_upgrade_file_path = os.path.join(
-                    pre_upgrade_file_directory, filename.replace('POST-UPGRADE', 'PRE-UPGRADE'))
+                    source_file_directory, filename.replace(target_string, source_string))
 
                 if os.path.isfile(pre_upgrade_file_path) and os.path.isfile(post_upgrade_file_path):
                     results = generate_file_diff(pre_upgrade_file_path, post_upgrade_file_path)
@@ -127,7 +134,7 @@ class BaseHandler(object):
                                     '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + \
                                     '<del style="background:#ffe6e6;">Deletions</del>:&nbsp;' + str(deletion_count) + \
                                     '<hr>'
-                        diff_file_name = os.path.join(post_upgrade_file_directory, filename + '.diff')
+                        diff_file_name = os.path.join(target_file_directory, filename + '.diff.html')
                         with open(diff_file_name, 'w') as fo:
                             fo.write('<pre>' + html_code + results + '</pre>')
 

@@ -141,7 +141,6 @@ from utils import comma_delimited_str_to_list
 from utils import get_base_url 
 from utils import is_ldap_supported
 from utils import remove_extra_spaces
-from utils import generate_file_diff
 from utils import get_json_value
 
 from server_helper import get_server_impl
@@ -2257,16 +2256,17 @@ def host_session_log(hostname, table, id):
     file_pairs = {}
     log_file_contents = ''
 
+    file_suffix = '.diff.html'
     if os.path.isdir(log_file_path):
         # Returns all files under the requested directory
         log_file_list = get_file_list(log_file_path)
-        diff_file_list = [filename for filename in log_file_list if '.diff' in filename]
+        diff_file_list = [filename for filename in log_file_list if file_suffix in filename]
 
         for filename in log_file_list:
             diff_file_path = ''
-            if '.diff' not in filename:
-                if filename + '.diff' in diff_file_list:
-                    diff_file_path = os.path.join(file_path, filename + '.diff')
+            if file_suffix not in filename:
+                if filename + file_suffix in diff_file_list:
+                    diff_file_path = os.path.join(file_path, filename + file_suffix)
                 file_pairs[os.path.join(file_path, filename)] = diff_file_path
 
         file_pairs = collections.OrderedDict(sorted(file_pairs.items()))
