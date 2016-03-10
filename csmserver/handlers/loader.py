@@ -26,7 +26,9 @@ from utils import import_class
 from constants import UNKNOWN
 from models import UDI
 from models import get_db_session_logger
+
 from base import ConnectionContext
+from base import InstallContext
 
 from constants import InstallAction
 from constants import get_log_directory
@@ -57,6 +59,9 @@ class BaseHandler(object):
 
     def post_processing(self, ctx):
         if isinstance(ctx, ConnectionContext):
+            self.update_device_info(ctx)
+
+        if isinstance(ctx, InstallContext):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
@@ -64,16 +69,17 @@ class BaseHandler(object):
                 logger = get_db_session_logger(ctx.db_session)
                 logger.exception('generate_post_upgrade_file_diff hit exception.')
 
-            self.update_device_info(ctx)
-
-
     def update_device_info(self, ctx):
-        print('..............................')
-        udi_dict = {'name': 'chassis ASR-9006-AC', 'description': 'ASR 9006 4 Line Card Slot Chassis with V1 AC PEM', 'pid': 'ASR-9006', 'vid': 'V01', 'sn': 'FOX1523H7HA'}
-        ctx.save_data('device', udi_dict)
-        udi_dict = ctx.load_data('device')
-        print('udi_dict', udi_dict)
+        device_info_dict = ctx.load_data('device_info')
+        if device_info_dict is not None:
+            ctx.host.family = device_info_dict['family']
+            ctx.host.platform = device_info_dict['platform']
+            ctx.host.software_platform = get_software_platform(family=device_info_dict['family'],
+                                                               os_type=device_info_dict['os_type'])
+            ctx.host.software_version = get_software_version(device_info_dict['os_version'])
+            ctx.host.os_type = device_info_dict['os_type']
 
+        udi_dict = ctx.load_data('udi')
         if udi_dict is not None:
             udi = UDI(name=udi_dict['name'], description=udi_dict['description'],
                       pid=udi_dict['pid'], vid=udi_dict['vid'], sn=udi_dict['sn'])
@@ -90,16 +96,23 @@ class BaseHandler(object):
         if pre_upgrade_job is None:
             return
 
-        pre_upgrade_file_directory = os.path.join(get_log_directory(), pre_upgrade_job.session_log)
-        post_upgrade_file_directory = ctx.log_directory
-        pre_upgrade_file_list = get_file_list(pre_upgrade_file_directory)
-        post_upgrade_file_list = get_file_list(post_upgrade_file_directory)
+        source_file_directory = os.path.join(get_log_directory(), pre_upgrade_job.session_log)
+        target_file_directory = ctx.log_directory
 
-        for filename in post_upgrade_file_list:
-            if 'POST-UPGRADE' in filename and filename.replace('POST-UPGRADE', 'PRE-UPGRADE') in pre_upgrade_file_list:
-                post_upgrade_file_path = os.path.join(post_upgrade_file_directory, filename)
+        self.generate_file_diff(source_string='PRE-UPGRADE',
+                                target_string='POST-UPGRADE',
+                                source_file_directory=source_file_directory,
+                                target_file_directory=target_file_directory)
+
+    def generate_file_diff(self, source_string, target_string, source_file_directory, target_file_directory):
+        source_file_list = get_file_list(source_file_directory)
+        target_file_list = get_file_list(target_file_directory)
+
+        for filename in target_file_list:
+            if target_string in filename and filename.replace(target_string, source_string) in source_file_list:
+                post_upgrade_file_path = os.path.join(target_file_directory, filename)
                 pre_upgrade_file_path = os.path.join(
-                    pre_upgrade_file_directory, filename.replace('POST-UPGRADE', 'PRE-UPGRADE'))
+                    source_file_directory, filename.replace(target_string, source_string))
 
                 if os.path.isfile(pre_upgrade_file_path) and os.path.isfile(post_upgrade_file_path):
                     results = generate_file_diff(pre_upgrade_file_path, post_upgrade_file_path)
@@ -121,7 +134,7 @@ class BaseHandler(object):
                                     '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + \
                                     '<del style="background:#ffe6e6;">Deletions</del>:&nbsp;' + str(deletion_count) + \
                                     '<hr>'
-                        diff_file_name = os.path.join(post_upgrade_file_directory, filename + '.diff')
+                        diff_file_name = os.path.join(target_file_directory, filename + '.diff.html')
                         with open(diff_file_name, 'w') as fo:
                             fo.write('<pre>' + html_code + results + '</pre>')
 
