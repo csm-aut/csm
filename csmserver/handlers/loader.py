@@ -26,7 +26,9 @@ from utils import import_class
 from constants import UNKNOWN
 from models import UDI
 from models import get_db_session_logger
+
 from base import ConnectionContext
+from base import InstallContext
 
 from constants import InstallAction
 from constants import get_log_directory
@@ -57,6 +59,9 @@ class BaseHandler(object):
 
     def post_processing(self, ctx):
         if isinstance(ctx, ConnectionContext):
+            self.update_device_info(ctx)
+
+        if isinstance(ctx, InstallContext):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
@@ -64,16 +69,17 @@ class BaseHandler(object):
                 logger = get_db_session_logger(ctx.db_session)
                 logger.exception('generate_post_upgrade_file_diff hit exception.')
 
-            self.update_device_info(ctx)
-
-
     def update_device_info(self, ctx):
-        print('..............................')
-        udi_dict = {'name': 'chassis ASR-9006-AC', 'description': 'ASR 9006 4 Line Card Slot Chassis with V1 AC PEM', 'pid': 'ASR-9006', 'vid': 'V01', 'sn': 'FOX1523H7HA'}
-        ctx.save_data('device', udi_dict)
-        udi_dict = ctx.load_data('device')
-        print('udi_dict', udi_dict)
+        device_info_dict = ctx.load_data('device_info')
+        if device_info_dict is not None:
+            ctx.host.family = device_info_dict['family']
+            ctx.host.platform = device_info_dict['platform']
+            ctx.host.software_platform = get_software_platform(family=device_info_dict['family'],
+                                                               os_type=device_info_dict['os_type'])
+            ctx.host.software_version = get_software_version(device_info_dict['os_version'])
+            ctx.host.os_type = device_info_dict['os_type']
 
+        udi_dict = ctx.load_data('udi')
         if udi_dict is not None:
             udi = UDI(name=udi_dict['name'], description=udi_dict['description'],
                       pid=udi_dict['pid'], vid=udi_dict['vid'], sn=udi_dict['sn'])

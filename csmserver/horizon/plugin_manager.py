@@ -138,8 +138,8 @@ class PluginManager(object):
             self.csm.post_status(e.message)
             return False
 
-        self.csm.save_data['udi'] = device.udi
-        self.csm_save_date['device_info'] = device.device_info
+        self.csm.save_data('udi', device.udi)
+        self.csm.save_data('device_info', device.device_info)
 
         try:
             self.log("Device Connection Pending")
