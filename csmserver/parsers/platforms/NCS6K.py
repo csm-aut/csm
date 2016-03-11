@@ -88,18 +88,18 @@ class CLIPackageParser(BaseCLIPackageParser):
             return packages_dict
 
         found = False
-        #lines = lines.splitlines()
+        lines = lines.splitlines()
 
         for line in lines:
             if found:
                 location = None
                 name = line.strip()
 
-                #skip anything after the blank line
+                # Skip anything after the blank line
                 if len(name) == 0:
                     break
                 
-                package = Package(location = location, name = name, state = package_state)
+                package = Package(location=location, name=name, state=package_state)
                 packages_dict[name] = package
 
             elif 'package' in line:
@@ -119,7 +119,7 @@ class CLIPackageParser(BaseCLIPackageParser):
         if lines is None:
             return packages_dict
         
-        #lines = lines.splitlines()
+        lines = lines.splitlines()
         
         trunks = self.get_trunks(lines)   
         if len(trunks) > 0:
