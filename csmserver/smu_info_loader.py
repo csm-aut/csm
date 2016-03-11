@@ -33,12 +33,13 @@ from models import CCOCatalog
 from models import logger
 from models import SystemOption
 from constants import PackageType
+from constants import Platform
 
 from smu_advisor import get_smus_exclude_supersedes_include_prerequisites
 from collections import OrderedDict
 
+import re
 import requests
-import time
 import datetime
 
 CATALOG = 'catalog.dat'
@@ -85,8 +86,8 @@ class SMUInfoLoader(object):
     Example: platform = asr9k_px, release = 4.2.1
     """
     def __init__(self, platform, release, refresh=False):
-        self.platform = platform
-        self.release = release
+        self.platform = self.get_cco_supported_platform(platform)
+        self.release = self.get_cco_supported_release(release)
         self.smu_meta = None
         self.smus = {}
         self.service_packs = {}
@@ -97,6 +98,22 @@ class SMUInfoLoader(object):
             self.get_smu_info_from_cco(platform, release)
         else:
             self.get_smu_info_from_db(platform, release)
+
+    def get_cco_supported_platform(self, platform):
+        if platform == Platform.ASR9K:
+            return 'asr9k_px'
+        elif platform == Platform.CRS:
+            return 'crs_px'
+        elif platform == Platform.NCS6K:
+            return 'ncs6k'
+        else:
+            return platform
+
+    def get_cco_supported_release(self, release):
+        matches = re.findall("\d+\.\d+\.\d+", release)
+        if matches:
+            return matches[0]
+        return release
     
     def get_smu_info_from_db(self, platform, release):
         # self.smu_meta is set to None if the requested platform and release are not in the database.
@@ -474,7 +491,7 @@ class SMUInfoLoader(object):
             csm_messages.append({'token': date_token, 'message': message})
         
         return csm_messages
-    
+
 if __name__ == '__main__':
     SMUInfoLoader.refresh_all()
 

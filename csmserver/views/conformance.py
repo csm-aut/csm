@@ -51,6 +51,7 @@ from common import get_server_list
 from common import get_host
 from common import can_create_user
 from common import create_or_update_install_job
+from common import fill_custom_command_profiles
 
 from database import DBSession
 
@@ -80,6 +81,7 @@ def home():
     conformance_form = ConformanceForm(request.form)
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
     make_conform_dialog_form = MakeConformDialogForm(request.form)
+    fill_custom_command_profiles(make_conform_dialog_form.custom_command_profile.choices)
     select_server_form = SelectServerForm(request.form)
 
     export_conformance_report_form = ExportConformanceReportForm(request.form)
@@ -547,6 +549,7 @@ def api_create_install_jobs():
     server = request.form['server']
     server_directory = request.form['server_directory']
     pending_downloads = request.form['pending_downloads']
+    custom_command_profiles = request.form['custom_command_profile']
 
     host = get_host(db_session, hostname)
 
@@ -561,7 +564,9 @@ def api_create_install_jobs():
                                                            scheduled_time=scheduled_time,
                                                            software_packages=software_packages,
                                                            server=server, server_directory=server_directory,
-                                                           pending_downloads=pending_downloads, dependency=dependency)
+                                                           pending_downloads=pending_downloads,
+                                                           custom_command_profile=custom_command_profiles,
+                                                           dependency=dependency)
             dependency = new_install_job.id
 
         return jsonify({'status': 'OK'})
@@ -607,3 +612,4 @@ class MakeConformDialogForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
     scheduled_time = StringField('Scheduled Time', [required()])
     software_packages = TextAreaField('Software Packages')
+    custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])

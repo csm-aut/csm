@@ -61,12 +61,12 @@ class InstallWorkUnit(WorkUnit):
         return self.host_id
 
     def get_software(self, ctx, logger):
-        handler_class = get_inventory_handler_class(ctx.host.platform)
+        handler_class = get_inventory_handler_class(ctx)
         if handler_class is None:
-            logger.error('SoftwareManager: Unable to get handler for %s', ctx.host.platform)
+            logger.error('SoftwareManager: Unable to get handler for %s', ctx.host.software_platform)
 
         handler = handler_class()
-        if handler.get_software(ctx.host, ctx.inactive_cli, ctx.active_cli, ctx.committed_cli):
+        if handler.get_software(ctx):
             # Update the time stamp
             ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
 
@@ -89,15 +89,16 @@ class InstallWorkUnit(WorkUnit):
                 logger.error('Unable to retrieve host %s', self.host_id)
                 return
 
-            handler_class = get_install_handler_class(host.platform)
+            ctx = InstallContext(db_session, host, install_job)
+
+            handler_class = get_install_handler_class(ctx)
             if handler_class is None:
-                logger.error('Unable to get handler for %s, install job %s', host.platform, self.job_id)
+                logger.error('Unable to get handler for %s, install job %s', host.software_platform, self.job_id)
 
             install_job.start_time = datetime.datetime.utcnow()
             install_job.set_status(JobStatus.PROCESSING)
             install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
 
-            ctx = InstallContext(db_session, host, install_job)
             ctx.operation_id = self.get_last_operation_id(db_session, install_job)
 
             db_session.commit()

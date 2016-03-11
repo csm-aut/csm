@@ -29,10 +29,13 @@ from flask.ext.login import login_required
 from flask import request
 from flask import jsonify, abort
 
-from wtforms import Form
+from wtforms import Form, validators
 from wtforms import TextAreaField
 from wtforms import StringField
 from wtforms import SelectField
+from wtforms import IntegerField
+from wtforms import PasswordField
+from wtforms.validators import Length, required
 
 from constants import Platform
 from constants import ConnectionType
@@ -53,6 +56,7 @@ from database import DBSession
 
 from utils import remove_extra_spaces
 from utils import get_acceptable_string
+from utils import generate_ip_range
 
 import csv
 
@@ -76,8 +80,71 @@ def import_hosts():
 
     form = HostImportForm(request.form)
     fill_regions(form.region.choices)
+    ip_range_dialog_form = IPRangeForm(request.form)
+    #fill_regions(ip_range_dialog_form.region2.choices)
 
-    return render_template('host/import_hosts.html', form=form)
+    return render_template('host/import_hosts.html', form=form,
+                           ip_range_dialog_form=ip_range_dialog_form)
+
+
+@host_import.route('/api/generate_ip_range', methods=['POST'])
+@login_required
+def api_generate_ip_range():
+    data_list = request.form.get('data_list')
+    input_data = {
+        'beginIP':    request.form['beginIP'],
+        'endIP':      request.form['endIP'],
+        'step':       request.form.get('step'),
+        'region':     request.form.get('region2'),
+        'roles':       request.form.get('role'),
+        'connection': request.form['connection'],
+        'username':   request.form.get('username'),
+        'password':   request.form.get('password'),
+    }
+    #input_data['region'] = get_region_by_id(DBSession(), input_data['region']).name
+    input_data['step'] = int(input_data['step'])
+    allowed_headers = ['hostname', 'region', 'roles', 'ip', 'username', 'password', 'connection', 'port']
+    input_header = ['hostname', 'ip']
+
+    for i in allowed_headers:
+        if i in input_data.keys() and input_data[i]:
+            input_header.append(i)
+
+    if data_list:
+        header = data_list.split('\n')[0].split(',')
+    else:
+        header = input_header
+
+    is_valid = True
+    for i in input_header:
+        if i not in header:
+            is_valid = False
+
+    if not is_valid:
+        return jsonify({'status': 'The current header line is not valid with the ip range input.'})
+    elif not data_list:
+        output = (',').join(header)
+    else:
+        #output = data_list
+        output = ''
+
+    # build the rest of the text after the header
+    ips = generate_ip_range(input_data['beginIP'], input_data['endIP'])
+    for ip in ips:
+        if ips.index(ip) % input_data['step'] == 0:
+            input_data['ip'] = ip
+            input_data['hostname'] = ip
+            line = []
+            for column in header:
+                if column in input_data.keys() and input_data[column]:
+                    line.append(input_data[column])
+                else:
+                    line.append('')
+            output += '\n' + (',').join(line)
+
+    print output
+
+    return jsonify({'status': 'OK', 'data_list': output})
 
 
 def get_column_number(header, column_name):
@@ -92,7 +159,6 @@ def get_column_number(header, column_name):
 def api_import_hosts():
     importable_header = [HEADER_FIELD_HOSTNAME, HEADER_FIELD_REGION, HEADER_FIELD_ROLES, HEADER_FIELD_IP,
                          HEADER_FIELD_USERNAME, HEADER_FIELD_PASSWORD, HEADER_FIELD_CONNECTION, HEADER_FIELD_PORT]
-    platform = request.form['platform']
     region_id = request.form['region']
     data_list = request.form['data_list']
 
@@ -136,7 +202,7 @@ def api_import_hosts():
                 error.append('line %d has wrong number of data fields.' % row)
             else:
                 if COLUMN_CONNECTION >= 0:
-                    # Validat the connection type
+                    # Validate the connection type
                     data_field = row_data[COLUMN_CONNECTION]
                     if data_field != ConnectionType.TELNET and data_field != ConnectionType.SSH:
                         error.append('line %d has a wrong connection type (should either be "telnet" or "ssh").' % row)
@@ -168,7 +234,6 @@ def api_import_hosts():
 
         db_host = None
         im_host = Host()
-        im_host.platform = platform
         im_host.region_id = selected_region.id
         im_host.created_by = current_user.username
         im_host.inventory_job.append(InventoryJob())
@@ -213,7 +278,6 @@ def api_import_hosts():
 
         # Import host already exists in the database, just update it
         if db_host is not None:
-            db_host.platform = im_host.platform
             db_host.created_by = im_host.created_by
             db_host.region_id = im_host.region_id
 
@@ -246,8 +310,18 @@ def api_import_hosts():
 
 
 class HostImportForm(Form):
-    platform = SelectField('Platform', coerce=str,
-                           choices=[(Platform.ASR9K, Platform.ASR9K),
-                                    (Platform.CRS, Platform.CRS)])
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     data_list = TextAreaField('')
+
+class IPRangeForm(Form):
+    beginIP = StringField('Beginning IP', [required()])
+    endIP = StringField('Ending IP', [required()])
+    step = IntegerField('Step', [validators.NumberRange(min=1)])
+    region2 = StringField('Region')
+    role = StringField('Roles')
+    connection_type = SelectField('Connection Type', coerce=str,
+                                  choices=[(ConnectionType.TELNET, ConnectionType.TELNET),
+                                           (ConnectionType.SSH, ConnectionType.SSH)])
+    username = StringField('Username')
+    password = PasswordField('Password')
+

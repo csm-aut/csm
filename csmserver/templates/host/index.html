@@ -44,27 +44,30 @@
                 "data": 'platform'
             }, {
                 "targets": 2,
-                "data": 'connection'
+                "data": 'software'
             }, {
                 "targets": 3,
+                "data": 'connection'
+            }, {
+                "targets": 4,
                 "data": 'host_or_ip',
                 "render": function(data, type, row) {
                     return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
                 }
             }, {
-                "targets": 4,
+                "targets": 5,
                 "data": 'port_number',
                 "render": function(data, type, row) {
                     return comma2br(data);
                 }
             }, {
-                "targets": 5,
+                "targets": 6,
                 "data": 'jump_host'
             }, {
-                "targets": 6,
+                "targets": 7,
                 "data": 'username',
             }, {
-                "targets": 7,
+                "targets": 8,
                 "data": 'hostname',
                 "render": function(data, type, row) {
                     return '<a class="host-delete-link" href="javascript://"  \
@@ -164,7 +167,8 @@
             <thead>
                 <tr>
                     <th>Hostname</th>
-                    <th>Platform</th>
+                    <th>Hardware</th>
+                    <th>Platform<br>Software</th>
                     <th>Connection</th>
                     <th>TS or IP</th>
                     <th>Port</th>

@@ -89,6 +89,7 @@ from constants import BUG_SEARCH_URL
 from constants import get_log_directory
 from constants import get_repository_directory
 from constants import get_temp_directory
+from constants import DefaultHostAuthenticationChoice
 
 from common import get_last_successful_inventory_elapsed_time 
 from common import get_host_active_packages 
@@ -97,6 +98,7 @@ from common import fill_dependencies
 from common import fill_dependency_from_host_install_jobs
 from common import fill_regions    
 from common import fill_jump_hosts
+from common import fill_custom_command_profiles
 from common import get_host
 from common import get_host_list
 from common import get_jump_host_by_id
@@ -124,6 +126,7 @@ from common import can_create
 from common import create_or_update_install_job
 from common import create_download_jobs
 from common import get_download_job_key
+from common import get_last_successful_pre_upgrade_job
 
 from common import *
 
@@ -140,7 +143,7 @@ from utils import comma_delimited_str_to_list
 from utils import get_base_url 
 from utils import is_ldap_supported
 from utils import remove_extra_spaces
-from utils import generate_file_diff
+from utils import get_json_value
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -153,6 +156,7 @@ from smu_utils import SMU_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
 from cisco_service.bsd_service import BSDServiceHandler
+from cisco_service.bug_service import BugServiceHandler
 
 from package_utils import get_target_software_package_list
 from restful import restful_api
@@ -161,6 +165,7 @@ from views.exr_migrate import exr_migrate
 from views.conformance import conformance
 from views.tar_support import tar_support
 from views.host_import import host_import
+from views.custom_command import custom_command
 
 from horizon.plugin_manager import PluginManager
 
@@ -181,6 +186,7 @@ app.register_blueprint(exr_migrate)
 app.register_blueprint(conformance)
 app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
+app.register_blueprint(custom_command)
 
 # Hook up the filters
 filters.init(app)
@@ -488,7 +494,7 @@ def get_managed_hosts(region_id):
                 row['platform'] = host.platform
 
                 if host.software_version is not None:
-                    row['software'] = host.software_platform + ' ' + host.software_version
+                    row['software'] = host.software_platform + ' (' + host.software_version + ')'
                 else:
                     row['software'] = 'Unknown'
 
@@ -523,6 +529,7 @@ def get_managed_host_details(region_id):
             row = {} 
             row['hostname'] = host.hostname
             row['platform'] = host.platform
+            row['software'] = host.software_platform + ' (' + host.software_version + ')'
 
             if len(host.connection_param) > 0:
                 connection_param = host.connection_param[0]
@@ -636,7 +643,6 @@ def host_create():
                 return render_template('host/edit.html', form=form, duplicate_error=True)
             
             host = Host(hostname=form.hostname.data, 
-                        platform=form.platform.data,
                         created_by=current_user.username)
         
             host.inventory_job.append(InventoryJob())
@@ -686,7 +692,6 @@ def host_edit(hostname):
             return render_template('host/edit.html', form=form, duplicate_error=True)
         
         host.hostname = form.hostname.data
-        host.platform = form.platform.data
         host.region_id = form.region.data if form.region.data > 0 else None
         host.roles = remove_extra_spaces(form.roles.data) 
         
@@ -710,7 +715,6 @@ def host_edit(hostname):
     else:
         # Assign the values to form fields
         form.hostname.data = host.hostname
-        form.platform.data = host.platform
         form.region.data = host.region_id
         form.roles.data = host.roles
         form.host_or_ip.data = host.connection_param[0].host_or_ip
@@ -718,7 +722,11 @@ def host_edit(hostname):
         form.jump_host.data = host.connection_param[0].jump_host_id
         form.connection_type.data = host.connection_param[0].connection_type
         form.port_number.data = host.connection_param[0].port_number
-        
+        if host.connection_param[0].password != '':
+            form.password_placeholder = 'Use Password on File'
+        else:
+            form.password_placeholder = 'No Password Specified'
+
         return render_template('host/edit.html', form=form)
 
    
@@ -838,7 +846,11 @@ def jump_host_edit(hostname):
         form.username.data = host.username
         form.connection_type.data = host.connection_type
         form.port_number.data = host.port_number
-        
+        if host.password != '':
+            form.password_placeholder = 'Use Password on File'
+        else:
+            form.password_placeholder = 'No Password Specified'
+
         return render_template('jump_host/edit.html', form=form)
 
 
@@ -1175,7 +1187,8 @@ def api_get_host_dashboard_cookie(hostname):
         row['region'] = host.region.name if host.region is not None else 'Unknown'
         row['roles'] = host.roles
         row['platform'] = host.platform
-        row['software'] = host.software_version
+        row['software_platform'] = host.software_platform
+        row['software_version'] = host.software_version
         row['host_or_ip'] = connection_param.host_or_ip
         row['username'] = connection_param.username
         row['connection'] = connection_param.connection_type
@@ -1726,7 +1739,7 @@ def schedule_install():
     """
     if not can_install(current_user):
         abort(401)
-         
+
     db_session = DBSession()
     form = ScheduleInstallForm(request.form)
     
@@ -1894,6 +1907,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     fill_servers(form.cisco_dialog_server.choices, region_servers, False)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs,
                                            (-1 if install_job is None else install_job.id))
+    fill_custom_command_profiles(form.custom_command_profile.choices)
         
     if request.method == 'POST':
         if install_job is not None:
@@ -1908,6 +1922,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server = form.hidden_server.data
         server_directory = form.hidden_server_directory.data
         pending_downloads = form.hidden_pending_downloads.data
+        custom_command_profile = (',').join([str(i) for i in form.custom_command_profile.data])
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
@@ -1916,7 +1931,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                          scheduled_time=scheduled_time, software_packages=software_packages, server=server,
                                          server_directory=server_directory, pending_downloads=pending_downloads,
-                                         dependency=dependency, install_job=install_job)
+                                         custom_command_profile=custom_command_profile, dependency=dependency,
+                                         install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
@@ -1930,6 +1946,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                                                software_packages=software_packages, server=server,
                                                                server_directory=server_directory,
                                                                pending_downloads=pending_downloads,
+                                                               custom_command_profile=custom_command_profile,
                                                                dependency=dependency, install_job=install_job)
                 dependency = new_install_job.id
                    
@@ -2016,7 +2033,7 @@ def admin_console():
         system_option.can_schedule = admin_console_form.can_schedule.data
         system_option.can_install = admin_console_form.can_install.data  
         system_option.enable_email_notify = admin_console_form.enable_email_notify.data 
-        system_option.enable_inventory = admin_console_form.enable_inventory.data 
+        system_option.enable_inventory = admin_console_form.enable_inventory.data
         
         # The LDAP UI may be hidden if it is not supported.
         # In this case, the flag is not set.
@@ -2029,12 +2046,15 @@ def admin_console():
         system_option.download_history_per_user = admin_console_form.download_history_per_user.data
         system_option.install_history_per_host = admin_console_form.install_history_per_host.data
         system_option.total_system_logs = admin_console_form.total_system_logs.data
-        system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data 
+        system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data
+        system_option.default_host_authentication_choice = admin_console_form.default_host_authentication_choice.data
         system_option.enable_cco_lookup = admin_console_form.enable_cco_lookup.data
         system_option.default_host_username = admin_console_form.default_host_username.data
         
         if len(admin_console_form.default_host_password.data) > 0: 
             system_option.default_host_password = admin_console_form.default_host_password.data
+
+        system_option.enable_user_credential_for_host = admin_console_form.enable_user_credential_for_host.data
          
         db_session.commit()
         
@@ -2056,9 +2076,16 @@ def admin_console():
         admin_console_form.install_history_per_host.data = system_option.install_history_per_host
         admin_console_form.total_system_logs.data = system_option.total_system_logs
         admin_console_form.enable_default_host_authentication.data = system_option.enable_default_host_authentication
+        admin_console_form.default_host_authentication_choice.data = system_option.default_host_authentication_choice
         admin_console_form.default_host_username.data = system_option.default_host_username
         admin_console_form.enable_cco_lookup.data = system_option.enable_cco_lookup
         admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
+        admin_console_form.enable_user_credential_for_host.data = system_option.enable_user_credential_for_host
+
+        if system_option.default_host_password != None:
+            admin_console_form.default_host_password_placeholder = 'Use Password on File'
+        else:
+            admin_console_form.default_host_password_placeholder = 'No Password Specified'
 
         if smtp_server is not None:
             smtp_form.server.data = smtp_server.server
@@ -2067,7 +2094,12 @@ def admin_console():
             smtp_form.use_authentication.data = smtp_server.use_authentication
             smtp_form.username.data = smtp_server.username
             smtp_form.secure_connection.data = smtp_server.secure_connection
-            
+            if smtp_server.password != None:
+                smtp_form.password_placeholder = 'Use Password on File'
+            else:
+                smtp_form.password_placeholder = 'No Password Specified'
+
+
         return render_template('admin/index.html',
                                admin_console_form=admin_console_form,
                                smtp_form=smtp_form,
@@ -2233,98 +2265,44 @@ def host_session_log(hostname, table, id):
         abort(404)
 
     file_pairs = {}
-    log_content = ''
+    log_file_contents = ''
 
+    file_suffix = '.diff.html'
     if os.path.isdir(log_file_path):
         # Returns all files under the requested directory
+        log_file_list = get_file_list(log_file_path)
+        diff_file_list = [filename for filename in log_file_list if file_suffix in filename]
 
-        file_list = get_file_list(log_file_path)
-
-        # Get the Pre-Upgrade file list if the Post-Upgrade file list is being viewed.
-        # An example of a Post-Upgrade log file is 'show-isis-neighbor-summary.POST-UPGRADE.log'
-        pre_upgrade_file_path = ''
-        pre_upgrade_file_list = []
-        if sum([1 for filename in file_list if 'POST-UPGRADE' in filename]) > 0:
-            pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, record.host_id)
-            if pre_upgrade_job is not None:
-                pre_upgrade_file_path = pre_upgrade_job.session_log
-                pre_upgrade_file_list = get_file_list(get_log_directory() + pre_upgrade_file_path)
-
-        for filename in file_list:
-            counterpart = ''
-            if 'POST-UPGRADE' in filename and filename.replace('POST-UPGRADE', 'PRE-UPGRADE') in pre_upgrade_file_list:
-                counterpart = pre_upgrade_file_path + os.sep + filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
-
-            file_pairs[file_path + os.sep + filename] = counterpart
+        for filename in log_file_list:
+            diff_file_path = ''
+            if file_suffix not in filename:
+                if filename + file_suffix in diff_file_list:
+                    diff_file_path = os.path.join(file_path, filename + file_suffix)
+                file_pairs[os.path.join(file_path, filename)] = diff_file_path
 
         file_pairs = collections.OrderedDict(sorted(file_pairs.items()))
     else:        
         with io.open(log_file_path, "rt", encoding='latin-1') as fo:
-            log_content = fo.read()
+            log_file_contents = fo.read()
 
     return render_template('host/session_log.html', hostname=hostname, table=table,
-                           record_id=id, file_pairs=file_pairs, log_content=log_content,
+                           record_id=id, file_pairs=file_pairs, log_file_contents=log_file_contents,
                            is_file=os.path.isfile(log_file_path))
 
 
-def get_last_successful_pre_upgrade_job(db_session, host_id):
-    return db_session.query(InstallJobHistory). \
-        filter((InstallJobHistory.host_id == host_id),
-               and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
-        order_by(InstallJobHistory.status_time.desc()).first()
-
-
-@app.route('/api/get_session_log_file_diff/hostname/<hostname>')
+@app.route('/api/get_session_log_file_diff')
 @login_required
-def api_get_session_log_file_diff(hostname):
-    """
-    An example of the post_upgrade_log_file_path is
-        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.log'
-    """
-    record_id = request.args.get("record_id")
-    post_upgrade_log_file_path = request.args.get("post_upgrade_log_file_path")
+def api_get_session_log_file_diff():
+    diff_file_path = request.args.get("diff_file_path")
 
-    if is_empty(hostname) or is_empty(post_upgrade_log_file_path):
-        return jsonify({'status': 'Either hostname or post_upgrade_log_file_path is empty.'})
+    if is_empty(diff_file_path):
+        return jsonify({'status': 'diff file is missing.'})
 
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
+    file_diff_contents = ''
+    with io.open(os.path.join(get_log_directory(), diff_file_path), "rt", encoding='latin-1') as fo:
+        file_diff_contents = fo.read()
 
-    if host is None:
-        return jsonify({'status': 'Hostname {} does not exist.'.format(hostname)})
-
-    install_job_history = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == record_id).first()
-    if install_job_history is None:
-        return jsonify({'status': 'The job history is no longer available.'})
-
-    pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, host.id)
-    if pre_upgrade_job is None:
-        return jsonify({'status': 'No previous Pre-Upgrade job found.'})
-
-    post_upgrade_log_filename = os.path.basename(post_upgrade_log_file_path)
-    pre_upgrade_log_filename = post_upgrade_log_filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
-
-    # This is the complete file path to reach the file.
-    pre_upgrade_log_file_path = os.path.join(get_log_directory() + pre_upgrade_job.session_log,
-                                             pre_upgrade_log_filename)
-    if not os.path.isfile(pre_upgrade_log_file_path):
-        return jsonify({'status': 'This file "{}" cannot be found in last Pre-Upgrade job.'.format(pre_upgrade_log_filename)})
-
-    post_upgrade_log_file_path = os.path.join(get_log_directory(), post_upgrade_log_file_path)
-    if not os.path.isfile(post_upgrade_log_file_path):
-        return jsonify({'status': 'The Post-Upgrade log, "{}" cannot be found anymore.'.format(post_upgrade_log_filename)})
-
-    file_diff = generate_file_diff(pre_upgrade_log_file_path, post_upgrade_log_file_path)
-
-    data = [
-        {'file1': pre_upgrade_log_filename,
-         'file1_created_time': get_datetime_string(pre_upgrade_job.created_time),
-         'file2': post_upgrade_log_filename,
-         'file2_created_time': get_datetime_string(install_job_history.created_time),
-         'insertions': file_diff.count('ins style'),
-         'deletions': file_diff.count('del style'),
-         'file_diff': file_diff}
-    ]
+    data = [{'file_diff_contents': file_diff_contents}]
 
     return jsonify(**{'data': data})
 
@@ -2694,7 +2672,7 @@ def api_get_hosts_by_region(region_id, role, software):
         host_roles = [] if host.roles is None else host.roles.split(',')
         if not selected_roles or any(role in host_roles for role in selected_roles):
             if host.software_platform is not None and host.software_version is not None:
-                host_platform_software = host.software_platform + ' ' + host.software_version
+                host_platform_software = host.software_platform + ' (' + host.software_version + ')'
             else:
                 host_platform_software = 'Unknown'
 
@@ -2783,37 +2761,38 @@ def check_host_reachability():
         db_session = DBSession()
         jump_host = get_jump_host_by_id(db_session=db_session, id=jump_host_id)
         if jump_host is not None:
-            url = make_url(connection_type=jump_host.connection_type, username=jump_host.username,
-                           password=jump_host.password, host_or_ip=jump_host.host_or_ip,
+            url = make_url(connection_type=jump_host.connection_type, host_username=jump_host.username,
+                           host_password=jump_host.password, host_or_ip=jump_host.host_or_ip,
                            port_number=jump_host.port_number)
             urls.append(url)
     
     db_session = DBSession()
     # The form is in the edit mode and the user clicks Validate Reachability
-    # If there is no password specified, try get it from the database.
+    # If there is no password specified, get it from the database.
     if password == '':
         host = get_host(db_session, hostname)
         if host is not None:
             password = host.connection_param[0].password
-            
-    default_username = None
-    default_password = None
+
     system_option = SystemOption.get(db_session)
     if system_option.enable_default_host_authentication:
-        default_username = system_option.default_host_username
-        default_password = system_option.default_host_password
+        if not is_empty(system_option.default_host_username) and not is_empty(system_option.default_host_password):
+            if system_option.default_host_authentication_choice == DefaultHostAuthenticationChoice.ALL_HOSTS or \
+                (system_option.default_host_authentication_choice ==
+                    DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD and
+                    is_empty(username) and is_empty(password)):
+                username = system_option.default_host_username
+                password = system_option.default_host_password
                 
     url = make_url(
         connection_type=connection_type,
-        username=username, 
-        password=password, 
+        host_username=username,
+        host_password=password,
         host_or_ip=host_or_ip, 
-        port_number=port_number,
-        default_username=default_username,
-        default_password=default_password)
+        port_number=port_number)
     urls.append(url)
     
-    return jsonify({'status': 'OK'}) if is_connection_valid(platform, urls) else jsonify({'status': 'Failed'})
+    return jsonify({'status': 'OK'}) if is_connection_valid(hostname, urls) else jsonify({'status': 'Failed'})
 
 
 @app.route('/api/get_software_package_upgrade_list/hosts/<hostname>/release/<target_release>')
@@ -3030,7 +3009,11 @@ def user_preferences():
     else:
         preferences = user.preferences[0]
         form.cco_username.data = preferences.cco_username
-       
+
+        if user.preferences[0].cco_password != None:
+            form.password_placeholder = 'Use Password on File'
+        else:
+            form.password_placeholder = 'No Password Specified'
 
     return render_template('csm_client/preferences.html', form=form,
                            platforms_and_releases=get_platforms_and_releases_dict(db_session))
@@ -3207,6 +3190,51 @@ def is_smu_applicable(host_packages, required_package_bundles):
             return False
 
     return True
+
+
+@app.route('/api/get_ddts_details/ddts_id/<ddts_id>')
+@login_required
+def api_get_ddts_details(ddts_id):
+    username = Preferences.get(DBSession(), current_user.id).cco_username
+    password = Preferences.get(DBSession(), current_user.id).cco_password
+    bsh = BugServiceHandler(username, password, ddts_id)
+    try:
+        bug_info = bsh.get_bug_info()
+    except Exception:
+        logger.exception('api_get_ddts_details hit exception')
+        return jsonify(**{'data':{'ErrorMsg': 'Could not retrieve bug information.'}})
+
+    info = {}
+
+    statuses = {'O' : 'Open',
+                'F' : 'Fixed',
+                'T' : 'Terminated'}
+
+    severities = {'1' : "1 Catastrophic",
+                  '2' : "2 Severe",
+                  '3' : "3 Moderate",
+                  '4' : "4 Minor",
+                  '5' : "5 Cosmetic",
+                  '6' : "6 Enhancement"}
+
+    info['status'] = statuses[get_json_value(bug_info, 'status')] if get_json_value(bug_info, 'status') in statuses else get_json_value(bug_info, 'status')
+    info['product'] = get_json_value(bug_info, 'product')
+    info['severity'] = severities[get_json_value(bug_info, 'severity')] if get_json_value(bug_info, 'severity') in severities else get_json_value(bug_info, 'severity')
+    info['headline'] = get_json_value(bug_info, 'headline')
+    info['support_case_count'] = get_json_value(bug_info, 'support_case_count')
+    info['last_modified_date'] = get_json_value(bug_info, 'last_modified_date')
+    info['bug_id'] = get_json_value(bug_info, 'bug_id')
+    info['created_date'] = get_json_value(bug_info, 'created_date')
+    info['duplicate_of'] = get_json_value(bug_info, 'duplicate_of')
+    info['description'] = get_json_value(bug_info, 'description').replace('\n', '<br>') if get_json_value(bug_info, 'description') else None
+
+    info['known_affected_releases'] = get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_affected_releases') else None
+    info['known_fixed_releases'] = get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_fixed_releases') else None
+
+    info['ErrorDescription'] = get_json_value(bug_info, 'ErrorDescription')
+    info['SuggestedAction'] = get_json_value(bug_info, 'SuggestedAction')
+
+    return jsonify(**{'data': info})
 
 
 @app.route('/api/get_smu_details/smu_id/<smu_id>')

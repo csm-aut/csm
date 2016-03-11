@@ -69,6 +69,9 @@ def create_tar_file():
 @login_required
 def api_create_tar_job():
     db_session = DBSession()
+
+    form = CreateTarForm(request.form)
+
     server_id = request.args.get('server')
     server_directory = request.args.get('server_directory')
     source_tars = request.args.getlist('source_tars[]')
@@ -160,4 +163,4 @@ def get_sp_files_from_csm_repository():
 
 
 class CreateTarForm(Form):
-    new_tar_name = StringField('New File Name', [required(), Length(max=30)])
+    new_tar_name = StringField('New Tar File Name', [required(), Length(max=30)])

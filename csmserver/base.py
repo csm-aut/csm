@@ -1,4 +1,4 @@
-# =============================================================================
+#=============================================================================
 # Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
@@ -28,6 +28,7 @@ from models import Server
 
 from models import JumpHost
 from models import SystemOption
+from models import CustomCommandProfile
 
 from utils import concatenate_dirs
 from utils import is_empty
@@ -37,6 +38,9 @@ from constants import get_temp_directory
 
 from constants import get_log_directory
 from constants import get_migration_directory
+
+from common import get_user_by_id
+from constants import DefaultHostAuthenticationChoice
 
 
 class Context(object):
@@ -53,9 +57,14 @@ class Context(object):
 
 
 class ConnectionContext(Context):
-    def __init__(self, host):
+    def __init__(self, db_session, host):
         Context.__init__(self)
         self.host = host
+        self.db_session = db_session
+
+    @property
+    def hostname(self):
+        return self.host.hostname
 
     def load_data(self, key):
         return self.host.context[0].data.get(key)
@@ -68,6 +77,9 @@ class ConnectionContext(Context):
 
     @property
     def host_urls(self):
+        return self.make_urls()
+
+    def make_urls(self, preferred_host_username=None, preferred_host_password=None):
         urls = []
 
         if len(self.host.connection_param) > 0:
@@ -81,20 +93,30 @@ class ConnectionContext(Context):
                     if jump_host is not None:
                         jump_host_url = make_url(
                             connection_type=jump_host.connection_type,
-                            username=jump_host.username,
-                            password=jump_host.password,
+                            host_username=jump_host.username,
+                            host_password=jump_host.password,
                             host_or_ip=jump_host.host_or_ip,
                             port_number=jump_host.port_number)
                 except:
                     pass
 
-            default_username = None
-            default_password = None
-            system_option = SystemOption.get(self.db_session)
+            host_username = connection.username
+            host_password = connection.password
 
-            if system_option.enable_default_host_authentication:
-                default_username = system_option.default_host_username
-                default_password = system_option.default_host_password
+            if not is_empty(preferred_host_username) and not is_empty(preferred_host_password):
+                host_username = preferred_host_username
+                host_password = preferred_host_password
+            else:
+                system_option = SystemOption.get(self.db_session)
+                if system_option.enable_default_host_authentication:
+                    if not is_empty(system_option.default_host_username) and not is_empty(system_option.default_host_password):
+                        if system_option.default_host_authentication_choice == DefaultHostAuthenticationChoice.ALL_HOSTS or \
+                            (system_option.default_host_authentication_choice ==
+                                DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD and
+                                is_empty(host_username) and
+                                is_empty(host_password)):
+                            host_username = system_option.default_host_username
+                            host_password = system_option.default_host_password
 
             for host_or_ip in connection.host_or_ip.split(','):
                 for port_number in connection.port_number.split(','):
@@ -104,12 +126,10 @@ class ConnectionContext(Context):
 
                     host_urls.append(make_url(
                         connection_type=connection.connection_type,
-                        username=connection.username,
-                        password=connection.password,
+                        host_username=host_username,
+                        host_password=host_password,
                         host_or_ip=host_or_ip,
-                        port_number=port_number,
-                        default_username=default_username,
-                        default_password=default_password))
+                        port_number=port_number))
 
                     urls.append(host_urls)
 
@@ -118,9 +138,8 @@ class ConnectionContext(Context):
 
 class SoftwareContext(ConnectionContext):
     def __init__(self, db_session, host):
-        ConnectionContext.__init__(self, host)
+        ConnectionContext.__init__(self, db_session, host)
         self.host = host
-        self.db_session = db_session
 
         self.committed_cli = None
         self.active_cli = None
@@ -154,8 +173,19 @@ class InstallContext(SoftwareContext):
         SoftwareContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
+
         self._custom_commands = []
-    
+        custom_command_profile_ids = self.install_job.custom_command_profile_id
+        if custom_command_profile_ids:
+            for id in custom_command_profile_ids.split(','):
+                profile = self.db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == id).first()
+                if profile:
+                    for command in profile.command_list.split(','):
+                        if command not in self._custom_commands:
+                            self._custom_commands.append(command)
+
+
+
     @property
     def software_packages(self):
         return self.install_job.packages.split(',')
@@ -190,6 +220,16 @@ class InstallContext(SoftwareContext):
             self._operation_id = int(value)
         except Exception:
             self._operation_id = -1
+
+    @property
+    def host_urls(self):
+        system_option = SystemOption.get(self.db_session)
+        if system_option.enable_user_credential_for_host:
+            user = get_user_by_id(self.db_session, self.install_job.user_id)
+            if user is not None:
+                return self.make_urls(user.username, user.host_password)
+
+        return self.make_urls()
 
     @property 
     def server_repository_url(self):
@@ -252,8 +292,9 @@ class InstallContext(SoftwareContext):
 
 
 class TestConnectionContext(Context):
-    def __init__(self, urls):
+    def __init__(self, hostname, urls):
         Context.__init__(self)
+        self.hostname = hostname
         self.urls = urls
 
     @property
@@ -266,19 +307,3 @@ class TestConnectionContext(Context):
     @property
     def host_urls(self):
         return self.urls
-
-
-class BaseHandler(object):
-    def execute(self, ctx):
-        raise NotImplementedError("Children must override execute")
-
-
-class BaseConnection(object):
-    def login(self):       
-        raise NotImplementedError("Children must override login")
-    
-    def send_command(self):
-        raise NotImplementedError("Children must override send_command")
-    
-    def logout(self):
-        raise NotImplementedError("Children must override logout")

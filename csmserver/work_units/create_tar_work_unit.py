@@ -112,19 +112,17 @@ class CreateTarWorkUnit(WorkUnit):
                     else:
                         server_impl.upload_file(tarname + '.tar', new_tar_name + ".tar", sub_directory=server_directory)
 
-
-                self.create_tar_job.set_status('Removing temporary directories.')
-                self.db_session.commit()
                 shutil.rmtree(temp_path, onerror=self.handleRemoveReadonly)
                 self.create_tar_job.set_status(JobStatus.COMPLETED)
                 self.db_session.commit()
 
             except Exception:
-                shutil.rmtree(temp_path, onerror=self.handleRemoveReadonly)
-                logger.exception('Exception while creating %s requested by %s - job id = %s',
-                                  new_tar_name, created_by, self.job_id)
                 self.create_tar_job.set_status(JobStatus.FAILED)
                 self.db_session.commit()
+                logger.exception('Exception while creating %s requested by %s - job id = %s',
+                                  new_tar_name, created_by, self.job_id)
+                shutil.rmtree(temp_path, onerror=self.handleRemoveReadonly)
+                os.remove(temp_path + '.tar')
 
         finally:
             self.db_session.close()

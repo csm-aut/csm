@@ -103,7 +103,7 @@ $(function() {
         var additional_packages = sp_file_selector.get_selected_items();
         var source_tars = file_selector.get_selected_items();
         var new_tar_name = $('#new_tar_name').val();
-        var acceptable_string = get_acceptable_string(new_tar_name);
+        var acceptable_string = get_acceptable_string(new_tar_name).trim();
         var job_id;
 
 
@@ -111,9 +111,13 @@ $(function() {
             var message = get_acceptable_string_message('Filename', new_tar_name, acceptable_string);
             bootbox.confirm(message, function(result) {
                 if (result) {
-                    $('#new_tar_name').val(acceptable_string);
+                    $('#new_tar_name').val(acceptable_string.trim());
                 }
             });
+            browse_spinner.hide();
+            return false;
+        } else if (new_tar_name.trim() == '') {
+            bootbox.alert("New Tar File Name is required.");
             browse_spinner.hide();
             return false;
         }

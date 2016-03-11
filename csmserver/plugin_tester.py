@@ -137,7 +137,8 @@ def plugin_list(platform, phase, detail):
 @cli.command("run", help="Run specific plugin on the device.", short_help="Run plugin")
 @click.option("--url", multiple=True, required=True, envvar='CSMPLUGIN_URLS', type=URL(),
               help='The connection url to the host (i.e. telnet://user:pass@hostname). '
-                   'The --url option can be repeated to define multiple jumphost urls.')
+                   'The --url option can be repeated to define multiple jumphost urls. '
+                   'If no --url option provided the CSMPLUGIN_URLS environment variable is used.')
 @click.option("--phase", required=True, type=click.Choice(_PHASES),
               help="An install phase to run the plugin for.")
 @click.option("--cmd", multiple=True, default=[],
@@ -189,7 +190,7 @@ def plugin_run(url, phase, cmd, log_dir, package, repository_url, plugin_name):
     pm = PluginManager()
     pm.run(ctx, plugin_name)
 
-    click.echo("\n Plugin execution finieshd.\n")
+    click.echo("\n Plugin execution finished.\n")
     click.echo("Log files dir: {}".format(log_dir))
     click.echo(" {} - device session log".format(session_filename))
     click.echo(" {} - plugin execution log".format(plugins_filename))

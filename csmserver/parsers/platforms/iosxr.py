@@ -41,9 +41,6 @@ class BaseCLIPackageParser(object):
         
         if install_active_cli is not None:
             active_packages = self.parseContents(install_active_cli, PackageState.ACTIVE)
-            
-            # Derive the software platform and release from the active packages
-            self.set_platform_and_release(host, active_packages)
         
         if install_committed_cli is not None:
             committed_packages = self.parseContents(install_committed_cli, PackageState.ACTIVE_COMMITTED)                               
@@ -95,13 +92,13 @@ class BaseCLIPackageParser(object):
             if found:
                 line = line.strip()
 
-                if (':' in line):
+                if ':' in line:
                     location, name = line.split(':')
                 else:
                     location = ''
                     name = line
 
-                #skip anything after the blank line
+                # skip anything after the blank line
                 if len(line) == 0:
                     break
                 

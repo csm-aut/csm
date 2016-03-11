@@ -8,7 +8,7 @@ Caller must provide the following WTForms elements with the following IDs
 {% from 'host/common.html' import edit_field %}
 {% from 'share/select_server.html' import select_server %}
 
-{% macro make_conform_dialog(cco_lookup_enabled, server, server_directory, server_time, install_actions, software_packages, scheduled_time, scheduled_time_UTC) %}
+{% macro make_conform_dialog(cco_lookup_enabled, server, server_directory, server_time, install_actions, software_packages, custom_command_profile, scheduled_time, scheduled_time_UTC) %}
 
 <div id="make-conform-dialog" data-hostname="" data-cco-lookup-enabled="{{ cco_lookup_enabled }}" data-server-time="{{ server_time }}" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -54,6 +54,9 @@ Caller must provide the following WTForms elements with the following IDs
                                         </div>
                                     </div>
                                 </div>
+				                <div id="custom-command-profile-panel">
+                                	{{ edit_field(custom_command_profile, class="form-control", field_width="col-sm-6", style="width: 100%") }}
+				                </div>
 
                             </div>
                             <div class="tab-pane" id="dialog_server_repository">

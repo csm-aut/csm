@@ -133,11 +133,14 @@ class PluginManager(object):
         try:
             self.log("Device Discovery Pending")
             device.discovery()
+
         except condoor.ConnectionError as e:
             self.csm.post_status(e.message)
             return False
-        self.log("Platform detected: {}".format(device.family))
-        #"""
+
+        self.csm.save_data('udi', device.udi)
+        self.csm.save_data('device_info', device.device_info)
+
         try:
             self.log("Device Connection Pending")
             device.connect()
@@ -467,7 +470,6 @@ class PluginManager(object):
     def file_name_from_cmd(self, cmd, phase=None):
         #filename = re.sub(r"\s+", '-', cmd)
         filename = re.sub(r"\W+", '-', cmd)
-        filename += "." + (str(self.phase).upper() if phase is None else str(phase).upper())
         filename += ".txt"
         return filename
 

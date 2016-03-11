@@ -23,9 +23,14 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from wtforms import Form, validators
-from wtforms import TextAreaField, StringField, TextField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
+from wtforms import RadioField
+from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
 from wtforms.validators import Length, required
-from constants import Platform, ConnectionType, ServerType, UserPrivilege, SMTPSecureConnection
+from constants import ConnectionType
+from constants import ServerType
+from constants import UserPrivilege
+from constants import SMTPSecureConnection
+from constants import DefaultHostAuthenticationChoice
 
 
 class LoginForm(Form):
@@ -57,9 +62,6 @@ class UserForm(Form):
 
 class HostForm(Form):
     hostname = StringField('Hostname', [required(), Length(max=30)])
-    platform = SelectField('Platform', coerce=str,
-                           choices=[(Platform.ASR9K, Platform.ASR9K),
-                                    (Platform.CRS,Platform.CRS)])
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     roles = StringField('Roles')
     host_or_ip = StringField('Terminal Server or Mgmt. IP', [required(), Length(max=30)])
@@ -96,6 +98,7 @@ class HostScheduleInstallForm(ServerDialogForm):
     scheduled_time = StringField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
     software_packages = TextAreaField('Software Packages')
+    custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])
     dependency = SelectField('Dependency', coerce=str, choices=[(-1, 'None')])
        
     install_history_dialog_host = SelectField('Host', coerce=str, choices=[('', '')])
@@ -160,13 +163,19 @@ class AdminConsoleForm(Form):
     install_history_per_host = IntegerField('Install History Per Host', [validators.NumberRange(min=10, max=1000)])
     download_history_per_user = IntegerField('SMU/SP Download History Per User', [validators.NumberRange(min=10, max=100)])
     total_system_logs = IntegerField('Total System Logs', [validators.NumberRange(min=100, max=100000)])
-    enable_default_host_authentication = HiddenField("Enable Default Host Authentication")
+    enable_default_host_authentication = HiddenField("Use Default Host Authentication")
     default_host_username = StringField('Default Host Username')
     default_host_password = PasswordField('Default Host Password')
+    default_host_authentication_choice = RadioField('Apply To',
+                                 choices=[(DefaultHostAuthenticationChoice.ALL_HOSTS,
+                                           'All Hosts'),
+                                          (DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD,
+                                           'Hosts with no Specified Username and Password')])
     enable_ldap_auth = HiddenField("Enable LDAP")
     ldap_server_url = StringField('LDAP Server URL')
     enable_cco_lookup = HiddenField("Enable CCO Connection")
     cco_lookup_time = HiddenField("Last Retrieval")
+    enable_user_credential_for_host = HiddenField("Use CSM Server User Credential")
 
 
 class SMTPForm(Form):

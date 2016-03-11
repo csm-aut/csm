@@ -52,6 +52,8 @@ from models import Package
 from models import InstallJob
 from models import SMUMeta
 from models import DownloadJob
+from models import InstallJobHistory
+from models import CustomCommandProfile
 from models import get_download_job_key_dict
 
 from database import DBSession
@@ -141,6 +143,23 @@ def fill_default_region(choices, region):
             choices.append((region.id, region.name))
     except:
         logger.exception('fill_default_region() hits exception')
+
+
+def fill_custom_command_profiles(choices):
+    del choices[:]
+    choices.append((-1, ''))
+
+    db_session = DBSession()
+    try:
+        profiles = get_custom_command_profiles_list(db_session)
+
+        # TODO remove this line
+        if profiles is not None:
+            for profile in profiles:
+                choices.append((profile.id, profile.profile_name))
+
+    except:
+        logger.exception('fill_custom_command_profiles() hit exception')
 
 
 def get_last_successful_inventory_elapsed_time(host):
@@ -233,6 +252,9 @@ def get_region_by_id(db_session, region_id):
 def get_region_list(db_session):
     return db_session.query(Region).order_by(Region.name.asc()).all()
 
+def get_custom_command_profiles_list(db_session):
+    return db_session.query(CustomCommandProfile).order_by(CustomCommandProfile.profile_name.asc()).all()
+
 
 def get_user(db_session, username):
     return db_session.query(User).filter(User.username == username).first()
@@ -314,7 +336,8 @@ def get_first_install_action(db_session, install_action):
 
 def create_or_update_install_job(
     db_session, host_id, install_action, scheduled_time, software_packages=None,
-    server=-1, server_directory='', dependency=0, pending_downloads=None, install_job=None, best_effort_config=0, config_filename=''):
+
+    server=-1, server_directory='', custom_command_profile=-1, dependency=0, pending_downloads=None, install_job=None, best_effort_config=0, config_filename=''):
 
     # This is a new install_job
     if install_job is None:
@@ -370,6 +393,9 @@ def create_or_update_install_job(
     install_job.dependency = dependency if dependency > 0 else None
     install_job.created_by = current_user.username
     install_job.user_id = current_user.id
+
+    if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE:
+        install_job.custom_command_profile_id = custom_command_profile if custom_command_profile else None
 
     # Resets the following fields
     install_job.status = None
@@ -455,6 +481,12 @@ def is_pending_on_download(db_session, filename, server_id, server_directory):
 
     return False
 
+
+def get_last_successful_pre_upgrade_job(db_session, host_id):
+    return db_session.query(InstallJobHistory). \
+        filter((InstallJobHistory.host_id == host_id),
+               and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
+        order_by(InstallJobHistory.status_time.desc()).first()
 
 def get_download_job_key(user_id, filename, server_id, server_directory):
     return "{}{}{}{}".format(user_id, filename, server_id, server_directory)

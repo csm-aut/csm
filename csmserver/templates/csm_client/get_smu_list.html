@@ -12,6 +12,9 @@
         var browse_spinner = $('#browse-spinner');
         browse_spinner.hide();
 
+        var ddts_spinner = $('#ddts-spinner');
+        ddts_spinner.hide();
+
         var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}" == 'True'
         var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
         $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
@@ -87,7 +90,7 @@
                 "targets": 4,
                 "data": 'ddts',
                 "render": function(data, type, row) {
-                    return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+                    return '<a class="show-ddts-details" ddts_id="' + data + '" href="javascript://">' + data + '</a>';
                 }
             }, {
                 "targets": 5,
@@ -165,7 +168,7 @@
                 "targets": 4,
                 "data": 'ddts',
                 "render": function(data, type, row) {
-                    return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+                    return '<a class="show-ddts-details" ddts_id="' + data + '" href="javascript://">' + data + '</a>';
                 }
             }, {
                 "targets": 5,
@@ -288,14 +291,6 @@
           tar_table.api().ajax.url("{{ url_for('api_get_tar_list', platform=platform, release=release) }}" +
             "?filter=" + filter_option).load();
         }
-
-        smu_table.on("click", ".show-ddts-details", function() {
-            open_ddts_url($(this).attr('ddts_url'));
-        });
-
-        sp_table.on("click", ".show-ddts-details", function() {
-            open_ddts_url($(this).attr('ddts_url'));
-        });
 
         function open_ddts_url(url) {
             if (cco_lookup_enabled) {
@@ -454,12 +449,32 @@
             display_smu_details_dialog($(this).attr('smu_id'));
         });
 
+        $("#smu-datatable").on("click", ".show-ddts-details", function() {
+            display_ddts_details_dialog($(this).attr('ddts_id'));
+        });
+
+        $("#sp-datatable").on("click", ".show-ddts-details", function() {
+            display_ddts_details_dialog($(this).attr('ddts_id'));
+        });
+
         function display_smu_details_dialog(smu_id) {
             init_history(smu_id);
             $('#display-smu-details-dialog').modal({
                 show: true
             })
             display_smu_details($('#smu-details-table'), $('#smu-name-title'), smu_id)
+        }
+
+        function display_ddts_details_dialog(ddts_id) {
+            if(cco_lookup_enabled){
+                $('#display-ddts-details-dialog').modal({
+                    show: true
+                })
+                ddts_spinner.show();
+                display_ddts_details($('#ddts-details-table'), $('#ddts-name-title'), ddts_id, ddts_spinner)
+            } else {
+                bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing CCO connection.");
+            }
         }
 
         $("#move-back").on("click", function() {
@@ -484,6 +499,9 @@
     td {
         white-space: nowrap;
     }
+    .modal td.value {
+        white-space: normal;
+    }
 </style>
 {% endblock extra_head %}
 
@@ -505,6 +523,37 @@
                 <div class="modal-body">
                     <div style="height:350px; overflow-y: scroll;">
                         <table class="table table-striped" id="smu-details-table">
+                            <thead>
+                                <tr>
+                                    <th>Field Name</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="display-ddts-details-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <span id="ddts-spinner">
+                        <img src="{{ url_for('static', filename='spinner.gif') }}">
+                    </span>
+                    <h4>
+                        <center><span id="ddts-name-title"></span></center>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div style="height:350px; overflow-y:scroll; word-wrap:break-word;">
+                        <table class="table table-striped" id="ddts-details-table">
                             <thead>
                                 <tr>
                                     <th>Field Name</th>

@@ -105,7 +105,7 @@
             "order": [
                 [0, "asc"]
             ],
-            "pageLength": host_datatable_page_length,
+            "pageLength": parseInt(host_datatable_page_length),
             "columnDefs": [{
                 "targets": 0,
                 "data": 'hostname',
@@ -444,8 +444,8 @@
                                 <th>Hostname</th>
                                 <th>Region</th>
                                 <th>TS or IP</th>
-                                <th>Platform</th>
-                                <th>Software</th>
+                                <th>Hardware</th>
+                                <th>Platform<br>Software</th>
                                 <th>Last<br> Successful<br> Retrieval</th>
                                 <th>Action</th>
                             </tr>

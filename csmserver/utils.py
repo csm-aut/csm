@@ -25,6 +25,7 @@
 from os import listdir, sep, path, makedirs
 from os.path import isfile, join
 from diff_match_patch import diff_match_patch
+from urlparse import urlparse
 
 import re
 import sys
@@ -166,8 +167,7 @@ def get_file_list(directory, filter=None):
     return sorted(result_list)
 
 
-def make_url(connection_type, username, password, host_or_ip, port_number,
-             default_username=None, default_password=None):
+def make_url(connection_type, host_username, host_password, host_or_ip, port_number):
     """
     Creates a connection URL such as
 
@@ -181,36 +181,28 @@ def make_url(connection_type, username, password, host_or_ip, port_number,
 
     """
     url = '{}://'.format(connection_type)
-    
-    no_username = False
-    no_password = False
-    
-    # Set the default username and password only if both username and password have not been specified
-    if is_empty(username) and is_empty(password):
-        if default_username is not None:
-            username = default_username
-        if default_password is not None:
-            password = default_password
-    
-    if not is_empty(username):
-        url += '{}'.format(username)
+
+    no_host_username = False
+    no_host_password = False
+
+    if not is_empty(host_username):
+        url += '{}'.format(host_username)
     else:
-        no_username = True
-        
-    if not is_empty(password):
-        url += ':{}'.format(password)
+        no_host_username = True
+
+    if not is_empty(host_password):
+        url += ':{}'.format(host_password)
     else:
-        no_password = True
-           
-    if no_username and no_password:
+        no_host_password = True
+
+    if no_host_username and no_host_password:
         url += '{}'.format(host_or_ip)
     else:
         url += '@{}'.format(host_or_ip)
-    
-    # It is possible there may be multiple ports separated by comma
+
     if not is_empty(port_number):
-        url += ':{}'.format(port_number) 
-  
+        url += ':{}'.format(port_number)
+
     return url
 
 
@@ -237,11 +229,15 @@ def trim_last_slash(s):
 
 def get_base_url(url):
     """
-    Returns the base URL including the port numbetr
-    e.g. (localhost:50000)
+    Returns the base URL including the port number
+    e.g. (http://localhost:5000)
     """
-    url = url.replace('http://', '')
-    return 'http://' + url[:url.find('/')] 
+    parsed = urlparse(url)
+    base_url = "{}://{}".format(parsed.scheme, parsed.hostname)
+    if parsed.port is not None:
+        base_url += ":{}".format(parsed.port)
+
+    return base_url
 
 
 def is_empty(obj):
@@ -303,13 +299,8 @@ def generate_file_diff(filename1, filename2):
     diff = dmp.diff_main(text1, text2)
 
     dmp.diff_cleanupSemantic(diff)
-    ds = dmp.diff_prettyHtml(diff)
 
-    # Do some cleanup work here
-    ds = ds.replace(' ', '&nbsp;')
-    ds = ds.replace('ins&nbsp;style', 'ins style')
-    ds = ds.replace('del&nbsp;style', 'del style')
-    return ds
+    return dmp.diff_prettyHtml(diff)
 
 
 def generate_ip_range(start_ip, end_ip):
@@ -334,6 +325,22 @@ def generate_ip_range(start_ip, end_ip):
 
     return ip_range
 
+
+def get_json_value(json_object, key):
+    if isinstance(json_object, dict):
+        for k, v in json_object.items():
+            if k == key:
+                return v
+            value = get_json_value(v, key)
+            if value is not None:
+                return value
+    elif isinstance(json_object, list):
+        for v in json_object:
+            value = get_json_value(v, key)
+            if value is not None:
+                return value
+    else:
+        return None
 
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

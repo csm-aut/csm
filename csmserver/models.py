@@ -29,7 +29,6 @@ from sqlalchemy.ext import mutable
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, synonym
 
-from utils import make_url
 from utils import is_empty
 from salts import encode, decode
 
@@ -38,6 +37,7 @@ from database import DBSession
 from database import STRING1, STRING2
 from database import CURRENT_SCHEMA_VERSION
 
+from constants import UNKNOWN
 from constants import JobStatus
 from constants import UserPrivilege
 from constants import ProxyAgent
@@ -95,6 +95,9 @@ class User(Base):
     fullname = Column(String(100), nullable=False)
     email = Column(String(200), nullable=False)
     active = Column(Boolean, default=True)
+
+    # host password is used when CSM Server user credential is used for host login.
+    _host_password = Column('host_password', String(100))
     
     # Note the lack of parenthesis after datetime.utcnow.  This is the correct way
     # so SQLAlchemhy can make a run time call during row insertion.
@@ -133,7 +136,19 @@ class User(Base):
     def _set_password(self, password):
         if password:
             password = password.strip()
+
+        self.host_password = password
         self._password = generate_password_hash(password)
+
+    @property
+    def host_password(self):
+        global encrypt_dict
+        return decode(encrypt_dict, self._host_password)
+
+    @host_password.setter
+    def host_password(self, value):
+        global encrypt_dict
+        self._host_password = encode(encrypt_dict, value)
 
     password_descriptor = property(_get_password, _set_password)
     password = synonym('_password', descriptor=password_descriptor)
@@ -159,13 +174,13 @@ class User(Base):
         ldap_authenticated = False
 
         try:
-            if not is_empty(username) and not is_empty(password):
+            if system_option.enable_ldap_auth and not is_empty(username) and not is_empty(password):
                 ldap_authenticated = ldap_auth(system_option, username, password)
         except CSMLDAPException:
             # logger.exception("authenticate hit exception")
             pass
         
-        user = query(cls).filter(cls.username==username).first()
+        user = query(cls).filter(cls.username == username).first()
         if ldap_authenticated:
             if user is None:
                 # Create a LDAP user with Network Administrator privilege
@@ -182,7 +197,15 @@ class User(Base):
         
         if not user.active:
             return user, False
-        
+
+        authenticated = user.check_password(password)
+
+        # This is for backward compatibility.  Existing users before the feature "Use CSM Server User Credential"
+        # will need to have their password encrypted for device installation authentication.
+        if authenticated and is_empty(user.host_password):
+            user.host_password = password
+            db_session.commit()
+
         return user, user.check_password(password)
     
     @staticmethod
@@ -231,9 +254,11 @@ class Host(Base):
     
     id = Column(Integer, primary_key=True)
     hostname = Column(String(50), nullable=False, index=True)
-    platform = Column(String(20), nullable=False)
-    software_platform = Column(String(20))
-    software_version = Column(String(20))   
+    family = Column(String(20), default=UNKNOWN)
+    platform = Column(String(20), default=UNKNOWN)
+    software_platform = Column(String(20), default=UNKNOWN)
+    software_version = Column(String(20))
+    os_type = Column(String(20))
     roles = Column(String(100))
     region_id = Column(Integer, ForeignKey('region.id'))
     proxy_agent = Column(String(30), default=ProxyAgent.CSM_SERVER)
@@ -274,6 +299,11 @@ class Host(Base):
                                        order_by="desc(InstallJobHistory.created_time)",
                                        backref="host",
                                        cascade="all, delete, delete-orphan")
+
+    UDIs = relationship("UDI",
+                        order_by="asc(UDI.name)",
+                        backref="host",
+                        cascade="all, delete, delete-orphan")
 
     def get_json(self):
         result = {}
@@ -343,6 +373,17 @@ class ConnectionParam(Base):
     def password(self, value):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
+
+class UDI(Base):
+    __tablename__ = 'udi'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50))
+    description = Column(String(100))
+    pid = Column(String(30))
+    vid = Column(String(10))
+    sn = Column(String(30))
+
+    host_id = Column(Integer, ForeignKey('host.id'))
 
 
 class JumpHost(Base):
@@ -454,6 +495,7 @@ class InstallJob(Base):
     
     host_id = Column(Integer, ForeignKey('host.id'))     
     user_id = Column(Integer, ForeignKey('user.id'))
+    custom_command_profile_id = Column(String(20))
 
     # only for install action post-migrate
     best_effort_config_applying = Column(Integer)
@@ -742,12 +784,14 @@ class SystemOption(Base):
     enable_default_host_authentication = Column(Boolean, default=False)
     default_host_username = Column(String(50))
     _default_host_password = Column('default_host_password', String(100))
+    default_host_authentication_choice = Column(String(10), default="1")
     base_url = Column(String(100))
     enable_ldap_auth = Column(Boolean, default=False)
     enable_ldap_host_auth = Column(Boolean, default=False)
     ldap_server_url = Column(String(100))
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)
+    enable_user_credential_for_host = Column(Boolean, default=False)
     
     @property
     def default_host_password(self):
@@ -872,6 +916,14 @@ class CreateTarJob(Base):
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
+
+class CustomCommandProfile(Base):
+    __tablename__ = 'custom_command_profile'
+
+    id = Column(Integer, primary_key=True)
+    profile_name = Column(String(50))
+    command_list = Column(Text)
+    created_by = Column(String(50))
 
 Base.metadata.create_all(engine)
 

@@ -23,14 +23,21 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-from base import BaseHandler
+from handlers.loader import BaseHandler
 from parsers.loader import get_package_parser_class 
 
 import condoor
 
-from horizon.plugin_manager import PluginManager
+try:
+    from csmpe import CSMPluginManager
+    csmpe_installed = True
+except ImportError:
+    from horizon.plugin_manager import PluginManager
+    csmpe_installed = False
 
 import time
+import os
+import re
 
 
 #import logging
@@ -38,21 +45,8 @@ import time
 #        format='%(asctime)-15s %(levelname)8s: %(message)s',
 #        level=logging.DEBUG)
 
-
-class BaseConnectionHandler(BaseHandler):           
-    def execute(self, ctx):
-
-        # would be nice to get the hostname in context
-        conn = condoor.Connection('host', ctx.host_urls, log_dir=ctx.log_directory)
-        try:
-            conn.connect()
-            ctx.success = True
-        except condoor.ConnectionError as e:
-            ctx.post_status = e.message
-
-        
 class BaseInventoryHandler(BaseHandler):           
-    def execute(self, ctx):
+    def start(self, ctx):
         conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
         try:
             conn.discovery()
@@ -62,6 +56,7 @@ class BaseInventoryHandler(BaseHandler):
 
         try:
             conn.connect()
+
             if conn.os_type == "XR":
                 ctx.inactive_cli = conn.send('sh install inactive summary')
                 ctx.active_cli = conn.send('sh install active summary')
@@ -71,11 +66,7 @@ class BaseInventoryHandler(BaseHandler):
                 ctx.active_cli = conn.send('sh install active')
                 ctx.committed_cli = conn.send('sh install committed')
 
-            self.get_software(
-                ctx.host,
-                install_inactive_cli=ctx.inactive_cli,
-                install_active_cli=ctx.active_cli,
-                install_committed_cli=ctx.committed_cli)
+            self.get_software(ctx)
             ctx.success = True
 
         except condoor.GeneralError as e:
@@ -84,26 +75,32 @@ class BaseInventoryHandler(BaseHandler):
         finally:
             conn.disconnect()
 
-    def get_software(self, host, install_inactive_cli, install_active_cli, install_committed_cli):
-        package_parser_class = get_package_parser_class(host.platform)
+
+    def get_software(self, ctx):
+        package_parser_class = get_package_parser_class(ctx.host.software_platform)
         package_parser = package_parser_class()
         
         return package_parser.get_packages_from_cli(
-            host,
-            install_inactive_cli=install_inactive_cli,
-            install_active_cli=install_active_cli,
-            install_committed_cli=install_committed_cli
+            ctx.host,
+            install_inactive_cli=ctx.inactive_cli,
+            install_active_cli=ctx.active_cli,
+            install_committed_cli=ctx.committed_cli
         )
 
 
 
 class BaseInstallHandler(BaseHandler):                         
-    def execute(self, ctx):
+    def start(self, ctx):
 
-        pm = PluginManager()
+        if csmpe_installed:
+            pm = CSMPluginManager(ctx)
+        else:
+            pm = PluginManager()
         try:
-            pm.run(ctx)
+            if csmpe_installed:
+                pm.dispatch("run")
+            else:
+                pm.run(ctx)
         except condoor.GeneralError as e:
             ctx.post_status = e.message
             ctx.success = False
-

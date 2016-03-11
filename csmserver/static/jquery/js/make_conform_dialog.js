@@ -13,10 +13,15 @@ var make_conform_dialog_spinner;
 $(function() {
     make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
     make_conform_dialog_spinner.hide()
+    $('#custom-command-profile-panel').hide();
 
     var server_time_as_locale_time = convertToLocaleString($('#make-conform-dialog').attr('data-server-time'));
 
     $("#install_action").select2({});
+
+    $("#custom_command_profile").select2({
+        placeholder: 'Optional'
+    });
 
     var datetimepicker = $(".form_datetime").datetimepicker({
         format: "mm/dd/yyyy HH:ii P",
@@ -30,7 +35,12 @@ $(function() {
     $('#install_action').on('change', function(e) {
         var install_actions = $(this).val();
         if (has_one_of_these(install_actions, ['ALL'])) {
-            $("#install_action").val(['Pre-Upgrade', 'Install Add', 'Activate', 'Post-Upgrade', 'Commit']).trigger('change');
+            $("#install_action").val(['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit']).trigger('change');
+        }
+        if (has_one_of_these(install_actions, ['Pre-Upgrade', 'Post-Upgrade', 'ALL'])) {
+            $('#custom-command-profile-panel').show();
+        } else {
+            $('#custom-command-profile-panel').hide();
         }
     });
 
@@ -132,6 +142,11 @@ $(function() {
         var hostname = $('#make-conform-dialog').data('hostname');
         var install_action = $('#install_action').val();
 
+        if ($('#custom_command_profile').val() != null) {
+            var custom_command_string = $('#custom_command_profile').val().join(",");
+        } else {
+            var custom_command_string = $('#custom_command_profile').val();
+        }
 
         $.ajax({
             url: "/conformance/api/create_install_jobs",
@@ -144,7 +159,8 @@ $(function() {
                 software_packages: trim_lines($('#software_packages').val()),
                 server: $('#select_server').val(),
                 server_directory: $('#select_server_directory').val(),
-                pending_downloads: validate_object.pending_downloads
+                pending_downloads: validate_object.pending_downloads,
+                custom_command_profile: custom_command_string
             },
             success: function(data) {
                 if (data.status == 'OK') {
