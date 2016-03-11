@@ -15,31 +15,23 @@
         $(".hide-header").hide();
 
         $(".open-file-diff-dialog").on("click", function() {
-            var hostname = $(this).attr('data-hostname');
-            var record_id = $(this).attr('data-record-id');
-            var post_upgrade_file_path = $(this).attr('data-post-upgrade-file-path');
-            var diff_file_path = $(this).attr('data-diff-file-path');
-
-            get_file_diff(hostname, record_id, post_upgrade_file_path, diff_file_path);
+            get_file_diff($(this).attr('data-diff-file-path'));
         });
 
-        function get_file_diff(hostname, record_id, post_upgrade_file_path, diff_file_path) {
+        function get_file_diff(diff_file_path) {
             spinner.show();
 
             $.ajax({
-                url: "{{ url_for('api_get_session_log_file_diff', hostname=hostname) }}",
+                url: "{{ url_for('api_get_session_log_file_diff') }}",
                 dataType: 'json',
-                data: { record_id: record_id, post_upgrade_file_path: post_upgrade_file_path, diff_file_path: diff_file_path } ,
+                data: { diff_file_path: diff_file_path } ,
                 success: function(response) {
                     if (response.status != null) {
                         bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;" + response.status);
                     } else {
                         $.each(response, function(index, element) {
 
-                            $('#file1').html(element[0].file1 + ' (created on ' + convertToLocaleString(element[0].file1_created_time) + ')');
-                            $('#file2').html(element[0].file2 + ' (created on ' + convertToLocaleString(element[0].file2_created_time) + ')');
                             $('#file-diff-results').html(element[0].file_diff_contents);
-
                             $('#file-diff-dialog').modal({show:true, backdrop:'static'});
                         });
                     }
@@ -74,8 +66,6 @@
                          <img src="/static/spinner.gif"> &nbsp;&nbsp;
                     </span>
                     <h4>File Compare</h4>
-                    File 1: <span id="file1"></span><br>
-                    File 2: <span id="file2"></span><br>
                 </div>
                 <div class="modal-body">
                     <div id="file-diff-results"></div>
@@ -124,7 +114,7 @@
 
                             {% if diff_file_path | length > 0 %}
                             <td>
-                                <a class="open-file-diff-dialog" data-record-id="{{ record_id }}" data-hostname="{{ hostname }}" data-post-upgrade-file-path="{{ entry }}" data-diff-file-path="{{ diff_file_path }}" href="javascript://">
+                                <a class="open-file-diff-dialog" data-diff-file-path="{{ diff_file_path }}" href="javascript://">
                                     <img title="Compare with last Pre-Upgrade log" src="{{ url_for('static', filename='file_diff.png') }}">
                                 </a>
                             </td>
