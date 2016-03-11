@@ -37,6 +37,7 @@ from common import get_last_successful_pre_upgrade_job
 
 from utils import get_file_list
 from utils import generate_file_diff
+from filters import get_datetime_string
 
 import re
 import os
@@ -86,33 +87,23 @@ class BaseHandler(object):
             ctx.host.UDIs = [udi]
 
     def generate_post_upgrade_file_diff(self, ctx):
-        """
-        Search for the last Pre-Upgrade job and generate file diffs.
-        """
-        if not (os.path.isdir(ctx.log_directory)):
+        install_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
+        if install_job is None:
             return
 
-        pre_upgrade_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
-        if pre_upgrade_job is None:
-            return
+        self.generate_file_diff(source_file_directory=os.path.join(get_log_directory(), install_job.session_log),
+                                source_created_time=install_job.created_time,
+                                target_file_directory=ctx.log_directory,
+                                target_created_time=ctx.install_job.created_time)
 
-        source_file_directory = os.path.join(get_log_directory(), pre_upgrade_job.session_log)
-        target_file_directory = ctx.log_directory
-
-        self.generate_file_diff(source_string='PRE-UPGRADE',
-                                target_string='POST-UPGRADE',
-                                source_file_directory=source_file_directory,
-                                target_file_directory=target_file_directory)
-
-    def generate_file_diff(self, source_string, target_string, source_file_directory, target_file_directory):
+    def generate_file_diff(self, source_file_directory, source_created_time, target_file_directory, target_created_time):
         source_file_list = get_file_list(source_file_directory)
         target_file_list = get_file_list(target_file_directory)
 
         for filename in target_file_list:
-            if target_string in filename and filename.replace(target_string, source_string) in source_file_list:
+            if '.txt' in filename and filename in source_file_list:
                 target_file_path = os.path.join(target_file_directory, filename)
-                source_file_path = os.path.join(
-                    source_file_directory, filename.replace(target_string, source_string))
+                source_file_path = os.path.join(source_file_directory, filename)
 
                 if os.path.isfile(source_file_path) and os.path.isfile(target_file_path):
                     results = generate_file_diff(source_file_path, target_file_path)
@@ -129,8 +120,12 @@ class BaseHandler(object):
                         pattern = re.compile("|".join(rep.keys()))
                         results = pattern.sub(lambda m: rep[re.escape(m.group(0))], results)
 
+                        source_filename = 'File1: ' + filename + ' (created on ' + get_datetime_string(source_created_time) + ')'
+                        target_filename = 'File2: ' + filename + ' (created on ' + get_datetime_string(target_created_time) + ')'
+
                         # Add insertion and deletion status
-                        html_code = '<ins style="background:#e6ffe6;">Insertions</ins>:&nbsp;' + str(insertion_count) + \
+                        html_code = source_filename + '<br>' + target_filename + '<br><br>' + \
+                                    '<ins style="background:#e6ffe6;">Insertions</ins>:&nbsp;' + str(insertion_count) + \
                                     '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + \
                                     '<del style="background:#ffe6e6;">Deletions</del>:&nbsp;' + str(deletion_count) + \
                                     '<hr>'

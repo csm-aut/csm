@@ -2288,50 +2288,19 @@ def host_session_log(hostname, table, id):
                            is_file=os.path.isfile(log_file_path))
 
 
-@app.route('/api/get_session_log_file_diff/hostname/<hostname>')
+@app.route('/api/get_session_log_file_diff')
 @login_required
-def api_get_session_log_file_diff(hostname):
-    """
-    An example of the post_upgrade_file_path is
-        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.txt'
-    An example of the diff_file_path is
-        '172_28_98_2-2015_12_11_00_27_34-14/show-isis-neighbor-summary.POST-UPGRADE.txt.diff'
-    """
-    record_id = request.args.get("record_id")
-    post_upgrade_file_path = request.args.get("post_upgrade_file_path")
+def api_get_session_log_file_diff():
     diff_file_path = request.args.get("diff_file_path")
 
-    if is_empty(hostname) or is_empty(diff_file_path):
-        return jsonify({'status': 'Either hostname or diff file is missing.'})
-
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-
-    if host is None:
-        return jsonify({'status': 'Hostname {} does not exist.'.format(hostname)})
-
-    post_upgrade_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == record_id).first()
-    if post_upgrade_job is None:
-        return jsonify({'status': 'The Post-Upgrade job is no longer available.'})
-
-    pre_upgrade_job = get_last_successful_pre_upgrade_job(db_session, host.id)
-    if pre_upgrade_job is None:
-        return jsonify({'status': 'No previous Pre-Upgrade job found.'})
-
-    post_upgrade_filename = os.path.basename(post_upgrade_file_path)
-    pre_upgrade_filename = post_upgrade_filename.replace('POST-UPGRADE', 'PRE-UPGRADE')
+    if is_empty(diff_file_path):
+        return jsonify({'status': 'diff file is missing.'})
 
     file_diff_contents = ''
     with io.open(os.path.join(get_log_directory(), diff_file_path), "rt", encoding='latin-1') as fo:
         file_diff_contents = fo.read()
 
-    data = [
-        {'file1': pre_upgrade_filename,
-         'file1_created_time': get_datetime_string(pre_upgrade_job.created_time),
-         'file2': post_upgrade_filename,
-         'file2_created_time': get_datetime_string(post_upgrade_job.created_time),
-         'file_diff_contents': file_diff_contents}
-    ]
+    data = [{'file_diff_contents': file_diff_contents}]
 
     return jsonify(**{'data': data})
 
