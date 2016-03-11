@@ -65,7 +65,7 @@ ISO_LOCATION = "harddiskb:/"
 #ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
 #LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
 NODE = '[-|\s](\d+/(?:RS?P)?\d+/CPU\d+)'
-FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw'])
+FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
 
 MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.1'
 
@@ -337,67 +337,65 @@ class PreMigratePlugin(Plugin):
     @staticmethod
     def _ensure_updated_fpd(manager, device, packages):
 
-        # check for the FPD version, if FPD needs upgrade,
+        manager.log("Checking if FPD package is present...")
+        active_packages = device.send("show install active summary")
 
+        match = re.search("fpd", active_packages)
+
+        if not match:
+            manager.error("No FPD pie is active on device. Please install FPD pie to try again or manually upgrade your FPDs to eXR capable FPDs.")
+
+        versioninfo = device.send("show version")
+
+        match = re.search("[Vv]ersion\s+?(\d\.\d\.\d)", versioninfo)
+
+        if not match:
+            manager.error("Failed to recognize release version number. Please check session.log.")
+
+        release_version = match.group(1)
+
+        if release_version < MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD:
+
+            manager.log("Checking if FPD SMU has been installed...")
+            pie_packages = []
+            for package in packages:
+                if package.find(".pie") > -1:
+                    pie_packages.append(package)
+
+            if len(pie_packages) != 1:
+                manager.error("Please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must end with '.pie'")
+
+            name_of_fpd_smu = pie_packages[0].split(".pie")[0]
+
+            install_summary = device.send("show install active summary")
+
+            match = re.search(name_of_fpd_smu, install_summary)
+
+            if not match:
+
+                #Step 1: Install add the FPD SMU
+                manager.log("FPD upgrade - install add the FPD SMU...")
+                PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
+
+                #Step 2: Install activate the FPD SMU
+                manager.log("FPD upgrade - install activate the FPD SMU...")
+                PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
+
+
+                #Step 3: Install commit the FPD SMU
+                manager.log("FPD upgrade - install commit the FPD SMU...")
+                PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
+
+            else:
+                manager.log("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
+
+        # check for the FPD version, if FPD needs upgrade,
+        manager.log("Checking FPD version...")
         location_to_subtypes_need_upgrade = PreMigratePlugin._check_fpd(device)
 
         print "location_to_subtypes_need_upgrade = " + str(location_to_subtypes_need_upgrade)
 
         if location_to_subtypes_need_upgrade:
-
-            active_packages = device.send("show install active summary")
-
-            match = re.search("fpd", active_packages)
-
-            if not match:
-                manager.error("Device needs FPD upgrade but no FPD pie is active on device. Please install FPD pie to try again or manually upgrade your FPDs to eXR capable FPDs.")
-
-            versioninfo = device.send("show version")
-
-            match = re.search("[Vv]ersion\s+?(\d\.\d\.\d)", versioninfo)
-
-            if not match:
-                manager.error("Failed to recognize release version number. Please check session.log.")
-
-            release_version = match.group(1)
-
-            if release_version < MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD:
-
-
-                pie_packages = []
-                for package in packages:
-                    if package.find(".pie") > -1:
-                        pie_packages.append(package)
-
-                if len(pie_packages) != 1:
-                    manager.error("Please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must end with '.pie'")
-
-                name_of_fpd_smu = pie_packages[0].split(".pie")[0]
-
-                install_summary = device.send("show install active summary")
-
-                match = re.search(name_of_fpd_smu, install_summary)
-
-                if not match:
-
-                    #Step 1: Install add the FPD SMU
-                    manager.log("FPD upgrade - install add the FPD SMU...")
-                    PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
-
-
-                    #Step 2: Install activate the FPD SMU
-                    manager.log("FPD upgrade - install activate the FPD SMU...")
-                    PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
-
-
-                    #Step 3: Install commit the FPD SMU
-                    manager.log("FPD upgrade - install commit the FPD SMU...")
-                    PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
-
-                else:
-                    manager.log("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
-
-
 
             """
             Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
@@ -615,12 +613,11 @@ class PreMigratePlugin(Plugin):
             packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No package list provided")
-
+        """
         try:
             config_filename = manager.csm.pre_migrate_config_filename
         except AttributeError:
             pass
-
 
         host_directory_name = manager.csm.host.hostname
 
@@ -666,8 +663,8 @@ class PreMigratePlugin(Plugin):
         manager.log("Copying the eXR ISO image from server repository to device.")
         PreMigratePlugin._copy_iso_to_device(manager, device, packages, server_repo_url)
 
+        """
 
-        manager.log("Checking FPD version...")
         PreMigratePlugin._ensure_updated_fpd(manager, device, packages)
 
 

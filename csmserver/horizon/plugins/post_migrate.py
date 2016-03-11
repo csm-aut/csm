@@ -189,7 +189,7 @@ class PostMigratePlugin(Plugin):
 
         cmd = "show platform vm"
         while 1:
-            # Wait till all nodes are in XR run state
+            # Wait till all nodes are in FINAL Band
             time_waited += poll_time
             if time_waited >= timeout:
                 break
@@ -305,7 +305,7 @@ class PostMigratePlugin(Plugin):
                     return True
 
         # Some nodes did not come to run state
-        manager.error("Not all nodes have came up: {}".format(output))
+        manager.error("Not all nodes have come up: {}".format(output))
         # this will never be executed
         return False
 

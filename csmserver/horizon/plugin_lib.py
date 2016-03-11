@@ -101,16 +101,17 @@ def get_package(device, manager):
             manager.csm.committed_cli = output
 
     if device.os_type == "eXR":
+        device.send("admin")
         if hasattr(manager.csm, 'active_cli'):
-            output = device.send("admin show install active")
+            output = device.send("show install active")
             manager.csm.active_cli = output
         if hasattr(manager.csm, 'inactive_cli'):
-            output = device.send("admin show install inactive")
+            output = device.send("show install inactive")
             manager.csm.inactive_cli = output
         if hasattr(manager.csm, 'committed_cli'):
-            output = device.send("admin show install committed")
+            output = device.send("show install committed")
             manager.csm.committed_cli = output
-
+        device.send("exit")
 
 def wait_for_reload(manager, device):
     """

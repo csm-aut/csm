@@ -39,8 +39,8 @@ from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
 from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 from pexpect import TIMEOUT, EOF
 
-from csmserver.common import get_host
-from csmserver.database import DBSession
+from common import get_host
+from database import DBSession
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
@@ -61,6 +61,10 @@ class MigratePlugin(Plugin):
     Arguments:
     T.B.D.
     """
+    NAME = "MIGRATE"
+    DESCRIPTION = "MIGRATE FROM XR TO EXR"
+    TYPE = "MIGRATE"
+    VERSION = "0.0.1"
 
     """
     @staticmethod
@@ -87,7 +91,7 @@ class MigratePlugin(Plugin):
 
         device.send("run", wait_for_string="#")
 
-        output = device.send("ksh /harddisk:/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
+        output = device.send("ksh /pkg/bin/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
 
         device.send("exit")
 
@@ -125,11 +129,13 @@ class MigratePlugin(Plugin):
     @staticmethod
     def _configure_authentication(manager, device):
 
+        hostname = manager.csm.host.hostname
+
         db_session = DBSession()
 
-        host = get_host(db_session, device.hostname)
+        host = get_host(db_session, hostname)
         if host is None:
-            manager.error("Cannot find the current host {} in the database.".format(device.hostname))
+            manager.error("Cannot find the current host {} in the database.".format(hostname))
 
         connection_param = host.connection_param[0]
 
@@ -138,11 +144,11 @@ class MigratePlugin(Plugin):
             return True
 
         def send_username(ctx):
-            ctx.ctrl.send(connection_param.username)
+            ctx.ctrl.sendline(connection_param.username)
             return True
 
         def send_password(ctx):
-            ctx.ctrl.send(connection_param.password)
+            ctx.ctrl.sendline(connection_param.password)
             return True
 
 
@@ -193,6 +199,41 @@ class MigratePlugin(Plugin):
         #return wait_for_reload(manager, device)
 
 
+    @staticmethod
+    def _wait_for_final_band(device):
+         # Wait for all nodes to Final Band
+        timeout = 600
+        poll_time = 20
+        time_waited = 0
+        xr_run = "IOS XR RUN"
+
+        cmd = "show platform vm"
+        while 1:
+            # Wait till all nodes are in FINAL Band
+            time_waited += poll_time
+            if time_waited >= timeout:
+                break
+            time.sleep(poll_time)
+            output = device.send(cmd)
+            if MigratePlugin._check_sw_status(output):
+                return True
+
+        # Some nodes did not come to FINAL Band
+        return False
+
+    @staticmethod
+    def _check_sw_status(output):
+        lines = output.splitlines()
+
+        for line in lines:
+            line = line.strip()
+            if len(line) > 0 and line[0].isdigit():
+                sw_status = line[48:63].strip()
+                if sw_status != "FINAL Band":
+                    return False
+        return True
+
+
 
     @staticmethod
     def _wait_for_reload(manager, device):
@@ -213,7 +254,6 @@ class MigratePlugin(Plugin):
 
         cmd = "show sdr"
         manager.log("Waiting for all nodes to come up")
-        time.sleep(100)
         while 1:
             # Wait till all nodes are in XR run state
             time_waited += poll_time
@@ -236,21 +276,23 @@ class MigratePlugin(Plugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-        """
-
-        filename = manager.csm.host.hostname
-
         manager.log("Run migration script to set boot mode and image path in device")
         MigratePlugin._run_migration_script(manager, device)
 
-
         # checked: reload router, now we have flexr-capable fpd
+
         manager.log("Reload device to boot eXR")
         MigratePlugin._reload_all(manager, device)
 
+        manager.log("Waiting for all nodes to come to FINAL Band.")
+        if MigratePlugin._wait_for_final_band(device):
+            manager.log("All nodes are in FINAL Band.")
+        else:
+            manager.error("Not all nodes went to FINAL Band.")
+
+        device._os_type = "eXR"
+
         get_package(device, manager)
-        """
-        MigratePlugin._configure_authentication(manager, device)
 
         return True
 
