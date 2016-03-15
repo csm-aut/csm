@@ -26,7 +26,7 @@ from sqlalchemy import and_
 
 from handlers.loader import get_inventory_handler_class
 from handlers.loader import get_install_handler_class
-from base import InstallContext
+from context import InstallContext
 
 from utils import create_log_directory
 from utils import is_empty
