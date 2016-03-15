@@ -29,7 +29,7 @@ from models import InventoryJobHistory
 from constants import JobStatus
 
 from handlers.loader import get_inventory_handler_class
-from base import InventoryContext
+from context import InventoryContext
 from utils import create_log_directory
 
 from multi_process import WorkUnit

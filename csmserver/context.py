@@ -174,17 +174,15 @@ class InstallContext(SoftwareContext):
         self.install_job = install_job
         self._operation_id = -1
 
-        self._custom_commands = []
+        self.custom_commands = []
         custom_command_profile_ids = self.install_job.custom_command_profile_id
         if custom_command_profile_ids:
             for id in custom_command_profile_ids.split(','):
                 profile = self.db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == id).first()
                 if profile:
                     for command in profile.command_list.split(','):
-                        if command not in self._custom_commands:
-                            self._custom_commands.append(command)
-
-
+                        if command not in self.custom_commands:
+                            self.custom_commands.append(command)
 
     @property
     def software_packages(self):
@@ -198,7 +196,7 @@ class InstallContext(SoftwareContext):
     def log_directory(self):
         return get_log_directory() + self.install_job.session_log
 
-    @property
+
     def migration_directory(self):
         return get_migration_directory()
 
