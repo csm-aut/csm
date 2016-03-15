@@ -42,6 +42,7 @@ from horizon.plugins.install_add import InstallAddPlugin
 from horizon.plugins.install_activate import InstallActivatePlugin
 from horizon.plugins.install_commit import InstallCommitPlugin
 from horizon.plugins.node_status.asr9k.node_status import NodeStatusPlugin
+from horizon.package_lib import parse_xr_show_platform, validate_xr_node_state
 
 from condoor import TIMEOUT
 
@@ -62,10 +63,16 @@ ISO_MINI_IMAGE_NAME = "asr9k-mini-x64.iso"
 ISO_LOCATION = "harddiskb:/"
 
 
-#ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
+ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
 #LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
-NODE = '[-|\s](\d+/(?:RS?P)?\d+/CPU\d+)'
-FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
+
+SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
+
+#NODE = '[-|\s](\d+/(?:RS?P)?\d+/CPU\d+)'
+NODE = '(\d+/(?:RS?P)?\d+/CPU\d+)'
+
+#FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
+FPDS_CHECK_FOR_UPGRADE = set(['fpga2'])
 
 MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.1'
 
@@ -107,6 +114,30 @@ class PreMigratePlugin(Plugin):
         output = device.send("ping {}".format(repo_ip.group(1)))
         if "100 percent" not in output:
             manager.error("Failed to ping server repository {} on device. Please check session.log.".format(repo_ip.group(1)))
+
+    @staticmethod
+    def _get_iosxr_run_nodes(manager, device):
+        iosxr_run_nodes = []
+        output = device.send("show platform")
+        inventory = parse_xr_show_platform(output)
+        node_pattern = re.compile(NODE)
+        rp_pattern = re.compile(ROUTEPROCESSOR_RE)
+        for key, value in inventory.items():
+            if node_pattern.match(key):
+                # If this is RSP/RP
+                if rp_pattern.match(key):
+                    iosxr_run_nodes.append(key)
+                # If this is line card
+                else:
+                    if value['state'] == 'IOS XR RUN':
+                        for card in SUPPORTED_CARDS:
+                            if card in value['type']:
+                                iosxr_run_nodes.append(key)
+                                break
+
+        print "iosxr_run_nodes = " + str(iosxr_run_nodes)
+        return iosxr_run_nodes
+
 
     @staticmethod
     def _is_there_unsupported_config(nox_output):
@@ -314,28 +345,28 @@ class PreMigratePlugin(Plugin):
 
 
     @staticmethod
-    def _check_fpd(device):
+    def _check_fpd(device, iosxr_run_nodes):
         fpdtable = device.send("show hw-module fpd location all")
 
-        location_to_subtypes_need_upgrade = {}
+        subtype_to_locations_need_upgrade = {}
 
         for fpdtype in FPDS_CHECK_FOR_UPGRADE:
             match_iter = re.finditer(NODE + "[-.A-Z0-9a-z\s]*?" + fpdtype + "[-.A-Z0-9a-z\s]*?(No|Yes)", fpdtable)
 
             for match in match_iter:
-                if match.group(2) == "Yes":
-                    if not match.group(1) in location_to_subtypes_need_upgrade:
-                        location_to_subtypes_need_upgrade[match.group(1)] = []
-                    location_to_subtypes_need_upgrade[match.group(1)].append(fpdtype)
+                if match.group(1) in iosxr_run_nodes:
+                    if match.group(2) == "Yes":
+                        if not fpdtype in subtype_to_locations_need_upgrade:
+                            subtype_to_locations_need_upgrade[fpdtype] = []
+                        subtype_to_locations_need_upgrade[fpdtype].append(match.group(1))
 
-
-        return location_to_subtypes_need_upgrade
+        return subtype_to_locations_need_upgrade
 
 
 
 
     @staticmethod
-    def _ensure_updated_fpd(manager, device, packages):
+    def _ensure_updated_fpd(manager, device, packages, iosxr_run_nodes):
 
         manager.log("Checking if FPD package is present...")
         active_packages = device.send("show install active summary")
@@ -391,16 +422,16 @@ class PreMigratePlugin(Plugin):
 
         # check for the FPD version, if FPD needs upgrade,
         manager.log("Checking FPD version...")
-        location_to_subtypes_need_upgrade = PreMigratePlugin._check_fpd(device)
+        subtype_to_locations_need_upgrade = PreMigratePlugin._check_fpd(device, iosxr_run_nodes)
 
-        print "location_to_subtypes_need_upgrade = " + str(location_to_subtypes_need_upgrade)
+        print "subtype_to_locations_need_upgrade = " + str(subtype_to_locations_need_upgrade)
 
-        if location_to_subtypes_need_upgrade:
+        if subtype_to_locations_need_upgrade:
 
             """
             Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
             """
-            PreMigratePlugin._upgrade_all_fpds(manager, device, location_to_subtypes_need_upgrade)
+            PreMigratePlugin._upgrade_all_fpds(manager, device, subtype_to_locations_need_upgrade)
 
 
         return True
@@ -418,7 +449,7 @@ class PreMigratePlugin(Plugin):
 
 
     @staticmethod
-    def _upgrade_all_fpds(manager, device, location_to_subtypes_need_upgrade):
+    def _upgrade_all_fpds(manager, device, subtype_to_locations_need_upgrade):
 
         def send_newline(ctx):
             ctx.ctrl.sendline()
@@ -428,45 +459,52 @@ class PreMigratePlugin(Plugin):
             ctx.ctrl.sendline("yes")
             return True
 
-        for location in location_to_subtypes_need_upgrade:
+        for fpdtype in subtype_to_locations_need_upgrade:
 
-            for fpdtype in location_to_subtypes_need_upgrade[location]:
+            manager.log("FPD upgrade - start to upgrade FPD {} on all locations".format(fpdtype))
+            """
+            device.send("admin upgrade hw-module fpd " + fpdtype + " force location all", timeout=60, wait_for_string='\?')
+            output = device.send('\r yes', timeout=9600)
 
-                manager.log("FPD upgrade - start to upgrade FPD subtype {} on location {}".format(fpdtype, location))
-                """
-                device.send("admin upgrade hw-module fpd " + fpdtype + " force location all", timeout=60, wait_for_string='\?')
-                output = device.send('\r yes', timeout=9600)
+            fpd_upgrade_success = re.search('[Ss]uccess', output)
+            if not fpd_upgrade_success:
+                manager.error("Failed to force upgrade FPD subtype " + fpdtype + " in all locations")
+            """
 
-                fpd_upgrade_success = re.search('[Ss]uccess', output)
+
+            CONFIRM_CONTINUE = re.compile("Continue\? \[confirm\]")
+            CONFIRM_SECOND_TIME = re.compile("Continue \? \[no\]:")
+            #IN_PROGRESS = re.compile("FPD upgrade in progress.")
+            #SUCCESS = re.compile(".*Successfully (?:downgraded|upgraded).+{}".format(location))
+            #FAIL = re.compile("FPD upgrade execution failed")
+            UPGRADE_END = re.compile("FPD upgrade has ended.")
+
+            events = [device.prompt, CONFIRM_CONTINUE, CONFIRM_SECOND_TIME, UPGRADE_END, TIMEOUT]
+            transitions = [
+                (CONFIRM_CONTINUE, [0], 1, send_newline, TIMEOUT_FOR_FPD_UPGRADE),
+                (CONFIRM_SECOND_TIME, [1], 2, send_yes, TIMEOUT_FOR_FPD_UPGRADE),
+                #(IN_PROGRESS, [1, 2], 2, None, 5400),
+                #(SUCCESS, [1, 2], 3, None, 120),
+                #(FAIL, [1, 2, 3], 5, None, 120),
+                #(UPGRADE_END, [3], 4, None, 120),
+                #(UPGRADE_END, [2], 5, None, 10),
+                (UPGRADE_END, [1, 2], 3, None, 120),
+                (device.prompt, [3], -1, None, 0),
+                (device.prompt, [1, 2], 5, None, 5),
+                (TIMEOUT, [0, 1, 2], 5, None, 20),
+
+            ]
+
+            if not device.run_fsm(PreMigratePlugin.DESCRIPTION, "admin upgrade hw-module fpd {} force location all".format(fpdtype), events, transitions, timeout=30):
+                manager.error("Error while upgrading FPD subtype {}. Please check session.log".format(fpdtype))
+
+            fpd_log = device.send("show log | include fpd")
+
+            for location in subtype_to_locations_need_upgrade[fpdtype]:
+                fpd_upgrade_success = re.search("Successfully\s*(?:downgrade|upgrade)\s*{}.*location\s*{}".format(fpdtype, location), fpd_log)
                 if not fpd_upgrade_success:
-                    manager.error("Failed to force upgrade FPD subtype " + fpdtype + " in all locations")
-                """
+                    manager.error("Failed to upgrade FPD subtype {} on location {}. Please check session.log.".format(fpdtype, location))
 
-
-                CONFIRM_CONTINUE = re.compile("Continue\? \[confirm\]")
-                CONFIRM_SECOND_TIME = re.compile("Continue \? \[no\]:")
-                IN_PROGRESS = re.compile("FPD upgrade in progress.")
-                SUCCESS = re.compile(".*Successfully (?:downgraded|upgraded).+{}".format(location))
-                FAIL = re.compile("FPD upgrade execution failed")
-                UPGRADE_END = re.compile("FPD upgrade has ended.")
-
-                events = [device.prompt, CONFIRM_CONTINUE, CONFIRM_SECOND_TIME, IN_PROGRESS, SUCCESS, TIMEOUT, UPGRADE_END]
-                transitions = [
-                    (CONFIRM_CONTINUE, [0], 1, send_newline, TIMEOUT_FOR_FPD_UPGRADE),
-                    (CONFIRM_SECOND_TIME, [1], 2, send_yes, TIMEOUT_FOR_FPD_UPGRADE),
-                    (IN_PROGRESS, [1, 2], 2, None, 5400),
-                    (SUCCESS, [1, 2], 3, None, 120),
-                    (FAIL, [1, 2, 3], 5, None, 120),
-                    (UPGRADE_END, [3], 4, None, 120),
-                    (UPGRADE_END, [2], 5, None, 10),
-                    (device.prompt, [4], -1, None, 0),
-                    (device.prompt, [1, 2], 5, None, 5),
-                    (TIMEOUT, [0, 1, 2, 3, 4, 5], 5, None, 20),
-
-                ]
-
-                if not device.run_fsm(PreMigratePlugin.DESCRIPTION, "admin upgrade hw-module fpd {} force location {}".format(fpdtype, location), events, transitions, timeout=30):
-                    manager.error("Failed to force upgrade FPD subtype {} on location {}".format(fpdtype, location))
 
 
         return True
@@ -598,7 +636,7 @@ class PreMigratePlugin(Plugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-
+        """
 
         server_repo_url = None
         try:
@@ -613,7 +651,7 @@ class PreMigratePlugin(Plugin):
             packages = manager.csm.software_packages
         except AttributeError:
             manager.error("No package list provided")
-        """
+
         try:
             config_filename = manager.csm.pre_migrate_config_filename
         except AttributeError:
@@ -628,6 +666,7 @@ class PreMigratePlugin(Plugin):
 
         manager.log("packages = " + str(packages))
 
+
         manager.log("Checking if migration requirements are met.")
 
         if device.os_type != "XR":
@@ -638,11 +677,14 @@ class PreMigratePlugin(Plugin):
 
         PreMigratePlugin._ping_repository_check(manager, device, server_repo_url)
 
-
         try:
             NodeStatusPlugin.start(manager, device)
         except PluginError:
             manager.error("Not all nodes are in correct states. Pre-Migrate aborted. Please check session.log to trouble-shoot.")
+
+
+        iosxr_run_nodes = PreMigratePlugin._get_iosxr_run_nodes(manager, device)
+
 
         manager.log("Resizing eUSB partition.")
         PreMigratePlugin._resize_eusb(manager, device)
@@ -663,10 +705,10 @@ class PreMigratePlugin(Plugin):
         manager.log("Copying the eXR ISO image from server repository to device.")
         PreMigratePlugin._copy_iso_to_device(manager, device, packages, server_repo_url)
 
+
+
+        PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
         """
-
-        PreMigratePlugin._ensure_updated_fpd(manager, device, packages)
-
 
         return True
 

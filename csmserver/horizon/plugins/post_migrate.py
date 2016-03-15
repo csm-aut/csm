@@ -313,7 +313,7 @@ class PostMigratePlugin(Plugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-
+        """
         fileloc = manager.csm.migration_directory
 
         try:
@@ -357,3 +357,4 @@ class PostMigratePlugin(Plugin):
 
         PostMigratePlugin._check_fpds_for_upgrade(manager, device)
 
+        """

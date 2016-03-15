@@ -36,7 +36,9 @@
             </div>
         </div>
     </div>
-
+    <div id="custom-command-profile-panel">
+        {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
+    </div>
 
 
     <div id="dependency-panel">
@@ -116,6 +118,9 @@
 
             $("#install_action").select2({placeholder: 'Select Desirable Migration Actions'});
             $("#install_action").val("{{ form.install_action.data }}").trigger("change");
+            $("#custom_command_profile").select2({
+                placeholder: 'Optional'
+            });
 
 
             var datetimepicker = $(".form_datetime").datetimepicker({

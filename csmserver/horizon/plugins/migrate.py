@@ -275,7 +275,7 @@ class MigratePlugin(Plugin):
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
-
+        """
         manager.log("Run migration script to set boot mode and image path in device")
         MigratePlugin._run_migration_script(manager, device)
 
@@ -293,6 +293,7 @@ class MigratePlugin(Plugin):
         device._os_type = "eXR"
 
         get_package(device, manager)
+        """
 
         return True
 

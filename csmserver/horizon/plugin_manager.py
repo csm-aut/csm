@@ -135,12 +135,14 @@ class PluginManager(object):
             device.discovery()
 
         except condoor.ConnectionError as e:
+            self.log("Device Discovery error")
             self.csm.post_status(e.message)
             return False
-
-        self.csm.save_data('udi', device.udi)
-        self.csm.save_data('device_info', device.device_info)
-
+        self.log("Device Discovery 1")
+        #self.csm.save_data('udi', device.udi)
+        self.log("Device Discovery 2")
+        #self.csm.save_data('device_info', device.device_info)
+        self.log("Device Discovery 3")
         try:
             self.log("Device Connection Pending")
             device.connect()

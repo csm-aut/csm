@@ -4,14 +4,17 @@ from constants import InstallAction, get_migration_directory, UserPrivilege
 from common import fill_servers
 from common import fill_dependency_from_host_install_jobs
 from common import fill_default_region
-from common import get_server_by_id
 from common import fill_regions
+from common import fill_custom_command_profiles
+from common import get_server_by_id
 from common import get_return_url
 from common import get_first_install_action
-from common import create_or_update_install_job
 from common import get_host
 from common import get_host_list
 from common import can_install
+from common import create_or_update_install_job
+
+
 
 from database import DBSession
 import datetime
@@ -64,7 +67,7 @@ def schedule_migrate():
     form = ScheduleMigrationForm(request.form)
     fill_dependencies_for_migration(form.dependency.choices)
     fill_regions(form.region.choices)
-    form.dummy = "dummy"
+    fill_custom_command_profiles(form.custom_command_profile.choices)
 
 
 
@@ -95,6 +98,7 @@ def schedule_migrate():
                     server_directory = form.hidden_server_directory.data
                     best_effort_config = form.hidden_best_effort_config.data
                     config_filename = form.hidden_config_filename.data
+                    custom_command_profile = (',').join([str(i) for i in form.custom_command_profile.data])
 
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -107,7 +111,8 @@ def schedule_migrate():
 
                         new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                                      scheduled_time=scheduled_time, software_packages=software_packages, server=server,
-                                                     server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename, dependency=dependency)
+                                                     server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename,
+                                                     custom_command_profile=custom_command_profile, dependency=dependency)
                         print("install job's install_action = "+ new_install_job.install_action)
                     else:
                         # The dependency on each install action is already indicated in the implicit ordering in the selector.
@@ -118,7 +123,8 @@ def schedule_migrate():
                         for one_install_action in install_action:
                             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=one_install_action,
                              scheduled_time=scheduled_time, software_packages=software_packages, server=server,
-                             server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename, dependency=dependency)
+                             server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename,
+                             custom_command_profile=custom_command_profile, dependency=dependency)
 
                             dependency = new_install_job.id
 
@@ -174,6 +180,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # Fills the selections
     fill_servers(form.server_dialog_server.choices, host.region.servers)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs, (-1 if install_job is None else install_job.id))
+    fill_custom_command_profiles(form.custom_command_profile.choices)
 
     if request.method == 'POST':
         if install_job is not None:
@@ -189,6 +196,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server_directory = form.hidden_server_directory.data
         best_effort_config = form.hidden_best_effort_config.data
         config_filename = form.hidden_config_filename.data
+        custom_command_profile = (',').join([str(i) for i in form.custom_command_profile.data])
 
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
@@ -196,7 +204,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             dependency = int(form.dependency.data)
             create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                                      scheduled_time=scheduled_time, software_packages=software_packages, server=server,
-                                                     server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename, dependency=dependency, install_job=install_job)
+                                                     server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename,
+                                                     custom_command_profile=custom_command_profile, dependency=dependency, install_job=install_job)
 
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
@@ -206,7 +215,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             for one_install_action in install_action:
                 new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=one_install_action,
                              scheduled_time=scheduled_time, software_packages=software_packages, server=server,
-                             server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename, dependency=dependency, install_job=install_job)
+                             server_directory=server_directory, best_effort_config=best_effort_config, config_filename=config_filename,
+                             custom_command_profile=custom_command_profile, dependency=dependency, install_job=install_job)
 
                 dependency = new_install_job.id
 
@@ -231,6 +241,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
             form.hidden_best_effort_config.data = install_job.best_effort_config_applying
             form.hidden_config_filename.data = install_job.config_filename
+
 
 
             if install_job.server_id is not None:
@@ -395,6 +406,7 @@ class ScheduleMigrationForm(Form):
 
     scheduled_time = TextField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
+    custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])
     dependency = SelectField('Dependency', coerce=str, choices = [(-1, 'None')])
 
     region = SelectField('Region', coerce=int, choices = [(-1, '')])
