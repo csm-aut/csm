@@ -25,4 +25,4 @@
 class BasePackageParser(object):
     def get_packages_from_cli(self, host, install_inactive_cli=None,
                               install_active_cli=None, install_committed_cli=None):
-        raise NotImplementedError("Children must override execute")
+        raise NotImplementedError("Children must override get_packages_from_cli")
