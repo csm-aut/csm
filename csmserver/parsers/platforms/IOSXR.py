@@ -24,11 +24,12 @@
 # =============================================================================
 from models import Package
 from constants import PackageState
+from parsers.base import BasePackageParser
 
 """
 The default CLI package parser for IOS-XR.
 """
-class BaseCLIPackageParser(object):
+class CLIPackageParser(BasePackageParser):
         
     def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):        
         inactive_packages = {}

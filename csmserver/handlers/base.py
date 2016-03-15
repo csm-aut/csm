@@ -28,6 +28,7 @@ from models import get_db_session_logger
 from context import ConnectionContext
 from context import InstallContext
 
+from constants import PlatformFamily
 from constants import InstallAction
 from constants import get_log_directory
 
@@ -216,8 +217,8 @@ class BaseInstallHandler(BaseHandler):
 
 
 def get_software_platform(family, os_type):
-    if family == 'ASR9K' and os_type == 'eXR':
-        return 'ASR9K-64b'
+    if family == PlatformFamily.ASR9K and os_type == 'eXR':
+        return PlatformFamily.ASR9K_64BIT
     else:
         return family
 

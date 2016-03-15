@@ -22,7 +22,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from constants import Platform
+from constants import PlatformFamily
 
 # The key has "-p" so it can also match 'asr9k-p/hfr-p' platforms
 
@@ -75,9 +75,9 @@ def get_target_software_package_list(platform, host_packages, target_version, ma
     target_list = []
     platform_package_list = {}
     
-    if platform == Platform.ASR9K:
+    if platform == PlatformFamily.ASR9K:
         platform_package_list = ASR9K_PACKAGES
-    elif platform == Platform.CRS:
+    elif platform == PlatformFamily.CRS:
         platform_package_list = CRS_PACKAGES
         
     for k, v in platform_package_list.items():
