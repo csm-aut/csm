@@ -31,8 +31,9 @@
 import re
 import time
 from horizon.plugin import PluginError, Plugin
+from horizon.plugins.cmd_capture import CmdCapturePlugin
 from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
-from horizon.plugin_lib import wait_for_reload, get_package
+from horizon.plugin_lib import wait_for_reload, get_package, wait_for_final_band
 
 from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, PASSWORD_OK, PRESS_RETURN,UNABLE_TO_CONNECT
 from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
@@ -92,6 +93,7 @@ class MigratePlugin(Plugin):
         device.send("run", wait_for_string="#")
 
         output = device.send("ksh /pkg/bin/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
+        #output = device.send("ksh /harddisk:/migrate_to_eXR -m eusb", wait_for_string="#")
 
         device.send("exit")
 
@@ -199,41 +201,6 @@ class MigratePlugin(Plugin):
         #return wait_for_reload(manager, device)
 
 
-    @staticmethod
-    def _wait_for_final_band(device):
-         # Wait for all nodes to Final Band
-        timeout = 600
-        poll_time = 20
-        time_waited = 0
-        xr_run = "IOS XR RUN"
-
-        cmd = "show platform vm"
-        while 1:
-            # Wait till all nodes are in FINAL Band
-            time_waited += poll_time
-            if time_waited >= timeout:
-                break
-            time.sleep(poll_time)
-            output = device.send(cmd)
-            if MigratePlugin._check_sw_status(output):
-                return True
-
-        # Some nodes did not come to FINAL Band
-        return False
-
-    @staticmethod
-    def _check_sw_status(output):
-        lines = output.splitlines()
-
-        for line in lines:
-            line = line.strip()
-            if len(line) > 0 and line[0].isdigit():
-                sw_status = line[48:63].strip()
-                if sw_status != "FINAL Band":
-                    return False
-        return True
-
-
 
     @staticmethod
     def _wait_for_reload(manager, device):
@@ -275,7 +242,7 @@ class MigratePlugin(Plugin):
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
-        """
+
         manager.log("Run migration script to set boot mode and image path in device")
         MigratePlugin._run_migration_script(manager, device)
 
@@ -285,15 +252,21 @@ class MigratePlugin(Plugin):
         MigratePlugin._reload_all(manager, device)
 
         manager.log("Waiting for all nodes to come to FINAL Band.")
-        if MigratePlugin._wait_for_final_band(device):
+        if wait_for_final_band(device):
             manager.log("All nodes are in FINAL Band.")
         else:
-            manager.error("Not all nodes went to FINAL Band.")
+            manager.log("Warning: Not all nodes went to FINAL Band.")
+
+        try:
+            manager.csm.custom_commands = ["show platform"]
+            CmdCapturePlugin.start(manager, device)
+        except Exception as e:
+            manager.log(type(e) + " when tring to capture 'show platform'.")
 
         device._os_type = "eXR"
 
         get_package(device, manager)
-        """
+
 
         return True
 

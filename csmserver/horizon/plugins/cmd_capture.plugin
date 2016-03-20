@@ -3,7 +3,7 @@ Name = Custom Command Capture
 Module = cmd_capture
 
 [CSM]
-Phases = Pre-Upgrade, Post-Upgrade
+Phases = Pre-Upgrade, Post-Upgrade, Pre-Migrate, Migrate, Post-Migrate
 Platforms = ASR9K, NCS6K
 
 [Documentation]

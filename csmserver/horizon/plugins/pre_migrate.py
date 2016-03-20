@@ -43,6 +43,7 @@ from horizon.plugins.install_activate import InstallActivatePlugin
 from horizon.plugins.install_commit import InstallCommitPlugin
 from horizon.plugins.node_status.asr9k.node_status import NodeStatusPlugin
 from horizon.package_lib import parse_xr_show_platform, validate_xr_node_state
+from horizon.plugin_lib import copy_running_config_to_repo, copy_files_from_tftp_to_csm_data
 
 from condoor import TIMEOUT
 
@@ -118,7 +119,13 @@ class PreMigratePlugin(Plugin):
     @staticmethod
     def _get_iosxr_run_nodes(manager, device):
         iosxr_run_nodes = []
-        output = device.send("show platform")
+        cmd = "show platform"
+        output = device.send(cmd)
+        file_name = manager.file_name_from_cmd(cmd)
+        full_name = manager.save_to_file(file_name, output)
+        if full_name:
+            manager.save_data(cmd, full_name)
+
         inventory = parse_xr_show_platform(output)
         node_pattern = re.compile(NODE)
         rp_pattern = re.compile(ROUTEPROCESSOR_RE)
@@ -149,60 +156,6 @@ class PreMigratePlugin(Plugin):
 
         return True
 
-    @staticmethod
-    def _copy_config_to_repo(manager, device, repository, filename, admin=""):
-        """
-        Back up the configuration of the device in user's selected repository
-        """
-
-        def send_newline(ctx):
-            ctx.ctrl.sendline()
-            return True
-
-        def error(ctx):
-            ctx.message = "nvgen error"
-            return False
-
-        """
-        if admin:
-            cmd = 'admin copy running-config ' + repository + '/' + filename
-        else:
-            cmd = 'copy running-config ' + repository + '/' + filename
-
-        device.send(cmd, timeout=60, wait_for_string='\?')
-        output = device.send('\r', timeout=60, wait_for_string='\?')
-        print "copy running-config output1 = " + output
-        output = device.send('\r', timeout=600)
-        print "copy running-config output2 = " + output
-        """
-        command = "{}copy running-config {}/{}".format(admin, repository, filename)
-
-        CONFIRM_IP = re.compile("Host name or IP address.*\?")
-        CONFIRM_FILENAME = re.compile("Destination file name.*\?")
-        OK = re.compile(".*\s*\[OK\]")
-        FILE_EXISTS = re.compile("nvgen:.*\sFile exists")
-
-        events = [device.prompt, CONFIRM_IP, CONFIRM_FILENAME, OK, TIMEOUT, FILE_EXISTS]
-        transitions = [
-            (CONFIRM_IP, [0], 1, send_newline, 0),
-            (CONFIRM_FILENAME, [1], 2, send_newline, TIMEOUT_FOR_COPY_CONFIG),
-            (OK, [2], 3, None, 10),
-            (device.prompt, [3], -1, None, 0),
-            (TIMEOUT, [0, 1, 2, 3], 4, None, 0),
-            (FILE_EXISTS, [2], 4, error, 0)
-        ]
-        manager.log("Copying {}configuration on device to {}".format(admin, repository))
-        if not device.run_fsm(PreMigratePlugin.DESCRIPTION, command, events, transitions, timeout=20):
-            manager.error("Failed to copy running-config to your repository. Please check session.log for error and fix the issue.")
-            return False
-        """
-        if not re.search('OK', output):
-            if re.search('File exists', output):
-                manager.error("Failed to copy running-config to your repository. File " + filename + " already exists in your tftp repository " + repository + ". Possible solution: rename or delete the file. ")
-            else:
-
-                manager.error("Failed to copy running-config to your repository. Please check session.log for error and fix the issue.")
-        """
 
     @staticmethod
     def _upload_files_to_tftp(manager, device, sourcefiles, repo_url, destfilenames):
@@ -279,24 +232,6 @@ class PreMigratePlugin(Plugin):
 
 
     @staticmethod
-    def _copy_files_to_csm_data(manager, device, repo_url, source_filenames, dest_files):
-        db_session = DBSession()
-        server = db_session.query(Server).filter(Server.server_url == repo_url).first()
-        if not server:
-            manager.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
-
-
-        for x in range(0, len(source_filenames)):
-            try:
-                shutil.copy(server.server_directory + os.sep + source_filenames[x], dest_files[x])
-            except:
-                db_session.close()
-                PreMigratePlugin._disconnect_and_raise_error(manager, device, "Exception was thrown while copying file {}/{} to {}.".format(server.server_directory, source_filenames[x], dest_files[x]))
-
-        db_session.close()
-
-
-    @staticmethod
     def _run_migration_on_config(manager, device, fileloc, filename, nox_to_use, hostname):
         commands = [subprocess.Popen(["chmod", "+x", nox_to_use]), subprocess.Popen([nox_to_use, "-f", fileloc + os.sep + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
 
@@ -355,7 +290,7 @@ class PreMigratePlugin(Plugin):
 
             for match in match_iter:
                 if match.group(1) in iosxr_run_nodes:
-                    if match.group(2) == "Yes":
+                    if match.group(2) == "No":
                         if not fpdtype in subtype_to_locations_need_upgrade:
                             subtype_to_locations_need_upgrade[fpdtype] = []
                         subtype_to_locations_need_upgrade[fpdtype].append(match.group(1))
@@ -427,6 +362,10 @@ class PreMigratePlugin(Plugin):
         print "subtype_to_locations_need_upgrade = " + str(subtype_to_locations_need_upgrade)
 
         if subtype_to_locations_need_upgrade:
+
+            #print "upgrading... not really..."
+
+            #subtype_to_locations_need_upgrade = {"fsbl":["0/RSP0/CPU0", "0/RSP1/CPU0", "0/0/CPU0"]}
 
             """
             Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
@@ -558,11 +497,12 @@ class PreMigratePlugin(Plugin):
         admin_config_name_in_repo = hostname + "_" + ADMIN_CONFIG_IN_CSM
 
         manager.log("Saving the current configurations on device into server repository and csm_data")
-        PreMigratePlugin._copy_config_to_repo(manager, device, repo_url, xr_config_name_in_repo)
+        copy_running_config_to_repo(manager, device, repo_url, xr_config_name_in_repo)
 
-        PreMigratePlugin._copy_config_to_repo(manager, device, repo_url, admin_config_name_in_repo, admin="admin ")
+        copy_running_config_to_repo(manager, device, repo_url, admin_config_name_in_repo, admin="admin ")
 
-        PreMigratePlugin._copy_files_to_csm_data(manager, device, repo_url, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + XR_CONFIG_IN_CSM, fileloc + os.sep + ADMIN_CONFIG_IN_CSM])
+        copy_files_from_tftp_to_csm_data(manager, device, repo_url, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + XR_CONFIG_IN_CSM, fileloc + os.sep + ADMIN_CONFIG_IN_CSM])
+        copy_files_from_tftp_to_csm_data(manager, device, repo_url, [xr_config_name_in_repo, admin_config_name_in_repo], [os.path.join(manager.csm.log_directory, manager.file_name_from_cmd("show running-config")), os.path.join(manager.csm.log_directory, manager.file_name_from_cmd("admin show running-config"))])
 
         manager.log("Converting admin configuration file with configuration migration tool")
         PreMigratePlugin._run_migration_on_config(manager, device, fileloc, ADMIN_CONFIG_IN_CSM, nox_to_use, hostname)
@@ -636,8 +576,6 @@ class PreMigratePlugin(Plugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-        """
-
         server_repo_url = None
         try:
             server_repo_url = manager.csm.server_repository_url
@@ -683,6 +621,7 @@ class PreMigratePlugin(Plugin):
             manager.error("Not all nodes are in correct states. Pre-Migrate aborted. Please check session.log to trouble-shoot.")
 
 
+
         iosxr_run_nodes = PreMigratePlugin._get_iosxr_run_nodes(manager, device)
 
 
@@ -701,14 +640,11 @@ class PreMigratePlugin(Plugin):
         PreMigratePlugin._handle_configs(manager, device, host_directory_name, server_repo_url, fileloc, nox_to_use, config_filename)
 
 
-
-        manager.log("Copying the eXR ISO image from server repository to device.")
+        #manager.log("Copying the eXR ISO image from server repository to device.")
         PreMigratePlugin._copy_iso_to_device(manager, device, packages, server_repo_url)
 
 
 
-        PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
-        """
+        #PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
 
         return True
-

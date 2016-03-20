@@ -196,7 +196,7 @@ class InstallContext(SoftwareContext):
     def log_directory(self):
         return get_log_directory() + self.install_job.session_log
 
-
+    @property
     def migration_directory(self):
         return get_migration_directory()
 

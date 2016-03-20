@@ -40,10 +40,15 @@ import os
 
 
 from horizon.plugin import PluginError, Plugin
+from horizon.plugins.cmd_capture import CmdCapturePlugin
 from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
+from horizon.plugin_lib import wait_for_final_band
 from condoor.exceptions import CommandTimeoutError, CommandSyntaxError
-from horizon.plugins.pre_migrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE
+from horizon.plugins.pre_migrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE, XR_CONFIG_IN_CSM
+from horizon.plugin_lib import copy_running_config_to_repo, copy_files_from_tftp_to_csm_data
 from condoor import TIMEOUT
+
+TIMEOUT_FOR_COPY_CONFIG = 3600
 
 
 _INVALID_INPUT = "Invalid input detected"
@@ -179,39 +184,6 @@ class PostMigratePlugin(Plugin):
             return True
 
 
-    @staticmethod
-    def _wait_for_final_band(device):
-         # Wait for all nodes to Final Band
-        timeout = 600
-        poll_time = 20
-        time_waited = 0
-        xr_run = "IOS XR RUN"
-
-        cmd = "show platform vm"
-        while 1:
-            # Wait till all nodes are in FINAL Band
-            time_waited += poll_time
-            if time_waited >= timeout:
-                break
-            time.sleep(poll_time)
-            output = device.send(cmd)
-            if PostMigratePlugin._check_sw_status(output):
-                return True
-
-        # Some nodes did not come to FINAL Band
-        return False
-
-    @staticmethod
-    def _check_sw_status(output):
-        lines = output.splitlines()
-
-        for line in lines:
-            line = line.strip()
-            if len(line) > 0 and line[0].isdigit():
-                sw_status = line[48:63].strip()
-                if sw_status != "FINAL Band":
-                    return False
-        return True
 
 
     @staticmethod
@@ -313,7 +285,7 @@ class PostMigratePlugin(Plugin):
     @staticmethod
     def start(manager, device, *args, **kwargs):
 
-        """
+
         fileloc = manager.csm.migration_directory
 
         try:
@@ -326,9 +298,8 @@ class PostMigratePlugin(Plugin):
 
 
         manager.log("Waiting for all nodes to come to FINAL Band.")
-        if not PostMigratePlugin._wait_for_final_band(device):
-            manager.error("Not all nodes are in FINAL Band. Please check session.log.")
-
+        if not wait_for_final_band(device):
+            manager.log("Warning: Not all nodes are in FINAL Band.")
 
 
         manager.log("Loading the migrated Calvados configuration first.")
@@ -337,12 +308,17 @@ class PostMigratePlugin(Plugin):
         PostMigratePlugin._load_admin_config(manager, device, ADMIN_CAL_CONFIG_ON_DEVICE)
         device.send("exit")
 
-
+        try:
+            manager.csm.custom_commands = ["admin show running-config"]
+            CmdCapturePlugin.start(manager, device)
+        except Exception as e:
+            manager.log(type(e) + " when tring to capture 'admin show running-config'.")
 
         manager.log("Loading the admin IOS-XR configuration on device.")
         file_exists = PostMigratePlugin._copy_file_from_eusb_to_harddisk(manager, device, ADMIN_XR_CONFIG_ON_DEVICE, optional=True)
         if file_exists:
             PostMigratePlugin._load_nonadmin_config(manager, device, ADMIN_XR_CONFIG_ON_DEVICE, best_effort_config)
+
 
         # if os.path.isfile(fileloc + os.sep + filename + "_breakout"):
         #     self._post_status("Loading the breakout configuration on device.")
@@ -355,6 +331,16 @@ class PostMigratePlugin(Plugin):
         if file_exists:
             PostMigratePlugin._load_nonadmin_config(manager, device, XR_CONFIG_ON_DEVICE, best_effort_config)
 
+        try:
+            manager.csm.custom_commands = ["show running-config"]
+            CmdCapturePlugin.start(manager, device)
+        except Exception as e:
+            manager.log(type(e) + " when tring to capture 'show running-config'.")
+
         PostMigratePlugin._check_fpds_for_upgrade(manager, device)
 
-        """
+        try:
+            manager.csm.custom_commands = ["show platform"]
+            CmdCapturePlugin.start(manager, device)
+        except Exception as e:
+            manager.log(type(e) + " when tring to capture 'show platform'.")

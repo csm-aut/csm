@@ -28,7 +28,7 @@
 # =============================================================================
 
 
-from base import InstallContext
+from context import InstallContext
 import logging
 
 

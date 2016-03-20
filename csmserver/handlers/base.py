@@ -31,7 +31,7 @@ from context import InstallContext
 from constants import InstallAction
 from constants import get_log_directory
 
-from common import get_last_successful_pre_upgrade_job
+from common import get_last_successful_pre_upgrade_job, get_last_successful_pre_migrate_job
 
 from utils import get_file_list
 from utils import generate_file_diff
@@ -73,9 +73,13 @@ class BaseHandler(object):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
+                elif ctx.requested_action == InstallAction.MIGRATE_SYSTEM or ctx.requested_action == InstallAction.POST_MIGRATE:
+                    self.generate_post_migrate_file_diff(ctx)
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
-                logger.exception('generate_post_upgrade_file_diff hit exception.')
+                msg = 'generate_post_upgrade_file_diff hit exception.' if ctx.requested_action == InstallAction.POST_UPGRADE else 'generate_post_migrate_file_diff hit exception.'
+                logger.exception(msg)
+
 
     def update_device_info(self, ctx):
         device_info_dict = ctx.load_data('device_info')
@@ -95,6 +99,16 @@ class BaseHandler(object):
 
     def generate_post_upgrade_file_diff(self, ctx):
         install_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
+        if install_job is None:
+            return
+
+        self.generate_file_diff(source_file_directory=os.path.join(get_log_directory(), install_job.session_log),
+                                source_created_time=install_job.created_time,
+                                target_file_directory=ctx.log_directory,
+                                target_created_time=ctx.install_job.created_time)
+
+    def generate_post_migrate_file_diff(self, ctx):
+        install_job = get_last_successful_pre_migrate_job(ctx.db_session, ctx.host.id)
         if install_job is None:
             return
 
