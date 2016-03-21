@@ -72,8 +72,8 @@ SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
 #NODE = '[-|\s](\d+/(?:RS?P)?\d+/CPU\d+)'
 NODE = '(\d+/(?:RS?P)?\d+/CPU\d+)'
 
-#FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
-FPDS_CHECK_FOR_UPGRADE = set(['fpga2'])
+FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
+#FPDS_CHECK_FOR_UPGRADE = set(['fpga2'])
 
 MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.1'
 
