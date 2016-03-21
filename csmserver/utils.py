@@ -167,6 +167,11 @@ def get_file_list(directory, filter=None):
     return sorted(result_list)
 
 
+def get_file_timestamp(file_path):
+    t = os.path.getmtime(file_path)
+    return datetime.datetime.fromtimestamp(t)
+
+
 def make_url(connection_type, host_username, host_password, host_or_ip, port_number):
     """
     Creates a connection URL such as

@@ -36,6 +36,7 @@ from common import get_last_successful_pre_upgrade_job
 
 from utils import get_file_list
 from utils import generate_file_diff
+from utils import get_file_timestamp
 from filters import get_datetime_string
 
 from parsers.loader import get_package_parser_class
@@ -100,11 +101,9 @@ class BaseHandler(object):
             return
 
         self.generate_file_diff(source_file_directory=os.path.join(get_log_directory(), install_job.session_log),
-                                source_created_time=install_job.created_time,
-                                target_file_directory=ctx.log_directory,
-                                target_created_time=ctx.install_job.created_time)
+                                target_file_directory=ctx.log_directory)
 
-    def generate_file_diff(self, source_file_directory, source_created_time, target_file_directory, target_created_time):
+    def generate_file_diff(self, source_file_directory, target_file_directory):
         source_file_list = get_file_list(source_file_directory)
         target_file_list = get_file_list(target_file_directory)
 
@@ -128,8 +127,10 @@ class BaseHandler(object):
                         pattern = re.compile("|".join(rep.keys()))
                         results = pattern.sub(lambda m: rep[re.escape(m.group(0))], results)
 
-                        source_filename = 'File1: ' + filename + ' (created on ' + get_datetime_string(source_created_time) + ')'
-                        target_filename = 'File2: ' + filename + ' (created on ' + get_datetime_string(target_created_time) + ')'
+                        source_filename = 'File 1: ' + filename + ' (created on ' + \
+                                          get_datetime_string(get_file_timestamp(source_file_path)) + ')'
+                        target_filename = 'File 2: ' + filename + ' (created on ' + \
+                                          get_datetime_string(get_file_timestamp(target_file_path)) + ')'
 
                         # Add insertion and deletion status
                         html_code = source_filename + '<br>' + target_filename + '<br><br>' + \
