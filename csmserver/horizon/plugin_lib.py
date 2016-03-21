@@ -337,13 +337,15 @@ def copy_files_from_tftp_to_csm_data(manager, device, repo_url, source_filenames
 
     db_session.close()
 
-def grep_all_nodes_iterator(device):
-    output = device.send("admin show platform")
-    nodes_iter = re.finditer("(\d+/(?:RS?P)?\d+)", output)
-    return nodes_iter
+def get_all_nodes(device):
+    device.send("admin")
+    output = device.send("show platform")
+    nodes = re.findall("(\d+/(?:RS?P)?\d+)", output)
+    device.send("exit")
+    return nodes
 
 def wait_for_final_band(device):
-    nodes_iter = grep_all_nodes_iterator(device)
+    nodes = get_all_nodes(device)
      # Wait for all nodes to Final Band
     timeout = 1000
     poll_time = 20
@@ -357,10 +359,12 @@ def wait_for_final_band(device):
             break
         time.sleep(poll_time)
         output = device.send(cmd)
-        for node in nodes_iter:
-            if not node.group(1) in output:
-                continue
-        if check_sw_status(output):
+	all_nodes_present = True
+        for node in nodes:
+            if not node in output:
+                all_nodes_present = False
+		break
+        if all_nodes_present and check_sw_status(output):
             return True
 
     # Some nodes did not come to FINAL Band

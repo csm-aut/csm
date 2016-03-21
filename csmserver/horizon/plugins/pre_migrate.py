@@ -644,7 +644,6 @@ class PreMigratePlugin(Plugin):
         PreMigratePlugin._copy_iso_to_device(manager, device, packages, server_repo_url)
 
 
-
         PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
 
         return True

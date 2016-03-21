@@ -250,8 +250,8 @@ class MigratePlugin(Plugin):
 
         manager.log("Reload device to boot eXR")
         MigratePlugin._reload_all(manager, device)
-
         manager.log("Waiting for all nodes to come to FINAL Band.")
+
         if wait_for_final_band(device):
             manager.log("All nodes are in FINAL Band.")
         else:
@@ -266,7 +266,6 @@ class MigratePlugin(Plugin):
         device._os_type = "eXR"
 
         get_package(device, manager)
-
 
         return True
 
