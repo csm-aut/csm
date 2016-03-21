@@ -631,7 +631,7 @@ class PreMigratePlugin(Plugin):
 
         nox_to_use = manager.csm.migration_directory + PreMigratePlugin._find_nox_to_use()
 
-        nox_to_use = manager.csm.migration_directory + NOX_FOR_MAC
+        #nox_to_use = manager.csm.migration_directory + NOX_FOR_MAC
 
         if not os.path.isfile(nox_to_use):
             manager.error("The configuration conversion tool {} is missing. CSM should have downloaded it from CCO when migration actions were scheduled.".format(nox_to_use))
@@ -645,6 +645,6 @@ class PreMigratePlugin(Plugin):
 
 
 
-        #PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
+        PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
 
         return True
