@@ -68,10 +68,11 @@ class ConnectionType:
     SSH = 'ssh'
 
 
-class Platform:
+class PlatformFamily:
     ASR9K = 'ASR9K'
     CRS = 'CRS'
     NCS6K = 'NCS6K'
+    ASR9K_64BIT = 'ASR9K-64b'
 
 
 class PackageState:

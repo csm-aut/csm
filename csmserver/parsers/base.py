@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,8 +22,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-class CSMLDAPException(Exception):
-    pass
-
-class UnknownSoftwarePlatform(Exception):
-    pass
+class BasePackageParser(object):
+    def get_packages_from_cli(self, host, install_inactive_cli=None,
+                              install_active_cli=None, install_committed_cli=None):
+        raise NotImplementedError("Children must override get_packages_from_cli")

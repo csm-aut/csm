@@ -28,6 +28,7 @@ from models import get_db_session_logger
 from context import ConnectionContext
 from context import InstallContext
 
+from constants import PlatformFamily
 from constants import InstallAction
 from constants import get_log_directory
 
@@ -35,6 +36,7 @@ from common import get_last_successful_pre_upgrade_job, get_last_successful_pre_
 
 from utils import get_file_list
 from utils import generate_file_diff
+from utils import get_file_timestamp
 from filters import get_datetime_string
 
 from parsers.loader import get_package_parser_class
@@ -103,9 +105,7 @@ class BaseHandler(object):
             return
 
         self.generate_file_diff(source_file_directory=os.path.join(get_log_directory(), install_job.session_log),
-                                source_created_time=install_job.created_time,
-                                target_file_directory=ctx.log_directory,
-                                target_created_time=ctx.install_job.created_time)
+                                target_file_directory=ctx.log_directory)
 
     def generate_post_migrate_file_diff(self, ctx):
         install_job = get_last_successful_pre_migrate_job(ctx.db_session, ctx.host.id)
@@ -113,11 +113,9 @@ class BaseHandler(object):
             return
 
         self.generate_file_diff(source_file_directory=os.path.join(get_log_directory(), install_job.session_log),
-                                source_created_time=install_job.created_time,
-                                target_file_directory=ctx.log_directory,
-                                target_created_time=ctx.install_job.created_time)
+                                target_file_directory=ctx.log_directory)
 
-    def generate_file_diff(self, source_file_directory, source_created_time, target_file_directory, target_created_time):
+    def generate_file_diff(self, source_file_directory, target_file_directory):
         source_file_list = get_file_list(source_file_directory)
         target_file_list = get_file_list(target_file_directory)
 
@@ -141,8 +139,10 @@ class BaseHandler(object):
                         pattern = re.compile("|".join(rep.keys()))
                         results = pattern.sub(lambda m: rep[re.escape(m.group(0))], results)
 
-                        source_filename = 'File1: ' + filename + ' (created on ' + get_datetime_string(source_created_time) + ')'
-                        target_filename = 'File2: ' + filename + ' (created on ' + get_datetime_string(target_created_time) + ')'
+                        source_filename = 'File 1: ' + filename + ' (created on ' + \
+                                          get_datetime_string(get_file_timestamp(source_file_path)) + ')'
+                        target_filename = 'File 2: ' + filename + ' (created on ' + \
+                                          get_datetime_string(get_file_timestamp(target_file_path)) + ')'
 
                         # Add insertion and deletion status
                         html_code = source_filename + '<br>' + target_filename + '<br><br>' + \
@@ -230,8 +230,8 @@ class BaseInstallHandler(BaseHandler):
 
 
 def get_software_platform(family, os_type):
-    if family == 'ASR9K' and os_type == 'eXR':
-        return 'ASR9K-64b'
+    if family == PlatformFamily.ASR9K and os_type == 'eXR':
+        return PlatformFamily.ASR9K_64BIT
     else:
         return family
 
