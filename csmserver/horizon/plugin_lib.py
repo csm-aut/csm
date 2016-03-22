@@ -359,11 +359,11 @@ def wait_for_final_band(device):
             break
         time.sleep(poll_time)
         output = device.send(cmd)
-	all_nodes_present = True
+        all_nodes_present = True
         for node in nodes:
             if not node in output:
                 all_nodes_present = False
-		break
+                break
         if all_nodes_present and check_sw_status(output):
             return True
 
