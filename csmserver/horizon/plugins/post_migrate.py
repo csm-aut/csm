@@ -306,13 +306,20 @@ class PostMigratePlugin(Plugin):
         output = device.send("admin")
         PostMigratePlugin._copy_file_from_eusb_to_harddisk(manager, device, ADMIN_CAL_CONFIG_ON_DEVICE)
         PostMigratePlugin._load_admin_config(manager, device, ADMIN_CAL_CONFIG_ON_DEVICE)
-        device.send("exit")
 
         try:
-            manager.csm.custom_commands = ["admin show running-config"]
-            CmdCapturePlugin.start(manager, device)
+            # This is still in admin mode
+            output = device.send("show running-config", timeout=2200)
+            file_name = manager.file_name_from_cmd("admin show running-config")
+            full_name = manager.save_to_file(file_name, output)
+            if full_name:
+                manager.save_data("admin show running-config", full_name)
+            manager.log("Output of '{}' command saved to {}".format("admin show running-config", file_name))
         except Exception as e:
             manager.log(type(e) + " when tring to capture 'admin show running-config'.")
+
+        device.send("exit")
+
 
         manager.log("Loading the admin IOS-XR configuration on device.")
         file_exists = PostMigratePlugin._copy_file_from_eusb_to_harddisk(manager, device, ADMIN_XR_CONFIG_ON_DEVICE, optional=True)
