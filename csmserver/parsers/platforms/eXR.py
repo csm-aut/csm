@@ -126,7 +126,7 @@ class CLIPackageParser(BasePackageParser):
             package_list = []
             for module in trunks:
                 for package in trunks[module]:
-                    if not package in package_list and re.match("(ncs.*)", package):
+                    if not package in package_list and re.match("(ncs.*|asr9k.*)", package):
                         package_list.append(package)
 
             for package_name in package_list:
@@ -192,7 +192,7 @@ class CLIPackageParser(BasePackageParser):
                 module = line.split()[1]
             else:
                 if module is not None:
-                    if re.match("(ncs.*)", line):
+                    if re.match("(ncs.*|asr9k.*)", line):
                         # For situation: ncs6k-xr-5.2.1 version=5.2.1 [Boot image]
                         trunk.append(line.split()[0])
                     else:

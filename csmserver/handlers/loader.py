@@ -50,17 +50,15 @@ def get_connection_handler_class(ctx):
 
 
 def get_inventory_handler_class(ctx):
-    if ctx.host.family == UNKNOWN:
-        discover_platform_info(ctx)
+    #if ctx.host.family == UNKNOWN:
+    discover_platform_info(ctx)
 
     return import_class('handlers.base.BaseInventoryHandler')
-    # return import_class('handlers.platforms.%s.InventoryHandler' % ctx.host.software_platform)
 
 
 def get_install_handler_class(ctx):
-    if ctx.host.family == UNKNOWN:
-        discover_platform_info(ctx)
+    # if ctx.host.family == UNKNOWN:
+    discover_platform_info(ctx)
 
     return import_class('handlers.base.BaseInstallHandler')
-    # return import_class('handlers.platforms.%s.InstallHandler' % ctx.host.software_platform)
 
