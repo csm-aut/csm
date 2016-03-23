@@ -38,6 +38,7 @@ from common import get_last_successful_pre_upgrade_job
 from utils import get_file_list
 from utils import generate_file_diff
 from utils import get_file_timestamp
+from utils import multiple_replace
 from filters import get_datetime_string
 
 from parsers.loader import get_package_parser_class
@@ -138,11 +139,8 @@ class BaseHandler(object):
                     if insertion_count > 0 or deletion_count > 0:
                         results = results.replace(' ', '&nbsp;')
 
-                        # Performs a one-pass replacements
-                        rep = {"ins&nbsp;style": "ins style", "del&nbsp;style": "del style", "&para;": ''}
-                        rep = dict((re.escape(k), v) for k, v in rep.iteritems())
-                        pattern = re.compile("|".join(rep.keys()))
-                        results = pattern.sub(lambda m: rep[re.escape(m.group(0))], results)
+                        rep_dict = {"ins&nbsp;style": "ins style", "del&nbsp;style": "del style", "&para;": ''}
+                        results = multiple_replace(results, rep_dict)
 
                         source_filename = 'File 1: ' + filename + ' (created on ' + \
                                           get_datetime_string(get_file_timestamp(source_file_path)) + ')'
