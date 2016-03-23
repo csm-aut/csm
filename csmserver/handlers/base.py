@@ -26,6 +26,7 @@ from models import UDI
 from models import get_db_session_logger
 
 from context import ConnectionContext
+from context import SoftwareContext
 from context import InstallContext
 
 from constants import PlatformFamily
@@ -71,6 +72,9 @@ class BaseHandler(object):
         if isinstance(ctx, ConnectionContext):
             self.update_device_info(ctx)
 
+        if isinstance(ctx, SoftwareContext):
+            self.get_software(ctx)
+
         if isinstance(ctx, InstallContext):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
@@ -78,6 +82,7 @@ class BaseHandler(object):
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
                 logger.exception('generate_post_upgrade_file_diff hit exception.')
+
 
     def update_device_info(self, ctx):
         device_info_dict = ctx.load_data('device_info')
@@ -94,6 +99,18 @@ class BaseHandler(object):
             udi = UDI(name=udi_dict['name'], description=udi_dict['description'],
                       pid=udi_dict['pid'], vid=udi_dict['vid'], sn=udi_dict['sn'])
             ctx.host.UDIs = [udi]
+
+
+    def get_software(self, ctx):
+        package_parser_class = get_package_parser_class(ctx.host.software_platform)
+        package_parser = package_parser_class()
+
+        return package_parser.get_packages_from_cli(
+            ctx.host,
+            install_inactive_cli=ctx.inactive_cli,
+            install_active_cli=ctx.active_cli,
+            install_committed_cli=ctx.committed_cli
+        )
 
     def generate_post_upgrade_file_diff(self, ctx):
         install_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
@@ -179,7 +196,6 @@ class BaseInventoryHandler(BaseHandler):
                 ctx.active_cli = conn.send('sh install active')
                 ctx.committed_cli = conn.send('sh install committed')
 
-            self.get_software(ctx)
             ctx.success = True
 
         except condoor.GeneralError as e:
@@ -187,17 +203,6 @@ class BaseInventoryHandler(BaseHandler):
 
         finally:
             conn.disconnect()
-
-    def get_software(self, ctx):
-        package_parser_class = get_package_parser_class(ctx.host.software_platform)
-        package_parser = package_parser_class()
-
-        return package_parser.get_packages_from_cli(
-            ctx.host,
-            install_inactive_cli=ctx.inactive_cli,
-            install_active_cli=ctx.active_cli,
-            install_committed_cli=ctx.committed_cli
-        )
 
 
 class BaseInstallHandler(BaseHandler):
