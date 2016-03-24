@@ -26,6 +26,7 @@ from models import UDI
 from models import get_db_session_logger
 
 from context import ConnectionContext
+from context import SoftwareContext
 from context import InstallContext
 
 from constants import PlatformFamily
@@ -37,6 +38,7 @@ from common import get_last_successful_pre_upgrade_job, get_last_successful_pre_
 from utils import get_file_list
 from utils import generate_file_diff
 from utils import get_file_timestamp
+from utils import multiple_replace
 from filters import get_datetime_string
 
 from parsers.loader import get_package_parser_class
@@ -71,6 +73,9 @@ class BaseHandler(object):
         if isinstance(ctx, ConnectionContext):
             self.update_device_info(ctx)
 
+        if isinstance(ctx, SoftwareContext):
+            self.get_software(ctx)
+
         if isinstance(ctx, InstallContext):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
@@ -81,6 +86,7 @@ class BaseHandler(object):
                 logger = get_db_session_logger(ctx.db_session)
                 msg = 'generate_post_upgrade_file_diff hit exception.' if ctx.requested_action == InstallAction.POST_UPGRADE else 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
+
 
 
     def update_device_info(self, ctx):
@@ -98,6 +104,18 @@ class BaseHandler(object):
             udi = UDI(name=udi_dict['name'], description=udi_dict['description'],
                       pid=udi_dict['pid'], vid=udi_dict['vid'], sn=udi_dict['sn'])
             ctx.host.UDIs = [udi]
+
+
+    def get_software(self, ctx):
+        package_parser_class = get_package_parser_class(ctx.host.software_platform)
+        package_parser = package_parser_class()
+
+        return package_parser.get_packages_from_cli(
+            ctx.host,
+            install_inactive_cli=ctx.inactive_cli,
+            install_active_cli=ctx.active_cli,
+            install_committed_cli=ctx.committed_cli
+        )
 
     def generate_post_upgrade_file_diff(self, ctx):
         install_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
@@ -133,11 +151,8 @@ class BaseHandler(object):
                     if insertion_count > 0 or deletion_count > 0:
                         results = results.replace(' ', '&nbsp;')
 
-                        # Performs a one-pass replacements
-                        rep = {"ins&nbsp;style": "ins style", "del&nbsp;style": "del style", "&para;": ''}
-                        rep = dict((re.escape(k), v) for k, v in rep.iteritems())
-                        pattern = re.compile("|".join(rep.keys()))
-                        results = pattern.sub(lambda m: rep[re.escape(m.group(0))], results)
+                        rep_dict = {"ins&nbsp;style": "ins style", "del&nbsp;style": "del style", "&para;": ''}
+                        results = multiple_replace(results, rep_dict)
 
                         source_filename = 'File 1: ' + filename + ' (created on ' + \
                                           get_datetime_string(get_file_timestamp(source_file_path)) + ')'
@@ -191,7 +206,6 @@ class BaseInventoryHandler(BaseHandler):
                 ctx.active_cli = conn.send('sh install active')
                 ctx.committed_cli = conn.send('sh install committed')
 
-            self.get_software(ctx)
             ctx.success = True
 
         except condoor.GeneralError as e:
@@ -199,17 +213,6 @@ class BaseInventoryHandler(BaseHandler):
 
         finally:
             conn.disconnect()
-
-    def get_software(self, ctx):
-        package_parser_class = get_package_parser_class(ctx.host.software_platform)
-        package_parser = package_parser_class()
-
-        return package_parser.get_packages_from_cli(
-            ctx.host,
-            install_inactive_cli=ctx.inactive_cli,
-            install_active_cli=ctx.active_cli,
-            install_committed_cli=ctx.committed_cli
-        )
 
 
 class BaseInstallHandler(BaseHandler):
@@ -231,7 +234,7 @@ class BaseInstallHandler(BaseHandler):
 
 def get_software_platform(family, os_type):
     if family == PlatformFamily.ASR9K and os_type == 'eXR':
-        return PlatformFamily.ASR9K_64BIT
+        return PlatformFamily.ASR9K_X64
     else:
         return family
 

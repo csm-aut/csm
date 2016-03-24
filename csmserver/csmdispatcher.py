@@ -30,7 +30,7 @@ from gjm import GenericJobManager
 from database import DBSession
 from models import SystemOption
 
-from scheduler import InventoryManagerScheduler
+from scheduler import Scheduler
 
 import os
 
@@ -41,9 +41,6 @@ def dispatch():
 
     inventory_manager = InventoryManager(system_option.inventory_threads, 'Inventory-Manager')
     inventory_manager.start()
-    
-    inventory_manager_scheduler = InventoryManagerScheduler('Inventory Manager Scheduler')
-    inventory_manager_scheduler.start()
  
     software_manager = SoftwareManager(system_option.install_threads, 'Software-Manager')
     software_manager.start()
@@ -53,6 +50,9 @@ def dispatch():
 
     generic_job_manager = GenericJobManager(2, 'Generic-Job')
     generic_job_manager.start()
+
+    scheduler = Scheduler('Scheduler')
+    scheduler.start()
 
     print('csmdispatcher started')
 

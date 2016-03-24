@@ -42,7 +42,7 @@ import time
 import shutil
 
 
-class InventoryManagerScheduler(threading.Thread):
+class Scheduler(threading.Thread):
     def __init__(self, name):
         threading.Thread.__init__(self, name=name)
         
@@ -51,7 +51,6 @@ class InventoryManagerScheduler(threading.Thread):
         try:         
             system_option = SystemOption.get(db_session)            
             inventory_hour = system_option.inventory_hour
-            db_session.close()
                         
             # Build a scheduler object that will look at absolute times
             scheduler = sched.scheduler(time.time, time.sleep)
@@ -71,7 +70,8 @@ class InventoryManagerScheduler(threading.Thread):
             scheduler.run()
             
         except:
-            logger.exception('InventoryManagerScheduler hit exception')
+            logger.exception('Scheduler hit exception')
+        finally:
             db_session.close()
             
     def scheduling(self, scheduler, daily_time):
@@ -99,108 +99,133 @@ class InventoryManagerScheduler(threading.Thread):
             self.perform_housekeeping_tasks(db_session, system_option)
             
         except:
-            logger.exception('InventoryManagerScheduler hit exception')
+            logger.exception('scheduling hit exception')
         finally:
             db_session.close()
 
     def perform_housekeeping_tasks(self, db_session, system_option):
+        self.purge_system_log(db_session, system_option.total_system_logs)
+        self.purge_inventory_job_history(db_session, system_option.inventory_history_per_host)
+        self.purge_install_job_history(db_session, system_option.install_history_per_host)
+        self.purge_download_job_history(db_session, system_option.download_history_per_user)
+        self.purge_tar_job(db_session)
 
-        inventory_history_per_host = system_option.inventory_history_per_host
-        install_history_per_host = system_option.install_history_per_host
-        download_history_per_user = system_option.download_history_per_user
-        total_system_logs = system_option.total_system_logs
-    
-        current_system_logs_count = db_session.query(Log).count()   
-        system_logs_threshold = int(total_system_logs * 1.1)
-        # If the current system logs count > the threshold (10% more than total_system_logs),
-        # trim the log table back to the total_system_logs
-        if current_system_logs_count > system_logs_threshold:
-            num_records_to_purge = current_system_logs_count - total_system_logs
-            # Select the logs by created_time in ascending order (older logs)
-            logs = db_session.query(Log).order_by(Log.created_time.asc()).limit(num_records_to_purge)
-            for log in logs:
-                db_session.delete(log)
-            db_session.commit()
-    
+    def purge_system_log(self, db_session, max_entry):
+        try:
+            current_system_logs_count = db_session.query(Log).count()
+            system_logs_threshold = int(max_entry * 1.1)
+            # If the current system logs count > the threshold (10% more than total_system_logs),
+            # trim the log table back to the total_system_logs
+            if current_system_logs_count > system_logs_threshold:
+                num_records_to_purge = current_system_logs_count - max_entry
+                # Select the logs by created_time in ascending order (older logs)
+                logs = db_session.query(Log).order_by(Log.created_time.asc()).limit(num_records_to_purge)
+                for log in logs:
+                    db_session.delete(log)
+                db_session.commit()
+        except:
+            db_session.rollback()
+            logger.exception('purge_system_log hit exception')
+
+    def purge_inventory_job_history(self, db_session, entry_per_host):
         # Scanning the InventoryJobHistory table for records that should be deleted.
-        skip_count = 0   
-        current_host_id = -1
-        
-        inventory_jobs = db_session.query(InventoryJobHistory) \
-            .order_by(InventoryJobHistory.host_id, InventoryJobHistory.created_time.desc())
-    
-        for inventory_job in inventory_jobs:
-            if inventory_job.host_id != current_host_id:
-                current_host_id = inventory_job.host_id
-                skip_count = 0
-            
-            if skip_count >= inventory_history_per_host:
-                # Delete the session log directory
-                try:
-                    if inventory_job.session_log is not None: 
-                        shutil.rmtree(get_log_directory() + inventory_job.session_log)
-                except:
-                    logger.exception('InventoryManagerScheduler hit exception- inventory job = %s', inventory_job.id)
-                    
-                db_session.delete(inventory_job)
-            
-            skip_count += 1
-                
-        db_session.commit()
-        
+        try:
+            skip_count = 0
+            host_id = -1
+
+            inventory_jobs = db_session.query(InventoryJobHistory) \
+                .order_by(InventoryJobHistory.host_id, InventoryJobHistory.created_time.desc())
+
+            for inventory_job in inventory_jobs:
+                if inventory_job.host_id != host_id:
+                    host_id = inventory_job.host_id
+                    skip_count = 0
+
+                if skip_count >= entry_per_host:
+                    # Delete the session log directory
+                    try:
+                        if inventory_job.session_log is not None:
+                            shutil.rmtree(get_log_directory() + inventory_job.session_log)
+                    except:
+                        logger.exception('purge_inventory_job_history hit exception- inventory job = %s', inventory_job.id)
+
+                    db_session.delete(inventory_job)
+
+                skip_count += 1
+
+            db_session.commit()
+        except:
+            db_session.rollback()
+            logger.exception('purge_inventory_job_history hit exception')
+
+    def purge_install_job_history(self, db_session, entry_per_host):
         # Scanning the InstallJobHistory table for records that should be deleted.
-        skip_count = 0   
-        current_host_id = -1
-        
-        install_jobs = db_session.query(InstallJobHistory) \
-            .order_by(InstallJobHistory.host_id, InstallJobHistory.created_time.desc())
-    
-        for install_job in install_jobs:
-            if install_job.host_id != current_host_id:
-                current_host_id = install_job.host_id
-                skip_count = 0
-            
-            if skip_count >= install_history_per_host:
-                # Delete the session log directory
-                try:
-                    if install_job.session_log is not None:
-                        shutil.rmtree(get_log_directory() + install_job.session_log)
-                except:
-                    logger.exception('InventoryManagerScheduler hit exception - install job = %s', install_job.id)
-                
-                db_session.delete(install_job)
-            
-            skip_count += 1
-                
-        db_session.commit()
+        try:
+            skip_count = 0
+            host_id = -1
 
+            install_jobs = db_session.query(InstallJobHistory) \
+                .order_by(InstallJobHistory.host_id, InstallJobHistory.created_time.desc())
+
+            for install_job in install_jobs:
+                if install_job.host_id != host_id:
+                    host_id = install_job.host_id
+                    skip_count = 0
+
+                if skip_count >= entry_per_host:
+                    # Delete the session log directory
+                    try:
+                        if install_job.session_log is not None:
+                            shutil.rmtree(get_log_directory() + install_job.session_log)
+                    except:
+                        logger.exception('purge_install_job_history hit exception - install job = %s', install_job.id)
+
+                    db_session.delete(install_job)
+
+                skip_count += 1
+
+            db_session.commit()
+        except:
+            db_session.rollback()
+            logger.exception('purge_install_job_history hit exception')
+
+    def purge_download_job_history(self, db_session, entry_per_user):
         # Scanning the DownloadJobHistory table for records that should be deleted.
-        skip_count = 0   
-        current_user_id = -1
-        
-        download_jobs = db_session.query(DownloadJobHistory) \
-            .order_by(DownloadJobHistory.user_id, DownloadJobHistory.created_time.desc())
-    
-        for download_job in download_jobs:
-            if download_job.user_id != current_user_id:
-                current_user_id = download_job.user_id
-                skip_count = 0
-            
-            if skip_count >= download_history_per_user:
-                db_session.delete(download_job)
-            
-            skip_count += 1
-                
-        db_session.commit()
+        try:
+            skip_count = 0
+            user_id = -1
 
+            download_jobs = db_session.query(DownloadJobHistory) \
+                .order_by(DownloadJobHistory.user_id, DownloadJobHistory.created_time.desc())
+
+            for download_job in download_jobs:
+                if download_job.user_id != user_id:
+                    user_id = download_job.user_id
+                    skip_count = 0
+
+                if skip_count >= entry_per_user:
+                    db_session.delete(download_job)
+
+                skip_count += 1
+
+            db_session.commit()
+        except:
+            db_session.rollback()
+            logger.exception('purge_download_job_history hit exception')
+
+    def purge_tar_job(self, db_session):
         # Deleting old CreateTarJobs
-        create_tar_jobs = db_session.query(CreateTarJob).all
+        try:
+            create_tar_jobs = db_session.query(CreateTarJob).all
 
-        for create_tar_job in create_tar_jobs:
-            if create_tar_job.status == JobStatus.COMPLETED or create_tar_job.status == JobStatus.FAILED:
-                db_session.delete(create_tar_job)
+            for create_tar_job in create_tar_jobs:
+                if create_tar_job.status == JobStatus.COMPLETED or create_tar_job.status == JobStatus.FAILED:
+                    db_session.delete(create_tar_job)
 
-        db_session.commit()
-        
+            db_session.commit()
+        except:
+            db_session.rollback()
+            logger.exception('purge_tar_job hit exception')
+
 if __name__ == '__main__':
     pass

@@ -54,6 +54,7 @@ def get_inventory_handler_class(ctx):
         discover_platform_info(ctx)
 
     return import_class('handlers.base.BaseInventoryHandler')
+    # Saved for later platform with variant
     # return import_class('handlers.platforms.%s.InventoryHandler' % ctx.host.software_platform)
 
 
@@ -62,5 +63,6 @@ def get_install_handler_class(ctx):
         discover_platform_info(ctx)
 
     return import_class('handlers.base.BaseInstallHandler')
+    # Saved for later platform with variant
     # return import_class('handlers.platforms.%s.InstallHandler' % ctx.host.software_platform)
 
