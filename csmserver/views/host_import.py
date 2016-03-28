@@ -37,7 +37,6 @@ from wtforms import IntegerField
 from wtforms import PasswordField
 from wtforms.validators import Length, required
 
-from constants import Platform
 from constants import ConnectionType
 
 from common import can_create

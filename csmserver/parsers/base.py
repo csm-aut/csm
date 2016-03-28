@@ -1,10 +1,6 @@
 # =============================================================================
-# csm_context
-#
-# Copyright (c)  2016, Cisco Systems
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
-#
-# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,29 +22,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
-
-from context import InstallContext
-import logging
-
-
-class CSMContext(object):
-    def __init__(self, log_level=logging.DEBUG):
-        self._csm = None
-        self._log_level = log_level
-
-    def __get__(self, instance, owner):
-        return self._csm
-
-    def __set__(self, instance, value):
-        # hack for cmd line plugin_tester.py
-        if "InstallContext" not in str(value.__class__):
-        #if not isinstance(value, InstallContext):
-            raise TypeError("CSMContext for plugin manager must be a InstallContext type")
-        self._csm = value
-        if not hasattr(self._csm, "log_level"):
-            self._csm.log_level = self._log_level
-
-    def __delete(self):
-        del self._csm
-        self._csm = None
+class BasePackageParser(object):
+    def get_packages_from_cli(self, host, install_inactive_cli=None,
+                              install_active_cli=None, install_committed_cli=None):
+        raise NotImplementedError("Children must override get_packages_from_cli")

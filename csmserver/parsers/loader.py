@@ -23,8 +23,16 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from utils import import_class
+from constants import PlatformFamily
+from csm_exceptions.exceptions import UnknownSoftwarePlatform
 
 
 def get_package_parser_class(software_platform):
-    return import_class('parsers.platforms.%s.CLIPackageParser' % software_platform)
+    if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
+        return import_class('parsers.platforms.IOSXR.CLIPackageParser')
+    elif software_platform in [PlatformFamily.NCS6K, PlatformFamily.ASR9K_X64]:
+        return import_class('parsers.platforms.eXR.CLIPackageParser')
+    else:
+        raise UnknownSoftwarePlatform('%s' % software_platform)
+
 

@@ -23,8 +23,8 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from models import logger
-from handlers.loader import get_connection_handler
-from base import TestConnectionContext
+from handlers.loader import get_connection_handler_class
+from context import TestConnectionContext
 from constants import ConnectionType
 
 import socket
@@ -33,9 +33,11 @@ import time
 
 def is_connection_valid(hostname, urls):
     ctx = TestConnectionContext(hostname, urls)
-    
     try:
-        get_connection_handler().execute(ctx)
+        handler_class = get_connection_handler_class(ctx)
+        if handler_class is None:
+            logger.error('Unable to get connection handler')
+        handler_class().execute(ctx)
     except:
         logger.exception('is_connection_valid hit exception')
     

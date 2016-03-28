@@ -33,7 +33,7 @@ from models import CCOCatalog
 from models import logger
 from models import SystemOption
 from constants import PackageType
-from constants import Platform
+from constants import PlatformFamily
 
 from smu_advisor import get_smus_exclude_supersedes_include_prerequisites
 from collections import OrderedDict
@@ -100,11 +100,11 @@ class SMUInfoLoader(object):
             self.get_smu_info_from_db(platform, release)
 
     def get_cco_supported_platform(self, platform):
-        if platform == Platform.ASR9K:
+        if platform == PlatformFamily.ASR9K:
             return 'asr9k_px'
-        elif platform == Platform.CRS:
+        elif platform == PlatformFamily.CRS:
             return 'crs_px'
-        elif platform == Platform.NCS6K:
+        elif platform == PlatformFamily.NCS6K:
             return 'ncs6k'
         else:
             return platform

@@ -97,6 +97,14 @@ def get_datetime(date_string, format):
         return None
 
 
+def multiple_replace(string, rep_dict):
+    """
+    Performs a one-pass replacements
+    """
+    pattern = re.compile("|".join([re.escape(k) for k in rep_dict.keys()]), re.M)
+    return pattern.sub(lambda x: rep_dict[x.group(0)], string)
+
+
 def get_datetime_string(datetime, format):
     try:
         return datetime.strftime(format)
@@ -165,6 +173,11 @@ def get_file_list(directory, filter=None):
         pass
 
     return sorted(result_list)
+
+
+def get_file_timestamp(file_path):
+    t = os.path.getmtime(file_path)
+    return datetime.datetime.fromtimestamp(t)
 
 
 def make_url(connection_type, host_username, host_password, host_or_ip, port_number):
