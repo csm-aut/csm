@@ -143,6 +143,9 @@ from utils import get_base_url
 from utils import is_ldap_supported
 from utils import remove_extra_spaces
 from utils import get_json_value
+from utils import create_directory
+from utils import create_temp_user_directory
+from utils import make_file_writable
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -169,6 +172,7 @@ from views.custom_command import custom_command
 from horizon.plugin_manager import PluginManager
 
 import os
+import stat
 import io
 import logging
 import datetime
@@ -176,6 +180,7 @@ import filters
 import collections
 import shutil
 import initialize
+import zipfile
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -2305,6 +2310,34 @@ def api_get_session_log_file_diff():
     return jsonify(**{'data': data})
 
 
+@app.route('/api/get_session_logs')
+@login_required
+def api_get_session_logs():
+    id = request.args.get("record_id")
+
+    db_session = DBSession()
+    install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+
+    if install_job is None:
+        abort(404)
+
+    log_folder = install_job.session_log
+    file_path = os.path.join(get_log_directory(), log_folder)
+
+    if not os.path.isdir(file_path):
+        abort(404)
+
+    rows = []
+    log_file_list = get_file_list(file_path)
+    for file in log_file_list:
+        row = {}
+        row['filepath'] = os.path.join(file_path, file)
+        row['filename'] = file
+        rows.append(row)
+
+    return jsonify(**{'data': rows})
+
+
 @app.route('/hosts/<hostname>/<table>/trace/<int:id>/')
 @login_required
 def host_trace(hostname, table, id):
@@ -3514,10 +3547,27 @@ def download_session_log():
     return send_file(get_log_directory() + request.args.get('file_path'), as_attachment=True)
 
 
+@app.route('/api/download_session_logs', methods=['POST'])
+@login_required
+def api_download_session_logs():
+    file_list = request.args.getlist('file_list[]')[0].split(',')
+    session_zip_path = os.path.normpath(os.path.join(get_temp_directory(), current_user.username, "session_logs"))
+    zip_file = os.path.join(session_zip_path, "session_logs.zip")
+    create_directory(session_zip_path)
+
+    zout = zipfile.ZipFile(zip_file, mode='w')
+    for f in file_list:
+        zout.write(os.path.normpath(f), os.path.basename(f))
+
+    zout.close()
+
+    return send_file(zip_file, as_attachment=True)
+
+
 @app.route('/download_system_logs')
 @login_required
 def download_system_logs():
-    db_session = DBSession()           
+    db_session = DBSession()
     logs = db_session.query(Log) \
         .order_by(Log.created_time.desc())
         
@@ -3532,8 +3582,8 @@ def download_system_logs():
     # Create a file which contains the size of the image file.
     log_file = open(get_temp_directory() + 'system_logs', 'w')
     log_file.write(contents)
-    log_file.close()  
-        
+    log_file.close()
+
     return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
 
 

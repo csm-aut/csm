@@ -36,7 +36,7 @@ import importlib
 import tarfile
 import re
 
-from constants import get_log_directory
+from constants import get_log_directory, get_temp_directory
 from __builtin__ import True
 
 
@@ -71,7 +71,7 @@ def create_directory(directory):
     # Creates the a directory if not exist
     if not os.path.exists(directory):
         try:
-            os.makedirs(directory) 
+            os.makedirs(directory, 7777)
         except:
             print('ERROR: Unable to create directory' + directory)      
 
@@ -106,7 +106,7 @@ def get_datetime_string(datetime, format):
 
 def make_file_writable(file_path):
     if os.path.isfile(file_path):
-        os.chmod(file_path, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)  
+        os.chmod(file_path, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)
 
 
 def get_tarfile_file_list(tar_file_path):
@@ -341,6 +341,13 @@ def get_json_value(json_object, key):
                 return value
     else:
         return None
+
+
+def create_temp_user_directory(username):
+    if not os.path.isdir(os.path.join(get_temp_directory(), username)):
+        os.makedirs(os.path.join(get_temp_directory(), username), 7777)
+
+    return os.path.join(get_temp_directory(), username)
 
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

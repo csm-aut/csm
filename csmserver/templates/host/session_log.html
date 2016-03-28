@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}<center><h4><b>Session Logs: {{ hostname }}</b></h4></center>{% endblock title %}
+{% block title %}<center><h4><b>Session Logs: {{ hostname }}</b>
+    <a id="download-session-logs" href="javascript://">
+        <img title="Download Session Logs" src="/static/download.png">
+    </a></h4></center>{% endblock title %}
 
 {% block extra_head %}
 <script>
@@ -13,6 +16,38 @@
         });
 
         $(".hide-header").hide();
+
+        var session_logs_table = $("#session-logs-datatable").dataTable({
+            "pageLength": 100,
+            "scrollY": 250,
+            "columnDefs": [{
+                "sortable": false,
+                "targets": 0,
+                "data": 'filepath',
+                "render": function ( data, type, row ) {
+                    return '<center><input type="checkbox" value="' + data + '" class="check" name="files"></center>';
+                }
+            }, {
+                "targets": 1,
+                "data" : 'filename'
+            } ]
+        });
+
+        $('#session-logs-check-all').click(function () {
+            toggle_check_all(session_logs_table, this);
+        });
+
+        function toggle_check_all(data_table, this_instance) {
+            var filtered_rows = data_table.$('tr', {"filter": "applied"});
+            for (var i = 0; i < filtered_rows.length; i++) {
+              $(filtered_rows[i]).find('.check').prop('checked', this_instance.checked);
+            }
+        }
+
+        $("#download-session-logs").on("click", function() {
+            session_logs_table.api().ajax.url("/api/get_session_logs?record_id=" + {{ record_id }}).load();
+            $('#session-logs-dialog').modal({show:true, backdrop:'static'});
+        });
 
         $(".open-file-diff-dialog").on("click", function() {
             get_file_diff($(this).attr('data-diff-file-path'));
@@ -32,6 +67,7 @@
                         $.each(response, function(index, element) {
 
                             $('#file-diff-results').html(element[0].file_diff_contents);
+                            $('#diff-download').attr("href", "{{ url_for('download_session_log') }}?file_path=" + diff_file_path);
                             $('#file-diff-dialog').modal({show:true, backdrop:'static'});
                         });
                     }
@@ -39,6 +75,21 @@
                 }
             });
         }
+
+        $('#session-logs-done').on('click', function(e) {
+            var file_list = [];
+            $('.check').each(function(index) {
+                if (this.checked) {
+                    file_list.push($(this).val());
+                }
+            });
+
+            if(file_list == ''){
+                return false;
+            }
+            $('#download-session-logs-form').attr('action', "{{ url_for('api_download_session_logs') }}?file_list[]=" + file_list);
+            $('#download-session-logs-form').submit();
+        });
     });
 </script>
 
@@ -53,7 +104,7 @@
     }
 </style>
 {% endblock extra_head %}
-      
+
 {% block main %}
 
 <div id="file-diff-dialog" class="modal" role="dialog">
@@ -61,7 +112,11 @@
         <form method="post" class="form-horizontal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <div class="pull-right">
+                    <a id="diff-download" href="javascript://">
+                        <img title="Download File" src="{{ url_for('static', filename='download.png') }}"> &nbsp;&nbsp;
+                    </a>
+                    <button type="button" class="close" data-dismiss="modal">x</button></div>
                     <span class="pull-right" id="spinner">
                          <img src="/static/spinner.gif"> &nbsp;&nbsp;
                     </span>
@@ -69,6 +124,38 @@
                 </div>
                 <div class="modal-body">
                     <div id="file-diff-results"></div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="session-logs-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form id="download-session-logs-form" name="download-session-logs-form" method="post" class="form-horizontal" action="{{ url_for('api_download_session_logs') }}">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Session Logs</h4>
+                </div>
+                <div class="modal-body">
+                    <table id="session-logs-datatable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <center><input type='checkbox' id='session-logs-check-all'></center>
+                                </th>
+                                <th>File Name</th>
+                            </tr>
+                        </thead>
+                    </table>
+                    <div class="wizard-footer">
+                        <div align="center">
+                            <input id='session-logs-done' data-dismiss="modal" type='submit' class='btn btn-fill btn-primary btn-wd btn-sm' name='session-logs-done' value='Download' />
+                            <input type="button" id="cancel" class="btn btn-fill btn-wd btn-sm" data-dismiss="modal" value="Cancel" />
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
                 </div>
             </div>
         </form>
@@ -115,7 +202,7 @@
                             {% if diff_file_path | length > 0 %}
                             <td>
                                 <a class="open-file-diff-dialog" data-diff-file-path="{{ diff_file_path }}" href="javascript://">
-                                    <img title="Compare with last Pre-Upgrade log" src="{{ url_for('static', filename='file_diff.png') }}">
+                                    <img title="View Comparison" src="{{ url_for('static', filename='file_diff.png') }}">
                                 </a>
                             </td>
                             {% else %}
