@@ -3236,20 +3236,20 @@ def api_get_ddts_details(ddts_id):
                         '(Check Tools - User Preferences)'
         else:
             error_msg = 'Could not retrieve bug information.'
-        return jsonify(**{'data':{'ErrorMsg': error_msg}})
+        return jsonify(**{'data': {'ErrorMsg': error_msg}})
 
     info = {}
 
-    statuses = {'O' : 'Open',
-                'F' : 'Fixed',
-                'T' : 'Terminated'}
+    statuses = {'O': 'Open',
+                'F': 'Fixed',
+                'T': 'Terminated'}
 
-    severities = {'1' : "1 Catastrophic",
-                  '2' : "2 Severe",
-                  '3' : "3 Moderate",
-                  '4' : "4 Minor",
-                  '5' : "5 Cosmetic",
-                  '6' : "6 Enhancement"}
+    severities = {'1': "1 Catastrophic",
+                  '2': "2 Severe",
+                  '3': "3 Moderate",
+                  '4': "4 Minor",
+                  '5': "5 Cosmetic",
+                  '6': "6 Enhancement"}
 
     info['status'] = statuses[get_json_value(bug_info, 'status')] \
         if get_json_value(bug_info, 'status') in statuses else get_json_value(bug_info, 'status')
@@ -3563,6 +3563,7 @@ def api_download_session_logs():
     session_zip_path = os.path.normpath(os.path.join(temp_user_dir, "session_logs"))
     zip_file = os.path.join(session_zip_path, "session_logs.zip")
     create_directory(session_zip_path)
+    make_file_writable(session_zip_path)
 
     zout = zipfile.ZipFile(zip_file, mode='w')
     for f in file_list:
@@ -3592,6 +3593,7 @@ def download_system_logs():
     temp_user_dir = create_temp_user_directory(current_user.username)
     log_file_path = os.path.normpath(os.path.join(temp_user_dir, "system_logs"))
     create_directory(log_file_path)
+    make_file_writable(log_file_path)
     log_file = open(os.path.join(log_file_path, 'system_logs'), 'w')
     log_file.write(contents)
     log_file.close()

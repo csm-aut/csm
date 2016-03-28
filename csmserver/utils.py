@@ -71,7 +71,7 @@ def create_directory(directory):
     # Creates the a directory if not exist
     if not os.path.exists(directory):
         try:
-            os.makedirs(directory, 7777)
+            os.makedirs(directory)
         except:
             print('ERROR: Unable to create directory' + directory)      
 
@@ -358,7 +358,8 @@ def get_json_value(json_object, key):
 
 def create_temp_user_directory(username):
     if not os.path.isdir(os.path.join(get_temp_directory(), username)):
-        os.makedirs(os.path.join(get_temp_directory(), username), 7777)
+        os.makedirs(os.path.join(get_temp_directory(), username))
+        make_file_writable(os.path.join(get_temp_directory(), username))
 
     return os.path.join(get_temp_directory(), username)
 
