@@ -3229,9 +3229,14 @@ def api_get_ddts_details(ddts_id):
     bsh = BugServiceHandler(username, password, ddts_id)
     try:
         bug_info = bsh.get_bug_info()
-    except Exception:
-        logger.exception('api_get_ddts_details hit exception')
-        return jsonify(**{'data':{'ErrorMsg': 'Could not retrieve bug information.'}})
+    except Exception as e:
+        logger.exception('api_get_ddts_details hit exception ' + e.message)
+        if e.message == 'access_token':
+            error_msg = 'Could not retrieve bug information.  The username and password defined may not be correct ' \
+                        '(Check Tools - User Preferences)'
+        else:
+            error_msg = 'Could not retrieve bug information.'
+        return jsonify(**{'data':{'ErrorMsg': error_msg}})
 
     info = {}
 
@@ -3246,20 +3251,23 @@ def api_get_ddts_details(ddts_id):
                   '5' : "5 Cosmetic",
                   '6' : "6 Enhancement"}
 
-    info['status'] = statuses[get_json_value(bug_info, 'status')] if get_json_value(bug_info, 'status') in statuses else get_json_value(bug_info, 'status')
+    info['status'] = statuses[get_json_value(bug_info, 'status')] \
+        if get_json_value(bug_info, 'status') in statuses else get_json_value(bug_info, 'status')
     info['product'] = get_json_value(bug_info, 'product')
-    info['severity'] = severities[get_json_value(bug_info, 'severity')] if get_json_value(bug_info, 'severity') in severities else get_json_value(bug_info, 'severity')
+    info['severity'] = severities[get_json_value(bug_info, 'severity')] \
+        if get_json_value(bug_info, 'severity') in severities else get_json_value(bug_info, 'severity')
     info['headline'] = get_json_value(bug_info, 'headline')
     info['support_case_count'] = get_json_value(bug_info, 'support_case_count')
     info['last_modified_date'] = get_json_value(bug_info, 'last_modified_date')
     info['bug_id'] = get_json_value(bug_info, 'bug_id')
     info['created_date'] = get_json_value(bug_info, 'created_date')
     info['duplicate_of'] = get_json_value(bug_info, 'duplicate_of')
-    info['description'] = get_json_value(bug_info, 'description').replace('\n', '<br>') if get_json_value(bug_info, 'description') else None
-
-    info['known_affected_releases'] = get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_affected_releases') else None
-    info['known_fixed_releases'] = get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_fixed_releases') else None
-
+    info['description'] = get_json_value(bug_info, 'description').replace('\n', '<br>') \
+        if get_json_value(bug_info, 'description') else None
+    info['known_affected_releases'] = get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') \
+        if get_json_value(bug_info, 'known_affected_releases') else None
+    info['known_fixed_releases'] = get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') \
+        if get_json_value(bug_info, 'known_fixed_releases') else None
     info['ErrorDescription'] = get_json_value(bug_info, 'ErrorDescription')
     info['SuggestedAction'] = get_json_value(bug_info, 'SuggestedAction')
 
@@ -3551,7 +3559,8 @@ def download_session_log():
 @login_required
 def api_download_session_logs():
     file_list = request.args.getlist('file_list[]')[0].split(',')
-    session_zip_path = os.path.normpath(os.path.join(get_temp_directory(), current_user.username, "session_logs"))
+    temp_user_dir = create_temp_user_directory(current_user.username)
+    session_zip_path = os.path.normpath(os.path.join(temp_user_dir, "session_logs"))
     zip_file = os.path.join(session_zip_path, "session_logs.zip")
     create_directory(session_zip_path)
 
@@ -3580,11 +3589,14 @@ def download_system_logs():
         contents += '-' * 70 + '\n'
         
     # Create a file which contains the size of the image file.
-    log_file = open(get_temp_directory() + 'system_logs', 'w')
+    temp_user_dir = create_temp_user_directory(current_user.username)
+    log_file_path = os.path.normpath(os.path.join(temp_user_dir, "system_logs"))
+    create_directory(log_file_path)
+    log_file = open(os.path.join(log_file_path, 'system_logs'), 'w')
     log_file.write(contents)
     log_file.close()
 
-    return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
+    return send_file(os.path.join(log_file_path, 'system_logs'), as_attachment=True)
 
 
 @app.route('/api/plugins')
