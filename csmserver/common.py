@@ -146,7 +146,10 @@ def get_last_successful_inventory_elapsed_time(host):
         if inventory_job.pending_submit:
             return 'Pending Retrieval'
         else:
-            return time_difference_UTC(inventory_job.last_successful_time)
+            if inventory_job.last_successful_time is None:
+                return 'None'
+            else:
+                return time_difference_UTC(inventory_job.last_successful_time)
 
     return ''
 
