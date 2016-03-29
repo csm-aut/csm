@@ -532,7 +532,8 @@ def get_managed_host_details(region_id):
             row = {} 
             row['hostname'] = host.hostname
             row['platform'] = host.platform
-            row['software'] = host.software_platform + ' (' + host.software_version + ')'
+            row['software'] = host.software_platform if host.software_platform is not None else UNKNOWN + ' (' + \
+                              host.software_version if host.software_version is not None else UNKNOWN + ')'
 
             if len(host.connection_param) > 0:
                 connection_param = host.connection_param[0]
