@@ -413,7 +413,7 @@ class InventoryJob(Base):
     __tablename__ = 'inventory_job'
     
     id = Column(Integer, primary_key=True)
-    pending_submit = Column(Boolean, default=True)
+    request_update = Column(Boolean, default=True)
     status = Column(String(200))
     status_time = Column(DateTime) 
     last_successful_time = Column(DateTime)

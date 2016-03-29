@@ -143,7 +143,7 @@ def get_last_successful_inventory_elapsed_time(host):
     if host is not None:
         # Last inventory successful time
         inventory_job = host.inventory_job[0]
-        if inventory_job.pending_submit:
+        if inventory_job.request_update:
             return 'Pending Retrieval'
         else:
             if inventory_job.last_successful_time is None:

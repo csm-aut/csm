@@ -2728,8 +2728,8 @@ def get_software(hostname):
     
     host = get_host(db_session, hostname)
     if host is not None:
-        if not host.inventory_job[0].pending_submit:
-            host.inventory_job[0].pending_submit = True
+        if not host.inventory_job[0].request_update:
+            host.inventory_job[0].request_update = True
             db_session.commit()
             return jsonify({'status': 'OK'})
    
