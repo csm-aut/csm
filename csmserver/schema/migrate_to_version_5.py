@@ -32,7 +32,7 @@ sql_statements = [
     'alter table user add host_password VARCHAR(100)',
     'alter table install_job add column custom_command_profile_id varchar(20)',
     'alter table host add family VARCHAR(20) default "Unknown"',
-    'alter table host add os_type VARCHAR(20)',
+    'alter table host add os_type VARCHAR(20) default "Unknown"',
     'alter table system_option add default_host_authentication_choice VARCHAR(10) default "1"',
     'drop table device_udi'
     ]
