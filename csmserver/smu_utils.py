@@ -199,7 +199,7 @@ def get_validated_list(smu_list):
     
     if platform == UNKNOWN or release == UNKNOWN:
         for line in smu_list:
-            result_list.append({'smu_entry': line, 'is': 'Unrecognized'})
+            result_list.append({'smu_entry': line, 'is': 'Unrecognized', 'description': ''})
         return result_list
     
     # Load the SMU information
