@@ -12,7 +12,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
     }   
     
     var target_package_list = [];
-    
+
     $.ajax({
         url: "/api/get_software_package_upgrade_list/hosts/" + hostname + "/release/" + target_release,
         dataType: 'json',
@@ -26,6 +26,8 @@ function auto_select_software(hostname, selector, target_release, match_internal
         
             if (target_package_list.length > 0) {
                 selector.select_partial_match(target_package_list);
+            } else {
+                bootbox.alert("<img src='/static/error.png'> &nbsp;Unable to locate software packages that match the version.");
             }
         
             var missing_package_list = [];
@@ -53,7 +55,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
                 for (i = 0; i < missing_package_list.length; i++) {
                     package_list += missing_package_list[i] + '<br>';
                 }
-                bootbox.alert("<img src='/static/error.png'> &nbsp;Unable to locate software packages in the selected server repository that match the followings<br><br>" + package_list);
+                bootbox.alert("<img src='/static/error.png'> &nbsp;Unable to locate software packages that match the followings<br><br>" + package_list);
             }
         }
     });

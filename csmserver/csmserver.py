@@ -2839,7 +2839,7 @@ def get_software_package_upgrade_list(hostname, target_release):
     
     match_internal_name =  True if request.args.get('match_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname) 
-    target_packages = get_target_software_package_list(host.platform, host_packages, target_release, match_internal_name)
+    target_packages = get_target_software_package_list(host.family, host_packages, target_release, match_internal_name)
     for package in target_packages:
         rows.append({'package': package})
         
