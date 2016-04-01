@@ -146,6 +146,7 @@ from utils import get_json_value
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
+from utils import datetime_from_utc_to_local
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -2364,30 +2365,41 @@ def host_trace(hostname, table, id):
 @app.route('/logs/')
 @login_required
 def logs():
-    """
-    Displays the system related logs.
-    """
-    db_session = DBSession()          
-    
-    # Only shows the ERROR 
+    return render_template('log.html')
+
+
+@app.route('/api/get_system_logs/')
+@login_required
+def api_get_system_logs():
+    db_session = DBSession()
+
+    # Only shows the ERROR
     logs = db_session.query(Log).filter(Log.level == 'ERROR').order_by(Log.created_time.desc())
 
-    return render_template('log.html', logs=logs)          
+    rows = []
+    for log in logs:
+        row = {}
+        row['id'] = log.id
+        row['severity'] = log.level
+        row['message'] = log.msg
+        row['created_time'] = log.created_time
+        rows.append(row)
+
+    return jsonify(**{'data': rows})
 
 
-@app.route('/logs/<int:log_id>/trace/')
+@app.route('/api/logs/<int:log_id>/trace/')
 @login_required
-def log_trace(log_id):
+def api_get_log_trace(log_id):
     """
     Returns the log trace of a particular log record.
     """
     db_session = DBSession()
     
     log = db_session.query(Log).filter(Log.id == log_id).first()
-    if log is None:
-        abort(404)
-    
-    return render_template('trace.html', log=log)
+    return jsonify(**{'data': [
+        {'severity': log.level, 'message': log.msg, 'trace': log.trace, 'created_time': log.created_time}
+    ]})
 
 
 @app.route('/failed_software_inventory_list/')
@@ -2547,7 +2559,7 @@ def api_get_servers_by_region(region_id):
     region = get_region_by_id(db_session, region_id)
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
-            result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
+            result_list.append({'server_id': server.id, 'hostname': server.hostname })
     else:
         # Returns all server repositories if the region does not have any server repository designated.
         return api_get_servers()
@@ -3584,7 +3596,7 @@ def download_system_logs():
         
     contents = ''
     for log in logs:
-        contents += get_datetime_string(log.created_time) + '\n'
+        contents += get_datetime_string(datetime_from_utc_to_local(log.created_time)) + '\n'
         contents += log.level + ':' + log.msg + '\n'
         if log.trace is not None:
             contents += log.trace + '\n'
