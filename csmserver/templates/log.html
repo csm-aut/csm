@@ -13,51 +13,95 @@
 {% block extra_head %}
 <script>
     $(function() {
-
-        $("#datatable").dataTable();
-
-        $('.utcDate').val(function(index, currentValue) {
-            // Invalid date would be less than 15 characters
-            if ($(this).text().length > 15) {
-                $(this).html(convertToLocaleString($(this).text()));
+        $("#datatable").dataTable({
+            "order": [
+                [2, "desc"]
+            ],
+            "columnDefs": [ {
+                "targets": 0,
+                "data": 'severity'
+            }, {
+                "targets": 1,
+                "data": 'message'
+            }, {
+                "targets": 2,
+                "data": 'created_time',
+                "render": function(data, type, row) {
+                    return convertToLocaleString(data);
+                }
+            }, {
+                "targets": 3,
+                "data": 'id',
+                "render": function(data, type, row) {
+                    return '<a class="show-system-log" system-log-id="' + data + '" href="javascript://">' +
+                           '<img src="/static/file.png" title="debug trace"></a>';
+                }
+            }, ],
+            "ajax": {
+                "url": "{{ url_for('api_get_system_logs') }}",
             }
         });
 
+        // Use delegate pattern for event
+        $("#datatable").on("click", ".show-system-log", function() {
+            display_trace_dialog($(this).attr('system-log-id'));
+        });
+
+        function display_trace_dialog(id) {
+            $.ajax({
+                url: "/api/logs/" + id + "/trace",
+                dataType: 'json',
+                success: function(response) {
+                    $.each(response, function(index, element) {
+                        $('#trace-dialog-title').html(element[0].severity + ': ' + element[0].message + ' - ' +
+                            convertToLocaleString(element[0].created_time));
+                        $('#trace-content').html(newline2linebreak(element[0].trace));
+                    });
+                }
+            });
+
+            $('#display-trace-dialog').modal({show: true})
+        }
     });
+
 </script>
+
+<style>
+    .modal-dialog {
+        width: 900px;
+    }
+</style>
 {% endblock extra_head %}
 
 {% block main %}
+<div id="display-trace-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">x</button>
+                <h4>
+                    <center><span id="trace-dialog-title"></span></center>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div id="trace-content" style="height:450px; overflow-y:scroll; overflow-y:scroll; word-wrap:break-word;">
+                </div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
 <div class="container" style="margin-top: 10px">
     <table cellspacing="0" class="display table" id="datatable">
         <thead>
             <tr>
-                <th>No.</th>
                 <th>Severity</th>
                 <th>Message</th>
                 <th>Created Time</th>
                 <th>Trace</th>
             </tr>
         </thead>
-        <tbody>
-            {% for log in logs %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ log.level }}</td>
-                <td>{{ log.msg }}</td>
-                <td class="utcDate">{{ log.created_time | datetime_string }}</td>
-                {% if log.trace == None %}
-                    <td>&nbsp;</td>
-                {% else %}
-                    <td>
-                        <a href="{{ url_for('log_trace', log_id = log.id) }}">
-                            <center><img title='Trace Log' src="{{ url_for('static', filename='file.png') }}"></center>
-                        </a>
-                    </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
     </table>
 </div>
 {% endblock main %}

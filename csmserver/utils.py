@@ -31,6 +31,7 @@ import re
 import sys
 import os
 import stat
+import time
 import datetime 
 import importlib
 import tarfile
@@ -110,6 +111,12 @@ def get_datetime_string(datetime, format):
         return datetime.strftime(format)
     except:
         return None    
+
+
+def datetime_from_utc_to_local(utc_datetime):
+    now_timestamp = time.time()
+    offset = datetime.datetime.fromtimestamp(now_timestamp) - datetime.datetime.utcfromtimestamp(now_timestamp)
+    return utc_datetime + offset
 
 
 def make_file_writable(file_path):

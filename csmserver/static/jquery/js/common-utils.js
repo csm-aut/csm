@@ -81,6 +81,13 @@ function comma2newline(s) {
     return s.replace(/,/g, "\n")
 }
 
+/**
+ * Converts new line characters to html line break (<br>).
+ */
+function newline2linebreak(s) {
+    return s.replace(/\n/g, "<br>")
+}
+
 function get_parent_folder(directory) {
     if (directory != null) {
         var pos = directory.lastIndexOf('/');

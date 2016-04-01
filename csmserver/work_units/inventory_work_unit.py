@@ -83,7 +83,7 @@ class InventoryWorkUnit(WorkUnit):
                 self.archive_inventory_job(db_session, inventory_job, JobStatus.FAILED)
 
             # Reset the pending retrieval flag
-            inventory_job.pending_submit = False
+            inventory_job.request_update = False
             db_session.commit()
 
         except Exception:
@@ -93,7 +93,7 @@ class InventoryWorkUnit(WorkUnit):
                 self.archive_inventory_job(db_session, inventory_job, JobStatus.FAILED, trace=sys.exc_info)
 
                 # Reset the pending retrieval flag
-                inventory_job.pending_submit = False
+                inventory_job.request_update = False
                 db_session.commit()
             except Exception:
                 logger.exception('InventoryManager hit exception - inventory job = %s', self.job_id)

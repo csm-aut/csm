@@ -37,7 +37,7 @@ class InventoryManager(JobManager):
     def dispatch(self):
         db_session = DBSession()
         try:
-            inventory_jobs = db_session.query(InventoryJob).filter(InventoryJob.pending_submit == True).all()
+            inventory_jobs = db_session.query(InventoryJob).filter(InventoryJob.request_update == True).all()
 
             if len(inventory_jobs) > 0:
                 for inventory_job in inventory_jobs:

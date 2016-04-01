@@ -34,7 +34,8 @@ sql_statements = [
     'alter table host add family VARCHAR(20) default "Unknown"',
     'alter table host add os_type VARCHAR(20) default "Unknown"',
     'alter table system_option add default_host_authentication_choice VARCHAR(10) default "1"',
-    'drop table device_udi'
+    'drop table device_udi',
+    'alter table inventory_job change column pending_submit request_update BOOLEAN',
     ]
 
 class SchemaMigrate(BaseMigrate):
