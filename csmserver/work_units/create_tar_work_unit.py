@@ -78,8 +78,8 @@ class CreateTarWorkUnit(WorkUnit):
                 # Copy the selected additional packages from the repository to the new tar directory
                 if additional_packages:
                     self.create_tar_job.set_status('Copying selected additional files.')
+                    self.db_session.commit()
                     for pkg in additional_packages.split(','):
-                        self.db_session.commit()
                         shutil.copy2(os.path.join(repo_dir, pkg), new_tar_path)
 
                 self.create_tar_job.set_status('Tarring new file.')

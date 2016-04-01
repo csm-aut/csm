@@ -363,5 +363,6 @@ def create_temp_user_directory(username):
 
     return os.path.join(get_temp_directory(), username)
 
+
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

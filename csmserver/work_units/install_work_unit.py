@@ -183,7 +183,7 @@ class InstallWorkUnit(WorkUnit):
             session_log_link = "hosts/{}/install_job_history/session_log/{}?file_path={}".format(
                 urllib.quote(host.hostname), install_job.id, install_job.session_log)
 
-            message = '<html><head><body>'
+            message = '<html><head></head><body>'
             if install_job.status == JobStatus.COMPLETED:
                 message += 'The scheduled installation for host "' + host.hostname + '" has COMPLETED<br><br>'
             elif install_job.status == JobStatus.FAILED:
@@ -201,7 +201,7 @@ class InstallWorkUnit(WorkUnit):
             if install_job.packages is not None and len(install_job.packages) > 0:
                 message += 'Followings are the software packages: <br><br>' + install_job.packages.replace(',','<br>')
 
-            message += '</body></head></html>'
+            message += '</body></html>'
 
             create_email_job(db_session, logger, message, install_job.created_by)
 
