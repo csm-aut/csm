@@ -24,36 +24,32 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-import sys
 
-import os
-import subprocess
-import re
-import requests
-import shutil
 import csv
+import ftplib
+import os
+import re
+import shutil
+import subprocess
+
+from condoor import TIMEOUT
+from constants import ServerType
 from database import DBSession
-from models import Server
-
-
+from horizon.package_lib import parse_xr_show_platform, validate_xr_node_state
 from horizon.plugin import PluginError, Plugin
-
 from horizon.plugins.install_add import InstallAddPlugin
 from horizon.plugins.install_activate import InstallActivatePlugin
 from horizon.plugins.install_commit import InstallCommitPlugin
 from horizon.plugins.node_status.asr9k.node_status import NodeStatusPlugin
-from horizon.package_lib import parse_xr_show_platform, validate_xr_node_state
-from horizon.plugin_lib import copy_running_config_to_repo, copy_files_from_tftp_to_csm_data
-
-from condoor import TIMEOUT
-
+from horizon.plugin_lib import save_config_to_csm_data
+from models import Server
+from csmserver.server_helper import TFTPServer, FTPServer, SFTPServer
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 
-#NOX_64_BINARY = "nox_linux_64bit_6.0.0v3.bin"
 NOX_64_BINARY = "nox-linux-64.bin"
-NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
-NOX_FOR_MAC = "nox-mac64"
+# NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
+# NOX_FOR_MAC = "nox-mac64"
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
 TIMEOUT_FOR_COPY_ISO = 3600
@@ -63,20 +59,12 @@ ISO_FULL_IMAGE_NAME = "asr9k-full-x64.iso"
 ISO_MINI_IMAGE_NAME = "asr9k-mini-x64.iso"
 ISO_LOCATION = "harddiskb:/"
 
-
 ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
-#LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
-
+# LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
 SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
-
-#NODE = '[-|\s](\d+/(?:RS?P)?\d+/CPU\d+)'
 NODE = '(\d+/(?:RS?P)?\d+/CPU\d+)'
 
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
-#FPDS_CHECK_FOR_UPGRADE = set(['fpga2'])
-
-MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD = '6.0.1'
-
 
 XR_CONFIG_IN_CSM = "xr.cfg"
 BREAKOUT_CONFIG_IN_CSM = "breakout.cfg"
@@ -91,15 +79,20 @@ ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
 ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
 
 class PreMigratePlugin(Plugin):
+    """
+    A plugin for preparing device for migration from
+    ASR9K IOS-XR (a.k.a. XR) to ASR9K IOS-XR 64 bit (a.k.a. eXR)
 
-    """
-    A plugin for migrating from XR to eXR/fleXR
-    This plugin accesses rommon and set rommon variable EMT.
-    A router is reloaded twice.
+    This plugin does the following:
+    1. Check several pre-requisites
+    2. Resize the eUSB partition(/harddiskb:/ on XR)
+    3. Migrate the configurations with NoX and upload them to device
+    4. Copy the eXR image to /harddiskb:/
+    5. Upgrade some FPD's if needed.
+
     Console access is needed.
-    Arguments:
-    T.B.D.
     """
+
     NAME = "PRE_MIGRATE"
     DESCRIPTION = "PRE-MIGRATE FOR XR TO EXR MIGRATION"
     TYPE = "PRE_MIGRATE"
@@ -107,6 +100,7 @@ class PreMigratePlugin(Plugin):
 
     @staticmethod
     def _ping_repository_check(manager, device, repo_url):
+        """Test ping server repository ip from device"""
         repo_ip = re.search(".*/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/.*", repo_url)
 
         if not repo_ip:
@@ -114,10 +108,12 @@ class PreMigratePlugin(Plugin):
 
         output = device.send("ping {}".format(repo_ip.group(1)))
         if "100 percent" not in output:
-            manager.error("Failed to ping server repository {} on device. Please check session.log.".format(repo_ip.group(1)))
+            manager.error("Failed to ping server repository {} on device. \
+                          Please check session.log.".format(repo_ip.group(1)))
 
     @staticmethod
     def _get_iosxr_run_nodes(manager, device):
+        """Get names of all RSP's, RP's and all tomahawk Linecards that are in IOS-XR state"""
         iosxr_run_nodes = []
         cmd = "show platform"
         output = device.send(cmd)
@@ -142,13 +138,13 @@ class PreMigratePlugin(Plugin):
                                 iosxr_run_nodes.append(key)
                                 break
 
-        print "iosxr_run_nodes = " + str(iosxr_run_nodes)
         return iosxr_run_nodes
 
-
     @staticmethod
-    def _is_there_unsupported_config(nox_output):
-        match = re.search("Filename[\sA-Za-z\n]*[-\s]*\S*\s+\d*\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+(\d*)", nox_output)
+    def _all_configs_supported(nox_output):
+        """Check text output from running NoX on system. Only return True if all configs are supported by eXR."""
+        pattern = "Filename[\sA-Za-z\n]*[-\s]*\S*\s+\d*\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+(\d*)"
+        match = re.search(pattern, nox_output)
 
         if match:
             if match.group(1) != "0":
@@ -156,31 +152,90 @@ class PreMigratePlugin(Plugin):
 
         return True
 
-
     @staticmethod
-    def _upload_files_to_tftp(manager, device, sourcefiles, repo_url, destfilenames):
-        db_session = DBSession()
-        server = db_session.query(Server).filter(Server.server_url == repo_url).first()
-        if not server:
-            manager.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
+    def _upload_files_to_server_repository(manager, sourcefiles, server, destfilenames):
+        """
+        Upload files from their locations in the host linux system to the FTP/TFTP/SFTP server repository.
 
-        for x in range(0, len(sourcefiles)):
-            try:
-                shutil.copy(sourcefiles[x], server.server_directory + os.sep + destfilenames[x])
-            except:
-                db_session.close()
-                PreMigratePlugin._disconnect_and_raise_error(manager, device, "Exception was thrown while copying file {} to {}/{}.".format(sourcefiles[x], server.server_directory, destfilenames[x]))
-        db_session.close()
-        return True
+        Arguments:
+        :param manager: the plugin manager
+        :param sourcefiles: a list of string file paths that each points to a file on the system where CSM is hosted.
+                            The paths are all relative to csm/csmserver/.
+                            For example, if the source file is in csm_data/migration/filename,
+                            sourcefiles = ["../../csm_data/migration/filename"]
+        :param server: the associated server repository object stored in CSM database
+        :param destfilenames: a list of string filenames that the source files should be named after being copied to
+                              the designated directory in the server repository. i.e., ["thenewfilename"]
+        :return: True if no error occurred.
+        """
+
+        server_type = server.server_type
+        if server_type == ServerType.TFTP_SERVER:
+            tftp_server = TFTPServer(server)
+            for x in range(0, len(sourcefiles)):
+                try:
+                    tftp_server.upload_file(sourcefiles[x], destfilenames[x],
+                                            sub_directory=manager.csm.install_job.server_directory)
+                except:
+                    manager.error("Exception was thrown while \
+                                  copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                       server.server_directory,
+                                                                       manager.csm.install_job.server_directory,
+                                                                       destfilenames[x]))
+            #        PreMigratePlugin._disconnect_and_raise_error(manager, device, error_msg)
+            # PreMigratePlugin._upload_files_to_tftp(manager, device, sourcefiles, server, destfilenames)
+
+        elif server_type == ServerType.FTP_SERVER:
+            ftp_server = FTPServer(server)
+            for x in range(0, len(sourcefiles)):
+                try:
+                    ftp_server.upload_file(sourcefiles[x], destfilenames[x],
+                                            sub_directory=manager.csm.install_job.server_directory)
+                except:
+                    manager.error("Exception was thrown while \
+                                  copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                       server.server_directory,
+                                                                       manager.csm.install_job.server_directory,
+                                                                       destfilenames[x]))
+
+                    # PreMigratePlugin._disconnect_and_raise_error(manager, device, error_msg)
+        else:
+            sftp_server = SFTPServer(server)
+            for x in range(0, len(sourcefiles)):
+                try:
+                    sftp_server.upload_file(sourcefiles[x], destfilenames[x],
+                                            sub_directory=manager.csm.install_job.server_directory)
+                except:
+                    manager.error("Exception was thrown while \
+                                  copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                     server.server_directory,
+                                                                     manager.csm.install_job.server_directory,
+                                                                     destfilenames[x]))
+
+                    # PreMigratePlugin._disconnect_and_raise_error(manager, device, error_msg)
 
 
     @staticmethod
     def _copy_files_to_device(manager, device, repository, source_filenames, dest_files, timeout=600):
+        """
+        Copy files from their locations in the user selected server directory in the FTP or TFTP server repository
+        to locations on device.
+
+        Arguments:
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :param repository: the string url link that points to the location of files in the FTP/TFTP server repository,
+                    with no extra '/' in the end. i.e., tftp://223.255.254.245/tftpboot
+        :param source_filenames: a list of string filenames in the designated directory in the server repository.
+        :param dest_files: a list of string file paths that each points to a file to be created on device.
+                    i.e., ["/harddiskb:/asr9k-mini-x64.iso"]
+        :param timeout: the timeout for the 'copy' CLI command on device. The default is 10 minutes.
+        :return: None if no error occurred.
+        """
 
         def send_newline(ctx):
             ctx.ctrl.sendline()
             return True
-
 
         def error(ctx):
             ctx.message = "Error copying file. No such file or directory in server repository."
@@ -188,20 +243,6 @@ class PreMigratePlugin(Plugin):
 
         for x in range(0, len(source_filenames)):
 
-            """
-            cmd = 'copy ' + repository + '/' + source_filenames[x] + ' ' + dest_files[x]
-            device.send(cmd, timeout=timeout, wait_for_string='\?')
-
-            if "No such file" not in output:
-                device.send('\r', timeout=timeout, wait_for_string='\?')
-
-            output = device.send('\r', timeout=timeout)
-
-            if re.search('copied in', output):
-                return True
-            else:
-                manager.error("Failed to copy file " + repository + '/' + source_filenames[x] + " to " + dest_files[x] + " to device. Please check session.log.")
-            """
             command = "copy {}/{} {}".format(repository, source_filenames[x], dest_files[x])
 
             CONFIRM_FILENAME = re.compile("Destination filename.*\?")
@@ -218,31 +259,126 @@ class PreMigratePlugin(Plugin):
                 (TIMEOUT, [0, 1, 2, 3], 4, None, 0),
                 (NO_SUCH_FILE, [0, 1, 2, 3], 4, error, 0)
             ]
-            manager.log("Copying {}/{} to {} on device".format(repository, source_filenames[x], dest_files[x]))
+
+            manager.log("Copying {}/{} to {} on device".format(repository,
+                                                               source_filenames[x],
+                                                               dest_files[x]))
+
             if not device.run_fsm(PreMigratePlugin.DESCRIPTION, command, events, transitions, timeout=20):
-                manager.error("Error copying {}/{} to {} on device".format(repository, source_filenames[x], dest_files[x]))
+                manager.error("Error copying {}/{} to {} on device".format(repository,
+                                                                           source_filenames[x],
+                                                                           dest_files[x]))
 
             output = device.send("dir {}".format(dest_files[x]))
             if "No such file" in output:
-                manager.error("Failed to copy {}/{} to {} on device".format(repository, source_filenames[x], dest_files[x]))
+                manager.error("Failed to copy {}/{} to {} on device".format(repository,
+                                                                            source_filenames[x],
+                                                                            dest_files[x]))
+        """
     @staticmethod
-    def _disconnect_and_raise_error(manager, device, msg):
-        device.disconnect()
-        manager.error(msg)
+    def _copy_files_from_sftp_to_device(manager, device, server, source_filenames, dest_directory, timeout=600):
 
+        Copy files from their locations in the user selected server directory in the SFTP server repository
+        to locations on device.
+
+        Arguments:
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :param repository: the string url link that points to the location of files in the SFTP server repository
+        :param source_filenames: a list of string filenames in the designated directory in the server repository.
+        :param dest_files: a list of string file paths that each points to a file to be created on device.
+                    i.e., ["/harddiskb:/asr9k-mini-x64.iso"]
+        :param timeout: the timeout for the 'copy' CLI command on device. The default is 10 minutes.
+        :return: None if no error occurred.
+
+
+        device.send()
+        def send_newline(ctx):
+            ctx.ctrl.sendline()
+            return True
+
+        def error(ctx):
+            ctx.message = "Error copying file. No such file or directory in server repository."
+            return False
+
+        for x in range(0, len(source_filenames)):
+
+            command = "sftp {}@{}".format(server.username, server.server_url)
+
+            PASSWORD = re.compile("Password:")
+            SFTP_PROMPT = re.compile("sftp>")
+            COPIED = re.compile(".+bytes copied in.+ sec")
+            NO_SUCH_FILE = re.compile("%Error copying.*\(Error opening source file\): No such file or directory")
+
+            events = [device.prompt, CONFIRM_FILENAME, CONFIRM_OVERWRITE, COPIED, TIMEOUT, NO_SUCH_FILE]
+            transitions = [
+                (CONFIRM_FILENAME, [0], 1, send_newline, timeout),
+                (CONFIRM_OVERWRITE, [1], 2, send_newline, timeout),
+                (COPIED, [1, 2], 3, None, 20),
+                (device.prompt, [3], -1, None, 0),
+                (TIMEOUT, [0, 1, 2, 3], 4, None, 0),
+                (NO_SUCH_FILE, [0, 1, 2, 3], 4, error, 0)
+            ]
+
+            manager.log("Copying {}/{} to {} on device".format(repository,
+                                                               source_filenames[x],
+                                                               dest_files[x]))
+
+            if not device.run_fsm(PreMigratePlugin.DESCRIPTION, command, events, transitions, timeout=20):
+                manager.error("Error copying {}/{} to {} on device".format(repository,
+                                                                           source_filenames[x],
+                                                                           dest_files[x]))
+
+            output = device.send("dir {}".format(dest_files[x]))
+            if "No such file" in output:
+                manager.error("Failed to copy {}/{} to {} on device".format(repository,
+                                                                            source_filenames[x],
+                                                                            dest_files[x]))
+        """
 
     @staticmethod
     def _run_migration_on_config(manager, device, fileloc, filename, nox_to_use, hostname):
-        commands = [subprocess.Popen(["chmod", "+x", nox_to_use]), subprocess.Popen([nox_to_use, "-f", fileloc + os.sep + filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
+        """
+        Run the migration tool - NoX - on the configurations copied out from device.
+
+        The conversion/migration is successful if the number under 'Total' equals to
+        the number under 'Known' in the text output.
+
+        If it's successful, but not all existing configs are supported by eXR, create two
+        new log files for the supported and unsupported configs in session log directory.
+        The unsupported configs will not appear on the converted configuration files.
+        Log a warning about the removal of unsupported configs, but this is not considered
+        as error.
+
+        If it's not successful, meaning that there are some configurations not known to
+        the NoX tool, in this case, create two new log files for the supported and unsupported
+        configs in session log directory. After that, error out.
+
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :param fileloc: string location where the config needs to be converted/migrated is,
+                        without the '/' in the end. This location is relative to csm/csmserver/
+        :param filename: string filename of the config
+        :param nox_to_use: string name of NoX binary executable.
+        :param hostname: hostname of device, as recorded on CSM.
+        :return: None if no error occurred.
+        """
+
+        commands = [subprocess.Popen(["chmod", "+x", nox_to_use]),
+                    subprocess.Popen([nox_to_use, "-f", os.path.join(fileloc, filename)],
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    ]
 
         nox_output, nox_error = commands[1].communicate()
 
         if nox_error:
-            manager.error("Failed to run the configuration migration tool on the admin configuration we retrieved from device - {}.".format(nox_error))
+            manager.error("Failed to run the configuration migration tool on the admin configuration \
+                          we retrieved from device - {}.".format(nox_error))
 
         conversion_success = False
 
-        match = re.search("Filename[\sA-Za-z\n]*[-\s]*\S*\s+(\d*)\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+(\d*)", nox_output)
+        match = re.search("Filename[\sA-Za-z\n]*[-\s]*\S*\s+(\d*)\s+\d*\(\s*\d*%\)\s+\d*\(\s*\d*%\)\s+(\d*)",
+                          nox_output)
 
         if match:
             if match.group(1) == match.group(2):
@@ -257,30 +393,57 @@ class PreMigratePlugin(Plugin):
 
         if conversion_success:
 
-            if PreMigratePlugin._is_there_unsupported_config(nox_output):
-                manager.log("Configuration {} was migrated successfully. No unsupported configurations found.".format(filename))
+            if PreMigratePlugin._all_configs_supported(nox_output):
+                manager.log("Configuration {} was migrated successfully. No unsupported configurations \
+                found.".format(filename))
             else:
-                PreMigratePlugin._create_config_logs(manager, device, fileloc + os.sep + filename.split(".")[0] + ".csv", supported_log_name, unsupported_log_name, hostname, filename)
-                manager.log("Configurations that are unsupported in eXR were removed in {}. Please look into {} and {}.".format(filename, unsupported_log_name, supported_log_name))
+                PreMigratePlugin._create_config_logs(manager, device,
+                                                     os.path.join(fileloc, filename.split(".")[0] + ".csv"),
+                                                     supported_log_name, unsupported_log_name,
+                                                     hostname, filename)
+
+                manager.log("Configurations that are unsupported in eXR were removed in {}. \
+                            Please look into {} and {}.".format(filename, unsupported_log_name, supported_log_name))
         else:
-            PreMigratePlugin._create_config_logs(manager, device, fileloc + os.sep + filename.split(".")[0] + ".csv", supported_log_name, unsupported_log_name, hostname, filename)
+            PreMigratePlugin._create_config_logs(manager, device,
+                                                 os.path.join(fileloc, filename.split(".")[0] + ".csv"),
+                                                 supported_log_name, unsupported_log_name, hostname, filename)
 
-            manager.error("Unknown configurations found. Please look into {} for unprocessed configurations, and {} for known/supported configurations".format(unsupported_log_name, supported_log_name))
-
-
+            manager.error("Unknown configurations found. Please look into {} for unprocessed configurations, \
+                          and {} for known/supported configurations".format(unsupported_log_name, supported_log_name))
 
     @staticmethod
     def _resize_eusb(manager, device):
+        """Resize the eUSB partition on device - Run the /pkg/bin/resize_eusb script on device(from ksh)."""
         device.send("run", wait_for_string="#")
         output = device.send("ksh /pkg/bin/resize_eusb", wait_for_string="#")
         device.send("exit")
         if not "eUSB partition completed." in output:
             manager.error("eUSB partition failed. Please check session.log.")
+        output = device.send("show media")
 
+        eusb_size = re.search("/harddiskb:.* ([.\d]+)G", output)
 
+        if not eusb_size:
+            manager.error("Unexpected output from CLI 'show media'.")
+
+        if eusb_size.group(1) < "1.0":
+            manager.error("/harddiskb:/ is smaller than 1 GB after running /pkg/bin/resize_eusb. \
+                          Please make sure that the device has either RP2 or RSP4.")
 
     @staticmethod
     def _check_fpd(device, iosxr_run_nodes):
+        """
+        Check the versions of migration related FPD's on device. Return a dictionary
+        that tells which FPD's on which node needs upgrade.
+
+        :param device: the connection to the device
+        :param iosxr_run_nodes: a list of strings representing all nodes(RSP/RP/LC) on device
+                                that we actually will need to make sure that the FPD upgrade
+                                later on completes successfully.
+        :return: a dictionary with string FPD type as key, and a list of the string names of
+                 nodes(RSP/RP/LC) as value.
+        """
         fpdtable = device.send("show hw-module fpd location all")
 
         subtype_to_locations_need_upgrade = {}
@@ -297,86 +460,87 @@ class PreMigratePlugin(Plugin):
 
         return subtype_to_locations_need_upgrade
 
-
-
-
     @staticmethod
     def _ensure_updated_fpd(manager, device, packages, iosxr_run_nodes):
+        """
+        Upgrade FPD's if needed.
+        Steps:
+        1. Check if the FPD package is already active on device.
+           Error out if not.
+        2. Check if the same FPD SMU is already active on device.
+           (Possibly by a previous Pre-Migrate action)
+        3. Install add, activate and commit the FPD SMU if not installed.
+        4. Check version of the migration related FPD's. Get the dictionary
+           of FPD types mapped to locations for which we need to check for
+           upgrade successs.
+        5. Force install the FPD types that need upgrade on all locations.
+           Check FPD related sys log to make sure all necessary upgrades
+           defined by the dictionary complete successfully.
 
-        manager.log("Checking if FPD package is present...")
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :param packages: all user selected packages from scheduling the Pre-Migrate
+        :param iosxr_run_nodes: the list of string nodes names we get from running
+                                PreMigratePlugin._get_iosxr_run_nodes
+        :return: True if no error occurred.
+        """
+
+        manager.log("Checking if FPD package is actively installed...")
         active_packages = device.send("show install active summary")
 
         match = re.search("fpd", active_packages)
 
         if not match:
-            manager.error("No FPD pie is active on device. Please install FPD pie to try again or manually upgrade your FPDs to eXR capable FPDs.")
+            manager.error("No FPD package is active on device. Please install the FPD package on device first.")
 
-        versioninfo = device.send("show version")
+        manager.log("Checking if the FPD SMU has been installed...")
+        pie_packages = []
+        for package in packages:
+            if package.find(".pie") > -1:
+                pie_packages.append(package)
 
-        match = re.search("[Vv]ersion\s+?(\d\.\d\.\d)", versioninfo)
+        if len(pie_packages) != 1:
+            manager.error("Please select exactly one FPD SMU pie on server repository for FPD upgrade. \
+                          The filename must end with '.pie'")
+
+        name_of_fpd_smu = pie_packages[0].split(".pie")[0]
+
+        install_summary = device.send("show install active summary")
+
+        match = re.search(name_of_fpd_smu, install_summary)
 
         if not match:
-            manager.error("Failed to recognize release version number. Please check session.log.")
 
-        release_version = match.group(1)
+            # Step 1: Install add the FPD SMU
+            manager.log("FPD upgrade - install add the FPD SMU...")
+            PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
 
-        if release_version < MINIMUM_RELEASE_VERSION_FOR_FLEXR_CAPABLE_FPD:
+            # Step 2: Install activate the FPD SMU
+            manager.log("FPD upgrade - install activate the FPD SMU...")
+            PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
 
-            manager.log("Checking if FPD SMU has been installed...")
-            pie_packages = []
-            for package in packages:
-                if package.find(".pie") > -1:
-                    pie_packages.append(package)
+            # Step 3: Install commit the FPD SMU
+            manager.log("FPD upgrade - install commit the FPD SMU...")
+            PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
 
-            if len(pie_packages) != 1:
-                manager.error("Please select exactly one FPD SMU pie on server repository for FPD upgrade. The filename must end with '.pie'")
-
-            name_of_fpd_smu = pie_packages[0].split(".pie")[0]
-
-            install_summary = device.send("show install active summary")
-
-            match = re.search(name_of_fpd_smu, install_summary)
-
-            if not match:
-
-                #Step 1: Install add the FPD SMU
-                manager.log("FPD upgrade - install add the FPD SMU...")
-                PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
-
-                #Step 2: Install activate the FPD SMU
-                manager.log("FPD upgrade - install activate the FPD SMU...")
-                PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
-
-
-                #Step 3: Install commit the FPD SMU
-                manager.log("FPD upgrade - install commit the FPD SMU...")
-                PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
-
-            else:
-                manager.log("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
+        else:
+            manager.log("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
 
         # check for the FPD version, if FPD needs upgrade,
-        manager.log("Checking FPD version...")
+        manager.log("Checking FPD versions...")
         subtype_to_locations_need_upgrade = PreMigratePlugin._check_fpd(device, iosxr_run_nodes)
-
-        print "subtype_to_locations_need_upgrade = " + str(subtype_to_locations_need_upgrade)
 
         if subtype_to_locations_need_upgrade:
 
-            #print "upgrading... not really..."
-
-            #subtype_to_locations_need_upgrade = {"fsbl":["0/RSP0/CPU0", "0/RSP1/CPU0", "0/0/CPU0"]}
-
-            """
-            Force upgrade all fpds in RP and Line card that need upgrade, with the FPD pie or both the FPD pie and FPD SMU depending on release version
-            """
+            # Force upgrade all FPD's in RP and Line card that need upgrade, with the FPD pie or both the FPD
+            # pie and FPD SMU depending on release version
             PreMigratePlugin._upgrade_all_fpds(manager, device, subtype_to_locations_need_upgrade)
-
 
         return True
 
     @staticmethod
     def _run_install_action_plugin(manager, device, install_plugin, install_action_name):
+        """Instantiate other install actions(install add, activate and commit) on same given packages"""
         try:
             install_plugin.start(manager, device)
         except PluginError as e:
@@ -384,12 +548,12 @@ class PreMigratePlugin(Plugin):
         except AttributeError:
             device.disconnect()
             manager.log("Disconnected...")
-            raise PluginError("Failed to {} the FPD SMU. Please check session.log for details of failure.".format(install_action_name))
-
+            raise PluginError("Failed to {} the FPD SMU. Please check session.log for details of \
+                              failure.".format(install_action_name))
 
     @staticmethod
     def _upgrade_all_fpds(manager, device, subtype_to_locations_need_upgrade):
-
+        """Force upgrade certain FPD's on all locations. Check for success. """
         def send_newline(ctx):
             ctx.ctrl.sendline()
             return True
@@ -401,32 +565,15 @@ class PreMigratePlugin(Plugin):
         for fpdtype in subtype_to_locations_need_upgrade:
 
             manager.log("FPD upgrade - start to upgrade FPD {} on all locations".format(fpdtype))
-            """
-            device.send("admin upgrade hw-module fpd " + fpdtype + " force location all", timeout=60, wait_for_string='\?')
-            output = device.send('\r yes', timeout=9600)
-
-            fpd_upgrade_success = re.search('[Ss]uccess', output)
-            if not fpd_upgrade_success:
-                manager.error("Failed to force upgrade FPD subtype " + fpdtype + " in all locations")
-            """
-
 
             CONFIRM_CONTINUE = re.compile("Continue\? \[confirm\]")
             CONFIRM_SECOND_TIME = re.compile("Continue \? \[no\]:")
-            #IN_PROGRESS = re.compile("FPD upgrade in progress.")
-            #SUCCESS = re.compile(".*Successfully (?:downgraded|upgraded).+{}".format(location))
-            #FAIL = re.compile("FPD upgrade execution failed")
             UPGRADE_END = re.compile("FPD upgrade has ended.")
 
             events = [device.prompt, CONFIRM_CONTINUE, CONFIRM_SECOND_TIME, UPGRADE_END, TIMEOUT]
             transitions = [
                 (CONFIRM_CONTINUE, [0], 1, send_newline, TIMEOUT_FOR_FPD_UPGRADE),
                 (CONFIRM_SECOND_TIME, [1], 2, send_yes, TIMEOUT_FOR_FPD_UPGRADE),
-                #(IN_PROGRESS, [1, 2], 2, None, 5400),
-                #(SUCCESS, [1, 2], 3, None, 120),
-                #(FAIL, [1, 2, 3], 5, None, 120),
-                #(UPGRADE_END, [3], 4, None, 120),
-                #(UPGRADE_END, [2], 5, None, 10),
                 (UPGRADE_END, [1, 2], 3, None, 120),
                 (device.prompt, [3], -1, None, 0),
                 (device.prompt, [1, 2], 5, None, 5),
@@ -434,31 +581,49 @@ class PreMigratePlugin(Plugin):
 
             ]
 
-            if not device.run_fsm(PreMigratePlugin.DESCRIPTION, "admin upgrade hw-module fpd {} force location all".format(fpdtype), events, transitions, timeout=30):
+            if not device.run_fsm(PreMigratePlugin.DESCRIPTION,
+                                  "admin upgrade hw-module fpd {} force location all".format(fpdtype),
+                                  events, transitions, timeout=30):
                 manager.error("Error while upgrading FPD subtype {}. Please check session.log".format(fpdtype))
 
             fpd_log = device.send("show log | include fpd")
 
             for location in subtype_to_locations_need_upgrade[fpdtype]:
-                fpd_upgrade_success = re.search("Successfully\s*(?:downgrade|upgrade)\s*{}.*location\s*{}".format(fpdtype, location), fpd_log)
+
+                pattern = "Successfully\s*(?:downgrade|upgrade)\s*{}.*location\s*{}".format(fpdtype, location)
+                fpd_upgrade_success = re.search(pattern, fpd_log)
+
                 if not fpd_upgrade_success:
-                    manager.error("Failed to upgrade FPD subtype {} on location {}. Please check session.log.".format(fpdtype, location))
-
-
+                    manager.error("Failed to upgrade FPD subtype {} on location {}. \
+                                  Please check session.log.".format(fpdtype, location))
 
         return True
 
     @staticmethod
     def _create_config_logs(manager, device, csvfile, supported_log_name, unsupported_log_name, hostname, filename):
+        """
+        Create two logs for migrated configs that are unsupported and supported by eXR.
+        They are stored in the same directory as session log, for user to view.
 
-        supported_config_log = manager.csm.log_directory + os.sep + supported_log_name
-        unsupported_config_log = manager.csm.log_directory + os.sep + unsupported_log_name
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :param csvfile: the string csv filename generated by running NoX on original config.
+        :param supported_log_name: the string filename for the supported configs log
+        :param unsupported_log_name: the string filename for the unsupported configs log
+        :param hostname: string hostname of device, as recorded on CSM.
+        :param filename: string filename of original config
+        :return: None if no error occurred
+        """
+
+        supported_config_log = os.path.join(manager.csm.log_directory, supported_log_name)
+        unsupported_config_log = os.path.join(manager.csm.log_directory, unsupported_log_name)
         try:
             with open(supported_config_log, 'w') as supp_log:
                 with open(unsupported_config_log, 'w') as unsupp_log:
                     supp_log.write('Configurations Known and Supported to the NoX Conversion Tool \n \n')
 
-                    unsupp_log.write('Configurations Unprocessed by the NoX Conversion Tool (Comments, Markers, or Unknown/Unsupported Configurations) \n \n')
+                    unsupp_log.write('Configurations Unprocessed by the NoX Conversion Tool (Comments, Markers, \
+                                     or Unknown/Unsupported Configurations) \n \n')
 
                     supp_log.write('{0[0]:<8} {0[1]:^20} \n'.format(("Line No.", "Configuration")))
                     unsupp_log.write('{0[0]:<8} {0[1]:^20} \n'.format(("Line No.", "Configuration")))
@@ -470,43 +635,76 @@ class PreMigratePlugin(Plugin):
                             elif len(row) >= 3:
                                 unsupp_log.write('{0[0]:<8} {0[1]:<} \n'.format((row[0], row[2])))
 
-                    msg = "\n \nPlease find original configuration in csm_data/migration/{}/{} \n".format(hostname, filename)
+                    msg = "\n \nPlease find original configuration in csm_data/migration/{}/{} \n".format(hostname,
+                                                                                                          filename)
                     supp_log.write(msg)
                     unsupp_log.write(msg)
                     if filename.split('.')[0] == 'admin':
-                        msg2 = "The final converted configuration is in csm_data/migration/{}/{} and csm_data/migration/{}/{}".format(hostname, CONVERTED_ADMIN_CAL_CONFIG_IN_CSM, hostname, CONVERTED_ADMIN_XR_CONFIG_IN_CSM)
+                        msg2 = "The final converted configuration is in csm_data/migration/{}/{} and \
+                               csm_data/migration/{}/{}".format(hostname, CONVERTED_ADMIN_CAL_CONFIG_IN_CSM,
+                                                                hostname, CONVERTED_ADMIN_XR_CONFIG_IN_CSM)
                     else:
-                        msg2 = "The final converted configuration is in csm_data/migration/{}/{}".format(hostname, CONVERTED_XR_CONFIG_IN_CSM)
+                        msg2 = "The final converted configuration is in \
+                               csm_data/migration/{}/{}".format(hostname, CONVERTED_XR_CONFIG_IN_CSM)
                     supp_log.write(msg2)
                     unsupp_log.write(msg2)
                     csvfile.close()
                 unsupp_log.close()
             supp_log.close()
-        except Exception as inst:
-            print("Oops here is an error occurred~~~~")
-            print(type(inst))
-            print(inst.args)
-            print(inst)
-            PreMigratePlugin._disconnect_and_raise_error(manager, device, "Error writing diagnostic files - in {} during configuration migration.".format(manager.csm.log_directory))
+        except:
+            # PreMigratePlugin._disconnect_and_raise_error(manager, device, err_msg)
+            manager.error("Error writing diagnostic files - in {} during configuration \
+                          migration.".format(manager.csm.log_directory))
 
     @staticmethod
-    def _handle_configs(manager, device, hostname, repo_url, fileloc, nox_to_use, config_filename):
+    def _filter_server_repository(manager, server):
+        if server.server_type != ServerType.FTP_SERVER and server.server_type != ServerType.TFTP_SERVER:
+            manager.error("Pre-Migrate does not support " + server.server_type + " server repository.")
 
-        xr_config_name_in_repo = hostname + "_" + XR_CONFIG_IN_CSM
+    @staticmethod
+    def _handle_configs(manager, device, hostname, server, repo_url, fileloc, nox_to_use, config_filename):
+        """
+        1. Copy admin and XR configs from device to tftp server repository.
+        2. Copy admin and XR configs from server repository to csm_data/migration/<hostname>/
+        3. Copy admin and XR configs from server repository to session log directory as
+           show-running-config.txt and admin-show-running-config.txt for comparisons
+           after Migrate or Post-Migrate. (Diff will be generated.)
+        4. Run NoX on admin config first. This run generates 1) eXR admin/calvados config
+           and POSSIBLY 2) eXR XR config.
+        5. Run NoX on XR config if no custom eXR config has been selected by user when
+           Pre-Migrate is scheduled. This run generates eXR XR config.
+        6. Copy all converted configs to the server repository and then from there to device.
+           Note if user selected custom eXR XR config, that will be uploaded instead of
+           the NoX migrated original XR config.
 
-        admin_config_name_in_repo = hostname + "_" + ADMIN_CONFIG_IN_CSM
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :param hostname: string hostname of device, as recorded on CSM.
+        :param repo_url: the URL of the selected TFTP server repository. i.e., tftp://223.255.254.245/tftpboot
+        :param fileloc: the string path ../../csm_data/migration/<hostname>
+        :param nox_to_use: the name of the NoX binary executable
+        :param config_filename: the user selected string filename of custom eXR XR config.
+                                If it's '', nothing was selected.
+                                If selected, this file must be in the server repository.
+        :return: None if no error occurred.
+        """
 
         manager.log("Saving the current configurations on device into server repository and csm_data")
-        copy_running_config_to_repo(manager, device, repo_url, xr_config_name_in_repo)
 
-        copy_running_config_to_repo(manager, device, repo_url, admin_config_name_in_repo, admin="admin ")
+        save_config_to_csm_data(manager, device,
+                                [os.path.join(fileloc, ADMIN_CONFIG_IN_CSM),
+                                 os.path.join(manager.csm.log_directory,
+                                              manager.file_name_from_cmd("admin show running-config"))],
+                                admin=True)
 
-        copy_files_from_tftp_to_csm_data(manager, device, repo_url, [xr_config_name_in_repo, admin_config_name_in_repo], [fileloc + os.sep + XR_CONFIG_IN_CSM, fileloc + os.sep + ADMIN_CONFIG_IN_CSM])
-        copy_files_from_tftp_to_csm_data(manager, device, repo_url, [xr_config_name_in_repo, admin_config_name_in_repo], [os.path.join(manager.csm.log_directory, manager.file_name_from_cmd("show running-config")), os.path.join(manager.csm.log_directory, manager.file_name_from_cmd("admin show running-config"))])
+        save_config_to_csm_data(manager, device, [os.path.join(fileloc, XR_CONFIG_IN_CSM),
+                                                  os.path.join(manager.csm.log_directory,
+                                                               manager.file_name_from_cmd("show running-config"))],
+                                admin=False)
 
         manager.log("Converting admin configuration file with configuration migration tool")
-        PreMigratePlugin._run_migration_on_config(manager, device, fileloc, ADMIN_CONFIG_IN_CSM, nox_to_use, hostname)
-        #self._run_migration_on_config(device, fileloc, "system.tech", NOX_FOR_MAC)
+        PreMigratePlugin._run_migration_on_config(manager, device, fileloc,
+                                                  ADMIN_CONFIG_IN_CSM, nox_to_use, hostname)
 
         # ["admin.cal"]
         config_files = [CONVERTED_ADMIN_CAL_CONFIG_IN_CSM]
@@ -515,7 +713,8 @@ class PreMigratePlugin(Plugin):
         if not config_filename:
 
             manager.log("Converting IOS-XR configuration file with configuration migration tool")
-            PreMigratePlugin._run_migration_on_config(manager, device, fileloc, XR_CONFIG_IN_CSM, nox_to_use, hostname)
+            PreMigratePlugin._run_migration_on_config(manager, device, fileloc,
+                                                      XR_CONFIG_IN_CSM, nox_to_use, hostname)
 
             # "xr.iox"
             config_files.append(CONVERTED_XR_CONFIG_IN_CSM)
@@ -523,7 +722,7 @@ class PreMigratePlugin(Plugin):
             config_names_on_device.append(XR_CONFIG_ON_DEVICE)
 
         # admin.iox
-        if os.path.isfile(fileloc + os.sep + CONVERTED_ADMIN_XR_CONFIG_IN_CSM):
+        if os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_XR_CONFIG_IN_CSM)):
             config_files.append(CONVERTED_ADMIN_XR_CONFIG_IN_CSM)
             config_names_on_device.append(ADMIN_XR_CONFIG_ON_DEVICE)
 
@@ -532,46 +731,67 @@ class PreMigratePlugin(Plugin):
         config_names_in_repo = [hostname + "_" + config_name for config_name in config_files]
 
 
-        if PreMigratePlugin._upload_files_to_tftp(manager, device, [fileloc + os.sep + config_name for config_name in config_files], repo_url, config_names_in_repo):
+        if not server:
+            manager.error("Cannot map the server url to a server repository in CSM. \
+                          Please check the repository settings on CSM.")
+
+        if PreMigratePlugin._upload_files_to_server_repository(manager,
+                                                               [os.path.join(fileloc, config_name)
+                                                                for config_name in config_files],
+                                                               server, config_names_in_repo):
 
             if config_filename:
                 config_names_in_repo.append(config_filename)
                 # iosxr.cfg
                 config_names_on_device.append(XR_CONFIG_ON_DEVICE)
 
-            PreMigratePlugin._copy_files_to_device(manager, device, repo_url, config_names_in_repo, [ISO_LOCATION + config_name for config_name in config_names_on_device], timeout=TIMEOUT_FOR_COPY_CONFIG)
+            # if server.server_type == ServerType.FTP_SERVER or server.server_type == ServerType.TFTP_SERVER:
+
+            PreMigratePlugin._copy_files_to_device(manager, device, repo_url, config_names_in_repo,
+                                                   [ISO_LOCATION + config_name
+                                                    for config_name in config_names_on_device],
+                                                   timeout=TIMEOUT_FOR_COPY_CONFIG)
+            # elif server.server_type == ServerType.SFTP_SERVER:
+
+            # else:
+
 
     @staticmethod
-    def _copy_iso_to_device(manager, device, packages, repo_url):
+    def _copy_iso_to_device(manager, device, server, packages, repo_url):
+        """Copy the user selected ASR9K eXR image from server repository to /harddiskb:/ on device."""
         found_iso = False
         for package in packages:
             if ".iso" in package:
-                if found_iso == False and (package == ISO_FULL_IMAGE_NAME or package == ISO_MINI_IMAGE_NAME):
+                if found_iso is False and (package == ISO_FULL_IMAGE_NAME or package == ISO_MINI_IMAGE_NAME):
                     found_iso = True
-                    PreMigratePlugin._copy_files_to_device(manager, device, repo_url, [package], [ISO_LOCATION + package], timeout=TIMEOUT_FOR_COPY_ISO)
+                    PreMigratePlugin._copy_files_to_device(manager, device, repo_url, [package],
+                                                               [ISO_LOCATION + package], timeout=TIMEOUT_FOR_COPY_ISO)
+
                 else:
-                    manager.error("Please make sure that the only ISO image you select on your server repository is {} or {}.".format(ISO_FULL_IMAGE_NAME, ISO_MINI_IMAGE_NAME))
+                    manager.error("Please make sure that the only ISO image you select on your server \
+                                  repository is {} or {}.".format(ISO_FULL_IMAGE_NAME, ISO_MINI_IMAGE_NAME))
 
         if not found_iso:
-            manager.error("Please make sure that you select {} or {} on your server repository. This ISO image is required for migration.".format(ISO_FULL_IMAGE_NAME, ISO_MINI_IMAGE_NAME))
+            manager.error("Please make sure that you select {} or {} on your server repository. \
+                          This ISO image is required for migration.".format(ISO_FULL_IMAGE_NAME, ISO_MINI_IMAGE_NAME))
 
     @staticmethod
     def _find_nox_to_use():
-
+        """
+        Find out if the linux system is 32 bit or 64 bit. NoX currently only has a binary executable
+        compiled for 64 bit.
+        """
         check_32_or_64_system = subprocess.Popen(['uname', '-a'], stdout=subprocess.PIPE)
 
         out, err = check_32_or_64_system.communicate()
 
         if err:
-            print(err)
-            raise PluginError("Failed to execute 'uname -a' to determine if the linux system that CSM is hosted on is 32 bit or 64 bit.")
+            raise PluginError("Failed to execute 'uname -a' on the linux system.")
 
         if "x86_64" in out:
             return NOX_64_BINARY
         else:
-            return NOX_32_BINARY
-
-
+            raise PluginError("The configuration migration tool NoX is not available for 32 bit linux system.")
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
@@ -595,6 +815,13 @@ class PreMigratePlugin(Plugin):
         except AttributeError:
             pass
 
+        db_session = DBSession()
+        server = db_session.query(Server).filter(Server.server_url == server_repo_url).first()
+
+        PreMigratePlugin._filter_server_repository(manager, server)
+
+        db_session.close()
+
         host_directory_name = manager.csm.host.hostname
 
         fileloc = manager.csm.migration_directory + host_directory_name
@@ -602,47 +829,41 @@ class PreMigratePlugin(Plugin):
         if not os.path.exists(fileloc):
             os.makedirs(fileloc)
 
-        manager.log("packages = " + str(packages))
-
-
-        manager.log("Checking if migration requirements are met.")
+        manager.log("Checking if some migration requirements are met.")
 
         if device.os_type != "XR":
             manager.error('Device is not running ASR9K Classic XR. Migration action aborted.')
 
         if device.os_version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
-            manager.error("The minimal release version required for migration is 5.3.3. Please upgrade to at lease R5.3.3 before scheduling migration.")
+            manager.error("The minimal release version required for migration is 5.3.3. \
+                          Please upgrade to at lease R5.3.3 before scheduling migration.")
 
         PreMigratePlugin._ping_repository_check(manager, device, server_repo_url)
 
         try:
             NodeStatusPlugin.start(manager, device)
         except PluginError:
-            manager.error("Not all nodes are in correct states. Pre-Migrate aborted. Please check session.log to trouble-shoot.")
-
-
+            manager.error("Not all nodes are in valid states. Pre-Migrate aborted. \
+                          Please check session.log to trouble-shoot.")
 
         iosxr_run_nodes = PreMigratePlugin._get_iosxr_run_nodes(manager, device)
-
 
         manager.log("Resizing eUSB partition.")
         PreMigratePlugin._resize_eusb(manager, device)
 
-
         nox_to_use = manager.csm.migration_directory + PreMigratePlugin._find_nox_to_use()
 
-        #nox_to_use = manager.csm.migration_directory + NOX_FOR_MAC
+        # nox_to_use = manager.csm.migration_directory + NOX_FOR_MAC
 
         if not os.path.isfile(nox_to_use):
-            manager.error("The configuration conversion tool {} is missing. CSM should have downloaded it from CCO when migration actions were scheduled.".format(nox_to_use))
+            manager.error("The configuration conversion tool {} is missing. CSM should have downloaded it \
+                          from CCO when migration actions were scheduled.".format(nox_to_use))
 
-        print "fileloc = " + fileloc
-        PreMigratePlugin._handle_configs(manager, device, host_directory_name, server_repo_url, fileloc, nox_to_use, config_filename)
+        PreMigratePlugin._handle_configs(manager, device, host_directory_name, server,
+                                         server_repo_url, fileloc, nox_to_use, config_filename)
 
-
-        #manager.log("Copying the eXR ISO image from server repository to device.")
-        PreMigratePlugin._copy_iso_to_device(manager, device, packages, server_repo_url)
-
+        # manager.log("Copying the eXR ISO image from server repository to device.")
+        PreMigratePlugin._copy_iso_to_device(manager, device, server, packages, server_repo_url)
 
         PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
 

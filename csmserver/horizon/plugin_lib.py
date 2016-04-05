@@ -32,6 +32,7 @@ import time
 import os
 
 import package_lib
+import pexpect
 import condoor
 from condoor import TIMEOUT
 import shutil
@@ -287,7 +288,8 @@ def clear_cfg_inconsistency(manager, device):
 
 def copy_running_config_to_repo(manager, device, repository, filename, admin=""):
     """
-    Back up the configuration of the device in user's selected repository
+    Copy the admin configuration or IOS-XR configuration
+    from device to user's selected server repository.
     """
 
     def send_newline(ctx):
@@ -316,16 +318,39 @@ def copy_running_config_to_repo(manager, device, repository, filename, admin="")
     ]
     manager.log("Copying {}configuration on device to {}".format(admin, repository))
     if not device.run_fsm("copy running-config to tftp", command, events, transitions, timeout=20):
-        manager.error("Failed to copy running-config to your repository. Please check session.log for error and fix the issue.")
+        manager.error("Failed to copy running-config to your repository. \
+                      Please check session.log for error and fix the issue.")
         return False
 
 
+def save_config_to_csm_data(manager, device, files, admin=False):
+    """
+    Copy the admin configuration or IOS-XR configuration
+    from device to csm_data.
+    """
+
+    try:
+        cmd="admin show run" if admin else "show run"
+        output = device.send(cmd, timeout=TIMEOUT_FOR_COPY_CONFIG)
+        ind = output.rfind('Building configuration...\n')
+
+    except pexpect.TIMEOUT:
+        manager.error("CLI '{}' timed out after 1 hour.".format(cmd))
+
+    for file_path in files:
+        # file = '../../csm_data/migration/<hostname>' + filename
+        file_to_write = open(file_path, 'w+')
+        file_to_write.write(output[(ind+1):])
+        file_to_write.close()
+
+
 def copy_files_from_tftp_to_csm_data(manager, device, repo_url, source_filenames, dest_files):
+    """Copy files from the server repository"""
     db_session = DBSession()
     server = db_session.query(Server).filter(Server.server_url == repo_url).first()
     if not server:
-        manager.error("Cannot map the tftp server url to the tftp server repository. Please check the tftp repository setup on CSM.")
-
+        manager.error("Cannot map the tftp server url to the tftp server repository. \
+                      Please check the tftp repository setup on CSM.")
 
     for x in range(0, len(source_filenames)):
         try:
@@ -333,21 +358,27 @@ def copy_files_from_tftp_to_csm_data(manager, device, repo_url, source_filenames
         except:
             db_session.close()
             device.disconnect()
-            manager.error("Exception was thrown while copying file {}/{} to {}.".format(server.server_directory, source_filenames[x], dest_files[x]))
+            manager.error("Exception was thrown while copying file {}/{} to {}.".format(server.server_directory,
+                                                                                        source_filenames[x],
+                                                                                        dest_files[x]))
 
     db_session.close()
 
+
 def get_all_nodes(device):
+    """Get the list of string node names(all available RSP/RP/LC)"""
     device.send("admin")
     output = device.send("show platform")
     nodes = re.findall("(\d+/(?:RS?P)?\d+)", output)
     device.send("exit")
     return nodes
 
+
 def wait_for_final_band(device):
+    """This is for ASR9K eXR. Wait for all present nodes to come to FINAL Band."""
     nodes = get_all_nodes(device)
      # Wait for all nodes to Final Band
-    timeout = 1000
+    timeout = 1080
     poll_time = 20
     time_waited = 0
 
@@ -372,6 +403,7 @@ def wait_for_final_band(device):
 
 
 def check_sw_status(output):
+    """Check is a node has FINAL Band status"""
     lines = output.splitlines()
 
     for line in lines:
@@ -381,3 +413,5 @@ def check_sw_status(output):
             if "FINAL Band" not in sw_status:
                 return False
     return True
+
+

@@ -2,7 +2,7 @@
 {% from 'host/common.html' import edit_field %}
 {% from 'host/common.html' import log_icon %}
 {% from 'host/common.html' import trace_icon %}
- {% from 'share/select_region_hosts.html' import select_region_hosts %}
+{% from 'share/select_region_hosts.html' import select_region_hosts %}
 
 {% macro schedule_migrate_gui() %}
     <div class="form-group ">
@@ -10,7 +10,7 @@
 
         <div class=col-sm-6>
             <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
-                <optgroup label="Migrate from IOS-XR to eXR">
+                <optgroup label="Migrate from ASR9K IOS-XR to ASR9K IOS-XR 64 Bit">
                     <option value="{{ install_action.premigrate }}">{{ install_action.premigrate }}</option>
                     <option value="{{ install_action.migrate }}">{{ install_action.migrate }}</option>
                     <option value="{{ install_action.postmigrate }}">{{ install_action.postmigrate }}</option>
@@ -19,8 +19,6 @@
             </select>
         </div>
     </div>
-
-
 
     <div class="form-group ">
         <label class="col-sm-4 control-label"
@@ -36,10 +34,10 @@
             </div>
         </div>
     </div>
+
     <div id="custom-command-profile-panel">
         {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
     </div>
-
 
     <div id="dependency-panel">
       {{ edit_field(form.dependency, field_width="col-sm-6", class="form-control") }}
@@ -56,11 +54,7 @@
     <input id="hidden_software_packages" name="{{ form.hidden_software_packages.name }}"
            value="{{ form.hidden_software_packages.data }}" type="hidden">
 
-
 {% endmacro %}
-
-
-
 
 
 {% block extra_head %}
@@ -71,10 +65,7 @@
     <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport'/>
     <meta name="viewport" content="width=device-width"/>
 
-
     <link href="http://netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" rel="stylesheet">
-
-
 
     <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
     <script src="/static/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
@@ -104,8 +95,6 @@
 
         $(function () {
 
-            var current_filter = "";
-
             var submit_spinner = $('#submit-spinner');
 
             submit_spinner.hide();
@@ -115,13 +104,11 @@
             var POST_MIGRATE = "{{ install_action.postmigrate }}";
             var ALL_FOR_MIGRATE = "{{ install_action.allformigrate }}";
 
-
             $("#install_action").select2({placeholder: 'Select Desirable Migration Actions'});
             $("#install_action").val("{{ form.install_action.data }}").trigger("change");
             $("#custom_command_profile").select2({
                 placeholder: 'Optional'
             });
-
 
             var datetimepicker = $(".form_datetime").datetimepicker({
                 format: "mm/dd/yyyy HH:ii P",
@@ -142,11 +129,10 @@
                 toggle_ui();
             });
 
-
             function toggle_ui() {
-                var install_actions = $('#install_action').val()
+                var install_actions = $('#install_action').val();
                 $('#dependency-panel').hide();
-                if (install_actions == null || install_actions.length > 1) {
+                if (install_actions == null || install_actions.length == 3) {
                     $('#dependency').val(-1);
                     $('#dependency-panel').hide();
                 } else {
@@ -163,7 +149,7 @@
                 } else {
                     $('#scheduled-time').val(convertToLocaleString(value));
                 }
-            })
+            });
 
 
             $('#trigger-wizard').click(function (e) {
@@ -175,13 +161,38 @@
 
                 } else {
 
-                    $('#wizard-dialog').modal({show: true, backdrop: 'static'})
-
-
                     if (install_actions == null) {
                         bootbox.alert("Install Action has not been specified.");
                         return false;
                     }
+                    if (has_one_of_these(install_actions, [PRE_MIGRATE]) == false) {
+                        if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
+                            if ($('#dependency').val() != PRE_MIGRATE) {
+                                msg = "Pre-Migrate must be selected as dependency for Migrate. Once selected, Migrate" +
+                                      " will not execute unless there is a successful completion of Pre-Migrate on" +
+                                      " the same host.";
+
+                                if (has_one_of_these(install_actions, [POST_MIGRATE])) {
+                                    msg += " Post-Migrate will not execute unless this to-be-scheduled Migrate" +
+                                           " completes successfully."
+                                }
+                                bootbox.alert(msg);
+                                return false;
+                            }
+                        } else if (has_one_of_these(install_actions, [POST_MIGRATE])) {
+                            if ($('#dependency').val() != MIGRATE_SYSTEM) {
+                                bootbox.alert("Migrate must be selected as dependency for Post-Migrate. Once selected" +
+                                              ", Post-Migrate will not execute unless there is a successful completion"+
+                                              " of Migrate on the same host.");
+                                return false;
+                            }
+                        }
+                    } else if (has_one_of_these(install_actions, [POST_MIGRATE]) && has_one_of_these(install_actions, [MIGRATE_SYSTEM]) == false) {
+                        bootbox.alert("Migrate must be selected if both Pre-Migrate and Post-Migrate are selected.");
+                        return false;
+                    }
+
+                    $('#wizard-dialog').modal({show: true, backdrop: 'static'})
 
                     if ($('#select-host').val() != null) {
                         $('#wizard').bootstrapWizard('remove', $('#select-host').val(), true);
@@ -199,7 +210,6 @@
                         add_new_tab('select-host', 'Select Host')
                     }
 
-
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                         add_new_tab("pre-migrate", "Pre-Migrate")
                     }
@@ -214,9 +224,7 @@
                     $('#wizard').bootstrapWizard('resetWizard')
                 }
 
-
-            })
-
+            });
 
             function add_new_tab(new_tab_id, new_tab_name) {
                 // create the tab
@@ -242,7 +250,6 @@
 
                 on_submit();
 
-
             });
 
             function on_submit() {
@@ -259,16 +266,12 @@
 
                 if ($('[name="config-handling"]')[0].checked) {
                     $('#hidden_best_effort_config').val($('[name="config-handling"]')[0].value);
-                    console.log("set to " + $('[name="config-handling"]')[0].value)
                 } else {
                     $('#hidden_best_effort_config').val($('[name="config-handling"]')[1].value);
-                    console.log("set to " + $('[name="config-handling"]')[1].value)
                 }
-
 
                 submit_form_on_successfully_download_config_conversion_tool();
             }
-
 
             $('#form').submit(function () {
 
@@ -280,11 +283,8 @@
                 return false;
             });
 
-
-
             function submit_form_on_successfully_download_config_conversion_tool() {
 
-                console.log("submit spinner show")
                 submit_spinner.show();
 
                 $.ajax({
@@ -292,13 +292,13 @@
                     dataType: 'json',
                     success: function (response) {
                         if (response.status == 'Failed') {
-                            bootbox.alert("Failed to get the latest NoX tool for migrating configurations from CCO to CSM. Migration actions cannot be scheduled.");
+                            bootbox.alert("Failed to download the latest configuration migration tool from CCO to CSM. Migration actions cannot be scheduled.");
                         } else {
                             $.each(response, function (index, element) {
                                 if (element[0].error == 'None') {
                                     $('#form').submit();
                                 } else {
-                                    bootbox.alert("Error occured when getting the latest configuration migration tool. Error: " + element[0].error);
+                                    bootbox.alert("Error occurred when downloading the latest configuration migration tool. Error: " + element[0].error);
                                 }
                             });
 
@@ -307,7 +307,7 @@
                         submit_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
-                        bootbox.alert("Unable to get the latest NoX tool for migrating configurations from CCO to CSM. Error=" + errorThrown);
+                        bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
                         submit_spinner.hide();
                     }
                 });
@@ -323,15 +323,13 @@
                 $('#server_dialog_server_directory').val($('#hidden_server_directory').val());
 
                 if (has_one_of_these($("#install_action").val(), [PRE_MIGRATE])) {
+                    // previously selected server, server directory, packages and config filename
+                    // will be loaded in this method
                     server_software_retrieve_file_list(
                             $('#server_dialog_server').val(),
                             $('#server_dialog_server_directory'),
                             $('#server_dialog_server_directory').val());
                 }
-
-                $('#config_filename').val($('#hidden_config_filename').val());
-
-                console.log("hidden = " + $('#hidden_best_effort_config').val())
 
                 if ($('#hidden_best_effort_config').val() == '-1') {
                     $('[name="config-handling"]')[0].checked = true;
@@ -339,14 +337,9 @@
                     $('[name="config-handling"]')[1].checked = true;
                 }
 
-
-
-
             } else {
                 $("#install_action").prop("disabled", false);
             }
-
-
         })
 
     </script>
@@ -355,12 +348,7 @@
 
     <script src="/static/x-wizard-1.1/assets/js/wizard.js" type="text/javascript"></script>
 
-
 {% endblock extra_head %}
-
-
-
-
 
 
 {% block main %}
@@ -394,7 +382,6 @@
                         {% endif %}
                       </div>
                   {% endif %}
-
 
                   {{ schedule_migrate_gui() }}
 
@@ -437,7 +424,7 @@
                                         <div class="wizard-header">
 
                                             <h3>
-                                                eXR Migration<br>
+                                                Migration to ASR9K-X64<br>
                                             </h3>
                                         </div>
                                         <ul id="tabs" class="nav nav-tabs" role="tablist">
@@ -522,9 +509,3 @@
         </form>
     </div>
 {% endblock main %}
-
-
-
-
-
-

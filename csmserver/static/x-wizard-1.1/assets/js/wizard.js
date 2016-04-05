@@ -32,7 +32,7 @@ $(document).ready(function(){
             } else if ($('.nav-tabs .active').text() == "Pre-Migrate") {
                 return validateSelectPackages();
             }
-              
+
         },
         onTabClick : function(tab, navigation, index){
             // Disable the posibility to click on tabs
@@ -86,15 +86,14 @@ $(document).ready(function(){
 
 function validateSelectHost(){
 
-    console.log("Validating first step: ");
     if (host_selector.get_selected_items().length < 1) {
-        bootbox.alert("Please select at least one host.")
+        bootbox.alert("Please select at least one host.");
         return false
     }
 
     if ($('#region option:selected').val() == -1) {
         bootbox.alert("Region has not been specified.");
-        return false;
+        return false
     } else  {
       var server = $.cookie('region-' + $('#region option:selected').val() + '-server');
       var server_directory = $.cookie('region-' + $('#region option:selected').val() + '-server-directory');
@@ -108,37 +107,53 @@ function validateSelectHost(){
             server_software_retrieve_file_list(server, $('#server_dialog_server_directory'), server_directory);
         } else {
             server_software_selector.initialize([], []);
+            config_selector.html("");
+            config_selector.append("<option value=\"\" disabled selected style=\"display: none;\">Optional</option>");
+            config_selector.append("<option value=\"\"></option>");
         }
 
     }
 
-
-	return true;
+	return true
 }
 
 function validateSelectPackages(){
 
     //code here for second step
-    console.log($('#server_dialog_server').val())
     if ($('#server_dialog_server').val() == -1) {
         bootbox.alert("Please select server repository");
         return false
     }
-    var selected_ISO = false;
+    var selected_ISO = 0;
+    var selected_smu = 0;
     var selected_config = false;
     var selected_items = server_software_selector.get_selected_items();
     var unselected_items = server_software_selector.get_unselected_items();
 
     for (var index in selected_items) {
         if (selected_items[index] == "asr9k-mini-x64.iso" || selected_items[index] == "asr9k-full-x64.iso") {
-            selected_ISO = true;
+            selected_ISO++;
+        }
+        if (selected_items[index].match(".pie$") == ".pie") {
+            selected_smu++;
         }
         if ($('#config_filename').val() != "" && selected_items[index] == $('#config_filename').val()) {
             selected_config = true;
         }
+
     }
-    if (!selected_ISO) {
-        bootbox.alert("Please select at least the eXR ISO image 'asr9k-mini-x64.iso' or 'asr9k-full-x64.iso' before continuing. The FPD SMU is also needed if your release version is below 6.0.0.");
+    if (selected_ISO < 1) {
+        bootbox.alert("Please select an ASR9K-X64 image 'asr9k-full-x64.iso' or 'asr9k-mini-x64.iso' before continuing.");
+        return false
+    } else if (selected_ISO > 1) {
+        bootbox.alert("Please select only one ASR9K-X64 image - either 'asr9k-full-x64.iso' or 'asr9k-mini-x64.iso' - before continuing.");
+        return false
+    }
+    if (selected_smu < 1) {
+        bootbox.alert("Please select the FPD SMU for your ASR9K-X64 image before continuing.");
+        return false
+    }else if (selected_smu > 1) {
+        bootbox.alert("Too many packages selected. Please select only one FPD SMU for your ASR9K-X64 image before continuing.");
         return false
     }
     if ($('#config_filename').val() != "") {
@@ -159,11 +174,11 @@ function validateSelectPackages(){
     $('#hidden_server_name').val($('#server_dialog_server option:selected').text());
     $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
 
-    region_id = $('#region option:selected').val()
+    region_id = $('#region option:selected').val();
     $.cookie('region-' + region_id + '-server', $('#hidden_server').val(), { path: '/' });
     $.cookie('region-' + region_id + '-server-directory', $('#hidden_server_directory').val(), { path: '/' });
 
-	return true;
+	return true
 
 }
 
@@ -176,7 +191,7 @@ function readURL(input) {
 
         reader.onload = function (e) {
             $('#wizardPicturePreview').attr('src', e.target.result).fadeIn('slow');
-        }
+        };
         reader.readAsDataURL(input.files[0]);
     }
 }

@@ -1750,20 +1750,25 @@ def schedule_install():
     return_url = get_return_url(request, 'home')
     
     if request.method == 'POST':  # and form.validate():
-        """
+
         f = request.form
         for key in f.keys():
             for value in f.getlist(key):
                print(key,":",value)
-        """       
+
         # Retrieves from the multi-select box
         hostnames = request.form.getlist('host-selector')
-
+        print "should be here"
+        print "request.form.get('host-selector') = " + str(request.form.get('host-selector'))
         install_action = form.install_action.data 
-        
+        print "should be here1.1"
         if hostnames is not None:
+            print "should be here1.2"
+            print "hostnames = " + str(hostnames)
             for hostname in hostnames:
-                host = get_host(db_session, hostname)  
+                print "should be here1.3"
+                host = get_host(db_session, hostname)
+                print "should be here2"
                 if host is not None:
                     db_session = DBSession()
                     scheduled_time = form.scheduled_time_UTC.data
@@ -1780,7 +1785,7 @@ def schedule_install():
                             prerequisite_install_job = get_first_install_action(db_session, form.dependency.data)
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
-                                    
+                        print "should be here3"
                         create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                      install_action=install_action[0],
                                                      scheduled_time=scheduled_time, software_packages=software_packages,
@@ -2516,6 +2521,24 @@ def api_get_servers_by_region(region_id):
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
             result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
+    else:
+        # Returns all server repositories if the region does not have any server repository designated.
+        return api_get_servers()
+
+    return jsonify(**{'data': result_list})
+
+
+@app.route('/api/get_nonlocal_servers/region/<int:region_id>')
+@login_required
+def api_get_nonlocal_servers_by_region(region_id):
+    result_list = []
+    db_session = DBSession()
+
+    region = get_region_by_id(db_session, region_id)
+    if region is not None and len(region.servers) > 0:
+        for server in region.servers:
+            if server.server_type != ServerType.LOCAL_SERVER:
+                result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
     else:
         # Returns all server repositories if the region does not have any server repository designated.
         return api_get_servers()

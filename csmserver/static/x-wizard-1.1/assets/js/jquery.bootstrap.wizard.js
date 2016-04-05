@@ -319,13 +319,12 @@ $.fn.bootstrapWizard.defaults = {
 
 
 function get_server_list() {
-
 	region_id = $('#region option:selected').val()
 	  // Now, gets the servers for the selected region
   $('#server_dialog_server').empty().append('<option value=-1></option>');
 
   $.ajax({
-	url: "/api/get_servers/region/" + region_id,
+	url: "/api/get_nonlocal_servers/region/" + region_id,
 	dataType: 'json',
 	success: function(data) {
 	  $.each(data, function(index, element) {
@@ -339,13 +338,10 @@ function get_server_list() {
 		var server_directory = $('#hidden_server_directory').val();
 		if (server_id != -1) {
 			$('#server_dialog_server').val(server_id);
-			retrieve_file_list(server_id, $('#server_dialog_server_directory'), server_directory);
+			server_software_retrieve_file_list(server_id, $('#server_dialog_server_directory'), server_directory);
 
 		}
 	  });
-
-
-
 	},
 	error: function(xhr, status, errorThrown) {
 	  bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);

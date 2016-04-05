@@ -29,19 +29,19 @@
 
 
 import re
-import time
-from horizon.plugin import PluginError, Plugin
-from horizon.plugins.cmd_capture import CmdCapturePlugin
-from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
-from horizon.plugin_lib import wait_for_reload, get_package, wait_for_final_band
-
-from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, PASSWORD_OK, PRESS_RETURN,UNABLE_TO_CONNECT
-from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
-from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
-from pexpect import TIMEOUT, EOF
 
 from common import get_host
+from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, \
+                                               AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, \
+                                               PASSWORD_OK, PRESS_RETURN,UNABLE_TO_CONNECT
+from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
+from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 from database import DBSession
+from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
+from horizon.plugin import PluginError, Plugin
+from horizon.plugins.cmd_capture import CmdCapturePlugin
+from horizon.plugin_lib import wait_for_reload, get_package, wait_for_final_band
+from pexpect import TIMEOUT, EOF
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
@@ -55,66 +55,48 @@ NODES_COME_UP_TIME_OUT = 3600
 class MigratePlugin(Plugin):
 
     """
-    A plugin for migrating from XR to eXR/fleXR
+    A plugin for migrating a ASR9K IOS-XR(XR) system to
+    ASR9K IOS-XR 64 bit(eXR/fleXR).
     This plugin accesses rommon and set rommon variable EMT.
-    A router is reloaded twice.
+    The device will be reloaded in the end to boot eXR image.
     Console access is needed.
-    Arguments:
-    T.B.D.
     """
     NAME = "MIGRATE"
     DESCRIPTION = "MIGRATE FROM XR TO EXR"
     TYPE = "MIGRATE"
     VERSION = "0.0.1"
 
-    """
-    @staticmethod
-    def _copy_file_to_device(manager, device, repository, filename, dest):
-        timeout = 1500
-        success, output = device.execute_command('dir ' + dest + '/' + filename)
-        cmd = 'copy ' + repository + '/' + filename + ' ' + dest
-        device.execute_command(cmd, timeout=timeout, wait_for_string='?')
-
-        if "No such file" not in output:
-            device.execute_command('\r', timeout=timeout, wait_for_string='?')
-
-        success, output = device.execute_command('\r', timeout=timeout)
-
-        if re.search('copied\s+in', output):
-            self._second_attempt_execution(device, cmd, timeout, 'copied\s+in', "failed to copy file to your repository.")
-    """
-
     @staticmethod
     def _run_migration_script(manager, device):
-
-        output = device.send("show platform")
-        nodes = re.findall("(\d+/RS?P\d/CPU\d)", output)
+        """
+        Run the migration script in /pkg/bin/migrate_to_eXR on device to set
+        internal variables for booting.
+        Check that no error occurred.
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :return: True if no error occurred.
+        """
 
         device.send("run", wait_for_string="#")
 
-        output = device.send("ksh /pkg/bin/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
-        #output = device.send("ksh /harddisk:/migrate_to_eXR -m eusb", wait_for_string="#")
+        # output = device.send("ksh /pkg/bin/migrate_to_eXR -b eUSB -e 5", wait_for_string="#")
+        output = device.send("ksh /pkg/bin/migrate_to_eXR -m eusb", wait_for_string="#")
 
         device.send("exit")
 
         MigratePlugin._check_migration_script_output(manager, device, output)
 
-
         return True
 
     @staticmethod
     def _check_migration_script_output(manager, device, output):
-        """
-        check that the migration script ran without errors, and also, the configs are backed up.
-        """
+        """Check that the migration script run without errors, and also, the configs are backed up."""
         lines = output.splitlines()
         for line in lines:
             if "No such file" in line:
                 manager.error("Found file missing when running migration script. Please check session.log.")
             if "Error:" in line:
-                manager.error("Error when running migration script. Please check session.log.")
-            if "Failed to correctly write emt_mode" in line:
-                manager.error("Failed to write boot mode. Please check session.log")
+                manager.error("Migration script returned error. Please check session.log.")
 
         output = device.send('dir {}'.format(SCRIPT_BACKUP_CONFIG))
         if "No such file" in output:
@@ -130,6 +112,15 @@ class MigratePlugin(Plugin):
 
     @staticmethod
     def _configure_authentication(manager, device):
+        """
+        After device is reloaded to boot eXR image from eUSB, the image will get baked,
+        eventually the device prompts for reconfiguration of username and password to login.
+        After that, the device prompts for login and then we will get XR prompt.
+        An FSM is created to support that.
+        :param manager: the plugin manager
+        :param device: the connection to the device
+        :return: None if no error occurred.
+        """
 
         hostname = manager.csm.host.hostname
 
@@ -153,7 +144,6 @@ class MigratePlugin(Plugin):
             ctx.ctrl.sendline(connection_param.password)
             return True
 
-
         events = [ESCAPE_CHAR, PASSWORD_OK, SET_USERNAME, SET_PASSWORD, USERNAME_PROMPT, PASSWORD_PROMPT,
                  XR_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
                  CONNECTION_REFUSED, RESET_BY_PEER, PERMISSION_DENIED,
@@ -176,9 +166,15 @@ class MigratePlugin(Plugin):
 
 
             (UNABLE_TO_CONNECT, [0, 1], 11, ConnectionError("Unable to connect", device.hostname), 10),
-            (CONNECTION_REFUSED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, ConnectionError("Connection refused", device.hostname), 1),
-            (RESET_BY_PEER, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, ConnectionError("Connection reset by peer", device.hostname), 1),
-            (PERMISSION_DENIED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, ConnectionAuthenticationError("Permission denied", device.hostname), 1),
+            (CONNECTION_REFUSED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
+             ConnectionError("Connection refused", device.hostname), 1),
+
+            (RESET_BY_PEER, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
+             ConnectionError("Connection reset by peer", device.hostname), 1),
+
+            (PERMISSION_DENIED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
+             ConnectionAuthenticationError("Permission denied", device.hostname), 1),
+
             (AUTH_FAILED, [6, 9], 11, ConnectionAuthenticationError("Authentication failed", device.hostname), 1),
             (TIMEOUT, [0], 1, None, 20),
             (TIMEOUT, [1], 2, None, 40),
@@ -191,54 +187,25 @@ class MigratePlugin(Plugin):
         if not device.run_fsm(MigratePlugin.DESCRIPTION, "", events, transitions, timeout=30):
             manager.error("Failed to connect to device after reload.")
 
-
     @staticmethod
     def _reload_all(manager, device):
-
+        """Reload all nodes to boot eXR image."""
         device.reload(reload_timeout=MIGRATION_TIME_OUT)
 
         return MigratePlugin._wait_for_reload(manager, device)
-        #return wait_for_reload(manager, device)
-
-
 
     @staticmethod
     def _wait_for_reload(manager, device):
-        """
-         Wait for system to come up with max timeout as 1 hour + 1 hour
-
-        """
+        """Wait for all nodes to come up with max timeout as 18 minutes after the first RSP/RP comes up."""
         MigratePlugin._configure_authentication(manager, device)
 
-        #device.disconnect()
-        #time.sleep(60)
+        manager.log("Waiting for all nodes to come to FINAL Band.")
+        if wait_for_final_band(device):
+            manager.log("All nodes are in FINAL Band.")
+        else:
+            manager.log("Warning: Not all nodes went to FINAL Band.")
 
-        #device.reconnect(max_timeout=MIGRATION_TIME_OUT)  # 60 * 60 = 3600
-        timeout = NODES_COME_UP_TIME_OUT
-        poll_time = 30
-        time_waited = 0
-        xr_run = "IOS XR RUN"
-
-        cmd = "show sdr"
-        manager.log("Waiting for all nodes to come up")
-        while 1:
-            # Wait till all nodes are in XR run state
-            time_waited += poll_time
-            if time_waited >= timeout:
-                break
-            time.sleep(poll_time)
-            output = device.send(cmd)
-            if xr_run in output:
-                inventory = parse_exr_show_sdr(output)
-                if validate_exr_node_state(inventory, device):
-                    return True
-
-        # Some nodes did not come to run state
-        manager.error("Not all nodes have came up: {}".format(output))
-        # this will never be executed
-        return False
-
-
+        return True
 
     @staticmethod
     def start(manager, device, *args, **kwargs):
@@ -246,26 +213,14 @@ class MigratePlugin(Plugin):
         manager.log("Run migration script to set boot mode and image path in device")
         MigratePlugin._run_migration_script(manager, device)
 
-        # checked: reload router, now we have flexr-capable fpd
-
         manager.log("Reload device to boot eXR")
         MigratePlugin._reload_all(manager, device)
-        manager.log("Waiting for all nodes to come to FINAL Band.")
-
-        if wait_for_final_band(device):
-            manager.log("All nodes are in FINAL Band.")
-        else:
-            manager.log("Warning: Not all nodes went to FINAL Band.")
 
         try:
             manager.csm.custom_commands = ["show platform"]
             CmdCapturePlugin.start(manager, device)
         except Exception as e:
-            manager.log(type(e) + " when tring to capture 'show platform'.")
-
-        device._os_type = "eXR"
-
-        get_package(device, manager)
+            manager.log(str(type(e)) + " when trying to capture 'show platform'.")
 
         return True
 

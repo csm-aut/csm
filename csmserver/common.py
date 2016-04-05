@@ -337,8 +337,10 @@ def get_first_install_action(db_session, install_action):
 def create_or_update_install_job(
     db_session, host_id, install_action, scheduled_time, software_packages=None,
 
-    server=-1, server_directory='', custom_command_profile=-1, dependency=0, pending_downloads=None, install_job=None, best_effort_config=0, config_filename=''):
+    server=-1, server_directory='', custom_command_profile=-1, dependency=0,
 
+    pending_downloads=None, install_job=None, best_effort_config=0, config_filename=''):
+    print "1"
     # This is a new install_job
     if install_job is None:
         install_job = InstallJob()
@@ -354,7 +356,7 @@ def create_or_update_install_job(
         install_job.pending_downloads = ''
 
     install_job.scheduled_time = get_datetime(scheduled_time, "%m/%d/%Y %I:%M %p")
-
+    print "2"
     # Only Install Add and Pre-Migrate should have server_id and server_directory
     if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE:
         install_job.server_id = int(server) if int(server) > 0 else None
@@ -429,7 +431,7 @@ def create_or_update_install_job(
 
         create_download_jobs(db_session, platform, release, pending_downloads,
                              install_job.server_id, install_job.server_directory)
-
+    print "4"
     return install_job
 
 
