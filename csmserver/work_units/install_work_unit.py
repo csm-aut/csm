@@ -30,6 +30,7 @@ from context import InstallContext
 
 from utils import create_log_directory
 from utils import is_empty
+from utils import datetime_from_utc_to_local
 
 from filters import get_datetime_string
 
@@ -185,12 +186,16 @@ class InstallWorkUnit(WorkUnit):
 
             message = '<html><head><body>'
             if install_job.status == JobStatus.COMPLETED:
-                message += 'The scheduled installation for host "' + host.hostname + '" has COMPLETED<br><br>'
+                message += 'The scheduled installation for host "' + host.hostname + '" has COMPLETED.<br><br>'
             elif install_job.status == JobStatus.FAILED:
-                message += 'The scheduled installation for host "' + host.hostname + '" has FAILED<br><br>'
+                message += 'The scheduled installation for host "' + host.hostname + '" has FAILED.<br><br>'
 
-            message += 'Scheduled Time: ' + get_datetime_string(install_job.scheduled_time) + ' (UTC)<br>'
-            message += 'Start Time: ' + get_datetime_string(install_job.start_time) + ' (UTC)<br>'
+            message += 'Scheduled Time: ' + \
+                       get_datetime_string(datetime_from_utc_to_local(install_job.scheduled_time)) + \
+                       ' (CSM Server Time)<br>'
+            message += 'Start Time: ' + \
+                       get_datetime_string(datetime_from_utc_to_local(install_job.start_time)) + \
+                       ' (CSM Server Time)<br>'
             message += 'Install Action: ' + install_job.install_action + '<br><br>'
 
             session_log_url = SystemOption.get(db_session).base_url + '/' + session_log_link

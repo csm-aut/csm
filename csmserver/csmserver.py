@@ -65,8 +65,8 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
-from models import DeviceUDI
 from models import SystemVersion
+from models import System
 from models import Package
 from models import Preferences
 from models import SMUMeta
@@ -99,6 +99,7 @@ from common import fill_dependency_from_host_install_jobs
 from common import fill_regions    
 from common import fill_jump_hosts
 from common import fill_custom_command_profiles
+from common import get_custom_command_profile_by_id
 from common import get_host
 from common import get_host_list
 from common import get_jump_host_by_id
@@ -144,6 +145,10 @@ from utils import get_base_url
 from utils import is_ldap_supported
 from utils import remove_extra_spaces
 from utils import get_json_value
+from utils import create_directory
+from utils import create_temp_user_directory
+from utils import make_file_writable
+from utils import datetime_from_utc_to_local
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -170,6 +175,7 @@ from views.custom_command import custom_command
 from horizon.plugin_manager import PluginManager
 
 import os
+import stat
 import io
 import logging
 import datetime
@@ -177,6 +183,7 @@ import filters
 import collections
 import shutil
 import initialize
+import zipfile
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -529,7 +536,8 @@ def get_managed_host_details(region_id):
             row = {} 
             row['hostname'] = host.hostname
             row['platform'] = host.platform
-            row['software'] = host.software_platform + ' (' + host.software_version + ')'
+            row['software'] = (host.software_platform if host.software_platform is not None else UNKNOWN) + ' (' + \
+                              (host.software_version if host.software_version is not None else UNKNOWN) + ')'
 
             if len(host.connection_param) > 0:
                 connection_param = host.connection_param[0]
@@ -722,7 +730,7 @@ def host_edit(hostname):
         form.jump_host.data = host.connection_param[0].jump_host_id
         form.connection_type.data = host.connection_param[0].connection_type
         form.port_number.data = host.connection_param[0].port_number
-        if host.connection_param[0].password != '':
+        if not is_empty(host.connection_param[0].password):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
@@ -846,7 +854,7 @@ def jump_host_edit(hostname):
         form.username.data = host.username
         form.connection_type.data = host.connection_type
         form.port_number.data = host.port_number
-        if host.password != '':
+        if not is_empty(host.password):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
@@ -1627,7 +1635,12 @@ def delete_all_downloads(status=None):
 @login_required
 def api_get_server_time():  
     dict = {}
+    db_session = DBSession()
+    system = db_session.query(System).first()
+    start_time = system.start_time
+
     dict['server_time'] = datetime.datetime.utcnow()
+    dict['uptime'] = time_difference_UTC(start_time).strip(' ago')
 
     return jsonify(**{'data': dict})
 
@@ -1991,6 +2004,10 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
                 form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
         
+            if install_job.custom_command_profile_id:
+                ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
+                form.custom_command_profile.data = ids
+
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url, install_action=get_install_actions_dict())
@@ -2013,7 +2030,6 @@ def admin_console():
     
     smtp_server = get_smtp_server(db_session)
     system_option = SystemOption.get(db_session)
-    device_udi = DeviceUDI.get(db_session)
     
     if request.method == 'POST' and \
         smtp_form.validate() and \
@@ -2087,7 +2103,7 @@ def admin_console():
         admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
         admin_console_form.enable_user_credential_for_host.data = system_option.enable_user_credential_for_host
 
-        if system_option.default_host_password != None:
+        if not is_empty(system_option.default_host_password):
             admin_console_form.default_host_password_placeholder = 'Use Password on File'
         else:
             admin_console_form.default_host_password_placeholder = 'No Password Specified'
@@ -2099,7 +2115,7 @@ def admin_console():
             smtp_form.use_authentication.data = smtp_server.use_authentication
             smtp_form.username.data = smtp_server.username
             smtp_form.secure_connection.data = smtp_server.secure_connection
-            if smtp_server.password != None:
+            if not is_empty(smtp_server.password):
                 smtp_form.password_placeholder = 'Use Password on File'
             else:
                 smtp_form.password_placeholder = 'No Password Specified'
@@ -2312,6 +2328,34 @@ def api_get_session_log_file_diff():
     return jsonify(**{'data': data})
 
 
+@app.route('/api/get_session_logs')
+@login_required
+def api_get_session_logs():
+    id = request.args.get("record_id")
+
+    db_session = DBSession()
+    install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+
+    if install_job is None:
+        abort(404)
+
+    log_folder = install_job.session_log
+    file_path = os.path.join(get_log_directory(), log_folder)
+
+    if not os.path.isdir(file_path):
+        abort(404)
+
+    rows = []
+    log_file_list = get_file_list(file_path)
+    for file in log_file_list:
+        row = {}
+        row['filepath'] = os.path.join(file_path, file)
+        row['filename'] = file
+        rows.append(row)
+
+    return jsonify(**{'data': rows})
+
+
 @app.route('/hosts/<hostname>/<table>/trace/<int:id>/')
 @login_required
 def host_trace(hostname, table, id):
@@ -2337,30 +2381,41 @@ def host_trace(hostname, table, id):
 @app.route('/logs/')
 @login_required
 def logs():
-    """
-    Displays the system related logs.
-    """
-    db_session = DBSession()          
-    
-    # Only shows the ERROR 
+    return render_template('log.html')
+
+
+@app.route('/api/get_system_logs/')
+@login_required
+def api_get_system_logs():
+    db_session = DBSession()
+
+    # Only shows the ERROR
     logs = db_session.query(Log).filter(Log.level == 'ERROR').order_by(Log.created_time.desc())
 
-    return render_template('log.html', logs=logs)          
+    rows = []
+    for log in logs:
+        row = {}
+        row['id'] = log.id
+        row['severity'] = log.level
+        row['message'] = log.msg
+        row['created_time'] = log.created_time
+        rows.append(row)
+
+    return jsonify(**{'data': rows})
 
 
-@app.route('/logs/<int:log_id>/trace/')
+@app.route('/api/logs/<int:log_id>/trace/')
 @login_required
-def log_trace(log_id):
+def api_get_log_trace(log_id):
     """
     Returns the log trace of a particular log record.
     """
     db_session = DBSession()
     
     log = db_session.query(Log).filter(Log.id == log_id).first()
-    if log is None:
-        abort(404)
-    
-    return render_template('trace.html', log=log)
+    return jsonify(**{'data': [
+        {'severity': log.level, 'message': log.msg, 'trace': log.trace, 'created_time': log.created_time}
+    ]})
 
 
 @app.route('/failed_software_inventory_list/')
@@ -2520,7 +2575,7 @@ def api_get_servers_by_region(region_id):
     region = get_region_by_id(db_session, region_id)
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
-            result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
+            result_list.append({'server_id': server.id, 'hostname': server.hostname })
     else:
         # Returns all server repositories if the region does not have any server repository designated.
         return api_get_servers()
@@ -2719,8 +2774,8 @@ def get_software(hostname):
     
     host = get_host(db_session, hostname)
     if host is not None:
-        if not host.inventory_job[0].pending_submit:
-            host.inventory_job[0].pending_submit = True
+        if not host.inventory_job[0].request_update:
+            host.inventory_job[0].request_update = True
             db_session.commit()
             return jsonify({'status': 'OK'})
    
@@ -2830,7 +2885,7 @@ def get_software_package_upgrade_list(hostname, target_release):
     
     match_internal_name =  True if request.args.get('match_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname) 
-    target_packages = get_target_software_package_list(host.platform, host_packages, target_release, match_internal_name)
+    target_packages = get_target_software_package_list(host.family, host_packages, target_release, match_internal_name)
     for package in target_packages:
         rows.append({'package': package})
         
@@ -3033,7 +3088,7 @@ def user_preferences():
         preferences = user.preferences[0]
         form.cco_username.data = preferences.cco_username
 
-        if user.preferences[0].cco_password != None:
+        if not is_empty(user.preferences[0].cco_password):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
@@ -3223,37 +3278,45 @@ def api_get_ddts_details(ddts_id):
     bsh = BugServiceHandler(username, password, ddts_id)
     try:
         bug_info = bsh.get_bug_info()
-    except Exception:
-        logger.exception('api_get_ddts_details hit exception')
-        return jsonify(**{'data':{'ErrorMsg': 'Could not retrieve bug information.'}})
+    except Exception as e:
+        logger.exception('api_get_ddts_details hit exception ' + e.message)
+        if e.message == 'access_token':
+            error_msg = 'Could not retrieve bug information.  The username and password defined may not be correct ' \
+                        '(Check Tools - User Preferences)'
+        else:
+            error_msg = 'Could not retrieve bug information.'
+        return jsonify(**{'data': {'ErrorMsg': error_msg}})
 
     info = {}
 
-    statuses = {'O' : 'Open',
-                'F' : 'Fixed',
-                'T' : 'Terminated'}
+    statuses = {'O': 'Open',
+                'F': 'Fixed',
+                'T': 'Terminated'}
 
-    severities = {'1' : "1 Catastrophic",
-                  '2' : "2 Severe",
-                  '3' : "3 Moderate",
-                  '4' : "4 Minor",
-                  '5' : "5 Cosmetic",
-                  '6' : "6 Enhancement"}
+    severities = {'1': "1 Catastrophic",
+                  '2': "2 Severe",
+                  '3': "3 Moderate",
+                  '4': "4 Minor",
+                  '5': "5 Cosmetic",
+                  '6': "6 Enhancement"}
 
-    info['status'] = statuses[get_json_value(bug_info, 'status')] if get_json_value(bug_info, 'status') in statuses else get_json_value(bug_info, 'status')
+    info['status'] = statuses[get_json_value(bug_info, 'status')] \
+        if get_json_value(bug_info, 'status') in statuses else get_json_value(bug_info, 'status')
     info['product'] = get_json_value(bug_info, 'product')
-    info['severity'] = severities[get_json_value(bug_info, 'severity')] if get_json_value(bug_info, 'severity') in severities else get_json_value(bug_info, 'severity')
+    info['severity'] = severities[get_json_value(bug_info, 'severity')] \
+        if get_json_value(bug_info, 'severity') in severities else get_json_value(bug_info, 'severity')
     info['headline'] = get_json_value(bug_info, 'headline')
     info['support_case_count'] = get_json_value(bug_info, 'support_case_count')
     info['last_modified_date'] = get_json_value(bug_info, 'last_modified_date')
     info['bug_id'] = get_json_value(bug_info, 'bug_id')
     info['created_date'] = get_json_value(bug_info, 'created_date')
     info['duplicate_of'] = get_json_value(bug_info, 'duplicate_of')
-    info['description'] = get_json_value(bug_info, 'description').replace('\n', '<br>') if get_json_value(bug_info, 'description') else None
-
-    info['known_affected_releases'] = get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_affected_releases') else None
-    info['known_fixed_releases'] = get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') if get_json_value(bug_info, 'known_fixed_releases') else None
-
+    info['description'] = get_json_value(bug_info, 'description').replace('\n', '<br>') \
+        if get_json_value(bug_info, 'description') else None
+    info['known_affected_releases'] = get_json_value(bug_info, 'known_affected_releases').replace(' ', '<br>') \
+        if get_json_value(bug_info, 'known_affected_releases') else None
+    info['known_fixed_releases'] = get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') \
+        if get_json_value(bug_info, 'known_fixed_releases') else None
     info['ErrorDescription'] = get_json_value(bug_info, 'ErrorDescription')
     info['SuggestedAction'] = get_json_value(bug_info, 'SuggestedAction')
 
@@ -3449,29 +3512,6 @@ def api_refresh_all_smu_info():
         return jsonify({'status': 'Failed'})
 
 
-@app.route('/api/get_udi')
-@login_required
-def api_get_udi():
-    """
-    Returns udi info for a platform
-    """
-    db_session = DBSession()
-    udis = get_udi(db_session)
-
-    rows = []
-    if udis is not None:
-        for udi in udis:
-            row = {}
-            row['platform'] = udi.platform
-            row['pid'] = udi.pid
-            row['version'] = udi.version
-            row['serial_number'] = udi.serial_number
-
-            rows.append(row)
-
-    return jsonify(**{'data': rows})
-
-
 @app.route('/api/get_cco_lookup_time')
 @login_required
 def api_get_cco_lookup_time():  
@@ -3564,27 +3604,50 @@ def download_session_log():
     return send_file(get_log_directory() + request.args.get('file_path'), as_attachment=True)
 
 
+@app.route('/api/download_session_logs', methods=['POST'])
+@login_required
+def api_download_session_logs():
+    file_list = request.args.getlist('file_list[]')[0].split(',')
+    temp_user_dir = create_temp_user_directory(current_user.username)
+    session_zip_path = os.path.normpath(os.path.join(temp_user_dir, "session_logs"))
+    zip_file = os.path.join(session_zip_path, "session_logs.zip")
+    create_directory(session_zip_path)
+    make_file_writable(session_zip_path)
+
+    zout = zipfile.ZipFile(zip_file, mode='w')
+    for f in file_list:
+        zout.write(os.path.normpath(f), os.path.basename(f))
+
+    zout.close()
+
+    return send_file(zip_file, as_attachment=True)
+
+
 @app.route('/download_system_logs')
 @login_required
 def download_system_logs():
-    db_session = DBSession()           
+    db_session = DBSession()
     logs = db_session.query(Log) \
         .order_by(Log.created_time.desc())
         
     contents = ''
     for log in logs:
-        contents += get_datetime_string(log.created_time) + '\n'
+        contents += get_datetime_string(datetime_from_utc_to_local(log.created_time)) + '\n'
         contents += log.level + ':' + log.msg + '\n'
         if log.trace is not None:
             contents += log.trace + '\n'
         contents += '-' * 70 + '\n'
         
     # Create a file which contains the size of the image file.
-    log_file = open(get_temp_directory() + 'system_logs', 'w')
+    temp_user_dir = create_temp_user_directory(current_user.username)
+    log_file_path = os.path.normpath(os.path.join(temp_user_dir, "system_logs"))
+    create_directory(log_file_path)
+    make_file_writable(log_file_path)
+    log_file = open(os.path.join(log_file_path, 'system_logs'), 'w')
     log_file.write(contents)
-    log_file.close()  
-        
-    return send_file(get_temp_directory() + 'system_logs', as_attachment=True)
+    log_file.close()
+
+    return send_file(os.path.join(log_file_path, 'system_logs'), as_attachment=True)
 
 
 @app.route('/api/plugins')

@@ -67,7 +67,7 @@ ASR9K_PACKAGES = {
 }
 
 
-def get_target_software_package_list(platform, host_packages, target_version, match_internal_name=False):
+def get_target_software_package_list(family, host_packages, target_version, match_internal_name=False):
     """
     If match_internal_name is true, it matches the host_packages instead of the physical name
     on the server repository.
@@ -75,9 +75,9 @@ def get_target_software_package_list(platform, host_packages, target_version, ma
     target_list = []
     platform_package_list = {}
     
-    if platform == PlatformFamily.ASR9K:
+    if family == PlatformFamily.ASR9K:
         platform_package_list = ASR9K_PACKAGES
-    elif platform == PlatformFamily.CRS:
+    elif family == PlatformFamily.CRS:
         platform_package_list = CRS_PACKAGES
         
     for k, v in platform_package_list.items():

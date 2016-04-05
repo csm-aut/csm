@@ -147,16 +147,13 @@ def fill_default_region(choices, region):
 
 def fill_custom_command_profiles(choices):
     del choices[:]
-    choices.append((-1, ''))
 
     db_session = DBSession()
     try:
         profiles = get_custom_command_profiles_list(db_session)
 
-        # TODO remove this line
-        if profiles is not None:
-            for profile in profiles:
-                choices.append((profile.id, profile.profile_name))
+        for profile in profiles:
+            choices.append((profile.id, profile.profile_name))
 
     except:
         logger.exception('fill_custom_command_profiles() hit exception')
@@ -166,11 +163,14 @@ def get_last_successful_inventory_elapsed_time(host):
     if host is not None:
         # Last inventory successful time
         inventory_job = host.inventory_job[0]
-        if inventory_job.pending_submit:
+        if inventory_job.request_update:
             return 'Pending Retrieval'
         else:
-            return time_difference_UTC(inventory_job.last_successful_time)
-        
+            if inventory_job.last_successful_time is None:
+                return 'None'
+            else:
+                return time_difference_UTC(inventory_job.last_successful_time)
+
     return ''
 
 
@@ -180,15 +180,15 @@ def get_host_active_packages(hostname):
     """
     db_session = DBSession()
     host = get_host(db_session, hostname)
-    
-    result_list = []       
+
+    result_list = []
     if host is not None:
         packages = db_session.query(Package).filter(
             and_(Package.host_id == host.id, or_(Package.state == PackageState.ACTIVE,
                                                  Package.state == PackageState.ACTIVE_COMMITTED))).all()
         for package in packages:
             result_list.append(package.name)
-    
+
     return result_list
 
 
@@ -198,14 +198,14 @@ def get_host_inactive_packages(hostname):
     """
     db_session = DBSession()
     host = get_host(db_session, hostname)
-    
-    result_list = []       
+
+    result_list = []
     if host is not None:
         packages = db_session.query(Package).filter(
             and_(Package.host_id == host.id, Package.state == PackageState.INACTIVE)).all()
         for package in packages:
             result_list.append(package.name)
-    
+
     return result_list
 
 
@@ -239,6 +239,10 @@ def get_server(db_session, hostname):
 
 def get_server_by_id(db_session, id):
     return db_session.query(Server).filter(Server.id == id).first()
+
+
+def get_custom_command_profile_by_id(db_session, id):
+    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == id).first()
 
 
 def get_region(db_session, region_name):

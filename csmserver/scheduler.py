@@ -92,7 +92,7 @@ class Scheduler(threading.Thread):
 
                 if len(inventory_jobs) > 0:
                     for inventory_job in inventory_jobs:
-                        inventory_job.pending_submit = True
+                        inventory_job.request_update = True
                     db_session.commit()
                         
             # Check if there is any housekeeping work to do

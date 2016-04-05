@@ -24,20 +24,19 @@
 # =============================================================================
 import smtplib
 
-
-from constants import JobStatus
 from constants import SMTPSecureConnection
 
-from models import SMTPServer
 from models import User
-from models import Host
 from models import SystemOption
 from models import EmailJob
 
 # Import the email modules we'll need
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import Encoders
 
+from os.path import basename
 
 def create_email_job(db_session, logger, message, username):
     system_option = SystemOption.get(db_session)
@@ -53,10 +52,13 @@ def create_email_job(db_session, logger, message, username):
     db_session.add(email_job)
     db_session.commit()
 
-        
-def sendmail(logger, server, server_port, sender, recipient,
-    message, use_authentication, username, password, secure_connection):
 
+def sendmail(logger, server, server_port, sender, recipient,
+             message, use_authentication, username, password,
+             secure_connection, file_attachments=None):
+    """
+    :param file_attachments: A list of absolute file paths for file attachments
+    """
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = 'Notification from CSM Server'
@@ -66,7 +68,9 @@ def sendmail(logger, server, server_port, sender, recipient,
         part = MIMEText(message, 'html')
         msg.attach(part)
         
-        if use_authentication:           
+        if use_authentication:
+            s = None
+
             if secure_connection == SMTPSecureConnection.SSL:
                 s = smtplib.SMTP_SSL(server, int(server_port))
             elif secure_connection == SMTPSecureConnection.TLS:
@@ -79,7 +83,18 @@ def sendmail(logger, server, server_port, sender, recipient,
                 s = smtplib.SMTP(server)
             else:
                 s = smtplib.SMTP(server, int(server_port))
-       
+
+        if file_attachments is not None:
+            for file_attachment in file_attachments:
+                try:
+                    part = MIMEBase('application', "octet-stream")
+                    part.set_payload(open(file_attachment, "rb").read())
+                    Encoders.encode_base64(part)
+                    part.add_header('Content-Disposition', 'attachment; filename="%s"' % basename(file_attachment))
+                    msg.attach(part)
+                except:
+                    logger.exception('sendmail: Unable to attach %s', basename(file_attachment))
+
         s.sendmail(sender, recipient.split(","), msg.as_string()) 
         s.close()
 
