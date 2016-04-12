@@ -201,6 +201,8 @@ class InstallWorkUnit(WorkUnit):
                        ' (CSM Server Time)<br>'
             message += 'Install Action: ' + install_job.install_action + '<br><br>'
 
+            message = self.check_command_file_diff(install_job, message)
+
             session_log_url = SystemOption.get(db_session).base_url + '/' + session_log_link
 
             message += 'For more information, click the link below<br><br>'
@@ -208,8 +210,6 @@ class InstallWorkUnit(WorkUnit):
 
             if install_job.packages is not None and len(install_job.packages) > 0:
                 message += 'Followings are the software packages: <br><br>' + install_job.packages.replace(',','<br>')
-
-            message = self.check_command_file_diff(install_job, message)
 
             message += '</body></head></html>'
 
@@ -225,8 +225,9 @@ class InstallWorkUnit(WorkUnit):
         diff_file_list = [file for file in file_list if file_suffix in file]
 
         if len(diff_file_list) > 0:
-            message += '<br>The following command outputs have changed between different installation phases<br><br>'
+            message += 'The following command outputs have changed between different installation phases<br><br>'
             for file in diff_file_list:
-                message += file.replace(file_suffix, '')
+                message += file.replace(file_suffix, '') + '<br>'
+            message += '<br>'
 
         return message
