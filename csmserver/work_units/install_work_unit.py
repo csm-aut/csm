@@ -211,5 +211,5 @@ class InstallWorkUnit(WorkUnit):
             create_email_job(db_session, logger, message, install_job.created_by)
 
         except Exception:
-            logger.exception('create_email_notification hit exception')
+            logger.exception('create_email_notification() hit exception')
 

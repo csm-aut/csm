@@ -98,7 +98,7 @@ class Scheduler(threading.Thread):
             self.perform_housekeeping_tasks(db_session, system_option)
             
         except:
-            logger.exception('scheduling hit exception')
+            logger.exception('scheduling() hit exception')
         finally:
             db_session.close()
 
@@ -124,7 +124,7 @@ class Scheduler(threading.Thread):
                 db_session.commit()
         except:
             db_session.rollback()
-            logger.exception('purge_system_log hit exception')
+            logger.exception('purge_system_log() hit exception')
 
     def purge_inventory_job_history(self, db_session, entry_per_host):
         # Scanning the InventoryJobHistory table for records that should be deleted.
@@ -146,7 +146,7 @@ class Scheduler(threading.Thread):
                         if inventory_job.session_log is not None:
                             shutil.rmtree(get_log_directory() + inventory_job.session_log)
                     except:
-                        logger.exception('purge_inventory_job_history hit exception- inventory job = %s', inventory_job.id)
+                        logger.exception('purge_inventory_job_history() hit exception- inventory job = %s', inventory_job.id)
 
                     db_session.delete(inventory_job)
 
@@ -155,7 +155,7 @@ class Scheduler(threading.Thread):
             db_session.commit()
         except:
             db_session.rollback()
-            logger.exception('purge_inventory_job_history hit exception')
+            logger.exception('purge_inventory_job_history() hit exception')
 
     def purge_install_job_history(self, db_session, entry_per_host):
         # Scanning the InstallJobHistory table for records that should be deleted.
@@ -177,7 +177,7 @@ class Scheduler(threading.Thread):
                         if install_job.session_log is not None:
                             shutil.rmtree(get_log_directory() + install_job.session_log)
                     except:
-                        logger.exception('purge_install_job_history hit exception - install job = %s', install_job.id)
+                        logger.exception('purge_install_job_history() hit exception - install job = %s', install_job.id)
 
                     db_session.delete(install_job)
 
@@ -186,7 +186,7 @@ class Scheduler(threading.Thread):
             db_session.commit()
         except:
             db_session.rollback()
-            logger.exception('purge_install_job_history hit exception')
+            logger.exception('purge_install_job_history() hit exception')
 
     def purge_download_job_history(self, db_session, entry_per_user):
         # Scanning the DownloadJobHistory table for records that should be deleted.
@@ -210,7 +210,7 @@ class Scheduler(threading.Thread):
             db_session.commit()
         except:
             db_session.rollback()
-            logger.exception('purge_download_job_history hit exception')
+            logger.exception('purge_download_job_history() hit exception')
 
     def purge_tar_job(self, db_session):
         # Deleting old CreateTarJobs
@@ -223,7 +223,7 @@ class Scheduler(threading.Thread):
             db_session.commit()
         except:
             db_session.rollback()
-            logger.exception('purge_tar_job hit exception')
+            logger.exception('purge_tar_job() hit exception')
 
 if __name__ == '__main__':
     pass

@@ -39,7 +39,7 @@ def is_connection_valid(hostname, urls):
             logger.error('Unable to get connection handler')
         handler_class().execute(ctx)
     except:
-        logger.exception('is_connection_valid hit exception')
+        logger.exception('is_connection_valid() hit exception')
     
     return ctx.success
 
