@@ -85,7 +85,6 @@ class Scheduler(threading.Thread):
         
         try:
             system_option = SystemOption.get(db_session)
-            
             # If software inventory is enabled, submit the inventory jobs
             if system_option.enable_inventory:
                 inventory_jobs = db_session.query(InventoryJob).all()
@@ -216,8 +215,7 @@ class Scheduler(threading.Thread):
     def purge_tar_job(self, db_session):
         # Deleting old CreateTarJobs
         try:
-            create_tar_jobs = db_session.query(CreateTarJob).all
-
+            create_tar_jobs = db_session.query(CreateTarJob).all()
             for create_tar_job in create_tar_jobs:
                 if create_tar_job.status == JobStatus.COMPLETED or create_tar_job.status == JobStatus.FAILED:
                     db_session.delete(create_tar_job)

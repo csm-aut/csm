@@ -333,7 +333,7 @@ class Host(Base):
                 
                 result['packages'] = package_list_dict         
         except:
-            logger.exception('Host.get_json() hits exception')  
+            logger.exception('Host.get_json() hit exception')
               
         return result
 

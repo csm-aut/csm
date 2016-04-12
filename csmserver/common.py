@@ -106,7 +106,7 @@ def fill_jump_hosts(choices):
             for host in hosts:
                 choices.append((host.id, host.hostname))
     except:
-        logger.exception('fill_jump_hosts() hits exception')
+        logger.exception('fill_jump_hosts() hit exception')
 
 
 def fill_regions(choices):
@@ -122,7 +122,7 @@ def fill_regions(choices):
             for region in regions:
                 choices.append((region.id, region.name))
     except:
-        logger.exception('fill_regions() hits exception')
+        logger.exception('fill_regions() hit exception')
 
 
 def fill_custom_command_profiles(choices):

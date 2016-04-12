@@ -411,7 +411,7 @@ def login():
                 system_option.base_url = get_base_url(request.url)
                 db_session.commit()
             except:
-                logger.exception('login hit exception')
+                logger.exception('login() hit exception')
             
             # Certain admin features (Admin Console/Create or Edit User require 
             # re-authentication. The return_url indicates which admin feature the 
@@ -612,7 +612,7 @@ def api_get_csm_message():
                         if delta.days > 0:
                             rows.append({'date': date, 'message': message.replace("\n", "<br>")})
                     except:
-                        logger.exception('api_get_csm_message hit exception')
+                        logger.exception('api_get_csm_message() hit exception')
     
     return jsonify(**{'data': rows})
 
@@ -761,7 +761,7 @@ def delete_host_inventory_job_session_logs(db_session, host):
         try:
             shutil.rmtree(get_log_directory() + inventory_job.session_log)
         except:
-            logger.exception('delete_host_inventory_job_session_logs hit exception')
+            logger.exception('delete_host_inventory_job_session_logs() hit exception')
 
 
 def delete_host_install_job_session_logs(db_session, host):
@@ -770,7 +770,7 @@ def delete_host_install_job_session_logs(db_session, host):
         try:
             shutil.rmtree(get_log_directory() + install_job.session_log)
         except:
-            logger.exception('delete_host_install_job_session_logs hit exception')
+            logger.exception('delete_host_install_job_session_logs() hit exception')
 
 
 @app.route('/jump_hosts/')
@@ -1427,7 +1427,7 @@ def api_delete_image_from_repository(image_name):
         os.remove(tar_image_path) 
         os.remove(tar_image_path + '.size')
     except:
-        logger.exception('api_delete_image_from_repository hit exception')
+        logger.exception('api_delete_image_from_repository() hit exception')
         return jsonify({'status': 'Failed'})
     
     return jsonify({'status': 'OK'})
@@ -1564,7 +1564,7 @@ def resubmit_download_job(id):
         return jsonify({'status': 'OK'})
 
     except:  
-        logger.exception('resubmit_download_job hits exception')
+        logger.exception('resubmit_download_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -1589,7 +1589,7 @@ def delete_download_job(id):
         return jsonify({'status': 'OK'})
 
     except:  
-        logger.exception('delete download job hits exception')
+        logger.exception('delete_download_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -1623,7 +1623,7 @@ def delete_all_downloads(status=None):
 
         return jsonify({'status': 'OK'})
     except:
-        logger.exception('delete download job hits exception')
+        logger.exception('delete_download_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -1880,7 +1880,7 @@ def api_create_download_jobs():
             create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
     except:
         try:
-            logger.exception('api_create_download_jobs hit exception')
+            logger.exception('api_create_download_jobs() hit exception')
         except:
             import traceback
             print traceback.format_exc()
@@ -2159,7 +2159,7 @@ def delete_all_installs(status=None):
 
         return jsonify({'status': 'OK'})
     except:
-        logger.exception('delete install job hits exception')
+        logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -2205,7 +2205,7 @@ def delete_all_installs_for_host(hostname, status=None):
         db_session.commit()
         return jsonify({'status': 'OK'})
     except:
-        logger.exception('delete install job hits exception')
+        logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -2232,7 +2232,7 @@ def delete_install_job(id):
         return jsonify({'status': 'OK'})
 
     except:  
-        logger.exception('delete install job hits exception')
+        logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
     
 
@@ -2922,7 +2922,7 @@ def validate_cisco_user():
     except KeyError:
         return jsonify({'status': 'Failed'})
     except:
-        logger.exception('validate_cisco_user hit exception')
+        logger.exception('validate_cisco_user() hit exception')
         return jsonify({'status': 'Failed'})
 
 
@@ -3243,7 +3243,7 @@ def api_get_ddts_details(ddts_id):
     try:
         bug_info = bsh.get_bug_info()
     except Exception as e:
-        logger.exception('api_get_ddts_details hit exception ' + e.message)
+        logger.exception('api_get_ddts_details() hit exception ' + e.message)
         if e.message == 'access_token':
             error_msg = 'Could not retrieve bug information.  The username and password defined may not be correct ' \
                         '(Check Tools - User Preferences)'
