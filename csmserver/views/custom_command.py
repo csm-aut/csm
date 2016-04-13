@@ -29,22 +29,32 @@ from flask.ext.login import login_required, current_user
 from database import DBSession
 
 from models import CustomCommandProfile
+from constants import get_temp_directory
 
 from wtforms import Form
 from wtforms import StringField
 from wtforms import TextAreaField
 from wtforms.validators import Length, required
+from werkzeug.utils import secure_filename
 
+import os
 
 custom_command = Blueprint('custom_command', __name__, url_prefix='/custom_command_profiles')
 
 
-@custom_command.route('/')
+@custom_command.route('/', methods=['GET', 'POST'])
 @login_required
 def home():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(get_temp_directory(), filename))
+
     custom_command_profile_form = CustomCommandProfileForm(request.form)
     return render_template('custom_command/custom_command_profile.html',
                            form=custom_command_profile_form)
+
 
 @custom_command.route('/api/get_command_profiles')
 @login_required
@@ -53,10 +63,10 @@ def api_get_command_profiles():
 
     rows = []
     for profile in custom_profiles:
-        row = {'id'          : profile.id,
+        row = {'id': profile.id,
                'profile_name': profile.profile_name,
                'command_list': profile.command_list,
-               'created_by'  : profile.created_by}
+               'created_by': profile.created_by}
 
         rows.append(row)
 
@@ -123,7 +133,6 @@ def command_profile_edit(profile_name):
 
     return render_template('custom_command/command_profile_edit.html',
                            form=form)
-
 
 
 @custom_command.route('/command_profile/<profile_name>/delete', methods=['DELETE'])
