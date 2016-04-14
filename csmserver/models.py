@@ -333,7 +333,7 @@ class Host(Base):
                 
                 result['packages'] = package_list_dict         
         except:
-            logger.exception('Host.get_json() hits exception')  
+            logger.exception('Host.get_json() hit exception')
               
         return result
 
@@ -947,7 +947,7 @@ def get_db_session_logger(db_session):
     Return a session specific logger.  This is necessary especially
     if the db_session is from a different process address space.
     """
-    session_logger = logging.getLogger('session_logger')
+    session_logger = logging.getLogger('session_logger_%s' % db_session.hash_key)
     session_logger.setLevel(logging.DEBUG)
     session_logger.addHandler(LogHandler(db_session))
     return session_logger

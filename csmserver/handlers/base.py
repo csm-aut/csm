@@ -82,7 +82,7 @@ class BaseHandler(object):
                     self.generate_post_upgrade_file_diff(ctx)
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
-                logger.exception('generate_post_upgrade_file_diff hit exception.')
+                logger.exception('generate_post_upgrade_file_diff() hit exception.')
 
 
     def update_device_info(self, ctx):

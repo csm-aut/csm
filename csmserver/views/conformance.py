@@ -361,7 +361,7 @@ def purge_old_conformance_reports(db_session):
             db_session.delete(conformance_reports[-1])
             db_session.commit()
         except Exception:
-            logger.exception('purge_old_conformance_reports hit exception')
+            logger.exception('purge_old_conformance_reports() hit exception')
 
 
 def match_packages(host_packages, packages_to_match):

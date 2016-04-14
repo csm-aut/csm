@@ -80,6 +80,10 @@
                 return '&nbsp;';
             }
         }
+
+        $("#import-button").on("click", function() {
+            $('#profile-import-dialog').modal({show:true, backdrop:'static'});
+        });
     });
 </script>
 
@@ -94,6 +98,34 @@
 {% block main %}
 
 <!-- Main -->
+<div id="profile-import-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal" enctype="multipart/form-data">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Import Custom Command Profile</h4>
+                    The file to be imported must be exported previously using the Custom Command Profile Export function.
+                </div>
+                <div class="modal-body">
+                    <div class="form-group ">
+                        <div class="col-sm-6">
+                            <input class="form-control" type=file name=file>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <input class="btn btn-primary form-control" type=submit value=Upload>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="container">
     <div class="row">
         <div class="col-sm-12">
@@ -105,6 +137,10 @@
                         <li><a data-toggle="main-tab" href="{{ url_for('custom_command.command_profile_create') }}">Custom Command Profile</a></li>
                     </ul>
                 </li>
+                <div class="btn-group pull-right">
+                    <button id="import-button" type="button" class="btn btn-default">Import</button>
+                    <button id="export-button" type="button" class="btn btn-default">Export</button>
+                </div>
             </ul>
             <div class="tab-content" style="margin-top:10px;">
                 <div id="profiles-tab" class="tab-pane fade in active">
@@ -122,5 +158,6 @@
             </div>
         </div>
     </div>
+
 </div>
 {% endblock main %}

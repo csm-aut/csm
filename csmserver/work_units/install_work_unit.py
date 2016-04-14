@@ -31,6 +31,8 @@ from context import InstallContext
 from utils import create_log_directory
 from utils import is_empty
 from utils import datetime_from_utc_to_local
+from utils import get_log_directory
+from utils import get_file_list
 
 from filters import get_datetime_string
 
@@ -49,6 +51,7 @@ from models import SystemOption
 import traceback
 import datetime
 import urllib
+import os
 
 
 class InstallWorkUnit(WorkUnit):
@@ -198,6 +201,8 @@ class InstallWorkUnit(WorkUnit):
                        ' (CSM Server Time)<br>'
             message += 'Install Action: ' + install_job.install_action + '<br><br>'
 
+            message = self.check_command_file_diff(install_job, message)
+
             session_log_url = SystemOption.get(db_session).base_url + '/' + session_log_link
 
             message += 'For more information, click the link below<br><br>'
@@ -211,5 +216,18 @@ class InstallWorkUnit(WorkUnit):
             create_email_job(db_session, logger, message, install_job.created_by)
 
         except Exception:
-            logger.exception('create_email_notification hit exception')
+            logger.exception('create_email_notification() hit exception')
 
+
+    def check_command_file_diff(self, install_job, message):
+        file_suffix = '.diff.html'
+        file_list = get_file_list(os.path.join(get_log_directory(), install_job.session_log))
+        diff_file_list = [file for file in file_list if file_suffix in file]
+
+        if len(diff_file_list) > 0:
+            message += 'The following command outputs have changed between different installation phases<br><br>'
+            for file in diff_file_list:
+                message += file.replace(file_suffix, '') + '<br>'
+            message += '<br>'
+
+        return message
