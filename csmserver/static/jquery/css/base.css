@@ -125,3 +125,23 @@ ul.nav li.dropdown:hover > ul.dropdown-menu {
         overflow-x: hidden;
     }
 }
+
+.dialog-table tr {
+    width: 100%;
+    display: inline-table;
+}
+
+.dialog-table table {
+    height:120px;
+    width:100px;
+    margin:0
+    auto;
+    border: 1px solid black;
+}
+
+.dialog-table tbody {
+    overflow-y: auto;
+    height: 120px;
+    width: 100%;
+    position: absolute;
+}

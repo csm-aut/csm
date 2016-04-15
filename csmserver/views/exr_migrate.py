@@ -5,18 +5,19 @@ import requests
 from constants import InstallAction, get_migration_directory, UserPrivilege
 
 from common import can_edit_install
+from common import can_install
 from common import create_or_update_install_job
 from common import fill_custom_command_profiles
 from common import fill_default_region
 from common import fill_dependency_from_host_install_jobs
 from common import fill_regions
 from common import fill_servers
-from common import get_first_install_action
+from common import get_last_install_action
 from common import get_host
 from common import get_host_list
-from common import can_install
 from common import get_return_url
 from common import get_server_by_id
+from common import get_install_job_dependency_completed
 
 from database import DBSession
 import datetime
@@ -56,7 +57,6 @@ def schedule_migrate():
         abort(404)
 
     form = ScheduleMigrationForm(request.form)
-    fill_dependencies_for_migration(form.dependency.choices)
     fill_regions(form.region.choices)
     fill_custom_command_profiles(form.custom_command_profile.choices)
 
@@ -73,8 +73,12 @@ def schedule_migrate():
             print(str(form))
             print(str(form.data))
             print(str(hostnames))
+            dependency_list = form.hidden_dependency.data.split(',')
+            index = 0
             for hostname in hostnames:
+
                 host = get_host(db_session, hostname)
+
                 if host is not None:
 
                     db_session = DBSession()
@@ -86,18 +90,21 @@ def schedule_migrate():
                     config_filename = form.hidden_config_filename.data
                     custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
 
-                    dependency = 0
-                    # No dependency when it is 0 (a digit)
-                    if not form.dependency.data.isdigit():
-                        prerequisite_install_job = get_first_install_action(db_session, form.dependency.data)
-                        if prerequisite_install_job is not None:
-                            dependency = prerequisite_install_job.id
+                    # If the dependency is a previous job id, it's non-negative int string.
+                    if int(dependency_list[index]) >= 0:
+                        dependency = dependency_list[index]
 
-                    # If only one install_action, accept the selected dependency if any
-                    if len(install_action) == 1:
+                    # In this case, the dependency is '-1', which means no dependency for the first install action
+                    else:
+                        dependency = 0
 
+                    # The dependency for the first install action depends on dependency_list[index].
+                    # The dependency for each install action following first is indicated by the implicit
+                    # ordering in the selector. If the user selected Pre-Migrate and Migrate,
+                    # Migrate (successor) will have Pre-Migrate (predecessor) as the dependency.
+                    for i in xrange(0, len(install_action)):
                         new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
-                                                                       install_action=install_action[0],
+                                                                       install_action=install_action[i],
                                                                        scheduled_time=scheduled_time,
                                                                        software_packages=software_packages,
                                                                        server=server,
@@ -106,28 +113,11 @@ def schedule_migrate():
                                                                        config_filename=config_filename,
                                                                        custom_command_profile=custom_command_profile,
                                                                        dependency=dependency)
-                        print("dependency for install_action = {} is {}".format(new_install_job.install_action,
+                        print("dependency for install_action = {} is {}".format(install_action[i],
                                                                                 str(dependency)))
-                    else:
-                        # If a dependency was selected, that shall be the dependency for the first install action.
-                        # If no dependency specified, the dependency for the first install action is 0.
-                        # Then, the dependency for each install action is already indicated in the implicit
-                        # ordering in the selector. If the user selected Pre-Upgrade and Install Add,
-                        # Install Add (successor) will have Pre-Upgrade (predecessor) as the dependency.
-                        for i in xrange(0, len(install_action)):
-                            new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
-                                                                           install_action=install_action[i],
-                                                                           scheduled_time=scheduled_time,
-                                                                           software_packages=software_packages,
-                                                                           server=server,
-                                                                           server_directory=server_directory,
-                                                                           best_effort_config=best_effort_config,
-                                                                           config_filename=config_filename,
-                                                                           custom_command_profile=custom_command_profile,
-                                                                           dependency=dependency)
-                            print("dependency for install_action = {} is {}".format(install_action[i],
-                                                                                    str(dependency)))
-                            dependency = new_install_job.id
+                        dependency = new_install_job.id
+
+                index += 1
 
         return redirect(url_for(return_url))
     else:
@@ -143,6 +133,7 @@ def schedule_migrate():
         form.hidden_edit.data = 'False'
         form.hidden_best_effort_config.data = '0'
         form.hidden_config_filename.data = ''
+        form.hidden_dependency.data = ''
 
         return render_template('exr_migrate/schedule_migrate.html', form=form,
                                install_action=get_install_migrations_dict(), server_time=datetime.datetime.utcnow())
@@ -178,20 +169,13 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
     form = ScheduleMigrationForm(request.form)
 
-    # Retrieves all the install jobs for this host.  This will allow
-    # the user to select which install job this install job can depend on.
-    install_jobs = db_session.query(InstallJob).filter(InstallJob.host_id ==
-                                                       host.id).order_by(InstallJob.scheduled_time.asc()).all()
-
     # Fills the selections
     fill_servers(form.server_dialog_server.choices, host.region.servers)
-    fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs,
-                                           (-1 if install_job is None else install_job.id))
     fill_custom_command_profiles(form.custom_command_profile.choices)
 
     if request.method == 'POST':
         if install_job is not None:
-            # In Edit mode, the install_action UI on HostScheduleForm is disabled (not allow to change).
+            # In Edit mode, the install_action UI on HostScheduleForm is disabled (not allowed to change).
             # Thus, there will be no value returned by form.install_action.data.  So, re-use the existing ones.
             install_action = [ install_job.install_action ]
         else:
@@ -206,8 +190,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
 
         # install_action is a list object which can only contain one install action
-        # at this time, accept the selected dependency if any
-        dependency = int(form.dependency.data)
+        # at this editing time, accept the selected dependency if any
+        dependency = int(form.hidden_dependency.data)
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                      scheduled_time=scheduled_time, software_packages=software_packages,
                                      server=server, server_directory=server_directory,
@@ -228,6 +212,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         form.hidden_region.data = str(host.region.name)
         fill_default_region(form.region.choices, host.region)
         form.hidden_hosts.data = hostname
+        form.hidden_dependency.data = ''
 
         # In Edit mode
         if install_job is not None:
@@ -254,8 +239,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
                 form.hidden_software_packages.data = install_job.packages
 
-            print "Edit: the str(install_job.dependency) = " + str(install_job.dependency)
-            form.dependency.data = str(install_job.dependency)
+            form.hidden_dependency.data = str(install_job.dependency)
 
             if install_job.scheduled_time is not None:
                 form.scheduled_time_UTC.data = \
@@ -269,6 +253,31 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 @exr_migrate.route('/select_host.html')
 def select_host():
     return render_template('exr_migrate/select_host.html')
+
+@exr_migrate.route('/api/get_dependencies/')
+@login_required
+def get_dependencies():
+    db_session = DBSession()
+    hostnames = request.args.get('hosts', '', type=str).split(',')
+    dependency = request.args.get('dependency', '', type=str)
+
+    dependency_list = []
+    miss_count = 0
+    for hostname in hostnames:
+
+        prerequisite_install_job = get_last_install_action(db_session, dependency, get_host(db_session, hostname).id)
+        if prerequisite_install_job is not None:
+            dependency_list.append(prerequisite_install_job.id)
+        else:
+            num_completed_jobs = get_install_job_dependency_completed(db_session, dependency, get_host(db_session,
+                                                                                                       hostname).id)
+            if len(num_completed_jobs) > 0:
+                dependency_list.append('-1')
+            else:
+                miss_count += 1
+                dependency_list.append('-2')
+
+    return jsonify(**{'data': [{ 'dependency_list': dependency_list, 'miss_count' :  miss_count} ] } )
 
 
 @exr_migrate.route('/api/get_latest_config_migration_tool/')
@@ -375,25 +384,12 @@ def get_install_migrations_dict():
     }
 
 
-def fill_dependencies_for_migration(choices):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append((-1, 'None'))
-
-    # The install action is listed in implicit ordering.  This ordering
-    # is used to formulate the dependency.
-    choices.append((InstallAction.PRE_MIGRATE, InstallAction.PRE_MIGRATE))
-    choices.append((InstallAction.MIGRATE_SYSTEM, InstallAction.MIGRATE_SYSTEM))
-    choices.append((InstallAction.POST_MIGRATE, InstallAction.POST_MIGRATE))
-
-
 class ScheduleMigrationForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
 
     scheduled_time = TextField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
     custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])
-    dependency = SelectField('Dependency', coerce=str, choices=[(-1, 'None')])
 
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     role = SelectField('Role', coerce=str, choices=[('Any', 'Any')])
@@ -418,3 +414,5 @@ class ScheduleMigrationForm(Form):
     hidden_config_filename = HiddenField('')
 
     hidden_edit = HiddenField('Edit')
+
+    hidden_dependency = HiddenField('')

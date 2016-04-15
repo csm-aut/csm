@@ -39,13 +39,10 @@
         {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
     </div>
 
-    <div id="dependency-panel">
-      {{ edit_field(form.dependency, field_width="col-sm-6", class="form-control") }}
-    </div>
 
     <input id="hidden_region" name="{{ form.hidden_region.name }}" value="{{ form.hidden_region.data }}" type="hidden">
     <input id="hidden_hosts" name="{{ form.hidden_hosts.name }}" value="{{ form.hidden_hosts.data }}" type="hidden">
-
+    <input id="hidden_dependency" name="{{ form.hidden_dependency.name }}" value="{{ form.hidden_dependency.data }}" type="hidden">
     <input id="hidden_server" name="{{ form.hidden_server.name }}" value="{{ form.hidden_server.data }}" type="hidden">
     <input id="hidden_server_name" name="{{ form.hidden_server_name.name }}" value="{{ form.hidden_server_name.data }}"
            type="hidden">
@@ -131,13 +128,6 @@
 
             function toggle_ui() {
                 var install_actions = $('#install_action').val();
-                $('#dependency-panel').hide();
-                if (install_actions == null || install_actions.length == 3) {
-                    $('#dependency').val(-1);
-                    $('#dependency-panel').hide();
-                } else {
-                    $('#dependency-panel').show();
-                }
 
             }
 
@@ -165,34 +155,12 @@
                         bootbox.alert("Install Action has not been specified.");
                         return false;
                     }
-                    if (has_one_of_these(install_actions, [PRE_MIGRATE]) == false) {
-                        if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
-                            if ($('#dependency').val() != PRE_MIGRATE) {
-                                msg = "Pre-Migrate must be selected as dependency for Migrate. Once selected, Migrate" +
-                                      " will not execute unless there is a successful completion of Pre-Migrate on" +
-                                      " the same host.";
-
-                                if (has_one_of_these(install_actions, [POST_MIGRATE])) {
-                                    msg += " Post-Migrate will not execute unless this to-be-scheduled Migrate" +
-                                           " completes successfully."
-                                }
-                                bootbox.alert(msg);
-                                return false;
-                            }
-                        } else if (has_one_of_these(install_actions, [POST_MIGRATE])) {
-                            if ($('#dependency').val() != MIGRATE_SYSTEM) {
-                                bootbox.alert("Migrate must be selected as dependency for Post-Migrate. Once selected" +
-                                              ", Post-Migrate will not execute unless there is a successful completion"+
-                                              " of Migrate on the same host.");
-                                return false;
-                            }
-                        }
-                    } else if (has_one_of_these(install_actions, [POST_MIGRATE]) && has_one_of_these(install_actions, [MIGRATE_SYSTEM]) == false) {
+                    if (has_one_of_these(install_actions, [PRE_MIGRATE]) && has_one_of_these(install_actions, [POST_MIGRATE]) && has_one_of_these(install_actions, [MIGRATE_SYSTEM]) == false) {
                         bootbox.alert("Migrate must be selected if both Pre-Migrate and Post-Migrate are selected.");
                         return false;
                     }
 
-                    $('#wizard-dialog').modal({show: true, backdrop: 'static'})
+                    $('#wizard-dialog').modal({show: true, backdrop: 'static'});
 
                     if ($('#select-host').val() != null) {
                         $('#wizard').bootstrapWizard('remove', $('#select-host').val(), true);
@@ -270,7 +238,22 @@
                     $('#hidden_best_effort_config').val($('[name="config-handling"]')[1].value);
                 }
 
-                submit_form_on_successfully_download_config_conversion_tool();
+                var install_actions = $('#install_action').val();
+                if (has_one_of_these(install_actions, [PRE_MIGRATE]) == false) {
+                    if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
+                        get_dependencies_and_submit_form(PRE_MIGRATE);
+
+                    } else {
+                        get_dependencies_and_submit_form(MIGRATE_SYSTEM);
+                    }
+                } else {
+                    var value = new Array(host_selector.get_selected_items().length + 1).join("-1,");
+                    value = value.slice(0, -1);
+                    $('#hidden_dependency').val(value);
+                    submit_form_on_successfully_download_config_conversion_tool();
+                }
+
+
             }
 
             $('#form').submit(function () {
@@ -304,6 +287,116 @@
 
 
                         }
+                        submit_spinner.hide();
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
+                        submit_spinner.hide();
+                    }
+                });
+            }
+
+            function get_dependencies_and_submit_form(dependency) {
+
+                submit_spinner.show();
+
+                $.ajax({
+                    url: "/exr_migrate/api/get_dependencies/",
+                    dataType: 'json',
+                    data: {hosts : $('#hidden_hosts').val(), dependency : dependency},
+                    success: function (response) {
+
+                            $.each(response, function (index, element) {
+
+                                var hostnames = host_selector.get_selected_items();
+
+                                if (element[0].miss_count > 0) {
+
+                                    var qualified_hosts = "";
+                                    var new_dependency_list = "";
+                                    if (dependency == PRE_MIGRATE) {
+                                        var html = 'To schedule Migrate for a host, '
+                                    } else {
+                                        var html = 'To schedule Post-Migrate for a host, '
+                                    }
+                                    var html = html + dependency + " must either be scheduled" +
+                                               ' or already completed successfully for the host. ';
+                                    if (element[0].miss_count == hostnames.length) {
+                                        html = html + 'None of the selected hosts meet the requirement:'
+                                    } else {
+                                        html = html + 'These hosts below do not meet this requirement:'
+                                    }
+
+                                    html = html +'<h4>Dis-qualified Hosts</h4>' +
+                                           '<div style="overflow: auto;height: 200px;width: 100%;">' +
+                                           '<table class="table table-striped"><tbody>';
+
+                                    for (var i = 0, len = hostnames.length; i < len; ++i) {
+                                        if (element[0].dependency_list[i] != null) {
+                                            if (element[0].dependency_list[i] == '-2') {
+                                                html += '<tr><td>' + hostnames[i] + '</td></tr>';
+                                            } else if (element[0].miss_count < hostnames.length) {
+                                                qualified_hosts += hostnames[i] + ',';
+                                                new_dependency_list += element[0].dependency_list[i] + ',';
+                                            }
+                                        }
+
+
+                                    }
+                                    html += '</tbody></table></div>';
+
+                                    if (element[0].miss_count == hostnames.length) {
+                                        html += '<br>Please make sure to schedule ' + dependency + ' for all selected hosts.';
+                                        bootbox.alert({
+                                            message: html,
+                                            title: "No selected hosts meet dependency requirement for scheduling"
+                                        });
+                                    } else {
+                                        qualified_hosts = qualified_hosts.slice(0, -1);
+                                        new_dependency_list = new_dependency_list.slice(0, -1);
+
+                                        html += '<br>You can choose to schedule for the qualified hosts only, or click cancel.';
+                                        bootbox.dialog({
+                                            message: html,
+                                            title: String(element[0].miss_count) + " out of " + String(hostnames.length) + " selected hosts missing dependency",
+                                            onEscape: function() {},
+                                            show: true,
+                                            backdrop: true,
+                                            closeButton: true,
+                                            animate: true,
+                                            className: "my-modal",
+                                            callback: function(){ /* your callback code */ },
+                                            buttons: {
+                                                success: {
+                                                  label: "Only schedule for qualified hosts",
+                                                  className: "btn-primary",
+                                                  callback: function() {
+                                                      $('#hidden_hosts').val(qualified_hosts);
+                                                      $('#hidden_dependency').val(new_dependency_list);
+                                                      submit_form_on_successfully_download_config_conversion_tool();
+                                                  }
+
+                                                },
+                                                "Cancel": {
+                                                  className: "btn-default",
+                                                  callback: function() {}
+
+                                                }
+                                            }
+                                        });
+                                    }
+
+                                } else {
+                                    $('#hidden_dependency').val(element[0].dependency_list.join());
+                                    submit_form_on_successfully_download_config_conversion_tool();
+                                }
+
+
+
+
+                            });
+
+
                         submit_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {

@@ -44,6 +44,7 @@ from horizon.plugins.node_status.asr9k.node_status import NodeStatusPlugin
 from horizon.plugin_lib import save_config_to_csm_data
 from models import Server
 from csmserver.server_helper import TFTPServer, FTPServer, SFTPServer
+from utils import get_acceptable_string
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 
@@ -730,7 +731,6 @@ class PreMigratePlugin(Plugin):
 
         config_names_in_repo = [hostname + "_" + config_name for config_name in config_files]
 
-
         if not server:
             manager.error("Cannot map the server url to a server repository in CSM. \
                           Please check the repository settings on CSM.")
@@ -822,9 +822,10 @@ class PreMigratePlugin(Plugin):
 
         db_session.close()
 
-        host_directory_name = manager.csm.host.hostname
+        hostname_for_filename = get_acceptable_string(manager.csm.host.hostname)
+        hostname_for_filename = re.sub("[()]", "_", hostname_for_filename)
 
-        fileloc = manager.csm.migration_directory + host_directory_name
+        fileloc = manager.csm.migration_directory + hostname_for_filename
 
         if not os.path.exists(fileloc):
             os.makedirs(fileloc)
@@ -859,7 +860,7 @@ class PreMigratePlugin(Plugin):
             manager.error("The configuration conversion tool {} is missing. CSM should have downloaded it \
                           from CCO when migration actions were scheduled.".format(nox_to_use))
 
-        PreMigratePlugin._handle_configs(manager, device, host_directory_name, server,
+        PreMigratePlugin._handle_configs(manager, device, hostname_for_filename, server,
                                          server_repo_url, fileloc, nox_to_use, config_filename)
 
         # manager.log("Copying the eXR ISO image from server repository to device.")

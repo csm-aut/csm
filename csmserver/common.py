@@ -23,7 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask.ext.login import current_user
-from sqlalchemy import or_, and_
+from sqlalchemy import func, or_, and_
 from platform_matcher import get_platform
 from platform_matcher import get_release
 
@@ -332,10 +332,15 @@ def get_return_url(request, default_url=None):
     return url
 
 
+def get_last_install_action(db_session, install_action, host_id):
+    return db_session.query(InstallJob).filter(and_(InstallJob.install_action == install_action,
+                                               InstallJob.host_id == host_id)). \
+        order_by(InstallJob.scheduled_time.desc()).first()
 
-def get_first_install_action(db_session, install_action):
-    return db_session.query(InstallJob).filter(InstallJob.install_action == install_action). \
-        order_by(InstallJob.scheduled_time.asc()).first()
+def get_install_job_dependency_completed(db_session, install_action, host_id):
+    return db_session.query(InstallJobHistory).filter(and_(InstallJobHistory.install_action == install_action,
+                                                           InstallJobHistory.host_id == host_id,
+                                                           InstallJobHistory.status == JobStatus.COMPLETED)).all()
 
 
 def create_or_update_install_job(
@@ -344,7 +349,7 @@ def create_or_update_install_job(
     server=-1, server_directory='', custom_command_profile=-1, dependency=0,
 
     pending_downloads=None, install_job=None, best_effort_config=0, config_filename=''):
-    print "1"
+
     # This is a new install_job
     if install_job is None:
         install_job = InstallJob()
@@ -360,7 +365,7 @@ def create_or_update_install_job(
         install_job.pending_downloads = ''
 
     install_job.scheduled_time = get_datetime(scheduled_time, "%m/%d/%Y %I:%M %p")
-    print "2"
+
     # Only Install Add and Pre-Migrate should have server_id and server_directory
     if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE:
         install_job.server_id = int(server) if int(server) > 0 else None
@@ -387,8 +392,8 @@ def create_or_update_install_job(
             if install_action == InstallAction.INSTALL_ADD:
                 # Install Add only accepts external package names with the following suffix
                 if '.pie' in software_package or \
-                    '.tar' in software_package or \
-                    '.rpm' in software_package:
+                   '.tar' in software_package or \
+                   '.rpm' in software_package:
 
                     install_job_packages.append(software_package)
             else:
@@ -401,7 +406,8 @@ def create_or_update_install_job(
     install_job.user_id = current_user.id
 
     if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE or \
-        install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM or install_action == InstallAction.POST_MIGRATE:
+       install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM or \
+       install_action == InstallAction.POST_MIGRATE:
         install_job.custom_command_profile_id = custom_command_profile if custom_command_profile else None
 
     # Resets the following fields
@@ -415,7 +421,6 @@ def create_or_update_install_job(
 
     # for pre-migrate
     install_job.config_filename = config_filename
-    print "in create_and_update, install_job.config_filename = " + install_job.config_filename
 
     if install_job.install_action != InstallAction.UNKNOWN:
         db_session.commit()
@@ -435,7 +440,7 @@ def create_or_update_install_job(
 
         create_download_jobs(db_session, platform, release, pending_downloads,
                              install_job.server_id, install_job.server_directory)
-    print "4"
+
     return install_job
 
 

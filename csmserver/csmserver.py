@@ -91,7 +91,8 @@ from constants import get_repository_directory
 from constants import get_temp_directory
 from constants import DefaultHostAuthenticationChoice
 
-from common import get_last_successful_inventory_elapsed_time 
+from common import get_last_install_action
+from common import get_last_successful_inventory_elapsed_time
 from common import get_host_active_packages 
 from common import fill_servers
 from common import fill_dependencies
@@ -1763,25 +1764,22 @@ def schedule_install():
     return_url = get_return_url(request, 'home')
     
     if request.method == 'POST':  # and form.validate():
-
+        """
         f = request.form
         for key in f.keys():
             for value in f.getlist(key):
                print(key,":",value)
+        """
 
         # Retrieves from the multi-select box
         hostnames = request.form.getlist('host-selector')
-        print "should be here"
-        print "request.form.get('host-selector') = " + str(request.form.get('host-selector'))
-        install_action = form.install_action.data 
-        print "should be here1.1"
+
+        install_action = form.install_action.data
+
         if hostnames is not None:
-            print "should be here1.2"
-            print "hostnames = " + str(hostnames)
+
             for hostname in hostnames:
-                print "should be here1.3"
                 host = get_host(db_session, hostname)
-                print "should be here2"
                 if host is not None:
                     db_session = DBSession()
                     scheduled_time = form.scheduled_time_UTC.data
@@ -1795,10 +1793,9 @@ def schedule_install():
                     if len(install_action) == 1:
                         # No dependency when it is 0 (a digit)
                         if not form.dependency.data.isdigit():
-                            prerequisite_install_job = get_first_install_action(db_session, form.dependency.data)
+                            prerequisite_install_job = get_last_install_action(db_session, form.dependency.data)
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
-                        print "should be here3"
                         create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                      install_action=install_action[0],
                                                      scheduled_time=scheduled_time, software_packages=software_packages,
@@ -1831,12 +1828,6 @@ def schedule_install():
         return render_template('schedule_install.html', form=form, system_option=SystemOption.get(db_session),
                                server_time=datetime.datetime.utcnow(), return_url=return_url,
                                install_action=get_install_actions_dict())
-
-
-
-def get_first_install_action(db_session, install_action):
-    return db_session.query(InstallJob).filter(InstallJob.install_action == install_action). \
-        order_by(InstallJob.scheduled_time.asc()).first()
 
                                                        
 @app.route('/hosts/<hostname>/schedule_install/', methods=['GET', 'POST'])
@@ -2883,7 +2874,7 @@ def get_software_package_upgrade_list(hostname, target_release):
     if host is None:
         abort(404)
     
-    match_internal_name =  True if request.args.get('match_internal_name') == 'true' else False
+    match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname) 
     target_packages = get_target_software_package_list(host.family, host_packages, target_release, match_internal_name)
     for package in target_packages:

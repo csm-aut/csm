@@ -156,7 +156,8 @@ function validateSelectPackages(){
         bootbox.alert("Too many packages selected. Please select only one FPD SMU for your ASR9K-X64 image before continuing.");
         return false
     }
-    if ($('#config_filename').val() != "") {
+
+    if ($('#config_filename').val() != "" && $('#config_filename').val() != null) {
         if (!selected_config) {
             for (var index in unselected_items) {
                 if (unselected_items[index] == $('#config_filename').val()) {
@@ -165,7 +166,7 @@ function validateSelectPackages(){
             }
         }
         if (!selected_config) {
-            bootbox.alert("The config filename provided - '" + $('#config_filename').val() + "' - is not found in the selected directory in the server repository.");
+            bootbox.alert("The config filename provided - '" + $('#config_filename').val() + "' - is not found in the 'Available Packages' column.");
             return false
         }
 
