@@ -35,18 +35,16 @@ import package_lib
 import condoor
 
 
-def watch_operation(manager, device, op_id=0):
+def watch_operation(manager, device, op_id=0,
+                    pat_no_install=r"There are no install requests in operation",
+                    op_progress=r"The operation is (\d+)% complete",
+                    cmd_show_install_request="admin show install request"):
         """
         Function to keep watch on progress of operation
         and report KB downloaded.
 
         """
-        pat_no_install = r"There are no install requests in operation"
-        failed_oper = r"Install operation (\d+) failed"
-        op_progress = r"The operation is (\d+)% complete"
         op_download = r"(.*)KB downloaded: Download in progress"
-
-        cmd_show_install_request = "admin show install request"
 
         manager.log("Watching the operation {} to complete".format(op_id))
         last_status = None
@@ -242,8 +240,23 @@ def install_add_remove(manager, device, cmd, has_tar=False):
     op_success = "The install operation will continue asynchronously"
     failed_oper = r'Install operation {} failed'.format(op_id)
     if op_success in output:
-        watch_operation(manager, device, op_id)
-        output = device.send("admin show install log {} detail".format(op_id))
+
+        if device.family == 'ASR9K':
+            show_log_cmd = "admin show install log {} detail".format(op_id)
+
+            watch_operation(manager, device, op_id)
+
+        elif device.family == 'NCS6K':
+            pat_no_install = r"No install operation in progress"
+            op_progress = r"The install operation is (\d+)% complete"
+            cmd_show_install_request = "show install request"
+            show_log_cmd = "show install log {} detail".format(op_id)
+
+            watch_operation(manager, device, op_id, pat_no_install, op_progress, cmd_show_install_request)
+        else:
+            manager.error("Install add not supported for platform {} yet".format(device.family))
+
+        output = device.send(show_log_cmd)
         if re.search(failed_oper, output):
             manager.log_install_errors(output)
             manager.error("Operation {} failed".format(op_id))
