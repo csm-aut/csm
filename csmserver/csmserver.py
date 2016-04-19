@@ -128,6 +128,8 @@ from common import create_or_update_install_job
 from common import create_download_jobs
 from common import get_download_job_key
 from common import get_last_successful_pre_upgrade_job
+from common import create_host
+from common import delete_host
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -646,27 +648,13 @@ def host_create():
             host = get_host(db_session, form.hostname.data)
             if host is not None:
                 return render_template('host/edit.html', form=form, duplicate_error=True)
-            
-            host = Host(hostname=form.hostname.data, 
-                        created_by=current_user.username)
-        
-            host.inventory_job.append(InventoryJob())
-            host.context.append(HostContext())
-            db_session.add(host)
-            
-            host.region_id = form.region.data if form.region.data > 0 else None
-            host.roles = remove_extra_spaces(form.roles.data)
-            host.connection_param = [ConnectionParam(
-                # could have multiple IPs, separated by comma
-                host_or_ip=remove_extra_spaces(form.host_or_ip.data),
-                username=form.username.data,
-                password=form.password.data,
-                jump_host_id=form.jump_host.data if form.jump_host.data > 0 else None,
-                connection_type=form.connection_type.data,
-                # could have multiple ports, separated by comma
-                port_number=remove_extra_spaces(form.port_number.data))]
-                            
-            db_session.commit()
+
+            host = create_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
+                               roles=form.roles.data, connection_type=form.connection_type.data,
+                               host_or_ip=form.host_or_ip.data, username=form.username.data,
+                               password=form.password.data, port_number=form.port_number.data,
+                               jump_host_id=form.jump_host.data, created_by=current_user.username)
+
 
         finally:
             db_session.rollback()
@@ -740,37 +728,15 @@ def host_edit(hostname):
 def host_delete(hostname):
     if not can_delete(current_user):
         abort(401)
-        
+
     db_session = DBSession()
 
-    host = get_host(db_session, hostname)
-    if host is None:
+    try:
+        delete_host(db_session, hostname)
+    except:
         abort(404)
-    
-    delete_host_inventory_job_session_logs(db_session, host) 
-    delete_host_install_job_session_logs(db_session, host)
-    db_session.delete(host)
-    db_session.commit()
         
     return jsonify({'status': 'OK'})
-
-
-def delete_host_inventory_job_session_logs(db_session, host):
-    inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id)
-    for inventory_job in inventory_jobs:
-        try:
-            shutil.rmtree(get_log_directory() + inventory_job.session_log)
-        except:
-            logger.exception('delete_host_inventory_job_session_logs() hit exception')
-
-
-def delete_host_install_job_session_logs(db_session, host):
-    install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id)
-    for install_job in install_jobs:
-        try:
-            shutil.rmtree(get_log_directory() + install_job.session_log)
-        except:
-            logger.exception('delete_host_install_job_session_logs() hit exception')
 
 
 @app.route('/jump_hosts/')
