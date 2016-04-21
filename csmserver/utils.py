@@ -26,6 +26,7 @@ from os import listdir, sep, path, makedirs
 from os.path import isfile, join
 from diff_match_patch import diff_match_patch
 from urlparse import urlparse
+from constants import PlatformFamily
 
 import re
 import sys
@@ -369,6 +370,19 @@ def create_temp_user_directory(username):
         make_file_writable(os.path.join(get_temp_directory(), username))
 
     return os.path.join(get_temp_directory(), username)
+
+
+def get_software_platform(family, os_type):
+    if family == PlatformFamily.ASR9K and os_type == 'eXR':
+        return PlatformFamily.ASR9K_X64
+    else:
+        return family
+
+
+def get_software_version(version):
+    # Strip all characters after '[' (i.e., 5.3.2[Default])
+    head, sep, tail = version.partition('[')
+    return head
 
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

@@ -23,9 +23,9 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from utils import import_class
+from utils import get_software_platform
+from utils import get_software_version
 from constants import UNKNOWN
-from base import get_software_platform
-from base import get_software_version
 import condoor
 
 def discover_platform_info(ctx):

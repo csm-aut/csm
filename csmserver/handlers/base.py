@@ -29,7 +29,6 @@ from context import ConnectionContext
 from context import SoftwareContext
 from context import InstallContext
 
-from constants import PlatformFamily
 from constants import InstallAction
 from constants import get_log_directory
 
@@ -218,16 +217,3 @@ class BaseInstallHandler(BaseHandler):
         except condoor.GeneralError as e:
             ctx.post_status = e.message
             ctx.success = False
-
-
-def get_software_platform(family, os_type):
-    if family == PlatformFamily.ASR9K and os_type == 'eXR':
-        return PlatformFamily.ASR9K_X64
-    else:
-        return family
-
-
-def get_software_version(version):
-    # Strip all characters after '[' (i.e., 5.3.2[Default])
-    head, sep, tail = version.partition('[')
-    return head
