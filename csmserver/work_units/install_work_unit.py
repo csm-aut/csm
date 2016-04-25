@@ -76,7 +76,7 @@ class InstallWorkUnit(WorkUnit):
 
     def start(self, db_session, logger, process_name):
         ctx = None
-
+        host = None
         try:
             install_job = db_session.query(InstallJob).filter(InstallJob.id == self.job_id).first()
 
@@ -119,13 +119,17 @@ class InstallWorkUnit(WorkUnit):
 
         except Exception:
             try:
-                logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
+                self.log_exception(logger, host)
                 self.archive_install_job(db_session, logger, ctx, host, install_job,
                                          JobStatus.FAILED, process_name, trace=traceback.format_exc())
             except Exception:
-                logger.exception('InstallManager hit exception - install job = %s', self.job_id)
+                self.log_exception(logger, host)
         finally:
             db_session.close()
+
+    def log_exception(self, logger, host):
+        logger.exception('InstallManager hit exception - hostname = %s, install job =  %s',
+                         host.hostname if host is not None else 'Unknown', self.job_id)
 
     def get_last_operation_id(self, db_session, install_activate_job, trace=None):
 

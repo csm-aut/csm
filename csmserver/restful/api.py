@@ -22,23 +22,27 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
 from flask import Blueprint
-from flask import render_template
-from flask import jsonify, g, request
+from flask import jsonify
+from flask import g
+from flask import request
+from flask.ext.httpauth import HTTPBasicAuth
 
 from database import DBSession
 from models import User
 from smu_info_loader import SMUInfoLoader
-from flask.ext.httpauth import HTTPBasicAuth
+from api_utils import ENVELOPE
+from common import can_create
+from common import can_delete
 
+import api_host
 import datetime
 
 restful_api = Blueprint('restful', __name__, url_prefix='/api')
 auth = HTTPBasicAuth()
 
 
-@restful_api.route('/token')
+@restful_api.route('/v1/token')
 @auth.login_required
 def get_auth_token():
     token = g.user.generate_auth_token(600)
@@ -47,17 +51,42 @@ def get_auth_token():
 
 @auth.verify_password
 def verify_password(username_or_token, password):
-    # first try to authenticate by token
+    """
+    Called whenever @auth.login_required (HTTYBasicAuth) is invoked
+    """
+    # first authenticate with the token
     user = User.verify_auth_token(username_or_token)
     if not user:
-        # try to authenticate with username/password
+        # Authenticate with username/password in the database
         db_session = DBSession()
-        user = db_session.query(User).filter_by(username=username_or_token).first()
-        if not user or not User.authenticate(db_session.query, username_or_token, password):
+        user, authenticated = User.authenticate(db_session.query, username_or_token, password)
+        # If the user does not exist or the password failed authentication, return False
+        if not user or not authenticated:
             return False
+
     g.user = user
-    current_user = g.user
     return True
+
+
+@restful_api.route('/v1/hosts', methods=['GET', 'POST'])
+@auth.login_required
+def api_hosts():
+    if request.method == 'POST':
+        if not can_create(g.user):
+            return jsonify(**{ENVELOPE: 'Not Authorized'}), 401
+        return api_host.api_create_hosts(request)
+    elif request.method == 'GET':
+        return api_host.api_get_hosts(request)
+    else:
+        return jsonify(**{ENVELOPE: 'Bad request'}), 400
+
+
+@restful_api.route('/v1/hosts/<hostname>/delete', methods=['DELETE'])
+@auth.login_required
+def host_delete(hostname):
+    if not can_delete(g.user):
+        return jsonify(**{ENVELOPE: 'Not Authorized'}), 401
+    return api_host.api_delete_host(hostname)
 
 
 @restful_api.route('/get_software_catalog')

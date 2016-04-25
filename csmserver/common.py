@@ -24,6 +24,9 @@
 # =============================================================================
 from flask.ext.login import current_user
 from sqlalchemy import or_, and_
+
+from csm_exceptions.exceptions import HostNotFound
+
 from platform_matcher import get_platform
 from platform_matcher import get_release
 
@@ -44,17 +47,28 @@ from models import Package
 from models import InstallJob
 from models import SMUMeta
 from models import DownloadJob
+from models import InventoryJobHistory
 from models import InstallJobHistory
 from models import CustomCommandProfile
 from models import get_download_job_key_dict
+from models import InventoryJob
+from models import HostContext
+from models import ConnectionParam
 
 from database import DBSession
 
 from filters import get_datetime_string
 from filters import time_difference_UTC
 
-from smu_utils import SP_INDICATOR, TAR_INDICATOR
+from smu_utils import SP_INDICATOR
+from smu_utils import TAR_INDICATOR
+
+from utils import get_log_directory
 from utils import is_empty, get_datetime
+from utils import remove_extra_spaces
+
+import os
+import shutil
 
 
 def fill_servers(choices, servers, include_local=True):
@@ -303,9 +317,64 @@ def can_create(current_user):
         current_user.privilege == UserPrivilege.NETWORK_ADMIN 
 
 
-def create_or_update_install_job(
-    db_session, host_id, install_action, scheduled_time, software_packages=None,
-    server=-1, server_directory='', custom_command_profile=-1, dependency=0, pending_downloads=None, install_job=None):
+def create_host(db_session, hostname, region_id, roles, connection_type, host_or_ip,
+                username, password, port_number, jump_host_id, created_by):
+    """ Create a new host in the Database """
+    host = Host(hostname=hostname, created_by=created_by)
+
+    host.inventory_job.append(InventoryJob())
+    host.context.append(HostContext())
+    db_session.add(host)
+
+    host.region_id = region_id if region_id > 0 else None
+    host.roles = '' if roles is None else remove_extra_spaces(roles)
+    host.connection_param = [ConnectionParam(
+        # could have multiple IPs, separated by comma
+        host_or_ip='' if host_or_ip is None else remove_extra_spaces(host_or_ip),
+        username='' if username is None else username,
+        password='' if password is None else password,
+        jump_host_id=jump_host_id if jump_host_id > 0 else None,
+        connection_type=connection_type,
+        # could have multiple ports, separated by comma
+        port_number='' if port_number is None else remove_extra_spaces(port_number))]
+
+    db_session.commit()
+
+    return host
+
+
+def delete_host(db_session, hostname):
+    host = get_host(db_session, hostname)
+    if host is None:
+        raise HostNotFound('Unable to locate host %s' % hostname)
+
+    delete_host_inventory_job_session_logs(db_session, host)
+    delete_host_install_job_session_logs(db_session, host)
+    db_session.delete(host)
+    db_session.commit()
+
+
+def delete_host_inventory_job_session_logs(db_session, host):
+    inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id)
+    for inventory_job in inventory_jobs:
+        try:
+            shutil.rmtree(os.path.join(get_log_directory(), inventory_job.session_log))
+        except:
+            logger.exception('delete_host_inventory_job_session_logs() hit exception')
+
+
+def delete_host_install_job_session_logs(db_session, host):
+    install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id)
+    for install_job in install_jobs:
+        try:
+            shutil.rmtree(os.path.join(get_log_directory(), install_job.session_log))
+        except:
+            logger.exception('delete_host_install_job_session_logs() hit exception')
+
+
+def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=None,
+                                 server=-1, server_directory='', custom_command_profile=-1, dependency=0,
+                                 pending_downloads=None, install_job=None):
 
     # This is a new install_job
     if install_job is None:
@@ -315,8 +384,7 @@ def create_or_update_install_job(
 
     install_job.install_action = install_action
 
-    if install_job.install_action == InstallAction.INSTALL_ADD and \
-        not is_empty(pending_downloads):
+    if install_job.install_action == InstallAction.INSTALL_ADD and not is_empty(pending_downloads):
         install_job.pending_downloads = ','.join(pending_downloads.split())
     else:
         install_job.pending_downloads = ''

@@ -218,7 +218,8 @@ class User(Base):
             return None    # valid token, but expired
         except BadSignature:
             return None    # invalid token
-        user = db_session.query(User).filter_by(id = data['id']).first()
+
+        user = db_session.query(User).filter(User.id == data['id']).first()
         return user
 
     def generate_auth_token(self, expiration=600):

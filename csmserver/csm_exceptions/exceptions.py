@@ -25,5 +25,10 @@
 class CSMLDAPException(Exception):
     pass
 
+
 class UnknownSoftwarePlatform(Exception):
+    pass
+
+
+class HostNotFound(Exception):
     pass

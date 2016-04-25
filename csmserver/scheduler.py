@@ -51,6 +51,9 @@ class Scheduler(threading.Thread):
         try:         
             system_option = SystemOption.get(db_session)            
             inventory_hour = system_option.inventory_hour
+
+            # Close the DB session so it won't be left open forever
+            db_session.close()
                         
             # Build a scheduler object that will look at absolute times
             scheduler = sched.scheduler(time.time, time.sleep)
@@ -71,8 +74,7 @@ class Scheduler(threading.Thread):
             
         except:
             logger.exception('Scheduler hit exception')
-        finally:
-            db_session.close()
+
             
     def scheduling(self, scheduler, daily_time):
         
