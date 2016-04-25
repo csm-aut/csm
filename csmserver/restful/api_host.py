@@ -29,7 +29,7 @@ from sqlalchemy import and_
 from database import DBSession
 
 from common import get_host
-from common import create_host
+from common import create_or_update_host
 from common import delete_host
 from common import get_jump_host
 from common import get_region
@@ -46,11 +46,29 @@ from utils import get_acceptable_string
 from api_utils import get_total_pages
 from api_utils import RECORDS_PER_PAGE
 from api_utils import ENVELOPE
+from api_utils import STATUS
+from api_utils import STATUS_MESSAGE
+from api_utils import APIStatus
 
 
 def api_create_hosts(request):
     """
     POST: http://localhost:5000/api/v1/hosts
+    BODY:
+        [ {'hostname': 'My Host 1',
+           'region': 'SJ Labs',
+           'roles': 'PE',
+           'connection_type': 'telnet',
+           'host_or_ip': '172.28.98.2',
+           'username': 'cisco',
+           'password': 'cisco'} ]
+
+        {"api_response": {
+            "host_list": [ {"status": "SUCCESS", "hostname": "My Host 1"},
+                           {"status": "SUCCESS", "hostname": "My Host 2"} ]
+
+            }
+        }
     """
     rows = []
     db_session = DBSession()
@@ -60,22 +78,20 @@ def api_create_hosts(request):
     json_data = request.json
     for data in json_data:
         row = {}
-        error_message = None
+        status_message = None
         try:
             hostname = get_acceptable_string(data.get('hostname'))
             row['hostname'] = hostname
 
             host = get_host(db_session, hostname)
-            if host is not None:
-                error_message = 'Host %s already exist' % hostname
 
             region = get_region(db_session, data.get('region'))
             if region is None:
-                error_message = 'Region "%s" does not exist' % data.get('region')
+                status_message = 'Region %s does not exist' % data.get('region')
             else:
                 connection_type = data.get('connection_type')
                 if connection_type not in [ConnectionType.SSH, ConnectionType.TELNET]:
-                    error_message = 'Connection Type must be either telnet or ssh'
+                    status_message = 'Connection Type must be either telnet or ssh'
                 else:
                     roles = data.get('roles')
                     host_or_ip = data.get('host_or_ip')
@@ -87,27 +103,29 @@ def api_create_hosts(request):
                     if data.get('jump_host') is not None:
                         jump_host = get_jump_host(db_session, data.get('jump_host'))
                         if jump_host is None:
-                            error_message = 'Jump Host %s does not exist' % data.get('jump_host')
+                            status_message = 'Jump Host %s does not exist' % data.get('jump_host')
                         jump_host_id = jump_host.id
 
-                    if error_message is None:
-                        create_host(db_session=db_session, hostname=hostname, region_id=region.id,
-                                    roles=roles, connection_type=connection_type,
-                                    host_or_ip=host_or_ip, username=username,
-                                    password=password, port_number=port_number,
-                                    jump_host_id=jump_host_id, created_by=current_user)
+                    if status_message is None:
+                        create_or_update_host(db_session=db_session, hostname=hostname, region_id=region.id,
+                                              roles=roles, connection_type=connection_type,
+                                              host_or_ip=host_or_ip, username=username,
+                                              password=password, port_number=port_number,
+                                              jump_host_id=jump_host_id, created_by=current_user, host=host)
 
-                        row['status'] = 'Successfully added'
         except Exception as e:
-            row['exception_message'] = e.message
+            status_message = e.message
             db_session.rollback()
 
-        if error_message is not None:
-            row['error_message'] = error_message
+        if status_message is None:
+            row[STATUS] = APIStatus.SUCCESS
+        else:
+            row[STATUS] = APIStatus.FAILED
+            row[STATUS_MESSAGE] = status_message
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: ''})
+    return jsonify(**{ENVELOPE: {'host_list': rows}})
 
 
 def api_get_hosts(request):
@@ -124,7 +142,7 @@ def api_get_hosts(request):
         page = int(request.args.get('page')) if request.args.get('page') else 1
         if page <= 0: page = 1
     except ValueError:
-        return jsonify(**{'data': rows}), 400
+        return jsonify(**{ENVELOPE: 'Unknown page number'}), 400
 
     clauses = []
 
@@ -134,7 +152,7 @@ def api_get_hosts(request):
         if region:
             clauses.append(Host.region_id == region.id)
         else:
-            return jsonify(**{'data': rows}), 400
+            return jsonify(**{ENVELOPE: 'Unknown region'}), 400
 
     family = request.args.get('family')
     if family:
@@ -168,10 +186,9 @@ def api_get_hosts(request):
 
         rows.append(row)
 
-    host_list = {'host_list': rows}
     total_pages = get_total_pages(db_session, Host, clauses)
 
-    return jsonify(**{ENVELOPE: host_list, 'current_page': page, 'total_pages': total_pages})
+    return jsonify(**{ENVELOPE: {'host_list': rows}, 'current_page': page, 'total_pages': total_pages})
 
 
 def api_delete_host(hostname):

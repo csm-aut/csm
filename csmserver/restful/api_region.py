@@ -21,20 +21,5 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
-# =============================================================================
-from sqlalchemy import and_
-import math
+# ==============================================================================
 
-RECORDS_PER_PAGE = 1000
-ENVELOPE = 'api_response'
-STATUS = 'status'
-STATUS_MESSAGE = 'status_message'
-
-class APIStatus:
-    SUCCESS = 'SUCCESS'
-    FAILED = 'FAILED'
-
-
-def get_total_pages(db_session, table, clauses):
-    total_records = db_session.query(table).filter(and_(*clauses)).count()
-    return int(math.ceil(float(total_records) / RECORDS_PER_PAGE))

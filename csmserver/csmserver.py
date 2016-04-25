@@ -128,7 +128,7 @@ from common import create_or_update_install_job
 from common import create_download_jobs
 from common import get_download_job_key
 from common import get_last_successful_pre_upgrade_job
-from common import create_host
+from common import create_or_update_host
 from common import delete_host
 
 from filters import get_datetime_string
@@ -649,12 +649,11 @@ def host_create():
             if host is not None:
                 return render_template('host/edit.html', form=form, duplicate_error=True)
 
-            host = create_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
-                               roles=form.roles.data, connection_type=form.connection_type.data,
-                               host_or_ip=form.host_or_ip.data, username=form.username.data,
-                               password=form.password.data, port_number=form.port_number.data,
-                               jump_host_id=form.jump_host.data, created_by=current_user.username)
-
+            host = create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
+                                         roles=form.roles.data, connection_type=form.connection_type.data,
+                                         host_or_ip=form.host_or_ip.data, username=form.username.data,
+                                         password=form.password.data, port_number=form.port_number.data,
+                                         jump_host_id=form.jump_host.data, created_by=current_user.username)
 
         finally:
             db_session.rollback()

@@ -75,9 +75,9 @@ def get_hosts():
     print_response(resp)
 
 
-def create_host():
+def create_hosts():
     payload = [
-        {'hostname': 'My Host 1', 'region': 'SJ Labs', 'roles': 'PE', 'connection_type': 'telnet',
+        {'hostname': 'My Host 1', 'region': 'RTP-SVS', 'roles': 'PE', 'connection_type': 'telnet',
          'host_or_ip': '172.28.98.2', 'username': 'cisco', 'password': 'cisco'},
 
         {'hostname': 'My Host 2', 'region': 'SJ Labs', 'roles': 'PE', 'connection_type': 'telnet',
@@ -98,8 +98,9 @@ def delete_host(hostname):
 def display_choices():
     print
     print('1. Get Token')
-    print('2. Get Hosts')
-    print('3. Delete Host')
+    print('2. Create Hosts')
+    print('3. Get Hosts')
+    print('4. Delete Host')
     print
 
 
@@ -111,8 +112,10 @@ def main():
         if choice == '1':
             get_token()
         elif choice == '2':
-            get_hosts()
+            create_hosts()
         elif choice == '3':
+            get_hosts()
+        elif choice == '4':
             delete_host('BB1')
 
         display_choices()
