@@ -7,6 +7,11 @@
 
     $(function() {
 
+        var msg = $('#import-form').data("msg");
+        if( msg != '' ){
+            bootbox.alert(msg);
+        }
+
         $('a[href="#profiles-tab"]').tab('show');
 
         var profile_id = $.cookie('profile-id');
@@ -81,9 +86,73 @@
             }
         }
 
+        var export_profiles_table = $('#export-profiles-datatable').dataTable({
+            "pageLength": 100,
+            "scrollY": 250,
+            "columnDefs": [{
+                "sortable": false,
+                "targets": 0,
+                "data": 'profile_name',
+                "render": function ( data, type, row ) {
+                    return '<center><input type="checkbox" value="' + data + '" class="check" name="profile_names"></center>';
+                }
+            }, {
+                "targets": 1,
+                "data" : 'profile_name'
+            } ]
+        });
+
+        $('#export-profiles-check-all').click(function () {
+            toggle_check_all(export_profiles_table, this);
+        });
+
+        function toggle_check_all(data_table, this_instance) {
+            var filtered_rows = data_table.$('tr', {"filter": "applied"});
+            for (var i = 0; i < filtered_rows.length; i++) {
+              $(filtered_rows[i]).find('.check').prop('checked', this_instance.checked);
+            }
+        }
+
+        $('#export-button').on("click", function(){
+            export_profiles_table.api().ajax.url("/custom_command_profiles/api/get_command_profiles").load();
+            $('#export-profiles-dialog').modal({show:true, backdrop:'static'});
+        });
+
+        $('#export-profiles-done').on('click', function(e) {
+            var profiles_list = [];
+            $('.check').each(function(index) {
+                if (this.checked) {
+                    profiles_list.push($(this).val());
+                }
+            });
+            if (profiles_list == []) {
+                return false;
+            }
+
+            $('#export-profiles-form').attr('action', "{{ url_for('custom_command.export_profiles') }}?profiles_list[]=" + profiles_list);
+            $('#export-profiles-form').submit();
+        });
+
         $("#import-button").on("click", function() {
             $('#profile-import-dialog').modal({show:true, backdrop:'static'});
         });
+
+        $(document).on('change', '.btn-file :file', function() {
+            var input = $(this),
+              numFiles = input.get(0).files ? input.get(0).files.length : 1,
+              label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+            input.trigger('fileselect', [numFiles, label]);
+        });
+
+        $('.btn-file :file').on('fileselect', function(event, numFiles, label) {
+            var input = $(this).parents('.input-group').find(':text'),
+                log = numFiles > 1 ? numFiles + ' files selected' : label;
+
+            if( input.length ) {
+                input.val(log);
+            }
+        });
+
     });
 </script>
 
@@ -91,33 +160,92 @@
     .modal-dialog {    
         width: 850px;
     }
+    .btn-file {
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-file input[type=file] {
+        position: absolute;
+        top: 0;
+        right: 0;
+        min-width: 100%;
+        min-height: 100%;
+        font-size: 100px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        background: red;
+        cursor: inherit;
+        display: block;
+    }
+    input[readonly] {
+        background-color: white !important;
+        cursor: text !important;
+    }
 </style>
 
 {% endblock extra_head %}  
   
 {% block main %}
-
 <!-- Main -->
-<div id="profile-import-dialog" class="modal" role="dialog">
+<div id="export-profiles-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
-        <form method="post" class="form-horizontal" enctype="multipart/form-data">
+        <form id="export-profiles-form" name="export-profiles-form" method="post" action="">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal">x</button>
-                    <h4>Import Custom Command Profile</h4>
-                    The file to be imported must be exported previously using the Custom Command Profile Export function.
+                    <h4>Export Custom Command Profiles</h4>
+                </div>
+                <div class="modal-body">
+                    <table id="export-profiles-datatable">
+                        <thead>
+                        <tr>
+                            <th>
+                                <center><input type="checkbox" id="export-profiles-check-all"></center>
+                            </th>
+                            <th>Profile Name</th>
+                        </tr>
+                        </thead>
+                    </table>
+                    <div class="wizard-footer">
+                        <div align="center">
+                            <input id='export-profiles-done' data-dismiss="modal" type='submit' class='btn btn-fill btn-primary btn-wd btn-sm' name='profile-export-done' value='Export' />
+                            <input type="button" id="cancel" class="btn btn-fill btn-wd btn-sm" data-dismiss="modal" value="Cancel" />
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="profile-import-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form id="import-form" method="post" class="form-horizontal" enctype="multipart/form-data" data-msg="{{ get_flashed_messages(category_filter=['import_feedback'])[0] | nl2br }}">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Import Custom Command Profiles</h4>
+                    The file to be imported must have been exported previously using the Custom Command Profile Export function.
                 </div>
                 <div class="modal-body">
                     <div class="form-group ">
                         <div class="col-sm-6">
-                            <input class="form-control" type=file name=file>
+                            <div class="input-group">
+                                <span class="input-group-btn">
+                                    <span class="btn btn-primary btn-file">
+                                        Choose File<input class="form-control" type=file name=file>
+                                    </span>
+                                </span>
+                                <input type="text" class="form-control" readonly>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <div class="form-actions">
                         <div class="btn col-sm-offset-4">
-                            <input class="btn btn-primary form-control" type=submit value=Upload>
+                            <input class="btn btn-primary form-control" type=submit value=Import>
                         </div>
                     </div>
                 </div>

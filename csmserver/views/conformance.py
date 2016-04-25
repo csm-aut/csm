@@ -23,7 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask import Blueprint
-from flask import render_template, jsonify, abort, send_file
+from flask import render_template, jsonify, abort, send_file, flash
 from flask.ext.login import login_required, current_user
 from flask import request, redirect, url_for
 
@@ -69,15 +69,89 @@ from smu_info_loader import SMUInfoLoader
 from forms import ServerDialogForm
 from forms import SelectServerForm
 
+from utils import create_temp_user_directory
+from utils import create_directory
+from utils import make_file_writable
+
+import os
+import json
 import re
 import datetime
 
 conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 
 
-@conformance.route('/')
+@conformance.route('/', methods=['GET', 'POST'])
 @login_required
 def home():
+    msg = ''
+    # Software Profile import
+    if request.method == 'POST':
+        file = request.files['file']
+        if file:
+            if not allowed_file(file.filename):
+                msg = "Incorrect file format -- " + file.filename + " must be .json or .txt"
+            else:
+                file_path = os.path.join(get_temp_directory(), "software_profiles.json")
+                file.save(file_path)
+                failed = ""
+
+                with open(file_path, 'r') as f:
+                    try:
+                        s = json.load(f)
+
+                    except:
+                        msg = "Incorrect file format -- " + file.filename + " must be a valid JSON file."
+                        flash(msg, 'import_feedback')
+                        return redirect(url_for(".home"))
+
+                    if "CSM Server:Software Profile" not in s.keys():
+                        msg = file.filename + " is not in the correct Software Profile format."
+                    else:
+                        db_session = DBSession
+                        profiles = [p for (p,) in DBSession().query(SoftwareProfile.name).all()]
+                        d = s["CSM Server:Software Profile"]
+
+                        for profile_name in d.keys():
+                            name = ''
+                            if profile_name in profiles:
+                                name = profile_name
+                                # Will keep appending ' - copy' until it hits a unique name
+                                while name in profiles:
+                                    name += " - copy"
+                                msg += profile_name + ' -> ' + name + '\n'
+                                profiles.append(name)
+
+                            if len(name) < 100 and len(profile_name) < 100:
+                                try:
+                                    profile = SoftwareProfile(
+                                        name=name if name else profile_name,
+                                        packages=d[profile_name],
+                                        created_by=current_user.username
+                                    )
+                                    db_session.add(profile)
+                                    db_session.commit()
+                                except:
+                                    failed += profile_name + '\n'
+                            else:
+                                failed += profile_name + ' (name too long)\n'
+
+                        if msg:
+                            msg = "The following profiles already exist and will try to be imported under modified names:\n\n" + \
+                                msg + '\n'
+                            if failed:
+                                msg += 'The following profiles failed to import:\n\n' + failed
+                        elif failed:
+                            msg = 'The following profiles failed to import:\n\n' + failed
+                        else:
+                            msg = "Software Profile import was successful!"
+
+                # delete file
+                os.remove(file_path)
+
+            flash(msg, 'import_feedback')
+            return redirect(url_for(".home"))
+
     conformance_form = ConformanceForm(request.form)
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
     make_conform_dialog_form = MakeConformDialogForm(request.form)
@@ -122,7 +196,6 @@ def software_profile_create():
 
         software_profile = SoftwareProfile(
             name=form.profile_name.data,
-            description=form.description.data,
             packages=','.join([l for l in form.software_packages.data.splitlines() if l]),
             created_by=current_user.username)
 
@@ -158,7 +231,6 @@ def software_profile_edit(profile_name):
                                    system_option=SystemOption.get(db_session), duplicate_error=True)
 
         software_profile.name = form.profile_name.data
-        software_profile.description = form.description.data
         software_profile.packages = ','.join([l for l in form.software_packages.data.splitlines() if l]),
 
         db_session.commit()
@@ -166,7 +238,6 @@ def software_profile_edit(profile_name):
         return redirect(url_for('conformance.home'))
     else:
         form.profile_name.data = software_profile.name
-        form.description.data = software_profile.description
         if software_profile.packages is not None:
             form.software_packages.data = '\n'.join(software_profile.packages.split(','))
 
@@ -185,7 +256,6 @@ def api_get_software_profiles():
     for software_profile in software_profiles:
         row = {'id': software_profile.id,
                'profile_name': software_profile.name,
-               'description': software_profile.description,
                'packages': software_profile.packages,
                'created_by': software_profile.created_by}
 
@@ -198,7 +268,6 @@ def api_get_software_profiles():
 @login_required
 def api_create_software_profile():
     profile_name = request.form['profile_name']
-    description = request.form['description']
     software_packages = request.form['software_packages']
 
     db_session = DBSession()
@@ -211,7 +280,6 @@ def api_create_software_profile():
 
     software_profile = SoftwareProfile(
         name=profile_name,
-        description=description,
         packages=','.join([l for l in software_packages.splitlines() if l]),
         created_by=current_user.username)
 
@@ -486,14 +554,7 @@ def api_get_conformance_report_software_profile_packages(id):
             smu_loader = SMUInfoLoader(platform, release)
 
         for software_profile_package in software_profile_packages:
-            description = ''
-            if smu_loader is not None and smu_loader.is_valid:
-                smu_info = smu_loader.get_smu_info(software_profile_package.replace('.' + smu_loader.file_suffix,''))
-                if smu_info is not None:
-                    description = smu_info.description
-
-            rows.append({'software_profile_package': software_profile_package,
-                         'description': description})
+            rows.append({'software_profile_package': software_profile_package})
 
     return jsonify(**{'data': rows})
 
@@ -574,6 +635,30 @@ def api_create_install_jobs():
         return jsonify({'status': 'Failed'})
 
 
+@conformance.route('/export_sw_profiles', methods=['POST'])
+@login_required
+def export_sw_profiles():
+    db_session = DBSession()
+    profiles_list = request.args.getlist('sw_profiles_list[]')[0].split(",")
+
+    db_profiles = db_session.query(SoftwareProfile).all()
+    d = {"CSM Server:Software Profile": {}}
+
+    for profile in db_profiles:
+        if profile.name in profiles_list:
+            d["CSM Server:Software Profile"][profile.name] = profile.packages
+
+    temp_user_dir = create_temp_user_directory(current_user.username)
+    custom_command_export_temp_path = os.path.normpath(os.path.join(temp_user_dir, "software_profile_export"))
+    create_directory(custom_command_export_temp_path)
+    make_file_writable(custom_command_export_temp_path)
+
+    with open(os.path.join(custom_command_export_temp_path, 'software_profiles.json'), 'w') as command_export_file:
+        command_export_file.write(json.dumps(d, indent=2))
+
+    return send_file(os.path.join(custom_command_export_temp_path, 'software_profiles.json'), as_attachment=True)
+
+
 def get_software_profile(db_session, profile_name):
     return db_session.query(SoftwareProfile).filter(SoftwareProfile.name == profile_name).first()
 
@@ -582,9 +667,13 @@ def get_software_profile_names(db_session):
     return db_session.query(SoftwareProfile.name).order_by(SoftwareProfile.name.asc()).all()
 
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ['json', 'txt']
+
+
 class SoftwareProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
-    description = StringField('Description', [required(), Length(max=100)])
     software_packages = TextAreaField('Software Packages', [required()])
 
 

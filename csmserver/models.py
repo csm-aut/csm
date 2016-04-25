@@ -820,7 +820,6 @@ class SoftwareProfile(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String(100))
-    description = Column(Text)
     packages = Column(Text)
     created_by = Column(String(50))
 
@@ -897,7 +896,7 @@ class CustomCommandProfile(Base):
     __tablename__ = 'custom_command_profile'
 
     id = Column(Integer, primary_key=True)
-    profile_name = Column(String(50))
+    profile_name = Column(String(100))
     command_list = Column(Text)
     created_by = Column(String(50))
 
