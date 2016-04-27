@@ -25,14 +25,6 @@
         var selected_tab = $.cookie('conformance-tab') == null ? '#conformance' : $.cookie('conformance-tab');
         $('a[href=' + selected_tab + ']').tab('show');
 
-
-        console.log($('#conformance-tab a[href="#software-profiles"]').parent().index());
-        console.log($('#conformance-tab').val());
-
-        $('#conformance-tab').on('change', function() {
-            console.log("woo change");
-        });
-
         $('#conformance-tab').on('shown.bs.tab', function (e) {
             $.cookie('conformance-tab', $('.nav-tabs .active > a').attr('href'));
 
@@ -433,6 +425,12 @@
             }, {
                 "targets": 1,
                 "data" : 'profile_name'
+            }, {
+                "targets": 2,
+                "data": 'packages',
+                "render": function(data, type, row) {
+                    return insert_slider(comma2br(data), 'export-row' + row['id']);
+                }
             } ]
         });
 
@@ -560,6 +558,7 @@
                                 <center><input type="checkbox" id="export-sw-profiles-check-all"></center>
                             </th>
                             <th>Profile Name</th>
+                            <th>Software Packages</th>
                         </tr>
                         </thead>
                     </table>
