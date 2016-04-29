@@ -90,7 +90,7 @@ def home():
         file = request.files['file']
         if file:
             if not allowed_file(file.filename):
-                msg = "Incorrect file format -- " + file.filename + " must be .json or .txt"
+                msg = "Incorrect file format -- " + file.filename + " must be .json"
             else:
                 file_path = os.path.join(get_temp_directory(), "software_profiles.json")
                 file.save(file_path)
@@ -99,7 +99,6 @@ def home():
                 with open(file_path, 'r') as f:
                     try:
                         s = json.load(f)
-
                     except:
                         msg = "Incorrect file format -- " + file.filename + " must be a valid JSON file."
                         flash(msg, 'import_feedback')
@@ -137,8 +136,8 @@ def home():
                                 failed += profile_name + ' (name too long)\n'
 
                         if msg:
-                            msg = "The following profiles already exist and will try to be imported under modified names:\n\n" + \
-                                msg + '\n'
+                            msg = "The following profiles already exist and will try to be imported under modified " \
+                                  "names:\n\n" + msg + '\n'
                             if failed:
                                 msg += 'The following profiles failed to import:\n\n' + failed
                         elif failed:
@@ -554,7 +553,14 @@ def api_get_conformance_report_software_profile_packages(id):
             smu_loader = SMUInfoLoader(platform, release)
 
         for software_profile_package in software_profile_packages:
-            rows.append({'software_profile_package': software_profile_package})
+            description = ''
+            if smu_loader is not None and smu_loader.is_valid:
+                smu_info = smu_loader.get_smu_info(software_profile_package.replace('.' + smu_loader.file_suffix,''))
+                if smu_info is not None:
+                    description = smu_info.description
+
+            rows.append({'software_profile_package': software_profile_package,
+                         'description': description})
 
     return jsonify(**{'data': rows})
 
@@ -635,12 +641,11 @@ def api_create_install_jobs():
         return jsonify({'status': 'Failed'})
 
 
-@conformance.route('/export_sw_profiles', methods=['POST'])
+@conformance.route('/export_software_profiles', methods=['POST'])
 @login_required
-def export_sw_profiles():
+def export_software_profiles():
     db_session = DBSession()
     profiles_list = request.args.getlist('sw_profiles_list[]')[0].split(",")
-
     db_profiles = db_session.query(SoftwareProfile).all()
     d = {"CSM Server:Software Profile": {}}
 
@@ -649,14 +654,14 @@ def export_sw_profiles():
             d["CSM Server:Software Profile"][profile.name] = profile.packages
 
     temp_user_dir = create_temp_user_directory(current_user.username)
-    custom_command_export_temp_path = os.path.normpath(os.path.join(temp_user_dir, "software_profile_export"))
-    create_directory(custom_command_export_temp_path)
-    make_file_writable(custom_command_export_temp_path)
+    software_profile_export_temp_path = os.path.normpath(os.path.join(temp_user_dir, "software_profile_export"))
+    create_directory(software_profile_export_temp_path)
+    make_file_writable(software_profile_export_temp_path)
 
-    with open(os.path.join(custom_command_export_temp_path, 'software_profiles.json'), 'w') as command_export_file:
+    with open(os.path.join(software_profile_export_temp_path, 'software_profiles.json'), 'w') as command_export_file:
         command_export_file.write(json.dumps(d, indent=2))
 
-    return send_file(os.path.join(custom_command_export_temp_path, 'software_profiles.json'), as_attachment=True)
+    return send_file(os.path.join(software_profile_export_temp_path, 'software_profiles.json'), as_attachment=True)
 
 
 def get_software_profile(db_session, profile_name):
@@ -669,7 +674,7 @@ def get_software_profile_names(db_session):
 
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ['json', 'txt']
+           filename.rsplit('.', 1)[1] in ['json']
 
 
 class SoftwareProfileForm(Form):

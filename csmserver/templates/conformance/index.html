@@ -445,7 +445,7 @@
                 return false;
             }
 
-            $('#export-sw-profiles-form').attr('action', "{{ url_for('conformance.export_sw_profiles') }}?sw_profiles_list[]=" + sw_profiles_list);
+            $('#export-sw-profiles-form').attr('action', "{{ url_for('conformance.export_software_profiles') }}?sw_profiles_list[]=" + sw_profiles_list);
             $('#export-sw-profiles-form').submit();
         });
 

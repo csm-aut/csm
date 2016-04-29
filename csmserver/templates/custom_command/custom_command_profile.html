@@ -135,7 +135,7 @@
                 return false;
             }
 
-            $('#export-profiles-form').attr('action', "{{ url_for('custom_command.export_profiles') }}?profiles_list[]=" + profiles_list);
+            $('#export-profiles-form').attr('action', "{{ url_for('custom_command.export_command_profiles') }}?profiles_list[]=" + profiles_list);
             $('#export-profiles-form').submit();
         });
 

@@ -40,6 +40,8 @@ from utils import create_temp_user_directory
 from utils import create_directory
 from utils import make_file_writable
 
+from werkzeug import secure_filename
+
 import os
 import json
 
@@ -55,7 +57,7 @@ def home():
         file = request.files['file']
         if file:
             if not allowed_file(file.filename):
-                msg = "Incorrect file format -- " + file.filename + " must be .json or .txt"
+                msg = "Incorrect file format -- " + file.filename + " must be .json"
             else:
                 file_path = os.path.join(get_temp_directory(), "custom_command_profiles.json")
                 file.save(file_path)
@@ -64,7 +66,6 @@ def home():
                 with open(file_path, 'r') as f:
                     try:
                         s = json.load(f)
-
                     except:
                         msg = "Incorrect file format -- " + file.filename + " must be a valid JSON file."
                         flash(msg, 'import_feedback')
@@ -220,12 +221,11 @@ def get_command_profile(db_session, profile_name):
     return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.profile_name == profile_name).first()
 
 
-@custom_command.route('/export_profiles', methods=['POST'])
+@custom_command.route('/export_command_profiles', methods=['POST'])
 @login_required
-def export_profiles():
+def export_command_profiles():
     db_session = DBSession()
     profiles_list = request.args.getlist('profiles_list[]')[0].split(",")
-
     db_profiles = db_session.query(CustomCommandProfile).all()
     d = {"CSM Server:Custom Command Profile": {}}
 
@@ -246,7 +246,7 @@ def export_profiles():
 
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ['json', 'txt']
+           filename.rsplit('.', 1)[1] in ['json']
 
 
 class CustomCommandProfileForm(Form):
