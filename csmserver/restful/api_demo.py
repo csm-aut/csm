@@ -116,7 +116,7 @@ def main():
         elif choice == '3':
             get_hosts()
         elif choice == '4':
-            delete_host('BB1')
+            delete_host('My Host 2')
 
         display_choices()
 

@@ -63,6 +63,7 @@ def api_create_hosts(request):
            'username': 'cisco',
            'password': 'cisco'} ]
 
+    RETURN:
         {"api_response": {
             "host_list": [ {"status": "SUCCESS", "hostname": "My Host 1"},
                            {"status": "SUCCESS", "hostname": "My Host 2"} ]
@@ -94,7 +95,7 @@ def api_create_hosts(request):
                     status_message = 'Connection Type must be either telnet or ssh'
                 else:
                     roles = data.get('roles')
-                    host_or_ip = data.get('host_or_ip')
+                    host_or_ip = data.get('ts_or_ip')
                     username = data.get('username')
                     password = data.get('password')
                     port_number = data.get('port_number')
@@ -176,7 +177,7 @@ def api_get_hosts(request):
         row['software_version'] = host.software_version
 
         if connection_param:
-            row['host_or_ip'] = connection_param.host_or_ip
+            row['ts_or_ip'] = connection_param.host_or_ip
             row['connection_type'] = connection_param.connection_type
             row['host_username'] = connection_param.username
             row['port_number'] = connection_param.port_number
@@ -192,14 +193,37 @@ def api_get_hosts(request):
 
 
 def api_delete_host(hostname):
+    """
+    :param hostname:
+    :return:
+    {
+        "api_response": {
+            "status": "SUCCESS",
+            "hostname": "My Host 2"
+        }
+    }
+    or
+    {
+        "api_response": {
+            "status": "FAILED",
+            "hostname": "My Host 2",
+            "status_message": "Unable to locate host My Host 2"
+        }
+    }
+    """
+    row = {}
+    row['hostname'] = hostname
+
     db_session = DBSession()
     try:
         delete_host(db_session, hostname)
+        row[STATUS] = APIStatus.SUCCESS
     except Exception as e:
-        return jsonify(**{ENVELOPE: {'status_message': 'Unable to delete host "%s"' % hostname,
-                                     'exception_message': e.message}}), 400
+        row[STATUS] = APIStatus.FAILED
+        row[STATUS_MESSAGE] = e.message
+        return jsonify(**{ENVELOPE: row}), 400
 
-    return jsonify(**{ENVELOPE: {'status_message': 'Host "%s" deleted successfully' % hostname}})
+    return jsonify(**{ENVELOPE: row})
 
 
 def get_hosts_by_page(db_session, clauses, page):
