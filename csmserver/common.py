@@ -317,14 +317,14 @@ def can_create(current_user):
         current_user.privilege == UserPrivilege.NETWORK_ADMIN 
 
 
-def create_host(db_session, hostname, region_id, roles, connection_type, host_or_ip,
-                username, password, port_number, jump_host_id, created_by):
+def create_or_update_host(db_session, hostname, region_id, roles, connection_type, host_or_ip,
+                username, password, port_number, jump_host_id, created_by, host=None):
     """ Create a new host in the Database """
-    host = Host(hostname=hostname, created_by=created_by)
-
-    host.inventory_job.append(InventoryJob())
-    host.context.append(HostContext())
-    db_session.add(host)
+    if host is None:
+        host = Host(hostname=hostname, created_by=created_by)
+        host.inventory_job.append(InventoryJob())
+        host.context.append(HostContext())
+        db_session.add(host)
 
     host.region_id = region_id if region_id > 0 else None
     host.roles = '' if roles is None else remove_extra_spaces(roles)
