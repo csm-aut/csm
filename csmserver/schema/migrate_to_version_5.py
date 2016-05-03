@@ -36,6 +36,7 @@ sql_statements = [
     'alter table system_option add default_host_authentication_choice VARCHAR(10) default "1"',
     'drop table device_udi',
     'alter table inventory_job change column pending_submit request_update BOOLEAN',
+    'alter table connection_param add enable_password VARCHAR(100) default ""',
     ]
 
 class SchemaMigrate(BaseMigrate):

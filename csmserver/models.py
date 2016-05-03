@@ -359,6 +359,9 @@ class ConnectionParam(Base):
     connection_type = Column(String(10), nullable=False)
     # Multiple Ports can be specified using comma as the delimiter
     port_number = Column(String(100), default='')
+
+    # For IOS type devices
+    _enable_password = Column('enable_password', String(100), default='')
     
     host_id = Column(Integer, ForeignKey('host.id'))
     jump_host_id = Column(Integer, ForeignKey('jump_host.id'))
@@ -373,6 +376,17 @@ class ConnectionParam(Base):
     def password(self, value):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
+
+    @property
+    def enable_password(self):
+        global encrypt_dict
+        return decode(encrypt_dict, self._enable_password)
+
+    @enable_password.setter
+    def enable_password(self, value):
+        global encrypt_dict
+        self._enable_password = encode(encrypt_dict, value)
+
 
 class UDI(Base):
     __tablename__ = 'udi'

@@ -126,7 +126,8 @@ class ConnectionContext(Context):
                         host_username=host_username,
                         host_password=host_password,
                         host_or_ip=host_or_ip,
-                        port_number=port_number))
+                        port_number=port_number,
+                        enable_password=connection.enable_password))
 
                     urls.append(host_urls)
 
