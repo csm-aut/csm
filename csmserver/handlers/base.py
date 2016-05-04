@@ -51,7 +51,6 @@ except ImportError:
     from horizon.plugin_manager import PluginManager
     csmpe_installed = False
 
-import re
 import os
 import condoor
 
@@ -80,14 +79,16 @@ class BaseHandler(object):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
-                elif ctx.requested_action == InstallAction.MIGRATE_SYSTEM or ctx.requested_action == InstallAction.POST_MIGRATE:
+                elif ctx.requested_action == InstallAction.MIGRATE_SYSTEM or \
+                     ctx.requested_action == InstallAction.POST_MIGRATE:
                     self.generate_post_migrate_file_diff(ctx)
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
-                msg = 'generate_post_upgrade_file_diff hit exception.' if ctx.requested_action == InstallAction.POST_UPGRADE else 'generate_post_migrate_file_diff hit exception.'
+                if ctx.requested_action == InstallAction.POST_UPGRADE:
+                    msg = 'generate_post_upgrade_file_diff hit exception.'
+                else:
+                    msg = 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
-
-
 
     def update_device_info(self, ctx):
         device_info_dict = ctx.load_data('device_info')
@@ -104,7 +105,6 @@ class BaseHandler(object):
             udi = UDI(name=udi_dict['name'], description=udi_dict['description'],
                       pid=udi_dict['pid'], vid=udi_dict['vid'], sn=udi_dict['sn'])
             ctx.host.UDIs = [udi]
-
 
     def get_software(self, ctx):
         package_parser_class = get_package_parser_class(ctx.host.software_platform)

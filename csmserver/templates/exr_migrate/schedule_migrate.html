@@ -10,13 +10,14 @@
 
         <div class=col-sm-6>
             <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
-                <optgroup label="Migrate from ASR9K IOS-XR to ASR9K IOS-XR 64 Bit">
+                <optgroup label="Migrate to ASR9K-X64">
                     <option value="{{ install_action.premigrate }}">{{ install_action.premigrate }}</option>
                     <option value="{{ install_action.migrate }}">{{ install_action.migrate }}</option>
                     <option value="{{ install_action.postmigrate }}">{{ install_action.postmigrate }}</option>
                     <option value="{{ install_action.allformigrate }}">ALL</option>
                 </optgroup>
             </select>
+
         </div>
     </div>
 
@@ -141,6 +142,23 @@
                 }
             });
 
+            $('[data-toggle="popover_server_repo"]').popover({
+                trigger : 'hover',
+                placement : 'right',
+                html : true,
+                content : function() {
+                    return $('#popover_packages').html()
+                }
+            });
+
+            $('[data-toggle="popover_config_filename"]').popover({
+                trigger : 'hover',
+                placement : 'top',
+                html : true,
+                content : function() {
+                    return $('#popover_config').html()
+                }
+            });
 
             $('#trigger-wizard').click(function (e) {
 
@@ -239,17 +257,23 @@
                 }
 
                 var install_actions = $('#install_action').val();
-                if (has_one_of_these(install_actions, [PRE_MIGRATE]) == false) {
-                    if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
-                        get_dependencies_and_submit_form(PRE_MIGRATE);
 
+                if ($('#hidden_edit').val() == 'False') {
+                    if (has_one_of_these(install_actions, [PRE_MIGRATE]) == false) {
+                        if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
+                            get_qualified_hosts_and_submit_form(PRE_MIGRATE);
+
+                        } else {
+                            get_qualified_hosts_and_submit_form(MIGRATE_SYSTEM);
+                        }
                     } else {
-                        get_dependencies_and_submit_form(MIGRATE_SYSTEM);
+                        get_qualified_hosts_and_submit_form('');
+                        //var value = new Array(host_selector.get_selected_items().length + 1).join("-1,");
+                        //value = value.slice(0, -1);
+                        //$('#hidden_dependency').val(value);
+                        //submit_form_on_successfully_download_config_conversion_tool();
                     }
                 } else {
-                    var value = new Array(host_selector.get_selected_items().length + 1).join("-1,");
-                    value = value.slice(0, -1);
-                    $('#hidden_dependency').val(value);
                     submit_form_on_successfully_download_config_conversion_tool();
                 }
 
@@ -296,7 +320,7 @@
                 });
             }
 
-            function get_dependencies_and_submit_form(dependency) {
+            function get_qualified_hosts_and_submit_form(dependency) {
 
                 submit_spinner.show();
 
@@ -310,24 +334,40 @@
 
                                 var hostnames = host_selector.get_selected_items();
 
-                                if (element[0].miss_count > 0) {
+                                if (element[0].disqualified_count > 0) {
 
                                     var qualified_hosts = "";
                                     var new_dependency_list = "";
-                                    if (dependency == PRE_MIGRATE) {
-                                        var html = 'To schedule Migrate for a host, '
+                                    if (dependency == '') {
+                                         var html = '<p>In order to schedule migration actions, console connection ' +
+                                                    'must be provided for each host instead of management IP.</p>'
+                                         if (element[0].disqualified_count == hostnames.length) {
+                                             html += 'None of the selected hosts meet this requirement.'
+                                         } else {
+                                             html += 'These hosts below failed this requirement.'
+                                         }
                                     } else {
-                                        var html = 'To schedule Post-Migrate for a host, '
-                                    }
-                                    var html = html + dependency + " must either be scheduled" +
-                                               ' or already completed successfully for the host. ';
-                                    if (element[0].miss_count == hostnames.length) {
-                                        html = html + 'None of the selected hosts meet the requirement:'
-                                    } else {
-                                        html = html + 'These hosts below do not meet this requirement:'
+                                        var html = '<p>Requirements:</p>' +
+                                               '<p>1. Console connection must be provided for each host instead ' +
+                                               'of management IP.</p><p>2. Dependency for selected migration action ' +
+                                               'must be met. ';
+
+                                        if (dependency == PRE_MIGRATE) {
+                                            html += 'In this case, to schedule Migrate for a host, '
+                                        } else if (dependency == MIGRATE_SYSTEM) {
+                                            html += 'In this case, to schedule Post-Migrate for a host, '
+                                        }
+                                        html += dependency + " must either be scheduled" +
+                                                ' or already completed successfully for the host.</p>';
+                                        if (element[0].disqualified_count == hostnames.length) {
+                                            html += 'None of the selected hosts meet both of the above requirements.'
+                                        } else {
+                                            html += 'These hosts below failed at least one of the above requirements.'
+                                        }
                                     }
 
-                                    html = html +'<h4>Dis-qualified Hosts</h4>' +
+
+                                    html += '<h4>Dis-qualified Hosts</h4>' +
                                            '<div style="overflow: auto;height: 200px;width: 100%;">' +
                                            '<table class="table table-striped"><tbody>';
 
@@ -335,7 +375,7 @@
                                         if (element[0].dependency_list[i] != null) {
                                             if (element[0].dependency_list[i] == '-2') {
                                                 html += '<tr><td>' + hostnames[i] + '</td></tr>';
-                                            } else if (element[0].miss_count < hostnames.length) {
+                                            } else if (element[0].disqualified_count < hostnames.length) {
                                                 qualified_hosts += hostnames[i] + ',';
                                                 new_dependency_list += element[0].dependency_list[i] + ',';
                                             }
@@ -345,11 +385,17 @@
                                     }
                                     html += '</tbody></table></div>';
 
-                                    if (element[0].miss_count == hostnames.length) {
-                                        html += '<br>Please make sure to schedule ' + dependency + ' for all selected hosts.';
+                                    if (element[0].disqualified_count == hostnames.length) {
+                                        if (dependency == '') {
+                                            html += '<br>Please make sure to provide console connection for all hosts';
+                                        } else {
+                                            html += '<br><p>Please make sure to:</p><p>1. Provide console connection ' +
+                                                'for all hosts</p><p>2. Schedule ' + dependency + ' for all selected ' +
+                                                'hosts.</p>';
+                                        }
                                         bootbox.alert({
                                             message: html,
-                                            title: "No selected hosts meet dependency requirement for scheduling"
+                                            title: "No selected hosts qualify for scheduling"
                                         });
                                     } else {
                                         qualified_hosts = qualified_hosts.slice(0, -1);
@@ -358,7 +404,7 @@
                                         html += '<br>You can choose to schedule for the qualified hosts only, or click cancel.';
                                         bootbox.dialog({
                                             message: html,
-                                            title: String(element[0].miss_count) + " out of " + String(hostnames.length) + " selected hosts missing dependency",
+                                            title: String(element[0].disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
                                             onEscape: function() {},
                                             show: true,
                                             backdrop: true,
@@ -413,7 +459,6 @@
 
                 $('#region').val($('#hidden_region').val());
                 $('#server_dialog_server').val($('#hidden_server').val());
-                $('#server_dialog_server_directory').val($('#hidden_server_directory').val());
 
                 if (has_one_of_these($("#install_action").val(), [PRE_MIGRATE])) {
                     // previously selected server, server directory, packages and config filename
@@ -421,7 +466,7 @@
                     server_software_retrieve_file_list(
                             $('#server_dialog_server').val(),
                             $('#server_dialog_server_directory'),
-                            $('#server_dialog_server_directory').val());
+                            $('#hidden_server_directory').val());
                 }
 
                 if ($('#hidden_best_effort_config').val() == '-1') {
@@ -517,7 +562,7 @@
                                         <div class="wizard-header">
 
                                             <h3>
-                                                Migration to ASR9K-X64<br>
+                                                Migrate to ASR9K-X64<br>
                                             </h3>
                                         </div>
                                         <ul id="tabs" class="nav nav-tabs" role="tablist">
@@ -536,8 +581,8 @@
                                             <div class="tab-pane" id="post-migrate">
                                                 <!--h4>On failure to load IOS-XR configuration on eXR successfully,
                                                     would you like CSM to:</h4-->
-                                                <h4>When migrated IOS-XR configurations cannot be applied on eXR directly,
-                                                    would you like CSM to:</h4>
+                                                <h4>When the IOS-XR configurations, either migrated by CSM or provided by you during Pre-Migrate,
+                                                    cannot be applied on eXR directly, would you like CSM to:</h4>
                                                 <div class="btn-group">
                                                     <div>
                                                         <input type="radio" id="config-handling" name="config-handling"

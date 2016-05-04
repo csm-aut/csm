@@ -91,7 +91,6 @@ from constants import get_repository_directory
 from constants import get_temp_directory
 from constants import DefaultHostAuthenticationChoice
 
-from common import get_last_install_action
 from common import get_last_successful_inventory_elapsed_time
 from common import get_host_active_packages 
 from common import fill_servers
@@ -1793,7 +1792,8 @@ def schedule_install():
                     if len(install_action) == 1:
                         # No dependency when it is 0 (a digit)
                         if not form.dependency.data.isdigit():
-                            prerequisite_install_job = get_last_install_action(db_session, form.dependency.data)
+                            prerequisite_install_job = get_last_install_action(db_session,
+                                                                               form.dependency.data, host.id)
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
                         create_or_update_install_job(db_session=db_session, host_id=host.id,
@@ -1968,7 +1968,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''
         form.hidden_edit.data = install_job is not None
-
 
         # In Edit mode
         if install_job is not None:   
@@ -2586,8 +2585,11 @@ def api_get_nonlocal_servers_by_region(region_id):
             if server.server_type != ServerType.LOCAL_SERVER:
                 result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
     else:
-        # Returns all server repositories if the region does not have any server repository designated.
-        return api_get_servers()
+        servers = get_server_list(db_session)
+        if servers is not None:
+            for server in servers:
+                if server.server_type != ServerType.LOCAL_SERVER:
+                    result_list.append({'server_id': server.id, 'hostname': server.hostname})
 
     return jsonify(**{'data': result_list})
 

@@ -373,9 +373,9 @@ class SFTPServer(ServerImpl):
             if len(remote_directory) > 0:
                 sftp.chdir(remote_directory)
             if callback:
-                sftp.put(source_file_path, callback=callback)
+                sftp.put(source_file_path, remotepath=remote_directory + '/' + dest_filename, callback=callback)
             else:
-                sftp.put(source_file_path)
+                sftp.put(source_file_path, remotepath=remote_directory + '/' + dest_filename)
             
         
 if __name__ == '__main__':         

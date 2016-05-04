@@ -1,4 +1,4 @@
-{# Add simple CSS style tweaks here. #}
+#{# Add simple CSS style tweaks here. }
 
 body {
     padding-top: 100px;
@@ -10,7 +10,7 @@ body {
     padding-bottom: 5px;
 }
 
-{# hover dropdown to open #}
+#{ hover dropdown to open }
 ul.nav li.dropdown:hover > ul.dropdown-menu {
     display: block;
 }
@@ -144,4 +144,8 @@ ul.nav li.dropdown:hover > ul.dropdown-menu {
     height: 120px;
     width: 100%;
     position: absolute;
+}
+
+.popover {
+    max-width: 100% !important;
 }

@@ -402,7 +402,7 @@
       $( ".str" ).click();
     }
 
-    $.fn.select_exact_match = function(data_list) {
+    $.fn.select_regex_match = function(data_list) {
       if (data_list.length == 0) {
         return;
       }
@@ -415,7 +415,7 @@
         var found = false;
 
         for (i = 0; i < data_list.length; i++) {
-          if ($(this).text() == data_list[i]) {
+          if ($(this).text().match(data_list[i])) {
             found = true;
             break;
           }

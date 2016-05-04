@@ -111,7 +111,6 @@ class PluginManager(object):
         self.logger.addHandler(handler)
         self.logger.setLevel(log_level)
 
-
     @property
     def phase(self):
         if self.csm is None:
@@ -129,7 +128,7 @@ class PluginManager(object):
             self.csm.host_urls,
             log_dir=self.csm.log_directory
         )
-        #"""
+
         try:
             self.log("Device Discovery Pending")
             device.discovery()
@@ -138,11 +137,9 @@ class PluginManager(object):
             self.log("Device Discovery error")
             self.csm.post_status(e.message)
             return False
-        self.log("Device Discovery 1")
-        #self.csm.save_data('udi', device.udi)
-        self.log("Device Discovery 2")
-        #self.csm.save_data('device_info', device.device_info)
-        self.log("Device Discovery 3")
+
+        self.csm.save_data('udi', device.udi)
+        self.csm.save_data('device_info', device.device_info)
         try:
             self.log("Device Connection Pending")
             device.connect()
@@ -266,14 +263,10 @@ class PluginManager(object):
     def load_plugins(self, callback=None):
         if not hasattr(self, "_candidates"):
             raise RuntimeError("locate_plugins must be called before append_plugin_candidates")
-        self.log("_candidates = " + str(self._candidates))
         processed_plugins = []
         for candidate_infofile, candidate_filepath, plugin_info in self._candidates:
             plugin_module_name_template = normalize_plugin_name_for_module_name(
                 "csm_loaded_plugin_" + plugin_info.name) + "_{}"
-            self.log("candidate_infofile = " + str(candidate_infofile))
-            self.log("plugin_info = " + str(plugin_info))
-            self.log("name = " + str(plugin_module_name_template))
             for plugin_name_suffix in range(len(sys.modules)):
                 plugin_module_name = plugin_module_name_template.format(plugin_name_suffix)
                 if plugin_module_name not in sys.modules:
@@ -281,7 +274,6 @@ class PluginManager(object):
             if candidate_filepath.endswith(".py"):
                 candidate_filepath = candidate_filepath[:-3]
 
-            self.log("plugin_module_name = " + str(plugin_module_name))
             if callback is not None:
                 callback(plugin_info)
 
@@ -289,7 +281,6 @@ class PluginManager(object):
                 candidate_filepath = os.path.dirname(candidate_filepath)
 
             try:
-                self.log("candidate_filepath = " + str(candidate_filepath))
                 if os.path.isdir(candidate_filepath):
                     candidate_module = imp.load_module(
                         plugin_module_name, None, candidate_filepath, ("py", "r", imp.PKG_DIRECTORY)
@@ -311,38 +302,20 @@ class PluginManager(object):
 
             for element in (getattr(candidate_module, name) for name in dir(candidate_module)):
                 plugin_info_reference = None
-                self.log("categories_interfaces = " + str(self.categories_interfaces.items()))
                 for category_name, category_interface in self.categories_interfaces.items():
                     try:
                         is_correct_subclass = issubclass(element, category_interface)
                     except Exception:
                         continue
-                    self.log("element = " + str(element))
-                    self.log("is_correct_subclass = " + str(is_correct_subclass))
-                    self.log("category_name = " + str(category_name))
-                    self.log("category_interface = " + str(category_interface))
+
                     if is_correct_subclass and element is not category_interface:
                         current_category = category_name
-                        self.log("in 1")
-                        self.log("candidate_infofile = " + str(candidate_infofile))
-                        self.log("self._category_file_mapping[current_category] = " + str(self._category_file_mapping[current_category]))
+
                         if candidate_infofile not in self._category_file_mapping[current_category]:
 
                             if plugin_module_name in str(element):
-                            #match = re.search("<class '.*\.(.*)'>", str(element))
-
-                            #if match:
-                                #if match.group(1) == plugin_info.name.replace("_", "") + "Plugin" or match.group(1) == plugin_info.name.replace("_", ""):
-
-                            #if str(element) != "<class 'horizon.plugins.install_activate.InstallActivatePlugin'>" and \
-                            #    str(element) != "<class 'horizon.plugins.install_add.InstallAddPlugin'>" and \
-                            #    str(element) != "<class 'horizon.plugins.install_commit.InstallCommitPlugin'>" and \
-                            #    str(element) != "<class 'horizon.plugins.node_status.asr9k.node_status.NodeStatusPlugin'>":
-                                self.log("in 2")
                                 if not plugin_info_reference:
-                                    self.log("in 3")
                                     try:
-                                        self.log("instanciate element = " + str(element))
                                         plugin_info.plugin_object = self.instanciate_element(element)
                                         plugin_info_reference = plugin_info
                                     except Exception:
@@ -351,8 +324,6 @@ class PluginManager(object):
                                             candidate_filepath), exc_info=exc_info)
                                         plugin_info.error = exc_info
                                         break
-                                self.log("current_category = " + str(current_category))
-                                self.log("plugin_info_reference = " + str(plugin_info_reference))
                                 plugin_info.categories.append(current_category)
                                 self.append_plugin_to_category(plugin_info_reference, current_category)
                                 self._category_file_mapping[current_category].append(candidate_infofile)
@@ -407,7 +378,6 @@ class PluginManager(object):
         self._candidates, npc = self.get_plugin_locator().locate_plugins()
         self.filter_plugins()
         return len(self.get_plugin_candidates())
-
 
     def get_plugins_by_name(self, name, category="Default"):
         items = []

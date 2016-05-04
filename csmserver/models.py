@@ -224,7 +224,6 @@ class User(Base):
     def generate_auth_token(self, expiration=600):
         s = Serializer('CSMSERVER', expires_in=expiration)
         return s.dumps({'id': self.id})
-
     
     # Hooks for Flask-Login.
     #
@@ -497,12 +496,6 @@ class InstallJob(Base):
     user_id = Column(Integer, ForeignKey('user.id'))
     custom_command_profile_id = Column(String(20))
 
-    # only for install action post-migrate
-    best_effort_config_applying = Column(Integer)
-
-    # only for install action pre-migrate
-    config_filename = Column(String(300))
-
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -527,10 +520,6 @@ class InstallJobHistory(Base):
     created_by = Column(String(50))
                             
     host_id = Column(Integer, ForeignKey('host.id'))
-
-    best_effort_config_applying = Column(Integer)
-
-    config_filename = Column(String(300))
     
     def set_status(self, status):
         self.status = status        

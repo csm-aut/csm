@@ -29,17 +29,9 @@
 import re
 import itertools
 import time
-import os
 
 import package_lib
-import pexpect
 import condoor
-from condoor import TIMEOUT
-import shutil
-from database import DBSession
-from models import Server
-
-TIMEOUT_FOR_COPY_CONFIG = 3600
 
 
 def watch_operation(manager, device, op_id=0):
@@ -286,85 +278,6 @@ def clear_cfg_inconsistency(manager, device):
         manager.error("{} command execution failed".format(cmd))
 
 
-def copy_running_config_to_repo(manager, device, repository, filename, admin=""):
-    """
-    Copy the admin configuration or IOS-XR configuration
-    from device to user's selected server repository.
-    """
-
-    def send_newline(ctx):
-        ctx.ctrl.sendline()
-        return True
-
-    def error(ctx):
-        ctx.message = "nvgen error"
-        return False
-
-    command = "{}copy running-config {}/{}".format(admin, repository, filename)
-
-    CONFIRM_IP = re.compile("Host name or IP address.*\?")
-    CONFIRM_FILENAME = re.compile("Destination file name.*\?")
-    OK = re.compile(".*\s*\[OK\]")
-    FILE_EXISTS = re.compile("nvgen:.*\sFile exists")
-
-    events = [device.prompt, CONFIRM_IP, CONFIRM_FILENAME, OK, TIMEOUT, FILE_EXISTS]
-    transitions = [
-        (CONFIRM_IP, [0], 1, send_newline, 0),
-        (CONFIRM_FILENAME, [1], 2, send_newline, TIMEOUT_FOR_COPY_CONFIG),
-        (OK, [2], 3, None, 10),
-        (device.prompt, [3], -1, None, 0),
-        (TIMEOUT, [0, 1, 2, 3], 4, None, 0),
-        (FILE_EXISTS, [2], 4, error, 0)
-    ]
-    manager.log("Copying {}configuration on device to {}".format(admin, repository))
-    if not device.run_fsm("copy running-config to tftp", command, events, transitions, timeout=20):
-        manager.error("Failed to copy running-config to your repository. \
-                      Please check session.log for error and fix the issue.")
-        return False
-
-
-def save_config_to_csm_data(manager, device, files, admin=False):
-    """
-    Copy the admin configuration or IOS-XR configuration
-    from device to csm_data.
-    """
-
-    try:
-        cmd="admin show run" if admin else "show run"
-        output = device.send(cmd, timeout=TIMEOUT_FOR_COPY_CONFIG)
-        ind = output.rfind('Building configuration...\n')
-
-    except pexpect.TIMEOUT:
-        manager.error("CLI '{}' timed out after 1 hour.".format(cmd))
-
-    for file_path in files:
-        # file = '../../csm_data/migration/<hostname>' + filename
-        file_to_write = open(file_path, 'w+')
-        file_to_write.write(output[(ind+1):])
-        file_to_write.close()
-
-
-def copy_files_from_tftp_to_csm_data(manager, device, repo_url, source_filenames, dest_files):
-    """Copy files from the server repository"""
-    db_session = DBSession()
-    server = db_session.query(Server).filter(Server.server_url == repo_url).first()
-    if not server:
-        manager.error("Cannot map the tftp server url to the tftp server repository. \
-                      Please check the tftp repository setup on CSM.")
-
-    for x in range(0, len(source_filenames)):
-        try:
-            shutil.copy(server.server_directory + os.sep + source_filenames[x], dest_files[x])
-        except:
-            db_session.close()
-            device.disconnect()
-            manager.error("Exception was thrown while copying file {}/{} to {}.".format(server.server_directory,
-                                                                                        source_filenames[x],
-                                                                                        dest_files[x]))
-
-    db_session.close()
-
-
 def get_all_nodes(device):
     """Get the list of string node names(all available RSP/RP/LC)"""
     device.send("admin")
@@ -413,5 +326,3 @@ def check_sw_status(output):
             if "FINAL Band" not in sw_status:
                 return False
     return True
-
-

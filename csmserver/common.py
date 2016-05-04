@@ -348,7 +348,7 @@ def create_or_update_install_job(
 
     server=-1, server_directory='', custom_command_profile=-1, dependency=0,
 
-    pending_downloads=None, install_job=None, best_effort_config=0, config_filename=''):
+    pending_downloads=None, install_job=None):
 
     # This is a new install_job
     if install_job is None:
@@ -415,12 +415,6 @@ def create_or_update_install_job(
     install_job.status_time = None
     install_job.session_log = None
     install_job.trace = None
-
-    # for post-migrate
-    install_job.best_effort_config_applying = best_effort_config
-
-    # for pre-migrate
-    install_job.config_filename = config_filename
 
     if install_job.install_action != InstallAction.UNKNOWN:
         db_session.commit()

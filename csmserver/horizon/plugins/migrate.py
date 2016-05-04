@@ -37,7 +37,6 @@ from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT,
 from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
 from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 from database import DBSession
-from horizon.package_lib import parse_exr_show_sdr, validate_exr_node_state
 from horizon.plugin import PluginError, Plugin
 from horizon.plugins.cmd_capture import CmdCapturePlugin
 from horizon.plugin_lib import wait_for_reload, get_package, wait_for_final_band
@@ -145,9 +144,9 @@ class MigratePlugin(Plugin):
             return True
 
         events = [ESCAPE_CHAR, PASSWORD_OK, SET_USERNAME, SET_PASSWORD, USERNAME_PROMPT, PASSWORD_PROMPT,
-                 XR_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
-                 CONNECTION_REFUSED, RESET_BY_PEER, PERMISSION_DENIED,
-                 AUTH_FAILED, TIMEOUT, EOF]
+                  XR_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
+                  CONNECTION_REFUSED, RESET_BY_PEER, PERMISSION_DENIED,
+                  AUTH_FAILED, TIMEOUT, EOF]
 
         transitions = [
             (ESCAPE_CHAR, [0, 1], 1, None, 20),
@@ -223,4 +222,3 @@ class MigratePlugin(Plugin):
             manager.log(str(type(e)) + " when trying to capture 'show platform'.")
 
         return True
-

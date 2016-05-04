@@ -24,16 +24,9 @@
 # =============================================================================
 from schema.base import BaseMigrate
 from database import DBSession
-from models import Host
-from models import HostContext
 
 
 sql_statements = [
-    'alter table install_job add best_effort_config_applying INTEGER',
-    'alter table install_job add config_filename VARCHAR(300)',
-    'alter table install_job_history add best_effort_config_applying INTEGER',
-    'alter table install_job_history add config_filename VARCHAR(300)',
-
     'alter table system_option add enable_user_credential_for_host BOOLEAN default 0',
     'alter table user add host_password VARCHAR(100)',
     'alter table install_job add column custom_command_profile_id varchar(20)',

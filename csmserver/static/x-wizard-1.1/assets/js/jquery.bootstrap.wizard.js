@@ -319,7 +319,7 @@ $.fn.bootstrapWizard.defaults = {
 
 
 function get_server_list() {
-	region_id = $('#region option:selected').val()
+	region_id = $('#region option:selected').val();
 	  // Now, gets the servers for the selected region
   $('#server_dialog_server').empty().append('<option value=-1></option>');
 

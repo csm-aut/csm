@@ -94,6 +94,10 @@ class PostMigratePlugin(Plugin):
             ctx.ctrl.sendline("no")
             return True
 
+        def timeout(ctx):
+            ctx.message = "Timeout upgrading FPD."
+            return False
+
         UNCOMMITTED_CHANGES = re.compile("Uncommitted changes found, commit them\? \[yes/no/CANCEL\]")
         pat2 = "Uncommitted changes found, commit them before exiting\(yes/no/cancel\)\? \[cancel\]"
         UNCOMMITTED_CHANGES_2 = re.compile(pat2)
@@ -105,13 +109,12 @@ class PostMigratePlugin(Plugin):
             (UNCOMMITTED_CHANGES_2, [0], 1, send_no, 20),
             (RUN_PROMPT, [0], 0, None, 0),
             (RUN_PROMPT, [1], -1, None, 0),
-            (TIMEOUT, [0, 1], 2, None, 0),
+            (TIMEOUT, [0, 1], -1, timeout, 0),
 
         ]
 
         if not device.run_fsm(PostMigratePlugin.DESCRIPTION, "end", events, transitions, timeout=60):
             manager.error("Failed to exit from the config mode. Please check session.log.")
-
 
     @staticmethod
     def _load_admin_config(manager, device, filename):
@@ -132,7 +135,6 @@ class PostMigratePlugin(Plugin):
                 manager.error("Failure to commit admin configuration. Please check session.log.")
             device.send("end")
 
-
     @staticmethod
     def _load_nonadmin_config(manager, device, filename, commit_with_best_effort):
         """Load the XR configuration."""
@@ -150,14 +152,13 @@ class PostMigratePlugin(Plugin):
                                                            commit_with_best_effort, filename)
 
         if "No configuration changes to commit" in output:
-            manager.log("No configuration changes in /eusbb/{} were committed. \
-                        Please check session.log.".format(filename))
+            manager.log("No configuration changes in /eusbb/{} were committed. ".format(filename) +
+                        "Please check session.log.")
         if "Abort" in output:
             PostMigratePlugin.quit_config(manager, device)
             manager.error("Failure to commit configuration. Please check session.log for errors.")
         device.send("end")
         return True
-
 
     @staticmethod
     def _handle_failed_commit(manager, output, device, commit_with_best_effort, filename):
@@ -199,8 +200,8 @@ class PostMigratePlugin(Plugin):
             output = device.send("commit best-effort force")
             manager.log("Committed configurations with best-effort. Please check session.log for result.")
             if "No configuration changes to commit" in output:
-                manager.log("No configuration changes in /eusbb/{} were committed. \
-                            Please check session.log for errors.".format(filename))
+                manager.log("No configuration changes in /eusbb/{} were committed. ".format(filename) +
+                            "Please check session.log for errors.")
             device.send("end")
 
         return True

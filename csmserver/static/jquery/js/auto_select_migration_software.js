@@ -17,39 +17,23 @@ function auto_select_software(hostname, selector, target_release, match_internal
         return false
     }
 
-    required_packages_full = ["asr9k-full-x64.iso"];
+    required_iso_regex = ["asr9k.*\.iso.*"];
 
-    selector.select_exact_match(required_packages_full);
+    selector.select_regex_match(["asr9k.*\.iso.*"]);
     var selected_package_list = selector.get_selected_items();
 
-
+    var found = false;
     for (i = selected_package_list.length; i >= 0; i--) {
 
-        var index = $.inArray(selected_package_list[i], required_packages_full);
-        if (index > -1) {
-            required_packages_full.splice(index, 1);
+        if (selected_package_list[i].match(required_iso_regex[0])) {
+            found = true;
+            break;
         }
+
     }
 
-    if (required_packages_full.length > 0) {
-
-        required_packages_mini = ["asr9k-mini-x64.iso"];
-
-        selector.select_exact_match(required_packages_mini);
-        var selected_package_list = selector.get_selected_items();
-
-        for (i = selected_package_list.length; i >= 0; i--) {
-
-            var index = $.inArray(selected_package_list[i], required_packages_mini);
-            if (index > -1) {
-                required_packages_mini.splice(index, 1);
-            }
-        }
-        if (required_packages_mini.length > 0) {
-
-            bootbox.alert("Please make sure that the name of your ASR9K-X64 image is either '" + required_packages_full.toString() + "' or '" + required_packages_mini.toString() + "'. Auto Select cannot locate either of these.")
-
-        }
+    if (found == false) {
+        bootbox.alert("Please make sure that the filename of your ASR9K-X64 image matches the wildcard expression 'asr9k*.iso*'.")
     }
 
 }

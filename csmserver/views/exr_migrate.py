@@ -9,7 +9,6 @@ from common import can_install
 from common import create_or_update_install_job
 from common import fill_custom_command_profiles
 from common import fill_default_region
-from common import fill_dependency_from_host_install_jobs
 from common import fill_regions
 from common import fill_servers
 from common import get_last_install_action
@@ -30,7 +29,7 @@ from flask.ext.login import login_required, current_user
 from models import Host, InstallJob, SystemOption
 
 from wtforms import Form
-from wtforms import TextField, SelectField, HiddenField, SelectMultipleField, StringField
+from wtforms import TextField, SelectField, HiddenField, SelectMultipleField
 from wtforms.validators import required
 
 from smu_info_loader import IOSXR_URL
@@ -90,6 +89,9 @@ def schedule_migrate():
                     config_filename = form.hidden_config_filename.data
                     custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
 
+                    host.context[0].data['best_effort_config_applying'] = best_effort_config
+                    host.context[0].data['config_filename'] = config_filename
+
                     # If the dependency is a previous job id, it's non-negative int string.
                     if int(dependency_list[index]) >= 0:
                         dependency = dependency_list[index]
@@ -109,8 +111,6 @@ def schedule_migrate():
                                                                        software_packages=software_packages,
                                                                        server=server,
                                                                        server_directory=server_directory,
-                                                                       best_effort_config=best_effort_config,
-                                                                       config_filename=config_filename,
                                                                        custom_command_profile=custom_command_profile,
                                                                        dependency=dependency)
                         print("dependency for install_action = {} is {}".format(install_action[i],
@@ -170,7 +170,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     form = ScheduleMigrationForm(request.form)
 
     # Fills the selections
-    fill_servers(form.server_dialog_server.choices, host.region.servers)
+    fill_servers(form.server_dialog_server.choices, host.region.servers, include_local=False)
     fill_custom_command_profiles(form.custom_command_profile.choices)
 
     if request.method == 'POST':
@@ -189,13 +189,16 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         config_filename = form.hidden_config_filename.data
         custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
 
+        host.context[0].data['best_effort_config_applying'] = best_effort_config
+        host.context[0].data['config_filename'] = config_filename
+
         # install_action is a list object which can only contain one install action
         # at this editing time, accept the selected dependency if any
+
         dependency = int(form.hidden_dependency.data)
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                      scheduled_time=scheduled_time, software_packages=software_packages,
                                      server=server, server_directory=server_directory,
-                                     best_effort_config=best_effort_config, config_filename=config_filename,
                                      custom_command_profile=custom_command_profile, dependency=dependency,
                                      install_job=install_job)
 
@@ -218,9 +221,12 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         if install_job is not None:
             form.install_action.data = install_job.install_action
 
-            form.hidden_best_effort_config.data = install_job.best_effort_config_applying
-            form.hidden_config_filename.data = install_job.config_filename
-            print "GET Edit install_job.config_filename = " + str(install_job.config_filename)
+            if install_job.custom_command_profile_id:
+                ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
+                form.custom_command_profile.data = ids
+
+            form.hidden_best_effort_config.data = host.context[0].data.get('best_effort_config_applying')
+            form.hidden_config_filename.data = host.context[0].data.get('config_filename')
 
             if install_job.server_id is not None:
                 form.hidden_server.data = install_job.server_id
@@ -239,7 +245,10 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
                 form.hidden_software_packages.data = install_job.packages
 
-            form.hidden_dependency.data = str(install_job.dependency)
+            if install_job.dependency is not None:
+                form.hidden_dependency.data = str(install_job.dependency)
+            else:
+                form.hidden_dependency.data = '-1'
 
             if install_job.scheduled_time is not None:
                 form.scheduled_time_UTC.data = \
@@ -262,22 +271,30 @@ def get_dependencies():
     dependency = request.args.get('dependency', '', type=str)
 
     dependency_list = []
-    miss_count = 0
+    disqualified_count = 0
     for hostname in hostnames:
+        host = get_host(db_session, hostname)
 
-        prerequisite_install_job = get_last_install_action(db_session, dependency, get_host(db_session, hostname).id)
-        if prerequisite_install_job is not None:
-            dependency_list.append(prerequisite_install_job.id)
-        else:
-            num_completed_jobs = get_install_job_dependency_completed(db_session, dependency, get_host(db_session,
-                                                                                                       hostname).id)
-            if len(num_completed_jobs) > 0:
-                dependency_list.append('-1')
+        if host and host.connection_param[0] and (not host.connection_param[0].port_number):
+            disqualified_count += 1
+            dependency_list.append('-2')
+            continue
+
+        if dependency:
+            prerequisite_install_job = get_last_install_action(db_session, dependency, get_host(db_session, hostname).id)
+            if prerequisite_install_job is not None:
+                dependency_list.append(prerequisite_install_job.id)
             else:
-                miss_count += 1
-                dependency_list.append('-2')
+                num_completed_jobs = get_install_job_dependency_completed(db_session, dependency, host.id)
+                if len(num_completed_jobs) > 0:
+                    dependency_list.append('-1')
+                else:
+                    disqualified_count += 1
+                    dependency_list.append('-2')
+        else:
+            dependency_list.append('-1')
 
-    return jsonify(**{'data': [{ 'dependency_list': dependency_list, 'miss_count' :  miss_count} ] } )
+    return jsonify(**{'data': [{ 'dependency_list': dependency_list, 'disqualified_count' :  disqualified_count} ] } )
 
 
 @exr_migrate.route('/api/get_latest_config_migration_tool/')
@@ -290,7 +307,6 @@ def get_latest_config_migration_tool():
     if not success:
         return jsonify( **{'data': [ { 'error': date } ] } )
 
-    print("date from CCO = " + date)
     need_new_nox = False
 
     if os.path.isfile(fileloc + NOX_PUBLISH_DATE):
@@ -298,7 +314,6 @@ def get_latest_config_migration_tool():
             with open(fileloc + NOX_PUBLISH_DATE, 'r') as f:
                 current_date = f.readline()
 
-            print("date on file = " + current_date)
             if date != current_date:
                 need_new_nox = True
             f.close()
@@ -308,8 +323,6 @@ def get_latest_config_migration_tool():
 
     else:
         need_new_nox = True
-
-    print("need new nox = " + str(need_new_nox))
 
     if need_new_nox:
 
@@ -409,8 +422,6 @@ class ScheduleMigrationForm(Form):
     hidden_software_packages = HiddenField('')
 
     hidden_best_effort_config = HiddenField('')
-    # config_filename = StringField('Config Filename')
-    # config_filename = SelectField('Config Filename', coerce=str, choices=[('', '')])
     hidden_config_filename = HiddenField('')
 
     hidden_edit = HiddenField('Edit')
