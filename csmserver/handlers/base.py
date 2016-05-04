@@ -207,6 +207,13 @@ class BaseInventoryHandler(BaseHandler):
                 ctx.inactive_cli = conn.send('sh install inactive')
                 ctx.active_cli = conn.send('sh install active')
                 ctx.committed_cli = conn.send('sh install committed')
+            elif conn.os_type == "XE":
+                ctx.committed_cli = conn.send('sh version')
+                conn.send('cd bootflash:')
+                ctx.inactive_cli = conn.send('dir')
+            elif conn.os_type == "NX-OS":
+                ctx.inactive_cli = conn.send('sh install inactive')
+                ctx.committed_cli = conn.send('sh install packages | grep lib32_n9000')
 
             ctx.success = True
 
