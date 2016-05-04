@@ -26,10 +26,8 @@
 # =============================================================================
 
 import csv
-import ftplib
 import os
 import re
-import shutil
 import subprocess
 
 from condoor import TIMEOUT
@@ -53,7 +51,7 @@ NOX_64_BINARY = "nox-linux-64.bin"
 # NOX_FOR_MAC = "nox-mac64"
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
-TIMEOUT_FOR_COPY_ISO = 3600
+TIMEOUT_FOR_COPY_ISO = 960
 TIMEOUT_FOR_FPD_UPGRADE = 9600
 
 ISO_FULL_IMAGE_NAME = "asr9k-full-x64.iso"
@@ -860,7 +858,7 @@ class PreMigratePlugin(Plugin):
         for package in packages:
             if iso_image_pattern.match(package):
                 PreMigratePlugin._copy_files_to_device(manager, device, server, repo_url, [package],
-                                                       [ISO_LOCATION + package], timeout=540)
+                                                       [ISO_LOCATION + package], timeout=TIMEOUT_FOR_COPY_ISO)
                 found_iso = True
                 break
         if not found_iso:
