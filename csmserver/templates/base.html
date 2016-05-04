@@ -27,10 +27,12 @@
     <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('tools.create_tar_file') }}">Create Tar File</a></li>
+    {% if current_user.privilege == 'Admin' or current_user.privilege == 'Network Admin' %}
     <li class="divider"></li>
     <li><a href="{{ url_for('custom_command.home') }}">Custom Command Profile</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('exr_migrate.schedule_migrate') }}">Migrate to ASR9K-X64</a></li>
+    {% endif %}
 {% endmacro %}
 
 {% macro admin_tools_menu() %}
