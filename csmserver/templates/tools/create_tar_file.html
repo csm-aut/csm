@@ -84,28 +84,11 @@ $(function() {
     });
 
     $('#on-finish-submit').on('click', function(e) {
-        if ($('#select_server').val() == -1) {
-            bootbox.alert('Server repository has not been specified.');
-            return false;
-        }
-
-        $(window).bind('beforeunload', function(){
-            return 'You will not be able to see the progress, including completion or failure messages, once you have left this page.';
-        });
         browse_spinner.show();
-        var tar_contents = [];
-        $('.check').each(function(index) {
-            if (this.checked) {
-                tar_contents.push($(this).val());
-            }
-        });
 
-        var additional_packages = sp_file_selector.get_selected_items();
-        var source_tars = file_selector.get_selected_items();
         var new_tar_name = $('#new_tar_name').val();
         var acceptable_string = get_acceptable_string(new_tar_name).trim();
         var job_id;
-
 
         if (acceptable_string != new_tar_name) {
             var message = get_acceptable_string_message('Filename', new_tar_name, acceptable_string);
@@ -117,10 +100,30 @@ $(function() {
             browse_spinner.hide();
             return false;
         } else if (new_tar_name.trim() == '') {
-            bootbox.alert("New Tar File Name is required.");
+            bootbox.alert("New Tar File Name has not been specified.");
             browse_spinner.hide();
             return false;
         }
+
+        if ($('#select_server').val() == -1) {
+            bootbox.alert('Server repository has not been specified.');
+            browse_spinner.hide();
+            return false;
+        }
+
+        $(window).bind('beforeunload', function(){
+            return 'You will not be able to see the progress, including completion or failure messages, once you have left this page.';
+        });
+
+        var tar_contents = [];
+        $('.check').each(function(index) {
+            if (this.checked) {
+                tar_contents.push($(this).val());
+            }
+        });
+
+        var additional_packages = sp_file_selector.get_selected_items();
+        var source_tars = file_selector.get_selected_items();
 
         $.ajax({
             url: "/tools/api/create_tar_job",
@@ -233,12 +236,14 @@ $(function() {
                         <div class="tab-pane" id="tar_file_list">
                             <div class="col-sm-12">
                                 <div class="form-group row">
-                                    <h4 class="info-text">Listed below are all Release Software tar files in csm_data/repository.</h4>
+                                    <h4 class="info-text">Select from the available Release Software files in csm_data/repository to extract their contents.</h4>
                                     <select id="file-selector" name="file-selector" multiple="multiple" data-title="Tar-Files" data-json=false></select>
                                 </div>
                             </div>
                         </div>
                         <div class="tab-pane" id="tar_contents_list">
+                            <div class="col-sm-12">
+                                <h4 class="info-text">The following are the contents from the selected tar files. Select which files should be included.</h4>
                             <table cellspacing="0" class="display table" id="tar-contents-datatable">
                                 <thead>
                                   <tr>
@@ -250,18 +255,22 @@ $(function() {
                                   </tr>
                                 </thead>
                               </table>
+                              </div>
                         </div>
                         <div class="tab-pane" id="additional_files_list">
                             <div class="col-sm-12">
                                 <div class="form-group row">
-                                    <h4 class="info-text">Listed below are all additional files in csm_data/repository.</h4>
+                                    <h4 class="info-text">Select any additional files from csm_data/repository that should be included.</h4>
                                     <select id="sp-file-selector" name="sp-file-selector" multiple="multiple" data-title="Files" data-json=false></select>
                                 </div>
                             </div>
                         </div>
                         <div class="tab-pane" id="select_server_tab">
-                            {{ edit_field(form.new_tar_name, class="form-control") }}
-                            {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                            <div class="col-sm-12">
+                                <h4 class="info-text">Select the destination server repository for uploading the new tar file.</h4>
+                                {{ edit_field(form.new_tar_name, class="form-control") }}
+                                {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                            </div>
                             <div id="progress" align="center" margin-top="3cm">
                                 <img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                                 <span style="font-weight:700;color:green"></span>

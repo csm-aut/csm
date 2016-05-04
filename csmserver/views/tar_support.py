@@ -77,7 +77,7 @@ def api_create_tar_job():
     source_tars = request.args.getlist('source_tars[]')
     contents = request.args.getlist('tar_contents[]')
     additional_packages = request.args.getlist('additional_packages[]')
-    new_tar_name = request.args.get('new_tar_name').strip('.tar')
+    new_tar_name = request.args.get('new_tar_name').replace('.tar', '')
 
     create_tar_job = CreateTarJob(
         server_id = server_id,

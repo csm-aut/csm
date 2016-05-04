@@ -128,6 +128,8 @@ from common import create_or_update_install_job
 from common import create_download_jobs
 from common import get_download_job_key
 from common import get_last_successful_pre_upgrade_job
+from common import create_or_update_host
+from common import delete_host
 
 from common import *
 
@@ -413,7 +415,7 @@ def login():
                 system_option.base_url = get_base_url(request.url)
                 db_session.commit()
             except:
-                logger.exception('login hit exception')
+                logger.exception('login() hit exception')
             
             # Certain admin features (Admin Console/Create or Edit User require 
             # re-authentication. The return_url indicates which admin feature the 
@@ -615,7 +617,7 @@ def api_get_csm_message():
                         if delta.days > 0:
                             rows.append({'date': date, 'message': message.replace("\n", "<br>")})
                     except:
-                        logger.exception('api_get_csm_message hit exception')
+                        logger.exception('api_get_csm_message() hit exception')
     
     return jsonify(**{'data': rows})
 
@@ -649,27 +651,12 @@ def host_create():
             host = get_host(db_session, form.hostname.data)
             if host is not None:
                 return render_template('host/edit.html', form=form, duplicate_error=True)
-            
-            host = Host(hostname=form.hostname.data, 
-                        created_by=current_user.username)
-        
-            host.inventory_job.append(InventoryJob())
-            host.context.append(HostContext())
-            db_session.add(host)
-            
-            host.region_id = form.region.data if form.region.data > 0 else None
-            host.roles = remove_extra_spaces(form.roles.data)
-            host.connection_param = [ConnectionParam(
-                # could have multiple IPs, separated by comma
-                host_or_ip=remove_extra_spaces(form.host_or_ip.data),
-                username=form.username.data,
-                password=form.password.data,
-                jump_host_id=form.jump_host.data if form.jump_host.data > 0 else None,
-                connection_type=form.connection_type.data,
-                # could have multiple ports, separated by comma
-                port_number=remove_extra_spaces(form.port_number.data))]
-                            
-            db_session.commit()
+
+            host = create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
+                                         roles=form.roles.data, connection_type=form.connection_type.data,
+                                         host_or_ip=form.host_or_ip.data, username=form.username.data,
+                                         password=form.password.data, port_number=form.port_number.data,
+                                         jump_host_id=form.jump_host.data, created_by=current_user.username)
 
         finally:
             db_session.rollback()
@@ -743,37 +730,15 @@ def host_edit(hostname):
 def host_delete(hostname):
     if not can_delete(current_user):
         abort(401)
-        
+
     db_session = DBSession()
 
-    host = get_host(db_session, hostname)
-    if host is None:
+    try:
+        delete_host(db_session, hostname)
+    except:
         abort(404)
-    
-    delete_host_inventory_job_session_logs(db_session, host) 
-    delete_host_install_job_session_logs(db_session, host)
-    db_session.delete(host)
-    db_session.commit()
         
     return jsonify({'status': 'OK'})
-
-
-def delete_host_inventory_job_session_logs(db_session, host):
-    inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id)
-    for inventory_job in inventory_jobs:
-        try:
-            shutil.rmtree(get_log_directory() + inventory_job.session_log)
-        except:
-            logger.exception('delete_host_inventory_job_session_logs hit exception')
-
-
-def delete_host_install_job_session_logs(db_session, host):
-    install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id)
-    for install_job in install_jobs:
-        try:
-            shutil.rmtree(get_log_directory() + install_job.session_log)
-        except:
-            logger.exception('delete_host_install_job_session_logs hit exception')
 
 
 @app.route('/jump_hosts/')
@@ -1431,7 +1396,7 @@ def api_delete_image_from_repository(image_name):
         os.remove(tar_image_path) 
         os.remove(tar_image_path + '.size')
     except:
-        logger.exception('api_delete_image_from_repository hit exception')
+        logger.exception('api_delete_image_from_repository() hit exception')
         return jsonify({'status': 'Failed'})
     
     return jsonify({'status': 'OK'})
@@ -1568,7 +1533,7 @@ def resubmit_download_job(id):
         return jsonify({'status': 'OK'})
 
     except:  
-        logger.exception('resubmit_download_job hits exception')
+        logger.exception('resubmit_download_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -1593,7 +1558,7 @@ def delete_download_job(id):
         return jsonify({'status': 'OK'})
 
     except:  
-        logger.exception('delete download job hits exception')
+        logger.exception('delete_download_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -1627,7 +1592,7 @@ def delete_all_downloads(status=None):
 
         return jsonify({'status': 'OK'})
     except:
-        logger.exception('delete download job hits exception')
+        logger.exception('delete_download_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -1881,7 +1846,7 @@ def api_create_download_jobs():
             create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
     except:
         try:
-            logger.exception('api_create_download_jobs hit exception')
+            logger.exception('api_create_download_jobs() hit exception')
         except:
             import traceback
             print traceback.format_exc()
@@ -2165,7 +2130,7 @@ def delete_all_installs(status=None):
 
         return jsonify({'status': 'OK'})
     except:
-        logger.exception('delete install job hits exception')
+        logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -2211,7 +2176,7 @@ def delete_all_installs_for_host(hostname, status=None):
         db_session.commit()
         return jsonify({'status': 'OK'})
     except:
-        logger.exception('delete install job hits exception')
+        logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
@@ -2238,7 +2203,7 @@ def delete_install_job(id):
         return jsonify({'status': 'OK'})
 
     except:  
-        logger.exception('delete install job hits exception')
+        logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
     
 
@@ -2949,7 +2914,7 @@ def validate_cisco_user():
     except KeyError:
         return jsonify({'status': 'Failed'})
     except:
-        logger.exception('validate_cisco_user hit exception')
+        logger.exception('validate_cisco_user() hit exception')
         return jsonify({'status': 'Failed'})
 
 
@@ -3272,7 +3237,7 @@ def api_get_ddts_details(ddts_id):
     try:
         bug_info = bsh.get_bug_info()
     except Exception as e:
-        logger.exception('api_get_ddts_details hit exception ' + e.message)
+        logger.exception('api_get_ddts_details() hit exception ' + e.message)
         if e.message == 'access_token':
             error_msg = 'Could not retrieve bug information.  The username and password defined may not be correct ' \
                         '(Check Tools - User Preferences)'

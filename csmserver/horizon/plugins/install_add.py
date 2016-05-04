@@ -74,13 +74,21 @@ class InstallAddPlugin(Plugin):
                 has_tar = True
                 v_packages.append(package)
                 continue
-            if ".pie" in package:
+            if device.family == "ASR9K" and ".pie" in package:
+                v_packages.append(package)
+                continue
+            if device.family == "NCS6K" and ".pkg" in package:
+                v_packages.append(package)
+                continue
+            if device.family == "NCS6K" and ".smu" in package:
                 v_packages.append(package)
                 continue
 
         s_packages = " ".join(v_packages)
-
-        cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
+        if device.family == "ASR9K":
+            cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
+        else:
+            cmd = "install add source {} {} ".format(server_repository_url, s_packages)
 
         manager.log("Add Package(s) Pending")
         install_add_remove(manager, device, cmd, has_tar=has_tar)

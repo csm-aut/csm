@@ -1,8 +1,5 @@
 # =============================================================================
-# cfg_backup.py  - Plugin to capture(show running)
-# configurations present on the system.
-#
-# Copyright (c)  2016, Cisco Systems
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,24 +21,5 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
-# =============================================================================
+# ==============================================================================
 
-
-from horizon.plugin import Plugin
-
-
-class ConfigBackupPlugin(Plugin):
-    """
-    Pre-upgrade check
-    This plugin checks and record active packages
-    """
-    @staticmethod
-    def start(manager, device, *args, **kwargs):
-        cmd = "show running-config"
-        output = device.send(cmd, timeout=2200)
-        file_name = manager.file_name_from_cmd(cmd)
-        full_name = manager.save_to_file(file_name, output)
-        if full_name:
-            manager.save_data(cmd, full_name)
-            manager.log("Device config saved to {}".format(file_name))
-        return True

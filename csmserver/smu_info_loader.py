@@ -161,7 +161,7 @@ class SMUInfoLoader(object):
             db_session.rollback()
         except Exception:
             db_session.rollback()
-            logger.exception('get_smu_info_from_cco hit exception')
+            logger.exception('get_smu_info_from_cco() hit exception')
         
     def get_smus_by_package_type(self, smu_list, package_type):
         result_dict = {}
@@ -452,7 +452,7 @@ class SMUInfoLoader(object):
                 db_session.commit()
                 return True
             except Exception:
-                logger.exception('refresh_all hit exception')
+                logger.exception('refresh_all() hit exception')
                 db_session.rollback()  
             
         return False

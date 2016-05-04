@@ -49,6 +49,7 @@ class InventoryWorkUnit(WorkUnit):
         return self.host_id
 
     def start(self, db_session, logger, process_name):
+        host = None
         inventory_job = None
 
         try:
@@ -88,7 +89,7 @@ class InventoryWorkUnit(WorkUnit):
 
         except Exception:
             try:
-                logger.exception('InventoryManager hit exception - inventory job = %s', self.job_id)
+                self.log_exception(logger, host)
 
                 self.archive_inventory_job(db_session, inventory_job, JobStatus.FAILED, trace=sys.exc_info)
 
@@ -96,9 +97,13 @@ class InventoryWorkUnit(WorkUnit):
                 inventory_job.request_update = False
                 db_session.commit()
             except Exception:
-                logger.exception('InventoryManager hit exception - inventory job = %s', self.job_id)
+                self.log_exception(logger, host)
         finally:
             db_session.close()
+
+    def log_exception(self, logger, host):
+        logger.exception('InventoryManager hit exception - hostname = %s, inventory job =  %s',
+                         host.hostname if host is not None else 'Unknown', self.job_id)
 
     def archive_inventory_job(self, db_session, inventory_job, job_status, trace=None):
         inventory_job.set_status(job_status)

@@ -72,7 +72,7 @@ def ldap_auth(system_option, username, password):
         if type(e.message) == dict and e.message.has_key('desc'):
             raise CSMLDAPException("ldap_auth: " + e.message['desc'])
         else: 
-            raise CSMLDAPException("ldap_auth hit exception")
+            raise CSMLDAPException("ldap_auth() hit exception")
 
     return False
 
