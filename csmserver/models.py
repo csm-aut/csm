@@ -218,7 +218,8 @@ class User(Base):
             return None    # valid token, but expired
         except BadSignature:
             return None    # invalid token
-        user = db_session.query(User).filter_by(id = data['id']).first()
+
+        user = db_session.query(User).filter(User.id == data['id']).first()
         return user
 
     def generate_auth_token(self, expiration=600):
@@ -333,7 +334,7 @@ class Host(Base):
                 
                 result['packages'] = package_list_dict         
         except:
-            logger.exception('Host.get_json() hits exception')  
+            logger.exception('Host.get_json() hit exception')
               
         return result
 
@@ -358,6 +359,9 @@ class ConnectionParam(Base):
     connection_type = Column(String(10), nullable=False)
     # Multiple Ports can be specified using comma as the delimiter
     port_number = Column(String(100), default='')
+
+    # For IOS type devices
+    _enable_password = Column('enable_password', String(100), default='')
     
     host_id = Column(Integer, ForeignKey('host.id'))
     jump_host_id = Column(Integer, ForeignKey('jump_host.id'))
@@ -372,6 +376,17 @@ class ConnectionParam(Base):
     def password(self, value):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
+
+    @property
+    def enable_password(self):
+        global encrypt_dict
+        return decode(encrypt_dict, self._enable_password)
+
+    @enable_password.setter
+    def enable_password(self, value):
+        global encrypt_dict
+        self._enable_password = encode(encrypt_dict, value)
+
 
 class UDI(Base):
     __tablename__ = 'udi'
@@ -820,7 +835,6 @@ class SoftwareProfile(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String(100))
-    description = Column(Text)
     packages = Column(Text)
     created_by = Column(String(50))
 
@@ -897,7 +911,7 @@ class CustomCommandProfile(Base):
     __tablename__ = 'custom_command_profile'
 
     id = Column(Integer, primary_key=True)
-    profile_name = Column(String(50))
+    profile_name = Column(String(100))
     command_list = Column(Text)
     created_by = Column(String(50))
 
@@ -949,7 +963,7 @@ def get_db_session_logger(db_session):
     Return a session specific logger.  This is necessary especially
     if the db_session is from a different process address space.
     """
-    session_logger = logging.getLogger('session_logger')
+    session_logger = logging.getLogger('session_logger_%s' % db_session.hash_key)
     session_logger.setLevel(logging.DEBUG)
     session_logger.addHandler(LogHandler(db_session))
     return session_logger

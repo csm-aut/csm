@@ -26,6 +26,7 @@ from os import listdir, sep, path, makedirs
 from os.path import isfile, join
 from diff_match_patch import diff_match_patch
 from urlparse import urlparse
+from constants import PlatformFamily
 
 import re
 import sys
@@ -187,7 +188,7 @@ def get_file_timestamp(file_path):
     return datetime.datetime.fromtimestamp(t)
 
 
-def make_url(connection_type, host_username, host_password, host_or_ip, port_number):
+def make_url(connection_type, host_username, host_password, host_or_ip, port_number, enable_password=None):
     """
     Creates a connection URL such as
 
@@ -198,6 +199,7 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
     telnet://user@1.1.1.1:2048 (no password)
     telnet://:@1.1.1.1:2048 (empty user and password)
     telnet://1.1.1.1:2048 (no user and password)
+    telnet://user:pass@1.1.1.1:2048/enable password (with enable password)
 
     """
     url = '{}://'.format(connection_type)
@@ -222,6 +224,9 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
 
     if not is_empty(port_number):
         url += ':{}'.format(port_number)
+
+    if not is_empty(enable_password):
+        url += '/{}'.format(enable_password)
 
     return url
 
@@ -369,6 +374,19 @@ def create_temp_user_directory(username):
         make_file_writable(os.path.join(get_temp_directory(), username))
 
     return os.path.join(get_temp_directory(), username)
+
+
+def get_software_platform(family, os_type):
+    if family == PlatformFamily.ASR9K and os_type == 'eXR':
+        return PlatformFamily.ASR9K_X64
+    else:
+        return family
+
+
+def get_software_version(version):
+    # Strip all characters after '[' (i.e., 5.3.2[Default])
+    head, sep, tail = version.partition('[')
+    return head
 
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

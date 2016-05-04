@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2015, Cisco Systems, Inc
+# Copyright (c) 2016, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,13 +22,19 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-class CSMLDAPException(Exception):
-    pass
+from sqlalchemy import and_
+import math
+
+RECORDS_PER_PAGE = 1000
+ENVELOPE = 'api_response'
+STATUS = 'status'
+STATUS_MESSAGE = 'status_message'
+
+class APIStatus:
+    SUCCESS = 'SUCCESS'
+    FAILED = 'FAILED'
 
 
-class UnknownSoftwarePlatform(Exception):
-    pass
-
-
-class HostNotFound(Exception):
-    pass
+def get_total_pages(db_session, table, clauses):
+    total_records = db_session.query(table).filter(and_(*clauses)).count()
+    return int(math.ceil(float(total_records) / RECORDS_PER_PAGE))

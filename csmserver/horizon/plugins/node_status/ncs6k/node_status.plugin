@@ -1,0 +1,13 @@
+[Core]
+Name = Node Status Check
+Module = node_status
+
+[CSM]
+Phases = Pre-Upgrade, Post-Upgrade
+Platforms = NCS6K
+
+[Documentation]
+Author = Klaudiusz Staniek, Anushree Jangid
+Version = 1.0
+Website = https://github.com/csm-aut/csm
+Description = This plugin checks if all nodes are in valid state for upgrade.

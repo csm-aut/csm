@@ -31,6 +31,8 @@ from context import InstallContext
 from utils import create_log_directory
 from utils import is_empty
 from utils import datetime_from_utc_to_local
+from utils import get_log_directory
+from utils import get_file_list
 
 from filters import get_datetime_string
 
@@ -49,6 +51,7 @@ from models import SystemOption
 import traceback
 import datetime
 import urllib
+import os
 
 
 class InstallWorkUnit(WorkUnit):
@@ -73,7 +76,7 @@ class InstallWorkUnit(WorkUnit):
 
     def start(self, db_session, logger, process_name):
         ctx = None
-
+        host = None
         try:
             install_job = db_session.query(InstallJob).filter(InstallJob.id == self.job_id).first()
 
@@ -116,13 +119,17 @@ class InstallWorkUnit(WorkUnit):
 
         except Exception:
             try:
-                logger.exception('InstallManager hit exception - install job =  %s', self.job_id)
+                self.log_exception(logger, host)
                 self.archive_install_job(db_session, logger, ctx, host, install_job,
                                          JobStatus.FAILED, process_name, trace=traceback.format_exc())
             except Exception:
-                logger.exception('InstallManager hit exception - install job = %s', self.job_id)
+                self.log_exception(logger, host)
         finally:
             db_session.close()
+
+    def log_exception(self, logger, host):
+        logger.exception('InstallManager hit exception - hostname = %s, install job =  %s',
+                         host.hostname if host is not None else 'Unknown', self.job_id)
 
     def get_last_operation_id(self, db_session, install_activate_job, trace=None):
 
@@ -184,7 +191,7 @@ class InstallWorkUnit(WorkUnit):
             session_log_link = "hosts/{}/install_job_history/session_log/{}?file_path={}".format(
                 urllib.quote(host.hostname), install_job.id, install_job.session_log)
 
-            message = '<html><head><body>'
+            message = '<html><head></head><body>'
             if install_job.status == JobStatus.COMPLETED:
                 message += 'The scheduled installation for host "' + host.hostname + '" has COMPLETED.<br><br>'
             elif install_job.status == JobStatus.FAILED:
@@ -198,6 +205,8 @@ class InstallWorkUnit(WorkUnit):
                        ' (CSM Server Time)<br>'
             message += 'Install Action: ' + install_job.install_action + '<br><br>'
 
+            message = self.check_command_file_diff(install_job, message)
+
             session_log_url = SystemOption.get(db_session).base_url + '/' + session_log_link
 
             message += 'For more information, click the link below<br><br>'
@@ -206,10 +215,23 @@ class InstallWorkUnit(WorkUnit):
             if install_job.packages is not None and len(install_job.packages) > 0:
                 message += 'Followings are the software packages: <br><br>' + install_job.packages.replace(',','<br>')
 
-            message += '</body></head></html>'
+            message += '</body></html>'
 
             create_email_job(db_session, logger, message, install_job.created_by)
 
         except Exception:
-            logger.exception('create_email_notification hit exception')
+            logger.exception('create_email_notification() hit exception')
 
+
+    def check_command_file_diff(self, install_job, message):
+        file_suffix = '.diff.html'
+        file_list = get_file_list(os.path.join(get_log_directory(), install_job.session_log))
+        diff_file_list = [file for file in file_list if file_suffix in file]
+
+        if len(diff_file_list) > 0:
+            message += 'The following command outputs have changed between different installation phases<br><br>'
+            for file in diff_file_list:
+                message += file.replace(file_suffix, '') + '<br>'
+            message += '<br>'
+
+        return message

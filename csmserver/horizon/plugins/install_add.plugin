@@ -4,7 +4,7 @@ Module = install_add
 
 [CSM]
 Phases = Add
-Platforms = ASR9K
+Platforms = ASR9K, NCS6K
 
 [Documentation]
 Author = Suryakant Kewat, Klaudius Staniek

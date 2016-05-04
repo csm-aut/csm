@@ -29,7 +29,6 @@ from context import ConnectionContext
 from context import SoftwareContext
 from context import InstallContext
 
-from constants import PlatformFamily
 from constants import InstallAction
 from constants import get_log_directory
 
@@ -39,6 +38,8 @@ from utils import get_file_list
 from utils import generate_file_diff
 from utils import get_file_timestamp
 from utils import multiple_replace
+from utils import get_software_platform
+from utils import get_software_version
 from filters import get_datetime_string
 
 from parsers.loader import get_package_parser_class
@@ -84,6 +85,7 @@ class BaseHandler(object):
                     self.generate_post_migrate_file_diff(ctx)
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
+
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     msg = 'generate_post_upgrade_file_diff hit exception.'
                 else:
@@ -230,16 +232,3 @@ class BaseInstallHandler(BaseHandler):
         except condoor.GeneralError as e:
             ctx.post_status = e.message
             ctx.success = False
-
-
-def get_software_platform(family, os_type):
-    if family == PlatformFamily.ASR9K and os_type == 'eXR':
-        return PlatformFamily.ASR9K_X64
-    else:
-        return family
-
-
-def get_software_version(version):
-    # Strip all characters after '[' (i.e., 5.3.2[Default])
-    head, sep, tail = version.partition('[')
-    return head

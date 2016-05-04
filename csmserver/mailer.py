@@ -100,7 +100,7 @@ def sendmail(logger, server, server_port, sender, recipient,
 
         return True
     except:
-        logger.exception('sendmail hit exception')
+        logger.exception('sendmail() hit exception')
         return False
 
 

@@ -15,11 +15,25 @@
 
     $(function() {
 
+        $('#imp-exp-btn-gr').hide();
+
+        var msg = $('#sw-profiles-import-form').data("msg");
+            if( msg != '' ){
+                bootbox.alert(msg);
+        }
+
         var selected_tab = $.cookie('conformance-tab') == null ? '#conformance' : $.cookie('conformance-tab');
         $('a[href=' + selected_tab + ']').tab('show');
 
-        $('#conformance-tab').on('shown.bs.tab', function () {
+        $('#conformance-tab').on('shown.bs.tab', function (e) {
             $.cookie('conformance-tab', $('.nav-tabs .active > a').attr('href'));
+
+            var target = $(e.target).attr("href")
+            if( target == '#software-profiles' ){
+                $('#imp-exp-btn-gr').show();
+            } else {
+                $('#imp-exp-btn-gr').hide();
+            }
         });
 
         var conformance_report_id = $.cookie('conformance-report-id');
@@ -119,18 +133,15 @@
                 }
             }, {
                 "targets": 1,
-                "data": 'description',
-            }, {
-                "targets": 2,
                 "data": 'packages',
                 "render": function(data, type, row) {
                     return insert_slider(comma2br(data), row['id']);
                 }
             }, {
-                "targets": 3,
+                "targets": 2,
                 "data": 'created_by',
             }, {
-                "targets": 4,
+                "targets": 3,
                 "data": 'profile_name',
                 "render": function(data, type, row) {
                     return '<a class="data-delete-link" href="javascript://"  \
@@ -385,6 +396,79 @@
             display_make_conform_dialog(hostname, missing_packages);
         });
 
+        $('#export-sw-profiles-button').on("click", function(){
+            export_sw_profiles_table.api().ajax.url("/conformance/api/get_software_profiles").load();
+            $('#export-sw-profiles-dialog').modal({show:true, backdrop:'static'});
+        });
+
+        $('#export-sw-profiles-check-all').click(function () {
+            toggle_check_all(export_sw_profiles_table, this);
+        });
+
+        function toggle_check_all(data_table, this_instance) {
+            var filtered_rows = data_table.$('tr', {"filter": "applied"});
+            for (var i = 0; i < filtered_rows.length; i++) {
+              $(filtered_rows[i]).find('.check').prop('checked', this_instance.checked);
+            }
+        }
+
+        var export_sw_profiles_table = $('#export-sw-profiles-datatable').dataTable({
+            "pageLength": 100,
+            "scrollY": 250,
+            "columnDefs": [{
+                "sortable": false,
+                "targets": 0,
+                "data": 'profile_name',
+                "render": function ( data, type, row ) {
+                    return '<center><input type="checkbox" value="' + data + '" class="check" name="profile_names"></center>';
+                }
+            }, {
+                "targets": 1,
+                "data" : 'profile_name'
+            }, {
+                "targets": 2,
+                "data": 'packages',
+                "render": function(data, type, row) {
+                    return insert_slider(comma2br(data), 'export-row' + row['id']);
+                }
+            } ]
+        });
+
+        $('#export-sw-profiles-done').on('click', function(e) {
+            var sw_profiles_list = [];
+            $('.check').each(function(index) {
+                if (this.checked) {
+                    sw_profiles_list.push($(this).val());
+                }
+            });
+            if (sw_profiles_list == []) {
+                return false;
+            }
+
+            $('#export-sw-profiles-form').attr('action', "{{ url_for('conformance.export_software_profiles') }}?sw_profiles_list[]=" + sw_profiles_list);
+            $('#export-sw-profiles-form').submit();
+        });
+
+        $("#import-sw-profiles-button").on("click", function() {
+            $('#sw-profiles-import-dialog').modal({show:true, backdrop:'static'});
+        });
+
+        $(document).on('change', '.btn-file :file', function() {
+            var input = $(this),
+              numFiles = input.get(0).files ? input.get(0).files.length : 1,
+              label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+            input.trigger('fileselect', [numFiles, label]);
+        });
+
+        $('.btn-file :file').on('fileselect', function(event, numFiles, label) {
+            var input = $(this).parents('.input-group').find(':text'),
+                log = numFiles > 1 ? numFiles + ' files selected' : label;
+
+            if( input.length ) {
+                input.val(log);
+            }
+        });
+
     });
     
 </script>
@@ -392,6 +476,28 @@
 <style>
     .modal-dialog {    
         width: 850px;
+    }
+    .btn-file {
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-file input[type=file] {
+        position: absolute;
+        top: 0;
+        right: 0;
+        min-width: 100%;
+        min-height: 100%;
+        font-size: 100px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        background: red;
+        cursor: inherit;
+        display: block;
+    }
+    input[readonly] {
+        background-color: white !important;
+        cursor: text !important;
     }
 </style>
 
@@ -436,12 +542,79 @@
         </form>
     </div>
 </div>
+<div id="export-sw-profiles-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form id="export-sw-profiles-form" name="sw-export-profiles-form" method="post" action="">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Export Software Profiles</h4>
+                </div>
+                <div class="modal-body">
+                    <table id="export-sw-profiles-datatable">
+                        <thead>
+                        <tr>
+                            <th>
+                                <center><input type="checkbox" id="export-sw-profiles-check-all"></center>
+                            </th>
+                            <th>Profile Name</th>
+                            <th>Software Packages</th>
+                        </tr>
+                        </thead>
+                    </table>
+                    <div class="wizard-footer">
+                        <div align="center">
+                            <input id='export-sw-profiles-done' data-dismiss="modal" type='submit' class='btn btn-fill btn-primary btn-wd btn-sm' name='sw-profile-export-done' value='Export' />
+                            <input type="button" id="cancel" class="btn btn-fill btn-wd btn-sm" data-dismiss="modal" value="Cancel" />
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="sw-profiles-import-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form id="sw-profiles-import-form" method="post" class="form-horizontal" enctype="multipart/form-data" data-msg="{{ get_flashed_messages(category_filter=['import_feedback'])[0] | nl2br }}">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Import Software Profiles</h4>
+                    The file to be imported must have been exported previously using the Software Profile Export function.
+                </div>
+                <div class="modal-body">
+                    <div class="form-group ">
+                        <div class="col-sm-6">
+                            <div class="input-group">
+                                <span class="input-group-btn">
+                                    <span class="btn btn-primary btn-file">
+                                        Choose File<input class="form-control" type=file name=file>
+                                    </span>
+                                </span>
+                                <input type="text" class="form-control" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <input class="btn btn-primary form-control" type=submit value=Import>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Main -->
 <div class="container">
     <div class="row">
         <div class="col-sm-12">
             <ul class="nav nav-tabs" id="conformance-tab">
-                <li><a data-toggle="tab" href="#conformance">Conformance Report</a></li>
+                <li><a data-toggle="tab" href="#conformance">Conformance Reports</a></li>
                 <li><a data-toggle="tab" href="#software-profiles">Software Profiles</a></li>
                 <li class="dropdown">
                     <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
@@ -449,6 +622,10 @@
                         <li><a data-toggle="main-tab" href="{{ url_for('conformance.software_profile_create') }}">Software Profile</a></li>
                     </ul>
                 </li>
+                <div class="btn-group pull-right" id="imp-exp-btn-gr">
+                        <button id="import-sw-profiles-button" type="button" class="btn btn-default">Import</button>
+                        <button id="export-sw-profiles-button" type="button" class="btn btn-default">Export</button>
+                    </div><br>&nbsp;
             </ul>
             <div class="tab-content" style="margin-top:10px;">
                 <div id="conformance" class="tab-pane fade">
@@ -506,8 +683,7 @@
                         <thead>
                             <tr>
                                 <th>Profile Name</th>
-                                <th>Description</th>
-                                <th>Packages</th>
+                                <th>Software Packages</th>
                                 <th>Created By</th>
                                 <th>Action</th>
                             </tr>
