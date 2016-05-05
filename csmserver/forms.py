@@ -67,6 +67,7 @@ class HostForm(Form):
     host_or_ip = StringField('Terminal Server or Mgmt. IP', [required(), Length(max=30)])
     username = StringField('Username')
     password = PasswordField('Password')
+    enable_password = PasswordField('Enable Password (IOS-XE only)')
     connection_type = SelectField('Connection Type', coerce=str,
                                   choices=[(ConnectionType.TELNET, ConnectionType.TELNET),
                                            (ConnectionType.SSH, ConnectionType.SSH)])

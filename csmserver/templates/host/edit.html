@@ -39,8 +39,7 @@
                     if (result) {
                         $.ajax({
                             "url": "{{ url_for('api_remove_host_password', hostname=form.hostname.data) }}",
-                            type: "POST",
-                            dataType: 'json',
+                            type: 'DELETE',
                             success: function(response) {
                                 if (response.status == 'OK') {
                                     bootbox.alert("Password has been removed.");
@@ -53,9 +52,30 @@
                     }
                 });
             });
+
+            $('#remove-enable-password').on("click", function() {
+                var message = "This operation will remove the host enable password on file.  Proceed?";
+                bootbox.confirm(message, function(result) {
+                    if (result) {
+                        $.ajax({
+                            "url": "{{ url_for('api_remove_host_enable_password', hostname=form.hostname.data) }}",
+                            type: 'DELETE',
+                            success: function(response) {
+                                if (response.status == 'OK') {
+                                    bootbox.alert("Enable Password has been removed.");
+                                    $('#enable_password').attr("placeholder", "No Password Specified.");
+                                } else {
+                                    bootbox.alert("Unable to remove password.");
+                                }
+                            }
+                        });
+                    }
+                });
+            });
         {% endif %}
 
         $('#password').password();
+        $('#enable_password').password();
 
         $('#form').submit(function() {
             var region_id = $('#region').val();
@@ -139,6 +159,7 @@
                 host_or_ip: host_or_ip,
                 username: $('#username').val(),
                 password: $('#password').val(),
+                enable_password: $('#enable_password').val(),
                 connection_type: $('#connection_type').val(),
                 port_number: port_number,
                 jump_host: $('#jump_host').val()
@@ -246,20 +267,28 @@
 
                 {% if isEdit %}
                     {% set extra_field ='<a href="javascript://" id="modify-password">
-                    <img src=\"/static/lock.png\" title="Show/Hide Password Field"></a>' %}
-                    {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field ) }}
+                        <img src=\"/static/lock.png\" title="Show/Hide Password Field"></a>' %}
+                    {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100,
+                        class="form-control", extra_field=extra_field ) }}
                 {% else %}
-                    {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
+                    {{ edit_field(form.username, autocomplete="off", field_width="col-sm-4", maxlength=100,
+                        class="form-control") }}
                 {% endif %}
 
                 <div id="password-panel">
                     {% if isEdit %}
                         {% set extra_field ='<a href="javascript://" id="remove-password">
-                        <img src=\"/static/remove.png\" title="Click to Remove Password on File"></a>' %}
-                        {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control", extra_field=extra_field,
-                            placeholder=form.password_placeholder) }}
+                            <img src=\"/static/remove.png\" title="Click to Remove Password on File"></a>' %}
+                        {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100,
+                            class="form-control", extra_field=extra_field, placeholder=form.password_placeholder) }}
+
+                        {% set extra_field ='<a href="javascript://" id="remove-enable-password">
+                            <img src=\"/static/remove.png\" title="Click to Remove Password on File"></a>' %}
+                        {{ edit_field(form.enable_password, autocomplete="off", field_width="col-sm-4", maxlength=100,
+                            class="form-control", extra_field=extra_field, placeholder=form.enable_password_placeholder) }}
                     {% else %}
                         {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
+                        {{ edit_field(form.enable_password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
                     {% endif %}
                 </div>
                 {{ edit_field(form.jump_host, field_width="col-sm-4", class="form-control") }}
