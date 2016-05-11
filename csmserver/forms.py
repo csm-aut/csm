@@ -67,6 +67,7 @@ class HostForm(Form):
     host_or_ip = StringField('Terminal Server or Mgmt. IP', [required(), Length(max=30)])
     username = StringField('Username')
     password = PasswordField('Password')
+    enable_password = PasswordField('Enable Password (IOS-XE only)')
     connection_type = SelectField('Connection Type', coerce=str,
                                   choices=[(ConnectionType.TELNET, ConnectionType.TELNET),
                                            (ConnectionType.SSH, ConnectionType.SSH)])
@@ -109,6 +110,7 @@ class HostScheduleInstallForm(ServerDialogForm):
 
     cisco_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
     cisco_dialog_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
+    server_modal_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
     
     hidden_server = HiddenField('')   
     hidden_server_name = HiddenField('')   
@@ -206,7 +208,6 @@ class SelectServerForm(Form):
 
 class SoftwareProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
-    description = StringField('Description', [required(), Length(max=100)])
 
 if __name__ == '__main__':
     pass

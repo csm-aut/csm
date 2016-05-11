@@ -309,7 +309,12 @@ $(function() {
         var software_packages = $('#software_packages').val().trim();
 
         if (has_one_of_these(install_actions, [INSTALL_ADD]) && server_id == -1) {
-            bootbox.alert("Server repository has not been specified.");
+            //bootbox.alert("Server repository has not been specified.");
+
+            $('#select-server-dialog').modal({
+                show: true,
+                backdrop: 'static'
+            })
             return false;
         }
 
@@ -407,7 +412,8 @@ $(function() {
 
         if ($('#hidden_server').val() != -1) {
             html_code = '<table>';
-            html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + $('#hidden_server_name').val() + '</td></tr>';
+            html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + $('#hidden_server_name').val();
+            html_code += '&nbsp;&nbsp;<a id="server-edit" href="javascript://"><img src="/static/edit.png" title="Edit"></a></td></tr>';
 
             if ($('#hidden_server_directory').val().length > 0) {
                 html_code += '<tr><td><span style="color: Gray;">Server Directory:&nbsp;</span></td><td>' + $('#hidden_server_directory').val() + '</td></tr>';
@@ -417,12 +423,45 @@ $(function() {
         $('#server-repository-panel').html(html_code);
     }
 
+    // Use delegate pattern for event
+    $('#server-repository-panel').on('click', '#server-edit', function(e) {
+
+        var server_id = get_server_cookie(region_id);
+        var server_directory = get_server_directory_cookie(region_id);
+
+        if (server_id && server_id != -1) {
+            $('#server_modal_dialog_server').val(server_id);
+            server_software_retrieve_file_list(server_id, $('#dialog_server_directory'), server_directory);
+        }
+
+        $('#select-server-dialog').modal({
+            show: true,
+            backdrop: 'static'
+        })
+    });
 
     function on_finish_validate(validate_object) {
         $('#software_packages').val(validate_object.software_packages);
         $('#hidden_pending_downloads').val(validate_object.pending_downloads);
         validate_object.form.submit();
     }
+
+    $('#dialog-move-up').on('click', function(e) {
+        server_software_retrieve_file_list(
+            $('#server_modal_dialog_server').val(),
+            $('#dialog_server_directory'),
+            get_parent_folder($('#dialog_server_directory').val()) );
+    });
+
+    $('#dialog-reset-server-directory').on('click', function(e) {
+        if ($('#dialog_server_directory').val() != '') {
+            bootbox.confirm('Reset the server directory to use the server repository base directory?', function(result) {
+                if (result) {
+                    server_software_retrieve_file_list($('#server_modal_dialog_server').val(), $('#dialog_server_directory'), '')
+                }
+            });
+        }
+    });
 
     //----------------------------------------------------------------------------------------//
  
@@ -452,6 +491,39 @@ $(function() {
         write_target_release_cookie(region_id, $('#server_dialog_target_software').val());
 
         toggle_ui();
+    });
+
+    $('#on-select-server-submit').click(function(e) {
+        if ($('#server_modal_dialog_server').val() == -1) {
+            bootbox.alert("Server Repository has not been specified.");
+            return false;
+        }
+
+        // Record the newly selected server repository
+        $('#hidden_server').val($('#server_modal_dialog_server').val());
+        $('#hidden_server_name').val($('#server_modal_dialog_server option:selected').text());
+        $('#hidden_server_directory').val($('#dialog_server_directory').val());
+
+        write_server_cookie(region_id, $('#hidden_server').val());
+        write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
+
+        toggle_ui();
+    });
+
+    $('#server_modal_dialog_server').on('change', function(e) {
+        server_id = $('#server_modal_dialog_server').val();
+        if (server_id == -1) {
+            $('#dialog_server_directory').html('');
+        } else {
+            server_software_retrieve_file_list(server_id, $('#dialog_server_directory'), '')
+        }
+    });
+
+    $('#dialog_server_directory').on('change', function(e) {
+        server_software_retrieve_file_list(
+            $('#server_modal_dialog_server').val(),
+            $('#dialog_server_directory'),
+            $('#dialog_server_directory').val() );
     });
 
     //----------------------------------------------------------------------------------------//
@@ -587,5 +659,46 @@ $(function() {
 {{ host_software_dialog(form.host_software_dialog_host, form.host_software_dialog_last_successful_inventory_elapsed_time, form.host_software_dialog_target_software) }}
 
 {% block main_schedule_install %} {% endblock main_schedule_install %}
+
+<div id="select-server-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Select Server Repository</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group ">
+                        <label class="col-sm-4 control-label"></label>
+                        <div class="col-sm-8"><label class="col-sm-4 control-label"></label></div>
+                    </div>
+                    {{ edit_field(form.server_modal_dialog_server, field_width="col-sm-8", class="form-control") }}
+                    <div class="form-group ">
+                        <label class="col-sm-4 control-label" id="label_dialog_server_directory" for="dialog_server_directory">Server Directory</label>
+                        <div class=col-sm-6>
+                            <select class="form-control" id="dialog_server_directory" name="dialog_server_directory">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <a href="javascript://">
+                        <img id='dialog-move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
+                        <img id='dialog-reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
+                        </a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 
 {% endblock main %}
