@@ -2764,7 +2764,7 @@ def api_remove_host_enable_password(hostname):
 def remove_host_password(hostname, remove_enable_password=False):
     if not can_create(current_user):
         abort(401)
-    
+
     db_session = DBSession()
     host = get_host(db_session, hostname)
     if host is not None:
@@ -2822,7 +2822,7 @@ def check_host_reachability():
                            host_password=jump_host.password, host_or_ip=jump_host.host_or_ip,
                            port_number=jump_host.port_number)
             urls.append(url)
-    
+
     db_session = DBSession()
     # The form is in the edit mode and the user clicks Validate Reachability
     # If there is no password specified, get it from the database.

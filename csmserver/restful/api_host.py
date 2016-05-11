@@ -98,6 +98,7 @@ def api_create_hosts(request):
                     host_or_ip = data.get('ts_or_ip')
                     username = data.get('username')
                     password = data.get('password')
+                    enable_password = data.get('enable_password')
                     port_number = data.get('port_number')
 
                     jump_host_id = -1
@@ -111,7 +112,7 @@ def api_create_hosts(request):
                         create_or_update_host(db_session=db_session, hostname=hostname, region_id=region.id,
                                               roles=roles, connection_type=connection_type,
                                               host_or_ip=host_or_ip, username=username,
-                                              password=password, port_number=port_number,
+                                              password=password, enable_password=enable_password, port_number=port_number,
                                               jump_host_id=jump_host_id, created_by=current_user, host=host)
 
         except Exception as e:
