@@ -81,10 +81,10 @@ class CLIPackageParser(BasePackageParser):
         ncs6k-doc-5.0.1
     """
     def parse_inactive(self, lines, package_state):
-        packages_dict = {}
+        package_dict = {}
 
         if lines is None:
-            return packages_dict
+            return package_dict
 
         found = False
         lines = lines.splitlines()
@@ -99,12 +99,12 @@ class CLIPackageParser(BasePackageParser):
                     break
 
                 package = Package(location=location, name=name, state=package_state)
-                packages_dict[name] = package
+                package_dict[name] = package
 
             elif 'package' in line:
                 found = True
 
-        return packages_dict
+        return package_dict
 
     """
     Used to parse 'show install inactive' CLI output.
@@ -113,10 +113,10 @@ class CLIPackageParser(BasePackageParser):
             ModulePackageState
     """
     def parse_active_and_committed(self, lines, package_state):
-        packages_dict = {}
+        package_dict = {}
 
         if lines is None:
-            return packages_dict
+            return package_dict
 
         lines = lines.splitlines()
 
@@ -143,9 +143,9 @@ class CLIPackageParser(BasePackageParser):
                                 module_name=module,
                                 package_state=package_state))
 
-                packages_dict[package_name] = package
+                package_dict[package_name] = package
 
-        return packages_dict
+        return package_dict
 
     """
     Return the CLI outputs in trunks.  Each Trunk is a section of module and its packages.

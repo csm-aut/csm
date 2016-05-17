@@ -67,24 +67,12 @@ class CLIPackageParser(BasePackageParser):
             return True
         
         return False
-
-    def set_platform_and_release(self, host, packages):
-        if packages is not None:
-            for package in packages.values():
-
-                if 'mini' in package.name:
-                    tokens = package.name.split('-')
-                    # ['asr9k', 'mini', 'px', '4.3.1']
-                    if len(tokens) == 4:
-                        host.software_platform = tokens[0] + '-' + tokens[2]
-                        host.software_version = tokens[3]
-
         
     def parseContents(self, lines, package_state):
-        packages_dict = {}
+        package_dict = {}
 
         if lines is None:
-            return packages_dict
+            return package_dict
 
         found = False
         lines = lines.splitlines()
@@ -103,10 +91,10 @@ class CLIPackageParser(BasePackageParser):
                 if len(line) == 0:
                     break
                 
-                package = Package(location = location, name = name, state = package_state)
-                packages_dict[name] = package
+                package = Package(location=location, name=name, state=package_state)
+                package_dict[name] = package
 
             elif 'Packages' in line:
                 found = True
 
-        return packages_dict
+        return package_dict

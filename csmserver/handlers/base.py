@@ -189,32 +189,45 @@ class BaseConnectionHandler(BaseHandler):
 
 class BaseInventoryHandler(BaseHandler):
     def start(self, ctx):
-        conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
-        try:
-            conn.discovery()
-        except condoor.GeneralError as e:
-            ctx.post_status = e.message
-            return
+        if csmpe_installed:
+            pm = CSMPluginManager(ctx)
 
         try:
-            conn.connect()
+            if csmpe_installed:
+                pm.dispatch("run")
+            else:
+                conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
+                try:
+                    conn.discovery()
+                except condoor.GeneralError as e:
+                    logger = get_db_session_logger(ctx.db_session)
+                    logger.exception('BaseInventoryHandler hit exception')
+                    return
 
-            if conn.os_type == "XR":
-                ctx.inactive_cli = conn.send('sh install inactive summary')
-                ctx.active_cli = conn.send('sh install active summary')
-                ctx.committed_cli = conn.send('sh install committed summary')
-            elif conn.os_type == "eXR":
-                ctx.inactive_cli = conn.send('sh install inactive')
-                ctx.active_cli = conn.send('sh install active')
-                ctx.committed_cli = conn.send('sh install committed')
+                conn.connect()
 
-            ctx.success = True
+                if conn.os_type == "XR":
+                    ctx.inactive_cli = conn.send('sh install inactive summary')
+                    ctx.active_cli = conn.send('sh install active summary')
+                    ctx.committed_cli = conn.send('sh install committed summary')
+                elif conn.os_type == "eXR":
+                    ctx.inactive_cli = conn.send('sh install inactive')
+                    ctx.active_cli = conn.send('sh install active')
+                    ctx.committed_cli = conn.send('sh install committed')
+                elif conn.os_type == "XE":
+                    ctx.committed_cli = conn.send('sh version')
+                    conn.send('cd bootflash:')
+                    ctx.inactive_cli = conn.send('dir')
+                elif conn.os_type == "NX-OS":
+                    ctx.inactive_cli = conn.send('sh install inactive')
+                    ctx.committed_cli = conn.send('sh install packages | grep lib32_n9000')
 
+                ctx.success = True
         except condoor.GeneralError as e:
-            ctx.post_status = e.message
-
-        finally:
-            conn.disconnect()
+            logger = get_db_session_logger(ctx.db_session)
+            logger.exception('BaseInventoryHandler hit exception')
+            if conn:
+                conn.disconnect()
 
 
 class BaseInstallHandler(BaseHandler):
@@ -224,11 +237,12 @@ class BaseInstallHandler(BaseHandler):
             pm = CSMPluginManager(ctx)
         else:
             pm = PluginManager()
+
         try:
             if csmpe_installed:
                 pm.dispatch("run")
             else:
                 pm.run(ctx)
         except condoor.GeneralError as e:
-            ctx.post_status = e.message
-            ctx.success = False
+            logger = get_db_session_logger(ctx.db_session)
+            logger.exception(e.message)

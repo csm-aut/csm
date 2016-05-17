@@ -157,8 +157,8 @@ class InventoryContext(SoftwareContext):
         return get_log_directory() + self.inventory_job.session_log
 
     @property
-    def migration_directory(self):
-        return get_migration_directory()
+    def requested_action(self):
+        return 'Get-Software-Packages'
 
     def post_status(self, message):
         if self.db_session is not None and self.inventory_job is not None:

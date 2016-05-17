@@ -655,8 +655,9 @@ def host_create():
             host = create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
                                          roles=form.roles.data, connection_type=form.connection_type.data,
                                          host_or_ip=form.host_or_ip.data, username=form.username.data,
-                                         password=form.password.data, port_number=form.port_number.data,
-                                         jump_host_id=form.jump_host.data, created_by=current_user.username)
+                                         password=form.password.data, enable_password=form.enable_password.data,
+                                         port_number=form.port_number.data, jump_host_id=form.jump_host.data,
+                                         created_by=current_user.username)
 
         finally:
             db_session.rollback()
@@ -696,6 +697,10 @@ def host_edit(hostname):
         connection_param.username = form.username.data
         if len(form.password.data) > 0:
             connection_param.password = form.password.data
+
+        if len(form.enable_password.data) > 0:
+            connection_param.enable_password = form.enable_password.data
+
         connection_param.jump_host_id = form.jump_host.data if form.jump_host.data > 0 else None
         connection_param.connection_type = form.connection_type.data
         # could have multiple ports, separated by comma
@@ -721,6 +726,11 @@ def host_edit(hostname):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
+
+        if not is_empty(host.connection_param[0].enable_password):
+            form.enable_password_placeholder = 'Use Password on File'
+        else:
+            form.enable_password_placeholder = 'No Password Specified'
 
         return render_template('host/edit.html', form=form)
 
@@ -1800,7 +1810,7 @@ def schedule_install():
 def host_schedule_install(hostname):
     if not can_install(current_user):
         abort(401)
-        
+
     return handle_schedule_install_form(request=request, db_session=DBSession(), hostname=hostname)
 
 
@@ -1857,7 +1867,7 @@ def api_create_download_jobs():
 
 
 
-def handle_schedule_install_form(request, db_session, hostname, install_job=None):    
+def handle_schedule_install_form(request, db_session, hostname, install_job=None):
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
@@ -1878,6 +1888,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
     # Fills the selections
     fill_servers(form.server_dialog_server.choices, region_servers)
+    fill_servers(form.server_modal_dialog_server.choices, region_servers)
     fill_servers(form.cisco_dialog_server.choices, region_servers, False)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs,
                                            (-1 if install_job is None else install_job.id))
@@ -2740,31 +2751,40 @@ def get_software(hostname):
     return jsonify({'status': 'Failed'})
 
 
-@app.route('/api/remove_host_password/<hostname>', methods=['POST'])
-@login_required   
+@app.route('/api/hosts/<hostname>/password', methods=['DELETE'])
 def api_remove_host_password(hostname):
+    return remove_host_password(hostname)
+
+
+@app.route('/api/hosts/<hostname>/enable_password', methods=['DELETE'])
+def api_remove_host_enable_password(hostname):
+    return remove_host_password(hostname, remove_enable_password=True)
+
+
+def remove_host_password(hostname, remove_enable_password=False):
     if not can_create(current_user):
         abort(401)
-    
+
     db_session = DBSession()
-    
     host = get_host(db_session, hostname)
     if host is not None:
-        host.connection_param[0].password = ''
+        if remove_enable_password:
+            host.connection_param[0].enable_password = ''
+        else:
+            host.connection_param[0].password = ''
         db_session.commit()
         return jsonify({'status': 'OK'})
     else:
         return jsonify({'status': 'Failed'})
 
 
-@app.route('/api/remove_jump_host_password/<hostname>', methods=['POST'])
+@app.route('/api/jump_hosts/<hostname>/password', methods=['DELETE'])
 @login_required   
 def api_remove_jump_host_password(hostname):
     if not can_create(current_user):
         abort(401)
     
     db_session = DBSession()
-    
     host = get_jump_host(db_session, hostname)
     if host is not None:
         host.password = ''
@@ -2788,6 +2808,7 @@ def check_host_reachability():
     host_or_ip = request.args.get('host_or_ip')
     username = request.args.get('username')
     password = request.args.get('password')
+    enable_password = request.args.get('enable_password')
     connection_type = request.args.get('connection_type')
     port_number = request.args.get('port_number')
     jump_host_id = request.args.get('jump_host')
@@ -2801,14 +2822,15 @@ def check_host_reachability():
                            host_password=jump_host.password, host_or_ip=jump_host.host_or_ip,
                            port_number=jump_host.port_number)
             urls.append(url)
-    
+
     db_session = DBSession()
     # The form is in the edit mode and the user clicks Validate Reachability
     # If there is no password specified, get it from the database.
-    if password == '':
+    if is_empty(password) or is_empty(enable_password):
         host = get_host(db_session, hostname)
         if host is not None:
             password = host.connection_param[0].password
+            enable_password = host.connection_param[0].enable_password
 
     system_option = SystemOption.get(db_session)
     if system_option.enable_default_host_authentication:
@@ -2825,7 +2847,8 @@ def check_host_reachability():
         host_username=username,
         host_password=password,
         host_or_ip=host_or_ip, 
-        port_number=port_number)
+        port_number=port_number,
+        enable_password=enable_password)
     urls.append(url)
     
     return jsonify({'status': 'OK'}) if is_connection_valid(hostname, urls) else jsonify({'status': 'Failed'})

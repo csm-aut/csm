@@ -87,6 +87,9 @@
         }
 
         var export_profiles_table = $('#export-profiles-datatable').dataTable({
+            "order": [
+                [1, "asc"]
+            ],
             "pageLength": 100,
             "scrollY": 250,
             "columnDefs": [{
@@ -97,6 +100,7 @@
                     return '<center><input type="checkbox" value="' + data + '" class="check" name="profile_names"></center>';
                 }
             }, {
+                "sortable": true,
                 "targets": 1,
                 "data" : 'profile_name'
             }, {
@@ -159,6 +163,14 @@
             }
         });
 
+        $('#import-submit').on('click', function() {
+            if($('.btn-file :file').val() == ''){
+                bootbox.alert("Please choose a file to import.");
+                return false;
+            }
+            $('#import-form').submit();
+        });
+
     });
 </script>
 
@@ -210,7 +222,7 @@
                                 <center><input type="checkbox" id="export-profiles-check-all"></center>
                             </th>
                             <th>Profile Name</th>
-                            <th>Command List</th>
+                            <th>CLI Commands</th>
                         </tr>
                         </thead>
                     </table>
@@ -252,7 +264,7 @@
                 <div class="modal-footer">
                     <div class="form-actions">
                         <div class="btn col-sm-offset-4">
-                            <input class="btn btn-primary form-control" type=submit value=Import>
+                            <input class="btn btn-primary form-control" id="import-submit" type=submit value=Import>
                         </div>
                     </div>
                 </div>

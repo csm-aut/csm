@@ -413,6 +413,9 @@
         }
 
         var export_sw_profiles_table = $('#export-sw-profiles-datatable').dataTable({
+            "order": [
+                [1, "asc"]
+            ],
             "pageLength": 100,
             "scrollY": 250,
             "columnDefs": [{
@@ -467,6 +470,14 @@
             if( input.length ) {
                 input.val(log);
             }
+        });
+
+        $('#software-profiles-import-submit').on('click', function() {
+            if($('.btn-file :file').val() == ''){
+                bootbox.alert("Please choose a file to import.");
+                return false;
+            }
+            $('#sw-profiles-import-form').submit();
         });
 
     });
@@ -601,7 +612,7 @@
                 <div class="modal-footer">
                     <div class="form-actions">
                         <div class="btn col-sm-offset-4">
-                            <input class="btn btn-primary form-control" type=submit value=Import>
+                            <input class="btn btn-primary form-control" id="software-profiles-import-submit" type=submit value=Import>
                         </div>
                     </div>
                 </div>
