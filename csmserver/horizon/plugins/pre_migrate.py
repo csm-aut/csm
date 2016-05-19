@@ -45,6 +45,7 @@ from server_helper import TFTPServer, FTPServer, SFTPServer
 from utils import is_empty, concatenate_dirs
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
+RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"
 
 NOX_64_BINARY = "nox-linux-64.bin"
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
@@ -535,7 +536,7 @@ class PreMigratePlugin(Plugin):
         return subtype_to_locations_need_upgrade
 
     @staticmethod
-    def _ensure_updated_fpd(manager, device, packages, iosxr_run_nodes):
+    def _ensure_updated_fpd(manager, device, packages, iosxr_run_nodes, version):
         """
         Upgrade FPD's if needed.
         Steps:
@@ -556,6 +557,7 @@ class PreMigratePlugin(Plugin):
         :param packages: all user selected packages from scheduling the Pre-Migrate
         :param iosxr_run_nodes: the list of string nodes names we get from running
                                 PreMigratePlugin._get_iosxr_run_nodes
+        :param version: the current software version. i.e., "5.3.3"
         :return: True if no error occurred.
         """
 
@@ -585,17 +587,19 @@ class PreMigratePlugin(Plugin):
 
         if not match:
 
-            # Step 1: Install add the FPD SMU
-            manager.log("FPD upgrade - install add the FPD SMU...")
-            PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
+            if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
 
-            # Step 2: Install activate the FPD SMU
-            manager.log("FPD upgrade - install activate the FPD SMU...")
-            PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
+                # Step 1: Install add the FPD SMU
+                manager.log("FPD upgrade - install add the FPD SMU...")
+                PreMigratePlugin._run_install_action_plugin(manager, device, InstallAddPlugin, "install add")
 
-            # Step 3: Install commit the FPD SMU
-            manager.log("FPD upgrade - install commit the FPD SMU...")
-            PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
+                # Step 2: Install activate the FPD SMU
+                manager.log("FPD upgrade - install activate the FPD SMU...")
+                PreMigratePlugin._run_install_action_plugin(manager, device, InstallActivatePlugin, "install activate")
+
+                # Step 3: Install commit the FPD SMU
+                manager.log("FPD upgrade - install commit the FPD SMU...")
+                PreMigratePlugin._run_install_action_plugin(manager, device, InstallCommitPlugin, "install commit")
 
         else:
             manager.log("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
@@ -924,7 +928,12 @@ class PreMigratePlugin(Plugin):
         if device.os_type != "XR":
             manager.error('Device is not running ASR9K Classic XR. Migration action aborted.')
 
-        if device.os_version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
+        version = re.search("(\d\.\d\.\d).*", device.os_version)
+
+        if not version:
+            manager.error("Bad os_version.")
+
+        if version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
             manager.error("The minimal release version required for migration is 5.3.3. " +
                           "Please upgrade to at lease R5.3.3 before scheduling migration.")
 
@@ -955,6 +964,6 @@ class PreMigratePlugin(Plugin):
         manager.log("Copying the eXR ISO image from server repository to device.")
         PreMigratePlugin._copy_iso_to_device(manager, device, server, packages, server_repo_url)
 
-        PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes)
+        PreMigratePlugin._ensure_updated_fpd(manager, device, packages, iosxr_run_nodes, version)
 
         return True

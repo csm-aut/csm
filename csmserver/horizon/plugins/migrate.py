@@ -39,7 +39,7 @@ from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 from database import DBSession
 from horizon.plugin import PluginError, Plugin
 from horizon.plugins.cmd_capture import CmdCapturePlugin
-from horizon.plugin_lib import wait_for_reload, get_package, wait_for_final_band
+from horizon.plugin_lib import wait_for_final_band
 from pexpect import TIMEOUT, EOF
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')

@@ -231,13 +231,20 @@ class InstallContext(SoftwareContext):
         return self.make_urls()
 
     @property 
-    def server(self):
+    def get_server(self):
         """
         Return the user selected server object where the packages can be found.
         """
         server_id = self.install_job.server_id
         server = self.db_session.query(Server).filter(Server.id == server_id).first()
         return server
+
+    @property
+    def get_host(self):
+        """
+        Return the host object.
+        """
+        return self.host
 
     @property 
     def server_repository_url(self):
