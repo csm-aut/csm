@@ -2294,13 +2294,18 @@ def api_get_session_log_file_diff():
     return jsonify(**{'data': data})
 
 
-@app.route('/api/get_session_logs')
+@app.route('/api/get_session_logs/table/<table>')
 @login_required
-def api_get_session_logs():
+def api_get_session_logs(table):
     id = request.args.get("record_id")
 
     db_session = DBSession()
-    install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+    if table == 'install_job':
+        install_job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
+    elif table == 'install_job_history':
+        install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+    elif table == 'inventory_job_history':
+        install_job = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
 
     if install_job is None:
         abort(404)
