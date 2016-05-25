@@ -415,6 +415,12 @@ def delete_host_install_job_session_logs(db_session, host):
 def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=None,
                                  server=-1, server_directory='', custom_command_profile=-1, dependency=0,
                                  pending_downloads=None, install_job=None):
+
+    # ASR9K, CRS - .pie, .tar
+    # NCS6K - .smu, .iso, .pkg, .tar
+    # ASR9K-X64 - .iso, .rpm, .tar
+    ACCEPTABLE_PACKAGE_TYPES_FOR_INSTALL_ADD = ['.pie', '.rpm', '.tar', '.smu', '.iso', '.pkg']
+
     # This is a new install_job
     if install_job is None:
         install_job = InstallJob()
@@ -455,10 +461,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
         for software_package in software_packages:
             if install_action == InstallAction.INSTALL_ADD:
                 # Install Add only accepts external package names with the following suffix
-                if '.pie' in software_package or \
-                   '.tar' in software_package or \
-                   '.rpm' in software_package:
-
+                if any(ext in software_package for ext in ACCEPTABLE_PACKAGE_TYPES_FOR_INSTALL_ADD):
                     install_job_packages.append(software_package)
             else:
                 # Install Activate can have external or internal package names

@@ -3444,12 +3444,17 @@ def api_get_missing_files_on_server(server_id):
     if is_reachable:
         for smu_name, cco_filename in download_info_dict.items():
             if not is_smu_on_server_repository(server_file_dict, smu_name):
-                smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
-                description = '' if smu_info is None else smu_info.description
-                # If selected SMU on CCO
-                if cco_filename is not None:             
-                    rows.append({'smu_entry': smu_name, 'description': description,
-                                 'cco_filename': cco_filename, 'is_downloadable': True})
+                description = ''
+                if smu_loader.is_valid:
+                    smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
+                    description = '' if smu_info is None else smu_info.description
+                    # If selected package is on CCO
+                    if cco_filename is not None:
+                        rows.append({'smu_entry': smu_name, 'description': description,
+                                     'cco_filename': cco_filename, 'is_downloadable': True})
+                    else:
+                        rows.append({'smu_entry': smu_name, 'description': description,
+                                     'is_downloadable': False})
                 else:
                     rows.append({'smu_entry': smu_name, 'description': description,
                                  'is_downloadable': False})
