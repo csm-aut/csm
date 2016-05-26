@@ -548,11 +548,11 @@ class SMUInfoLoader(object):
                 elif 'hfr' in package_name and '-px' in package_name:
                     # Internal Name: disk0:hfr-mini-px-4.2.1 | disk0:hfr-px-4.2.3.CSCtz89449
                     platform = CCO_PLATFORM_CRS
-                elif 'ncs6k-sysadmin':
+                elif 'ncs6k-sysadmin' in package_name:
                     # External Name: ncs6k-sysadmin.iso-5.2.4
                     # Internal Name: ncs6k-sysadmin-5.2.4
                     platform = CCO_PLATFORM_NCS6K_SYSADMIN
-                elif 'ncs6k':
+                elif 'ncs6k' in package_name:
                     # External Name: ncs6k-mgbl.pkg-5.2.4
                     # Internal Name: ncs6k-mgbl-5.2.4
                     platform = CCO_PLATFORM_NCS6K
