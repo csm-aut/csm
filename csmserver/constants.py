@@ -41,6 +41,7 @@ DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'
 DIRECTORY_TEMP = DIRECTORY_BASE + 'temp/'
 DIRECTORY_MIGRATION = DIRECTORY_BASE + 'migration/'
 
+
 def get_csm_data_directory():
     return DIRECTORY_BASE
 
@@ -120,7 +121,6 @@ class InstallAction:
     MIGRATE_SYSTEM = 'Migrate'
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
-
 
 
 class PackageType:

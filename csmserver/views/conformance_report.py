@@ -25,12 +25,8 @@
 import xlwt
 
 from filters import get_datetime_string
-from smu_utils import get_platform_and_release
-from platform_matcher import UNKNOWN
 from smu_info_loader import SMUInfoLoader
-from constants import JobStatus
-
-import re
+from constants import UNKNOWN
 
 
 class ReportWriter(object):
@@ -111,7 +107,7 @@ class XLSWriter(ReportWriter):
         software_profile_packages = self.conformance_report.software_profile_packages.split(',')
         
         smu_loader = None
-        platform, release = get_platform_and_release(software_profile_packages)
+        platform, release = SMUInfoLoader.get_platform_and_release(software_profile_packages)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
         

@@ -28,8 +28,7 @@ from flask import render_template
 from flask import jsonify, abort, send_file
 from flask import request, Response, redirect, url_for, make_response
 from flask.ext.login import LoginManager, current_user
-from flask.ext.login import login_user, login_required, logout_user  
-from platform_matcher import get_platform, get_release, UNKNOWN
+from flask.ext.login import login_user, login_required, logout_user
 
 from werkzeug.contrib.fixers import ProxyFix
 
@@ -52,10 +51,8 @@ from forms import BrowseServerDialogForm
 from forms import SoftwareProfileForm
 
 from models import Host
-from models import HostContext
 from models import JumpHost
 from models import InventoryJob
-from models import ConnectionParam
 from models import Log, logger 
 from models import InventoryJobHistory
 from models import InstallJob
@@ -65,7 +62,6 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
-from models import SystemVersion
 from models import System
 from models import Package
 from models import Preferences
@@ -84,11 +80,11 @@ from constants import JobStatus
 from constants import PackageState
 from constants import ServerType
 from constants import UserPrivilege
+from constants import UNKNOWN
 from constants import ConnectionType
 from constants import BUG_SEARCH_URL
 from constants import get_log_directory
 from constants import get_repository_directory
-from constants import get_temp_directory
 from constants import DefaultHostAuthenticationChoice
 
 from common import get_last_successful_inventory_elapsed_time
@@ -99,7 +95,6 @@ from common import fill_dependency_from_host_install_jobs
 from common import fill_regions    
 from common import fill_jump_hosts
 from common import fill_custom_command_profiles
-from common import get_custom_command_profile_by_id
 from common import get_host
 from common import get_host_list
 from common import get_jump_host_by_id
@@ -127,11 +122,9 @@ from common import can_create
 from common import create_or_update_install_job
 from common import create_download_jobs
 from common import get_download_job_key
-from common import get_last_successful_pre_upgrade_job
 from common import create_or_update_host
 from common import delete_host
-
-from common import *
+from common import get_last_install_action
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -158,7 +151,6 @@ from wtforms.validators import Required
 from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
-from smu_utils import get_platform_and_release
 from smu_utils import SMU_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
@@ -249,8 +241,8 @@ def get_host_platform_version(region_id):
     host_dict = {}
     if hosts is not None:
         for host in hosts:
-            platform = 'Unknown' if host.software_platform is None else host.software_platform
-            software = 'Unknown' if host.software_version is None else host.software_version
+            platform = UNKNOWN if host.software_platform is None else host.software_platform
+            software = UNKNOWN if host.software_version is None else host.software_version
               
             key = '{}={}'.format(platform, software)
             if key in host_dict:
@@ -505,7 +497,7 @@ def get_managed_hosts(region_id):
                 if host.software_version is not None:
                     row['software'] = host.software_platform + ' (' + host.software_version + ')'
                 else:
-                    row['software'] = 'Unknown'
+                    row['software'] = UNKNOWN
 
                 inventory_job = host.inventory_job[0]
                 if inventory_job is not None and inventory_job.last_successful_time is not None:
@@ -1167,7 +1159,7 @@ def api_get_host_dashboard_cookie(hostname):
         row = {}
         connection_param = host.connection_param[0]
         row['hostname'] = host.hostname
-        row['region'] = host.region.name if host.region is not None else 'Unknown'
+        row['region'] = host.region.name if host.region is not None else UNKNOWN
         row['roles'] = host.roles
         row['platform'] = host.platform
         row['software_platform'] = host.software_platform
@@ -1486,7 +1478,7 @@ def get_download_job_json_dict(db_session, download_jobs):
                                                '<br><span style="color: Gray;"><b>Sub-directory:</b></span> ' + \
                                                download_job.server_directory
             else:
-                row['server_repository'] = 'Unknown'
+                row['server_repository'] = UNKNOWN
                 
             row['status'] = download_job.status
             row['status_time'] = download_job.status_time               
@@ -1850,8 +1842,7 @@ def api_create_download_jobs():
     
         # Derives the platform and release using the first SMU name.
         if len(smu_list) > 0 and len(pending_downloads) > 0:
-            platform = get_platform(smu_list[0])
-            release = get_release(smu_list[0])
+            platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
 
             create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
     except:
@@ -2726,7 +2717,7 @@ def api_get_hosts_by_region(region_id, role, software):
             if host.software_platform is not None and host.software_version is not None:
                 host_platform_software = host.software_platform + ' (' + host.software_version + ')'
             else:
-                host_platform_software = 'Unknown'
+                host_platform_software = UNKNOWN
 
             if not selected_software or host_platform_software in selected_software:
                 row = {'hostname': host.hostname,
@@ -3351,7 +3342,7 @@ def get_smu_ids(db_session, smu_name_list):
         if smu_info is not None:
             smu_ids.append(smu_info.id)
         else:
-            smu_ids.append('Unknown')
+            smu_ids.append(UNKNOWN)
                   
     return ','.join([id for id in smu_ids])
 
@@ -3361,7 +3352,7 @@ def get_smu_ids(db_session, smu_name_list):
 def api_get_smu_meta_retrieval_elapsed_time(platform, release):
     smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
     
-    retrieval_elapsed_time = 'Unknown'
+    retrieval_elapsed_time = UNKNOWN
     if smu_meta is not None:
         retrieval_elapsed_time = time_difference_UTC(smu_meta.retrieval_time)
 
@@ -3525,7 +3516,7 @@ def api_get_missing_prerequisite_list():
     smu_list = request.args.get('smu_list').split()
 
     rows = []
-    platform, release = get_platform_and_release(smu_list)
+    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
     if platform != UNKNOWN and release != UNKNOWN:
         smu_loader = SMUInfoLoader(platform, release)
 
@@ -3556,7 +3547,7 @@ def api_get_reload_list():
     rows = []    
     if not is_empty(package_list):
         # Identify the platform and release
-        platform, release = get_platform_and_release(package_list)
+        platform, release = SMUInfoLoader.get_platform_and_release(package_list)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
             if smu_loader.is_valid:

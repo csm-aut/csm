@@ -27,13 +27,9 @@ from sqlalchemy import or_, and_
 
 from csm_exceptions.exceptions import HostNotFound
 
-from platform_matcher import get_platform
-from platform_matcher import get_release
-
 from constants import ServerType
 from constants import UserPrivilege
 from constants import InstallAction
-from constants import JobStatus
 from constants import PackageState
 from constants import JobStatus
 
@@ -44,13 +40,7 @@ from models import Region
 from models import User
 from models import SMTPServer
 from models import logger
-from models import InstallJob
-from models import SMUMeta
-from models import DownloadJob
-from models import get_download_job_key_dict
 
-from smu_utils import SP_INDICATOR
-from utils import is_empty, get_datetime
 from models import Package
 from models import InstallJob
 from models import SMUMeta
@@ -72,8 +62,11 @@ from smu_utils import SP_INDICATOR
 from smu_utils import TAR_INDICATOR
 
 from utils import get_log_directory
-from utils import is_empty, get_datetime
+from utils import is_empty
+from utils import get_datetime
 from utils import remove_extra_spaces
+
+from smu_info_loader import SMUInfoLoader
 
 import os
 import shutil
@@ -146,12 +139,11 @@ def fill_regions(choices):
     except:
         logger.exception('fill_regions() hit exception')
 
+
 def fill_default_region(choices, region):
     # Remove all the existing entries
     del choices[:]
 
-    # do not close session as the caller will do it
-    db_session = DBSession()
     try:
         if region is not None:
             choices.append((region.id, region.name))
@@ -270,6 +262,7 @@ def get_region_by_id(db_session, region_id):
 def get_region_list(db_session):
     return db_session.query(Region).order_by(Region.name.asc()).all()
 
+
 def get_custom_command_profiles_list(db_session):
     return db_session.query(CustomCommandProfile).order_by(CustomCommandProfile.profile_name.asc()).all()
 
@@ -336,10 +329,11 @@ def can_create(current_user):
     return current_user.privilege == UserPrivilege.ADMIN or \
         current_user.privilege == UserPrivilege.NETWORK_ADMIN 
 
-"""
-Returns the return_url encoded in the parameters
-"""
+
 def get_return_url(request, default_url=None):
+    """
+    Returns the return_url encoded in the parameters
+    """
     url = request.args.get('return_url')
     if url is None:
         url = default_url
@@ -351,10 +345,12 @@ def get_last_install_action(db_session, install_action, host_id):
                                                InstallJob.host_id == host_id)). \
         order_by(InstallJob.scheduled_time.desc()).first()
 
+
 def get_install_job_dependency_completed(db_session, install_action, host_id):
     return db_session.query(InstallJobHistory).filter(and_(InstallJobHistory.install_action == install_action,
                                                            InstallJobHistory.host_id == host_id,
                                                            InstallJobHistory.status == JobStatus.COMPLETED)).all()
+
 
 def create_or_update_host(db_session, hostname, region_id, roles, connection_type, host_or_ip,
                 username, password, enable_password, port_number, jump_host_id, created_by, host=None):
@@ -416,10 +412,10 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
                                  server=-1, server_directory='', custom_command_profile=-1, dependency=0,
                                  pending_downloads=None, install_job=None):
 
-    # ASR9K, CRS - .pie, .tar
-    # NCS6K - .smu, .iso, .pkg, .tar
-    # ASR9K-X64 - .iso, .rpm, .tar
-    ACCEPTABLE_PACKAGE_TYPES_FOR_INSTALL_ADD = ['.pie', '.rpm', '.tar', '.smu', '.iso', '.pkg']
+    # ASR9K, CRS: .pie, .tar
+    # NCS6K: .smu, .iso, .pkg, .tar
+    # ASR9K-X64: .iso, .rpm, .tar
+    acceptable_package_types_for_add = ['.pie', '.rpm', '.tar', '.smu', '.iso', '.pkg']
 
     # This is a new install_job
     if install_job is None:
@@ -461,7 +457,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
         for software_package in software_packages:
             if install_action == InstallAction.INSTALL_ADD:
                 # Install Add only accepts external package names with the following suffix
-                if any(ext in software_package for ext in ACCEPTABLE_PACKAGE_TYPES_FOR_INSTALL_ADD):
+                if any(ext in software_package for ext in acceptable_package_types_for_add):
                     install_job_packages.append(software_package)
             else:
                 # Install Activate can have external or internal package names
@@ -496,8 +492,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
         pending_downloads = install_job.pending_downloads.split(',')
 
         # Derives the platform and release using the first SMU name.
-        platform = get_platform(smu_list[0])
-        release = get_release(smu_list[0])
+        platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
 
         create_download_jobs(db_session, platform, release, pending_downloads,
                              install_job.server_id, install_job.server_directory)
@@ -561,11 +556,13 @@ def get_last_successful_pre_upgrade_job(db_session, host_id):
                and_(InstallJobHistory.install_action == InstallAction.PRE_UPGRADE)). \
         order_by(InstallJobHistory.status_time.desc()).first()
 
+
 def get_last_successful_pre_migrate_job(db_session, host_id):
     return db_session.query(InstallJobHistory). \
         filter((InstallJobHistory.host_id == host_id),
                and_(InstallJobHistory.install_action == InstallAction.PRE_MIGRATE)). \
         order_by(InstallJobHistory.status_time.desc()).first()
+
 
 def get_download_job_key(user_id, filename, server_id, server_directory):
     return "{}{}{}{}".format(user_id, filename, server_id, server_directory)
