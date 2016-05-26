@@ -1067,8 +1067,35 @@ def api_get_last_successful_inventory_elapsed_time(hostname):
     ]})
 
 
+@app.route('/api/hosts/<hostname>/packages')
+@login_required
+def api_get_host_packages_by_states(hostname):
+    """
+    Returns the software packages that satisfy the requested package states (e.g. 'active,committed')
+    """
+    package_state = request.args.get('package_state')
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
 
-@app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
+    rows = []
+    if host is not None:
+        # It is possible that package_state contains a commas delimited state list.
+        # In this case, the union of those packages will be used.
+        package_states = package_state.split(',')
+        packages = []
+        for package_state in package_states:
+            packages_list = db_session.query(Package).filter(
+                and_(Package.host_id == host.id, Package.state == package_state)). order_by(Package.name).all()
+            if len(packages_list) > 0:
+                packages.extend(packages_list)
+
+        for package in packages:
+            rows.append({'package': package.name if package.location is None else package.location + ':' + package.name})
+
+    return jsonify(**{'data': rows})
+
+
+@app.route('/api/hosts/<hostname>/packages/<package_state>')
 @login_required
 def api_get_host_dashboard_packages(hostname, package_state):
     db_session = DBSession()
@@ -1898,7 +1925,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server = form.hidden_server.data
         server_directory = form.hidden_server_directory.data
         pending_downloads = form.hidden_pending_downloads.data
-        custom_command_profile = (',').join([str(i) for i in form.custom_command_profile.data])
+        custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any

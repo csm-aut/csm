@@ -167,8 +167,9 @@ function refresh_host_software(hostname) {
     var host_software = []
         
     $.ajax({
-        url: '/api/hosts/' + hostname + '/packages/' + host_software_package_filter,  
+        url: '/api/hosts/' + hostname + '/packages',
         dataType: 'json',
+        data: { package_state: host_software_package_filter} ,
         success: function(data) {
             $.each(data, function(index, element) {
                 for (i = 0; i < element.length; i++) {
