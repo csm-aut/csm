@@ -58,7 +58,7 @@ def api_get_cco_software(request):
 
         rows = []
         smu_loader = SMUInfoLoader(platform, release)
-        if smu_loader is not None and smu_loader.is_valid:
+        if smu_loader.is_valid:
             smu_list = smu_loader.get_optimal_smu_list()
             if optimal and optimal == 'no':
                 smu_list = smu_loader.get_smu_list()
@@ -87,7 +87,7 @@ def api_get_cco_software_entry(request, name_or_id):
     release = request.args.get('release')
 
     smu_loader = SMUInfoLoader(platform, release)
-    if smu_loader is not None and smu_loader.is_valid:
+    if smu_loader.is_valid:
         smu_info = smu_loader.get_smu_info(name_or_id)
         if smu_info:
             return jsonify(**{ENVELOPE: get_smu_info(smu_info)})
