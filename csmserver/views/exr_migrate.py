@@ -87,10 +87,12 @@ def schedule_migrate():
                     server_directory = form.hidden_server_directory.data
                     best_effort_config = form.hidden_best_effort_config.data
                     config_filename = form.hidden_config_filename.data
+                    override_hw_req = form.hidden_override_hw_req.data
                     custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
 
                     host.context[0].data['best_effort_config_applying'] = best_effort_config
                     host.context[0].data['config_filename'] = config_filename
+                    host.context[0].data['override_hw_req'] = override_hw_req
 
                     # If the dependency is a previous job id, it's non-negative int string.
                     if int(dependency_list[index]) >= 0:
@@ -133,6 +135,7 @@ def schedule_migrate():
         form.hidden_edit.data = 'False'
         form.hidden_best_effort_config.data = '0'
         form.hidden_config_filename.data = ''
+        form.hidden_override_hw_req.data = '0'
         form.hidden_dependency.data = ''
 
         return render_template('exr_migrate/schedule_migrate.html', form=form,
@@ -186,11 +189,13 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server = form.hidden_server.data
         server_directory = form.hidden_server_directory.data
         best_effort_config = form.hidden_best_effort_config.data
+        override_hw_req = form.hidden_override_hw_req.data
         config_filename = form.hidden_config_filename.data
         custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
 
         host.context[0].data['best_effort_config_applying'] = best_effort_config
         host.context[0].data['config_filename'] = config_filename
+        host.context[0].data['override_hw_req'] = override_hw_req
 
         # install_action is a list object which can only contain one install action
         # at this editing time, accept the selected dependency if any
@@ -226,6 +231,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 form.custom_command_profile.data = ids
 
             form.hidden_best_effort_config.data = host.context[0].data.get('best_effort_config_applying')
+            form.hidden_override_hw_req.data = host.context[0].data['override_hw_req']
             form.hidden_config_filename.data = host.context[0].data.get('config_filename')
 
             if install_job.server_id is not None:
@@ -422,6 +428,7 @@ class ScheduleMigrationForm(Form):
     hidden_software_packages = HiddenField('')
 
     hidden_best_effort_config = HiddenField('')
+    hidden_override_hw_req = HiddenField('')
     hidden_config_filename = HiddenField('')
 
     hidden_edit = HiddenField('Edit')

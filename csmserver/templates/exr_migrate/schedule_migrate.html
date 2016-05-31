@@ -142,8 +142,17 @@
                 }
             });
 
+            $('[data-toggle="popover_override_hw_req"]').popover({
+                trigger : 'click',
+                placement : 'top',
+                html : true,
+                content : function() {
+                    return $('#popover_hw_req').html()
+                }
+            });
+
             $('[data-toggle="popover_server_repo"]').popover({
-                trigger : 'hover',
+                trigger : 'click',
                 placement : 'right',
                 html : true,
                 content : function() {
@@ -152,7 +161,7 @@
             });
 
             $('[data-toggle="popover_config_filename"]').popover({
-                trigger : 'hover',
+                trigger : 'click',
                 placement : 'top',
                 html : true,
                 content : function() {
@@ -256,6 +265,12 @@
                     $('#hidden_best_effort_config').val($('[name="config-handling"]')[1].value);
                 }
 
+                if ($('[name="override_hw_req"]')[0].checked) {
+                    $('#hidden_override_hw_req').val($('[name="override_hw_req"]')[0].value);
+                } else {
+                    $('#hidden_override_hw_req').val($('[name="override_hw_req"]')[1].value);
+                }
+
                 var install_actions = $('#install_action').val();
 
                 if ($('#hidden_edit').val() == 'False') {
@@ -340,7 +355,7 @@
                                     var new_dependency_list = "";
                                     if (dependency == '') {
                                          var html = '<p>In order to schedule migration actions, console connection ' +
-                                                    'must be provided for each host instead of management IP.</p>'
+                                                    'must be provided for each host instead of management IP.</p>';
                                          if (element[0].disqualified_count == hostnames.length) {
                                              html += 'None of the selected hosts meet this requirement.'
                                          } else {
@@ -436,13 +451,7 @@
                                     $('#hidden_dependency').val(element[0].dependency_list.join());
                                     submit_form_on_successfully_download_config_conversion_tool();
                                 }
-
-
-
-
                             });
-
-
                         submit_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
@@ -473,6 +482,12 @@
                     $('[name="config-handling"]')[0].checked = true;
                 } else if ($('#hidden_best_effort_config').val() == '1') {
                     $('[name="config-handling"]')[1].checked = true;
+                }
+
+                if ($('#hidden_override_hw_req').val() == '1') {
+                    $('[name="override_hw_req"]')[0].checked = true;
+                } else if ($('#hidden_override_hw_req').val() == '0') {
+                    $('[name="override_hw_req"]')[1].checked = true;
                 }
 
             } else {
@@ -527,6 +542,8 @@
                            class="form-control" type="hidden">
                     <input id="hidden_best_effort_config" name="{{ form.hidden_best_effort_config.name }}"
                            value="{{ form.hidden_best_effort_config.data }}" class="form-control" type="hidden">
+                    <input id="hidden_override_hw_req" name="{{ form.hidden_override_hw_req.name }}"
+                           value="{{ form.hidden_override_hw_req.data }}" class="form-control" type="hidden">
                     <input id="hidden_config_filename" name="{{ form.hidden_config_filename.name }}"
                            value="{{ form.hidden_config_filename.data }}" class="form-control" type="hidden">
 
@@ -572,6 +589,7 @@
 
                                             <div class="tab-pane" id="select-host">
                                                 {{ select_region_hosts(form.region, form.role, form.software) }}
+                                                {% include("exr_migrate/override_hardware_requirement.html") %}
                                             </div>
 
                                             <div class="tab-pane" id="pre-migrate">

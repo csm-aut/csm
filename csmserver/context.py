@@ -294,6 +294,10 @@ class InstallContext(SoftwareContext):
         return self.load_data('best_effort_config_applying')
 
     @property
+    def pre_migrate_override_hw_req(self):
+        return self.load_data('override_hw_req')
+
+    @property
     def pre_migrate_config_filename(self):
         return self.load_data('config_filename')
     

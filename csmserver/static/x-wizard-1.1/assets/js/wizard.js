@@ -124,15 +124,15 @@ function validateSelectPackages(){
         bootbox.alert("Please select server repository");
         return false
     }
-    var selected_ISO = 0;
+    var selected_image = 0;
     var selected_smu = 0;
     var selected_config = false;
     var selected_items = server_software_selector.get_selected_items();
     var unselected_items = server_software_selector.get_unselected_items();
 
     for (var index in selected_items) {
-        if (selected_items[index].match("asr9k.*\.iso.*")) {
-            selected_ISO++;
+        if (selected_items[index].match("asr9k.*\.tar.*")) {
+            selected_image++;
         }
         if (selected_items[index].match("asr9k.*\.pie.*")) {
             selected_smu++;
@@ -142,11 +142,11 @@ function validateSelectPackages(){
         }
 
     }
-    if (selected_ISO < 1) {
-        bootbox.alert("Please select an ASR9K-X64 image before continuing.");
+    if (selected_image < 1) {
+        bootbox.alert("Please select the tar file containing ASR9K-X64 image and boot files before continuing.");
         return false
-    } else if (selected_ISO > 1) {
-        bootbox.alert("Please select only one ASR9K-X64 image before continuing.");
+    } else if (selected_image > 1) {
+        bootbox.alert("Please select only one tar file for ASR9K-X64 image and boot files before continuing.");
         return false
     }
     if (selected_smu < 1) {

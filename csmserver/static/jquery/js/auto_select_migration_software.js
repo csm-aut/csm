@@ -17,15 +17,15 @@ function auto_select_software(hostname, selector, target_release, match_internal
         return false
     }
 
-    required_iso_regex = ["asr9k.*\.iso.*"];
+    required_image_regex = ["asr9k.*\.tar.*"];
 
-    selector.select_regex_match(["asr9k.*\.iso.*"]);
+    selector.select_regex_match(["asr9k.*\.tar.*"]);
     var selected_package_list = selector.get_selected_items();
 
     var found = false;
     for (i = selected_package_list.length; i >= 0; i--) {
 
-        if (selected_package_list[i].match(required_iso_regex[0])) {
+        if (selected_package_list[i].match(required_image_regex[0])) {
             found = true;
             break;
         }
@@ -33,7 +33,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
     }
 
     if (found == false) {
-        bootbox.alert("Please make sure that the filename of your ASR9K-X64 image matches the wildcard expression 'asr9k*.iso*'.")
+        bootbox.alert("Please make sure that the filename of your ASR9K-X64 image matches the wildcard expression 'asr9k*.tar*'.")
     }
 
 }

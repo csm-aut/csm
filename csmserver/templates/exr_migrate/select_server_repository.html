@@ -6,9 +6,10 @@
 </h4>
 <div id="popover_packages" style="display: none">
   <pre>Note:
-1. Only FTP and TFTP server repositories are supported for migration.
+1. Only FTP, TFTP and SFTP server repositories are supported for migration.
 2. Two packages must be selected from the specific server repository and directory:
-   a. ASR9K IOS-XR 64 Bit image with filename matching wildcard expression 'asr9k*.iso*'.
+   a. A tar file containing ASR9K IOS-XR 64 Bit image and boot files with filename matching
+      wildcard expression '*.tar'.
    b. The ASR9K unified FPD SMU required for running ASR9K IOS-XR 64 Bit image. (Your device must
       already have FPD package installed on ASR9K IOS-XR 32 bit image. On top of that, an additional
       unified FPD SMU is required here.) The filename must match wildcard expression 'asr9k*.pie*'</pre>

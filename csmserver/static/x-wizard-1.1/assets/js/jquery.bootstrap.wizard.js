@@ -338,7 +338,7 @@ function get_server_list() {
 		var server_directory = $('#hidden_server_directory').val();
 		if (server_id != -1) {
 			$('#server_dialog_server').val(server_id);
-			server_software_retrieve_file_list(server_id, $('#server_dialog_server_directory'), server_directory);
+			//server_software_retrieve_file_list(server_id, $('#server_dialog_server_directory'), server_directory);
 
 		}
 	  });

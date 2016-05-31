@@ -1,0 +1,83 @@
+<h5>By default, migration is only allowed if all RSP/RP/FAN/PEM on device are supported in ASR9K-X64 and in valid working states.
+  Do you wish to override these two requirements?
+&nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req"></span>
+<div id="popover_hw_req" style="display: none">
+    <div style="overflow: auto;height: 400px;width: 800px;">
+
+        <h5>Valid node states for migration: IOS XR RUN, PRESENT, READY, OK</h5>
+        <br>
+
+        <h5>Hardware Supported in ASR9K-X64:</h5>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <td>Supported RSP/RP</td><td>Supported LC</td>
+                    <td>Supported FAN</td><td>Supported PEM</td><td>Supported Fabric</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ASR-9922-RP-SE</td><td>A9K-8X100GE-L-SE</td>
+                    <td>ASR-9904-FAN</td><td>PWR-2KW-DC-V2</td><td>A99-SFC2</td>
+                </tr>
+                <tr>
+                    <td>ASR-9922-RP-TR</td><td><span style="color:red">*A9K-8X100GE-L-TR</span></td>
+                    <td>ASR-9006-FAN-V2</td><td>PWR-3KW-AC-V2</td><td><span style="color:red">*A99-SFC-S</span></td>
+                </tr>
+                <tr>
+                    <td>A99-RP2-SE</td><td>A9K-8X100GE-SE</td>
+                    <td>ASR-9010-FAN-V2</td><td>PWR-6KW-AC-V3</td><td></td>
+                </tr>
+                <tr>
+                    <td>A99-RP2-TR</td><td>A99-8X100GE-SE</td>
+                    <td>ASR-9910-FAN</td><td>PWR-4.4KW-DC-V3</td><td></td>
+                </tr>
+                <tr>
+                    <td>A9K-RSP880-SE</td><td>A99-8X100GE-CM</td>
+                    <td>ASR-9912-FAN</td><td></td><td></td>
+                </tr>
+                <tr>
+                    <td>A9K-RSP880-TR</td><td>A9K-8X100GE-CM</td>
+                    <td>ASR-9922-FAN-V2</td><td></td><td></td>
+                </tr>
+                <tr>
+                    <td><span style="color:red">*A99-RSP-SE</span></td><td>A99-8X100GE-TR</td>
+                    <td></td><td></td><td></td>
+                </tr>
+                <tr>
+                    <td><span style="color:red">*A99-RSP-TR</span></td><td>A9K-8X100GE-TR</td>
+                    <td></td><td></td><td></td>
+                </tr>
+
+                <tr>
+                    <td></td><td>A9K-4X100GE-SE</td>
+                    <td></td><td></td><td></td>
+                </tr>
+                <tr>
+                    <td></td><td>A9K-4X100GE-TR</td>
+                    <td></td><td></td><td></td>
+                </tr>
+                <tr>
+                    <td></td><td>A99-12x100GE</td>
+                    <td></td><td></td><td></td>
+                </tr>
+            </tbody>
+        </table>
+      <br>
+      <h5>*The card types in red are only supported in release 6.2.1. Everything else is supported in 6.1.1.</h5>
+      <h5>Migration may fail if you choose to override the above two requirements.</h5>
+
+    </div>
+
+</div>
+  <br>
+<div style="float: right;">
+    <input type="radio" id="override_hw_req" name="override_hw_req"
+           class="toggle" value="1"
+           style="margin-right: 10px"><label for="override_hw_req">Yes</label>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <input type="radio" id="override_hw_req" name="override_hw_req"
+           class="toggle" value="0" checked
+           style="margin-right: 10px"><label for="override_hw_req">No</label>
+</div>
+</h5>
