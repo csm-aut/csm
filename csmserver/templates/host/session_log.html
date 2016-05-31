@@ -45,7 +45,7 @@
         }
 
         $("#download-session-logs").on("click", function() {
-            session_logs_table.api().ajax.url("/api/get_session_logs?record_id=" + {{ record_id }}).load();
+            session_logs_table.api().ajax.url("/api/get_session_logs/table/{{ table }}?record_id=" + {{ record_id }}).load();
             $('#session-logs-dialog').modal({show:true, backdrop:'static'});
         });
 

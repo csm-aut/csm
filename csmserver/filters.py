@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 import datetime
+from constants import UNKNOWN
 from jinja2 import Markup, evalcontextfilter, escape
 
 
@@ -75,7 +76,7 @@ def comma2br(context, value):
 
 def beautify_platform(platform):
     if platform is None:
-        return 'Unknown'
+        return UNKNOWN
     return platform.upper().replace('_','-')
 
 

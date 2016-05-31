@@ -28,6 +28,7 @@ from constants import PackageState
 from parsers.base import BasePackageParser
 import re
 
+
 class CLIPackageParser(BasePackageParser):
     def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):
         inactive_packages = {}
@@ -47,8 +48,8 @@ class CLIPackageParser(BasePackageParser):
         if committed_packages:
             for package_name in active_packages:
                 # Extracts the Package object
-                active_package = active_packages[package_name]
-                committed_package = committed_packages[package_name]
+                active_package = active_packages.get(package_name)
+                committed_package = committed_packages.get(package_name)
                 if committed_package is not None:
                     # Peeks into the ModulePackageStates to see if the same line card
                     # with the same package appears in both active and committed areas.
@@ -56,6 +57,20 @@ class CLIPackageParser(BasePackageParser):
                         for committed_module_package_state in committed_package.modules_package_state:
                             if active_module_package_state.module_name == committed_module_package_state.module_name:
                                 active_module_package_state.package_state = PackageState.ACTIVE_COMMITTED
+                    active_package.state = PackageState.ACTIVE_COMMITTED
+
+            for package_name in inactive_packages:
+                # Extracts the Package object
+                inactive_package = inactive_packages.get(package_name)
+                committed_package = committed_packages.get(package_name)
+                if committed_package is not None:
+                    # Peeks into the ModulePackageStates to see if the same line card
+                    # with the same package appears in both inactive and committed areas.
+                    for inactive_module_package_state in inactive_package.modules_package_state:
+                        for committed_module_package_state in committed_package.modules_package_state:
+                            if inactive_module_package_state.module_name == committed_module_package_state.module_name:
+                                inactive_module_package_state.package_state = PackageState.INACTIVE_COMMITTED
+                    inactive_package.state = PackageState.INACTIVE_COMMITTED
 
         for package in active_packages.values():
             host_packages.append(package)
@@ -107,7 +122,7 @@ class CLIPackageParser(BasePackageParser):
         return package_dict
 
     """
-    Used to parse 'show install inactive' CLI output.
+    Used to parse 'show install active/committed' CLI output.
         Package
             ModulePackageState
             ModulePackageState
@@ -119,7 +134,6 @@ class CLIPackageParser(BasePackageParser):
             return package_dict
 
         lines = lines.splitlines()
-
         trunks = self.get_trunks(lines)
         if len(trunks) > 0:
             # Collect all the packages

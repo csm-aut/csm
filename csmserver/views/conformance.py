@@ -55,6 +55,7 @@ from common import fill_custom_command_profiles
 
 from database import DBSession
 
+from constants import UNKNOWN
 from constants import InstallAction
 from constants import JobStatus
 from constants import get_temp_directory
@@ -62,8 +63,6 @@ from constants import get_temp_directory
 from conformance_report import XLSWriter
 from filters import get_datetime_string
 
-from smu_utils import get_platform_and_release
-from platform_matcher import UNKNOWN
 from smu_info_loader import SMUInfoLoader
 
 from forms import ServerDialogForm
@@ -385,8 +384,8 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
 
                 conformance_report_entry = ConformanceReportEntry(
                     hostname=hostname,
-                    platform='Unknown' if host.software_platform is None else host.software_platform,
-                    software='Unknown' if host.software_version is None else host.software_version,
+                    platform=UNKNOWN if host.software_platform is None else host.software_platform,
+                    software=UNKNOWN if host.software_version is None else host.software_version,
                     conformed='Yes' if conformed else 'No',
                     comments=comments,
                     host_packages=','.join(sorted(match_packages(host_packages, packages_to_match))),
@@ -548,7 +547,7 @@ def api_get_conformance_report_software_profile_packages(id):
         software_profile_packages = conformance_report.software_profile_packages.split(',')
 
         smu_loader = None
-        platform, release = get_platform_and_release(software_profile_packages)
+        platform, release = SMUInfoLoader.get_platform_and_release(software_profile_packages)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
 
