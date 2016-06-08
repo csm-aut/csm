@@ -949,8 +949,6 @@ class LogHandler(logging.Handler):
             created_time=datetime.datetime.utcnow())
 
         self.db_session.add(log)
-        self.db_session.rollback()
-        self.db_session.flush()
         self.db_session.commit()
         
 logger = logging.getLogger('logger')
