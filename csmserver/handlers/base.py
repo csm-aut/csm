@@ -26,7 +26,7 @@ from models import UDI
 from models import get_db_session_logger
 
 from context import ConnectionContext
-from context import SoftwareContext
+from context import InventoryContext
 from context import InstallContext
 
 from constants import InstallAction
@@ -73,7 +73,7 @@ class BaseHandler(object):
         if isinstance(ctx, ConnectionContext):
             self.update_device_info(ctx)
 
-        if isinstance(ctx, SoftwareContext):
+        if isinstance(ctx, InventoryContext) or isinstance(ctx, InstallContext):
             self.get_software(ctx)
 
         if isinstance(ctx, InstallContext):
@@ -112,12 +112,7 @@ class BaseHandler(object):
         package_parser_class = get_package_parser_class(ctx.host.software_platform)
         package_parser = package_parser_class()
 
-        return package_parser.get_packages_from_cli(
-            ctx.host,
-            install_inactive_cli=ctx.inactive_cli,
-            install_active_cli=ctx.active_cli,
-            install_committed_cli=ctx.committed_cli
-        )
+        return package_parser.get_packages_from_cli(ctx)
 
     def generate_post_upgrade_file_diff(self, ctx):
         install_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)

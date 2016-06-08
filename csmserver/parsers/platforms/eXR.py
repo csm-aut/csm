@@ -26,24 +26,29 @@ from models import Package
 from models import ModulePackageState
 from constants import PackageState
 from parsers.base import BasePackageParser
+
 import re
 
 
 class CLIPackageParser(BasePackageParser):
-    def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):
+    def get_packages_from_cli(self, ctx):
         inactive_packages = {}
         active_packages = {}
         committed_packages = {}
         host_packages = []
 
-        if install_inactive_cli is not None:
-            inactive_packages = self.parse_inactive(install_inactive_cli, PackageState.INACTIVE)
+        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
+        cli_show_install_active = ctx.load_data('cli_show_install_active')
+        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
 
-        if install_active_cli is not None:
-            active_packages = self.parse_active_and_committed(install_active_cli, PackageState.ACTIVE)
+        if isinstance(cli_show_install_inactive, list):
+            inactive_packages = self.parse_inactive(cli_show_install_inactive[0], PackageState.INACTIVE)
 
-        if install_committed_cli is not None:
-            committed_packages = self.parse_active_and_committed(install_committed_cli, PackageState.ACTIVE_COMMITTED)
+        if isinstance(cli_show_install_active, list):
+            active_packages = self.parse_active_and_committed(cli_show_install_active[0], PackageState.ACTIVE)
+
+        if isinstance(cli_show_install_committed, list):
+            committed_packages = self.parse_active_and_committed(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
 
         if committed_packages:
             for package_name in active_packages:
@@ -79,7 +84,7 @@ class CLIPackageParser(BasePackageParser):
             host_packages.append(package)
 
         if len(host_packages) > 0:
-            host.packages = host_packages
+            ctx.host.packages = host_packages
             return True
 
         return False

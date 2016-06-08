@@ -31,20 +31,24 @@ The default CLI package parser for IOS-XR.
 """
 class CLIPackageParser(BasePackageParser):
         
-    def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):        
+    def get_packages_from_cli(self, ctx):
         inactive_packages = {}
         active_packages = {}
         committed_packages = {}
         host_packages = []
+
+        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
+        cli_show_install_active = ctx.load_data('cli_show_install_active')
+        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
+
+        if isinstance(cli_show_install_inactive, list):
+            inactive_packages = self.parseContents(cli_show_install_inactive[0], PackageState.INACTIVE)
         
-        if install_inactive_cli is not None:
-            inactive_packages = self.parseContents(install_inactive_cli, PackageState.INACTIVE)
+        if isinstance(cli_show_install_active, list):
+            active_packages = self.parseContents(cli_show_install_active[0], PackageState.ACTIVE)
         
-        if install_active_cli is not None:
-            active_packages = self.parseContents(install_active_cli, PackageState.ACTIVE)
-        
-        if install_committed_cli is not None:
-            committed_packages = self.parseContents(install_committed_cli, PackageState.ACTIVE_COMMITTED)                               
+        if isinstance(cli_show_install_committed, list):
+            committed_packages = self.parseContents(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
         
         if committed_packages:
             for package in active_packages.values():
@@ -63,7 +67,7 @@ class CLIPackageParser(BasePackageParser):
             host_packages.append(package)
         
         if len(host_packages) > 0:
-            host.packages = host_packages
+            ctx.host.packages = host_packages
             return True
         
         return False
