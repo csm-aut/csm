@@ -86,6 +86,7 @@ from constants import BUG_SEARCH_URL
 from constants import get_log_directory
 from constants import get_repository_directory
 from constants import DefaultHostAuthenticationChoice
+from constants import PlatformFamily
 
 from common import get_last_successful_inventory_elapsed_time
 from common import get_host_active_packages 
@@ -2886,14 +2887,16 @@ def get_software_package_upgrade_list(hostname, target_release):
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
-    
     match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
-    host_packages = get_host_active_packages(hostname) 
-    target_packages = get_target_software_package_list(host.family, host_packages, target_release, match_internal_name)
+    host_packages = get_host_active_packages(hostname)
+    target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
+                                                       target_release, match_internal_name)
     for package in target_packages:
-        rows.append({'package': package})
-        
-    return jsonify(**{'data': rows})
+        rows.append(package)
+    if host.family == PlatformFamily.ASR9K and host.os_type == "eXR":
+        return jsonify(**{'data': [{ 'is_regex': 1, 'packages' :  rows}]})
+
+    return jsonify(**{'data': [{ 'is_regex': 0, 'packages' :  rows}]})
 
 
 @app.route('/api/check_jump_host_reachability')

@@ -154,7 +154,7 @@ function server_software_populate_file_list(element, server_directory_selector, 
     if ($('#hidden_edit') != null && $('#hidden_edit').val() == 'True' && $('#hidden_software_packages') != null) {
         var previously_selected_packages = $('#hidden_software_packages').val().split(',');
         //console.log("previously_selected_packages = " + String(previously_selected_packages));
-        server_software_selector.select_partial_match(previously_selected_packages);
+        server_software_selector.select_regex_match(previously_selected_packages);
     }
 
     if ($('#hidden_edit') != null && $('#hidden_edit').val() == 'True' && $('#hidden_config_filename') != null) {

@@ -378,7 +378,7 @@
     */
     
     
-    $.fn.select_partial_match = function(data_list) {
+    $.fn.select_partial_match = function(data_list, is_regex) {
       if (data_list.length == 0) {
         return;
       }
@@ -388,15 +388,24 @@
       
       // remove all selected highlights
       unselected.find('option').each(function() {
-        var found = false;
-        
-        for (i = 0; i < data_list.length; i++) {
-          if ($(this).text().indexOf(data_list[i]) > -1) {
-            found = true;
-            break;
+          var found = false;
+
+          if (is_regex == 0) {
+              for (i = 0; i < data_list.length; i++) {
+                  if ($(this).text().indexOf(data_list[i]) > -1) {
+                      found = true;
+                      break;
+                  }
+              }
+          } else {
+              for (i = 0; i < data_list.length; i++) {
+                  if ($(this).text().match(".*" + data_list[i] + ".*")) {
+                      found = true;
+                      break;
+                  }
+              }
           }
-        }       
-        $(this).prop("selected", found);       
+        $(this).prop("selected", found);
       });
       
       $( ".str" ).click();

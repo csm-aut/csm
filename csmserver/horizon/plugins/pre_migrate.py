@@ -528,7 +528,7 @@ class PreMigratePlugin(Plugin):
 
             for match in match_iter:
                 if match.group(1) in iosxr_run_nodes:
-                    if match.group(2) == "No":
+                    if match.group(2) == "Yes":
                         if not fpdtype in subtype_to_locations_need_upgrade:
                             subtype_to_locations_need_upgrade[fpdtype] = []
                         subtype_to_locations_need_upgrade[fpdtype].append(match.group(1))

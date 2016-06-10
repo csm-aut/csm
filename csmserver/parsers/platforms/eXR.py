@@ -122,7 +122,6 @@ class CLIPackageParser(BasePackageParser):
 
         return False
 
-
     def parse_inactive(self, lines, package_state):
         """
         NON-ADMIN:
@@ -227,7 +226,7 @@ class CLIPackageParser(BasePackageParser):
                 package_list = []
                 for module in trunks:
                     for package in trunks[module]:
-                        if not package in package_list and re.match("(ncs.*|asr9k.*)", package):
+                        if not package in package_list and re.match("(ncs.*|asr9k.*|iosxr.*)", package):
                             package_list.append(package)
 
                 for package_name in package_list:

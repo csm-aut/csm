@@ -1,0 +1,77 @@
+{
+  "6.1.1": {
+    "RP": [
+      "ASR-9922-RP-SE",
+      "ASR-9922-RP-TR",
+      "A99-RP2-SE",
+      "A99-RP2-TR",
+      "A9K-RSP880-SE",
+      "A9K-RSP880-TR"
+    ],
+    "LC": [
+      "A9K-8X100GE-L-SE",
+      "A9K-8X100GE-SE",
+      "A99-8X100GE-SE",
+      "A99-8X100GE-CM",
+      "A9K-8X100GE-CM",
+      "A9K-4X100GE-SE",
+      "A99-12x100GE",
+      "A9K-4X100GE-TR",
+      "A99-8X100GE-TR",
+      "A9K-8X100GE-TR"
+    ],
+    "FAN": [
+      "ASR-9904-FAN",
+      "ASR-9006-FAN-V2",
+      "ASR-9010-FAN-V2",
+      "ASR-9910-FAN",
+      "ASR-9912-FAN",
+      "ASR-9922-FAN-V2"
+    ],
+    "PEM": [
+      "PWR-2KW-DC-V2",
+      "PWR-3KW-AC-V2",
+      "PWR-6KW-AC-V3",
+      "PWR-4.4KW-DC-V3"
+    ]
+  },
+  "6.2.1": {
+    "RP": [
+      "ASR-9922-RP-SE",
+      "ASR-9922-RP-TR",
+      "A99-RP2-SE",
+      "A99-RP2-TR",
+      "A9K-RSP880-SE",
+      "A9K-RSP880-TR",
+      "A99-RSP-SE",
+      "A99-RSP-TR"
+    ],
+    "LC": [
+      "A9K-8X100GE-L-SE",
+      "A9K-8X100GE-L-TR",
+      "A9K-8X100GE-SE",
+      "A99-8X100GE-SE",
+      "A99-8X100GE-CM",
+      "A9K-8X100GE-CM",
+      "A9K-4X100GE-SE",
+      "A99-12x100GE",
+      "A9K-4X100GE-TR",
+      "A99-8X100GE-TR",
+      "A9K-8X100GE-TR"
+    ],
+    "FAN": [
+      "ASR-9904-FAN",
+      "ASR-9006-FAN-V2",
+      "ASR-9010-FAN-V2",
+      "ASR-9910-FAN",
+      "ASR-9912-FAN",
+      "ASR-9922-FAN-V2"
+    ],
+    "PEM": [
+      "PWR-2KW-DC-V2",
+      "PWR-3KW-AC-V2",
+      "PWR-6KW-AC-V3",
+      "PWR-4.4KW-DC-V3"
+    ]
+  }
+}
