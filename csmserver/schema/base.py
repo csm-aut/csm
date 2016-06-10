@@ -38,7 +38,7 @@ class BaseMigrate(object):
 
     def execute(self):
         self.start()
-        # self.update_schema_version()
+        self.update_schema_version()
 
     def start(self):       
         raise NotImplementedError("Children must override start")
