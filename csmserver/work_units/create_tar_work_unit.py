@@ -55,8 +55,8 @@ class CreateTarWorkUnit(WorkUnit):
                 if not os.path.exists(temp_path):
                     self.create_tar_job.set_status('Creating temporary directories.')
                     self.db_session.commit()
-                    os.makedirs(temp_path)
-                    os.makedirs(new_tar_path, 7777)
+                    os.makedirs(temp_path, 0777)
+                    os.makedirs(new_tar_path, 0777)
 
                 # Untar source tars into the temp/timestamp directory
                 if source_tars:
