@@ -107,9 +107,6 @@ function validateSelectHost(){
             server_software_retrieve_file_list(server, $('#server_dialog_server_directory'), server_directory);
         } else {
             server_software_selector.initialize([], []);
-            config_selector.html("");
-            config_selector.append("<option value=\"\" disabled selected style=\"display: none;\">Optional</option>");
-            config_selector.append("<option value=\"\"></option>");
         }
 
     }

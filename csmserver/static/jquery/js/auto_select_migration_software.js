@@ -23,7 +23,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
     var selected_package_list = selector.get_selected_items();
 
     var found = false;
-    for (i = selected_package_list.length; i >= 0; i--) {
+    for (i = 0; i < selected_package_list.length; i++) {
 
         if (selected_package_list[i].match(required_image_regex[0])) {
             found = true;

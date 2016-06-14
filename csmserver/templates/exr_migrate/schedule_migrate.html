@@ -108,6 +108,32 @@
                 placeholder: 'Optional'
             });
 
+            server_software_selector.add_init_observer(function(all_available_software){
+                var config_selector = $('#config_filename');
+
+                if (config_selector != null) {
+
+                    config_selector.html("");
+                    config_selector.append("<option value=\"\" disabled selected style=\"display: none;\">Optional</option>");
+                    config_selector.append("<option value=\"\"></option>");
+                    $(all_available_software).each(function (i) { //populate child options
+                        config_selector.append("<option value=\""+all_available_software[i].id +"\">"+all_available_software[i].name + "</option>");
+                    });
+                }
+
+                    // In edit mode.
+                if ($('#hidden_edit').val() == 'True' && $('#hidden_software_packages').val() != null) {
+                    var previously_selected_packages = $('#hidden_software_packages').val().split(',');
+                    //console.log("previously_selected_packages = " + String(previously_selected_packages));
+                    server_software_selector.select_regex_match(previously_selected_packages);
+                }
+
+                if ($('#hidden_edit').val() == 'True' && $('#hidden_config_filename').val() != null) {
+                    $('#config_filename').val($('#hidden_config_filename').val());
+                    //console.log("config_filename = " + $('#config_filename').val());
+                }
+            });
+
             var datetimepicker = $(".form_datetime").datetimepicker({
                 format: "mm/dd/yyyy HH:ii P",
                 showMeridian: true,
