@@ -88,7 +88,8 @@ class DownloadWorkUnit(WorkUnit):
                 self.download_job.set_status(JobStatus.PROCESSING)
                 db_session.commit()
 
-                bsd = BSDServiceHandler(username=preferences.cco_username, password=preferences.cco_password,
+                bsd = BSDServiceHandler(logger=logger, username=preferences.cco_username,
+                                        password=preferences.cco_password,
                                         image_name=self.download_job.cco_filename, PID=self.download_job.pid,
                                         MDF_ID=self.download_job.mdf_id,
                                         software_type_ID=self.download_job.software_type_id)

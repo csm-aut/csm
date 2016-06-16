@@ -26,7 +26,6 @@ from models import logger
 from base_service import BaseServiceHandler
 
 import requests
-import json
  
 CLIENT_ID = "bt58rttvtqj7f85qqbk752mt"
 CLIENT_SECRET = "yHgCNwx2NaXuhqyB73cJ6mcK"
@@ -36,6 +35,7 @@ HTTP_EULA_URL = "https://api.cisco.com/software/v2.0/compliance/forms/eula"
 HTTP_K9_URL = "https://api.cisco.com/software/v2.0/compliance/forms/k9"
 HTTP_DOWNLOAD_STATISTICS_URL = "https://api.cisco.com/software/841/downloads/statistics"
 
+BSD_EXCEPTION_CODE = "exception_code"
 BSD_EXCEPTION_MESSAGE = "exception_message" 
 BSD_METADATA_TRANS_ID = "metadata_trans_id"
 BSD_IMAGE_DETAILS = "image_details"
@@ -52,9 +52,10 @@ BSD_FIELD_VALUE = "field_value"
 
 
 class BSDServiceHandler(BaseServiceHandler):
-    def __init__(self, username, password, MDF_ID, software_type_ID, PID, image_name):
+    def __init__(self, logger, username, password, MDF_ID, software_type_ID, PID, image_name):
         BaseServiceHandler.__init__(self, username, password)
 
+        self.logger = logger
         self.image_name = image_name
         self.PID = PID
         self.MDF_ID = MDF_ID
@@ -76,9 +77,13 @@ class BSDServiceHandler(BaseServiceHandler):
             metadata_trans_ID = self.get_json_value(json_text, BSD_METADATA_TRANS_ID)          
             image_GUID = self.get_json_value(json_text, BSD_IMAGE_GUID)
             image_size = self.get_json_value(json_text, BSD_IMAGE_SIZE)
+            exception_code = self.get_json_value(json_text, BSD_EXCEPTION_CODE)
             exception_message = self.get_json_value(json_text, BSD_EXCEPTION_MESSAGE)
-            
-            if exception_message is None:          
+
+            self.debug_print('Exception Code', exception_code)
+            self.debug_print('Exception Message', exception_message)
+
+            if exception_code is None and exception_message is None:
                 if metadata_trans_ID is not None and image_GUID is not None:
                     response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
                     if response is not None:
@@ -120,8 +125,10 @@ class BSDServiceHandler(BaseServiceHandler):
                             raise Exception(message)
                             
             else:
-                logger.error('bsd_service hit exception %s', exception_message)
-                raise Exception(exception_message)
+                message = 'ASD Service hit exception (code: {}, message: {}).'.format(exception_code,
+                                                                                      exception_message)
+                self.logger.error(message)
+                raise Exception(message)
     
     def send_EULA_request(self, access_token, download_session_ID):
         headers = {'Authorization': 'Bearer ' + access_token}
