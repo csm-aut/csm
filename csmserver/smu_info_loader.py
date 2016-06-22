@@ -368,6 +368,19 @@ class SMUInfoLoader(object):
                 return smu
         return None
 
+    def get_ddts_from_names(self, name_list):
+        """
+        :param name_list: A list of SMU/SP names
+        :return: An array of corresponding DDTS
+        """
+        results = []
+        for name in name_list:
+            smu_info = self.get_smu_info(name)
+            if smu_info:
+                results.append(smu_info.ddts)
+
+        return results
+
     @classmethod   
     def get_smu_meta_file(cls, platform, release):
         try:

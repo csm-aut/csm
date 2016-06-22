@@ -87,13 +87,6 @@ class PackageState:
     ACTIVE_COMMITTED = 'active-committed'
 
 
-class PackageStateForTab:
-    INACTIVE = 'Inactive'
-    INACTIVE_COMMITTED = 'Inactive Committed'
-    ACTIVE = 'Active'
-    ACTIVE_COMMITTED = 'Active Committed'
-
-
 class JobStatus:
     SUBMITTED = 'submitted'
     PROCESSING = 'processing'
@@ -153,3 +146,13 @@ class ProxyAgent:
 class DefaultHostAuthenticationChoice:
     ALL_HOSTS = "1"
     HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD = "2"
+
+
+class ExportSoftwareInformationFormat:
+    HTML = 'HTML'
+    MICROSOFT_EXCEL = 'Microsoft Excel'
+
+
+class ExportSoftwareInformationLayout:
+    CONCISE = 'Concise'
+    DEFAULT = 'Default'

@@ -26,82 +26,91 @@ import xlwt
 
 from filters import get_datetime_string
 from smu_info_loader import SMUInfoLoader
+
+from utils import create_directory
+from utils import create_temp_user_directory
+from utils import make_file_writable
+
+from report_writer import ReportWriter
 from constants import UNKNOWN
 
-
-class ReportWriter(object):
-    def __init__(self, conformance_report, filename, locale_datetime=None, include_host_packages=True):
-        self.filename = filename
-        self.conformance_report = conformance_report
-        self.locale_datetime = locale_datetime
-        self.include_host_packages = include_host_packages
-
-    def write_report(self):
-        raise NotImplementedError("Children must override write_report")
+import os
 
 
-class XLSWriter(ReportWriter):
-    style_title = xlwt.easyxf('font: height 350, bold on; align: vert centre, horiz center;')
-    style_bold = xlwt.easyxf('font: bold on, height 260;')
-    style_summary = xlwt.easyxf('font: height 220;')
-    style_center = xlwt.easyxf('align: vert centre, horiz center;')
+class ConformanceReportWriter(ReportWriter):
+    def __init__(self, **kwargs):
+        super(ConformanceReportWriter, self).__init__(**kwargs)
+        self.style_title = xlwt.easyxf('font: height 350, bold on; align: vert centre, horiz center;')
+        self.style_bold = xlwt.easyxf('font: bold on, height 260;')
+        self.style_summary = xlwt.easyxf('font: height 220;')
+        self.style_center = xlwt.easyxf('align: vert centre, horiz center;')
 
-    def __init__(self, conformance_report, filename, locale_datetime=None, include_host_packages=True):
-        super(XLSWriter, self).__init__(conformance_report, filename, locale_datetime, include_host_packages)
-        self.row = 0
-    
-    def write_report(self):
-        self.init_report()
-        self.write_header_info()
-        
-        self.row = 12
-        self.write_software_profile_info()
-        self.write_host_info()
-        
-        self.wb.save(self.filename)    
-     
-    def init_report(self):
+        self.user = kwargs.pop('user')
+        self.conformance_report = kwargs.pop('conformance_report')
+        self.locale_datetime = kwargs.pop('locale_datetime')
+        self.include_host_packages = kwargs.pop('include_host_packages')
+
         self.wb = xlwt.Workbook()
         self.ws = self.wb.add_sheet('Conformance Report')
         self.ws.set_portrait(False)
 
+        temp_user_dir = create_temp_user_directory(self.user.username)
+        self.output_file_directory = os.path.normpath(os.path.join(temp_user_dir, "conformance_report"))
+
+        create_directory(self.output_file_directory)
+        make_file_writable(self.output_file_directory)
+
+        self.row = 0
+    
+    def write_report(self):
         # Fit for Landscape mode
         self.ws.col(0).width = 7000
         self.ws.col(1).width = 5000
         self.ws.col(2).width = 8000
         self.ws.col(3).width = 8000
         self.ws.col(4).width = 5000
-        
+
+        self.write_header_info()
+
+        self.row = 12
+        self.write_software_profile_info()
+        self.write_host_info()
+
+        output_file_path = os.path.join(self.output_file_directory, 'conformance_report.xls')
+        self.wb.save(output_file_path)
+
+        return output_file_path
+
     def write_header_info(self):
-        self.ws.write(0, 2, 'Software Conformance Report', XLSWriter.style_title)
+        self.ws.write(0, 2, 'Software Conformance Report', self.style_title)
         report_datetime = get_datetime_string(self.conformance_report.created_time) + \
             ' UTC' if self.locale_datetime is None else self.locale_datetime
             
-        self.ws.write(1, 2, report_datetime, XLSWriter.style_center )
+        self.ws.write(1, 2, report_datetime, self.style_center )
         
-        self.ws.write(4, 0, 'Summary: ', XLSWriter.style_bold)
+        self.ws.write(4, 0, 'Summary: ', self.style_bold)
         self.ws.write(6, 0, 'Total Hosts: %d' % len(self.conformance_report.hostnames.split(',')),
-                      XLSWriter.style_summary)
+                      self.style_summary)
         self.ws.write(7, 0, 'Match Criteria: ' + (self.conformance_report.match_criteria + ' packages').title(),
-                      XLSWriter.style_summary)
-        self.ws.write(8, 0, 'Results:', XLSWriter.style_summary)
+                      self.style_summary)
+        self.ws.write(8, 0, 'Results:', self.style_summary)
         
         if self.conformance_report.host_not_in_conformance == 0:
-            self.ws.write(9, 0, "     All hosts are in complete conformance", XLSWriter.style_summary)
+            self.ws.write(9, 0, "     All hosts are in complete conformance", self.style_summary)
         else:
             self.ws.write(9, 0, "     %d %s in complete conformance (see the 'Missing Packages' column)"
                 % (self.conformance_report.host_not_in_conformance,
                     "hosts are not" if self.conformance_report.host_not_in_conformance > 1 else "host is not"),
-                    XLSWriter.style_summary)
+                    self.style_summary)
                         
         if self.conformance_report.host_out_dated_inventory > 0:
             self.ws.write(10, 0, "     %d %s failed last software inventory retrieval (see '*' in the 'Is Conformed' column)"
                 % (self.conformance_report.host_out_dated_inventory,
                     "hosts" if self.conformance_report.host_out_dated_inventory > 1 else "host"),
-                    XLSWriter.style_summary)
+                    self.style_summary)
         
     def write_software_profile_info(self):
-        self.ws.write(self.row, 0, 'Software Profile: ' + self.conformance_report.software_profile, XLSWriter.style_bold)
+        self.ws.write(self.row, 0, 'Software Profile: ' + self.conformance_report.software_profile, self.style_bold)
         self.row += 2
     
         software_profile_packages = self.conformance_report.software_profile_packages.split(',')
@@ -125,17 +134,17 @@ class XLSWriter(ReportWriter):
     def write_host_info(self):
         entries = self.conformance_report.entries
     
-        self.ws.write(self.row, 0, 'Hostname', XLSWriter.style_bold)
-        self.ws.write(self.row, 1, 'Software', XLSWriter.style_bold)
+        self.ws.write(self.row, 0, 'Hostname', self.style_bold)
+        self.ws.write(self.row, 1, 'Software', self.style_bold)
         
         if self.include_host_packages:
             if self.conformance_report.match_criteria == 'inactive':
-                self.ws.write(self.row, 2, 'Inactive Packages', XLSWriter.style_bold)
+                self.ws.write(self.row, 2, 'Inactive Packages', self.style_bold)
             else:
-                self.ws.write(self.row, 2, 'Active Packages', XLSWriter.style_bold)
+                self.ws.write(self.row, 2, 'Active Packages', self.style_bold)
             
-        self.ws.write(self.row, 3 if self.include_host_packages else 2, 'Missing Packages', XLSWriter.style_bold)
-        self.ws.write(self.row, 4 if self.include_host_packages else 3, 'Is Conformed', XLSWriter.style_bold)
+        self.ws.write(self.row, 3 if self.include_host_packages else 2, 'Missing Packages', self.style_bold)
+        self.ws.write(self.row, 4 if self.include_host_packages else 3, 'Is Conformed', self.style_bold)
     
         self.row += 2
 

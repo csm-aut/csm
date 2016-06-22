@@ -31,6 +31,8 @@ from constants import ServerType
 from constants import UserPrivilege
 from constants import SMTPSecureConnection
 from constants import DefaultHostAuthenticationChoice
+from constants import ExportSoftwareInformationFormat
+from constants import ExportSoftwareInformationLayout
 
 
 class LoginForm(Form):
@@ -208,6 +210,16 @@ class SelectServerForm(Form):
 
 class SoftwareProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
+
+
+class ExportSoftwareInformationForm(Form):
+    export_format = SelectField('Export Format', coerce=str,
+                                 choices=[(ExportSoftwareInformationFormat.HTML, ExportSoftwareInformationFormat.HTML),
+                                          (ExportSoftwareInformationFormat.MICROSOFT_EXCEL, ExportSoftwareInformationFormat.MICROSOFT_EXCEL)])
+
+    export_layout = SelectField('Layout', coerce=str,
+                                 choices=[(ExportSoftwareInformationLayout.CONCISE, ExportSoftwareInformationLayout.CONCISE),
+                                          (ExportSoftwareInformationLayout.DEFAULT, ExportSoftwareInformationLayout.DEFAULT)])
 
 if __name__ == '__main__':
     pass
