@@ -94,7 +94,7 @@ ASR9K_PACKAGES = {
 # asr9k-xr-6.1.1                           asr9k-full-x64.iso-6.1.1/asr9k-mini-x64.iso-6.1.1
 #
 
-ASR9K_X64_PACKAGES = {
+ASR9K_64_PACKAGES = {
     'asr9k-bgp-x64-\d\.\d\.\d\.\d': 'asr9k-bgp-x64-\d\.\d\.\d\.\d',
     'asr9k-diags-x64-\d\.\d\.\d\.\d': 'asr9k-diags-x64-\d\.\d\.\d\.\d',
     'asr9k-eigrp-x64-\d\.\d\.\d\.\d': 'asr9k-eigrp-x64-\d\.\d\.\d\.\d',
@@ -184,7 +184,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
         if os_type == "XR":
             platform_package_list = ASR9K_PACKAGES
         elif os_type == "eXR":
-            platform_package_list = ASR9K_X64_PACKAGES
+            platform_package_list = ASR9K_64_PACKAGES
             # Internal Names:                 External Names:
             # asr9k-xr-6.1.1                  asr9k-full-x64.iso-6.1.1/asr9k-mini-x64.iso-6.1.1
             # asr9k-mcast-x64-2.0.0.0-r611    asr9k-mcast-x64-2.0.0.0-r611.x86_64.rpm-6.1.1

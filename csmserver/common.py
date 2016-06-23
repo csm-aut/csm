@@ -414,7 +414,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
 
     # ASR9K, CRS: .pie, .tar
     # NCS6K: .smu, .iso, .pkg, .tar
-    # ASR9K-X64: .iso, .rpm, .tar
+    # ASR9K-64: .iso, .rpm, .tar
     acceptable_package_types_for_add = ['.pie', '.rpm', '.tar', '.smu', '.iso', '.pkg']
 
     # This is a new install_job

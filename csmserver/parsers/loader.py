@@ -34,7 +34,7 @@ def get_package_parser_class(software_platform):
     elif software_platform in [PlatformFamily.NCS5K,
                                PlatformFamily.NCS6K,
                                PlatformFamily.NCS5500,
-                               PlatformFamily.ASR9K_X64]:
+                               PlatformFamily.ASR9K_64]:
         return import_class('parsers.platforms.eXR.CLIPackageParser')
     elif software_platform in [PlatformFamily.ASR900]:
         return import_class('parsers.platforms.IOS-XE.CLIPackageParser')

@@ -66,7 +66,7 @@ def get_smu_lookup_name(name):
         return name
     
     # The worst case scenario of the name could be "disk0:asr9k-px-4.2.1.CSCud90009-1.0.0.pie"
-    # .smu is for NCS6K, .rpm is for ASR9K-X64
+    # .smu is for NCS6K, .rpm is for ASR9K-64
     rep_dict = {'.pie': '', '.smu': '', '.rpm': ''}
     name = multiple_replace(name, rep_dict)
     
