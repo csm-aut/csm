@@ -117,6 +117,7 @@ class InstallAction:
     INSTALL_REMOVE = 'Remove'
     INSTALL_DEACTIVATE = 'Deactivate'
     INSTALL_ROLLBACK = 'Rollback'
+    MIGRATION_AUDIT = 'Migration-Audit'
     PRE_MIGRATE = 'Pre-Migrate'
     MIGRATE_SYSTEM = 'Migrate'
     POST_MIGRATE = 'Post-Migrate'

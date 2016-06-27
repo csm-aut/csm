@@ -1,6 +1,7 @@
 import os
 import subprocess
 import requests
+import json
 
 from constants import InstallAction, get_migration_directory, UserPrivilege
 
@@ -57,6 +58,7 @@ def schedule_migrate():
 
     form = ScheduleMigrationForm(request.form)
     fill_regions(form.region.choices)
+    fill_hardware_audit_version(form.hardware_audit_version.choices)
     fill_custom_command_profiles(form.custom_command_profile.choices)
 
     return_url = get_return_url(request, 'install_dashboard')
@@ -69,7 +71,6 @@ def schedule_migrate():
         install_action = form.install_action.data
 
         if hostnames is not None:
-            print(str(form))
             print(str(form.data))
             print(str(hostnames))
             dependency_list = form.hidden_dependency.data.split(',')
@@ -89,10 +90,12 @@ def schedule_migrate():
                     config_filename = form.hidden_config_filename.data
                     override_hw_req = form.hidden_override_hw_req.data
                     custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
+                    hardware_audit_version = form.hidden_hardware_audit_version.data
 
                     host.context[0].data['best_effort_config_applying'] = best_effort_config
                     host.context[0].data['config_filename'] = config_filename
                     host.context[0].data['override_hw_req'] = override_hw_req
+                    host.context[0].data['hardware_audit_version'] = hardware_audit_version
 
                     # If the dependency is a previous job id, it's non-negative int string.
                     if int(dependency_list[index]) >= 0:
@@ -137,9 +140,11 @@ def schedule_migrate():
         form.hidden_config_filename.data = ''
         form.hidden_override_hw_req.data = '0'
         form.hidden_dependency.data = ''
+        form.hidden_hardware_audit_version.data = ''
 
         return render_template('exr_migrate/schedule_migrate.html', form=form,
-                               install_action=get_install_migrations_dict(), server_time=datetime.datetime.utcnow())
+                               install_action=get_install_migrations_dict(),
+                               server_time=datetime.datetime.utcnow())
 
 
 @exr_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
@@ -175,6 +180,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # Fills the selections
     fill_servers(form.server_dialog_server.choices, host.region.servers, include_local=False)
     fill_custom_command_profiles(form.custom_command_profile.choices)
+    fill_hardware_audit_version(form.hardware_audit_version.choices)
 
     if request.method == 'POST':
         if install_job is not None:
@@ -191,11 +197,13 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         best_effort_config = form.hidden_best_effort_config.data
         override_hw_req = form.hidden_override_hw_req.data
         config_filename = form.hidden_config_filename.data
+        hardware_audit_version = form.hidden_hardware_audit_version.data
         custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
 
         host.context[0].data['best_effort_config_applying'] = best_effort_config
         host.context[0].data['config_filename'] = config_filename
         host.context[0].data['override_hw_req'] = override_hw_req
+        host.context[0].data['hardware_audit_version'] = hardware_audit_version
 
         # install_action is a list object which can only contain one install action
         # at this editing time, accept the selected dependency if any
@@ -231,8 +239,9 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 form.custom_command_profile.data = ids
 
             form.hidden_best_effort_config.data = host.context[0].data.get('best_effort_config_applying')
-            form.hidden_override_hw_req.data = host.context[0].data['override_hw_req']
+            form.hidden_override_hw_req.data = host.context[0].data.get('override_hw_req')
             form.hidden_config_filename.data = host.context[0].data.get('config_filename')
+            form.hidden_hardware_audit_version.data = host.context[0].data.get('hardware_audit_version')
 
             if install_job.server_id is not None:
                 form.hidden_server.data = install_job.server_id
@@ -396,11 +405,25 @@ def get_file_http(filename, destination):
 
 def get_install_migrations_dict():
     return {
+        "migrationaudit":InstallAction.MIGRATION_AUDIT,
         "premigrate": InstallAction.PRE_MIGRATE,
         "migrate": InstallAction.MIGRATE_SYSTEM,
         "postmigrate": InstallAction.POST_MIGRATE,
         "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
+
+
+def fill_hardware_audit_version(choices):
+    # Remove all the existing entries
+    del choices[:]
+    choices.append(('', ''))
+
+    with open('./asr9k_64bit/migration_supported_hw.json') as data_file:
+        supported_hw = json.load(data_file)
+
+    versions = supported_hw.keys()
+    for version in reversed(versions):
+        choices.append((version, version))
 
 
 class ScheduleMigrationForm(Form):
@@ -434,3 +457,6 @@ class ScheduleMigrationForm(Form):
     hidden_edit = HiddenField('Edit')
 
     hidden_dependency = HiddenField('')
+
+    hardware_audit_version = SelectField('ASR9K-64 Software Version', coerce=str, choices=[('Any', 'Any')])
+    hidden_hardware_audit_version = HiddenField('')

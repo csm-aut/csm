@@ -27,7 +27,9 @@ $(document).ready(function(){
            
         },
         onNext: function(tab, navigation, index){
-            if ($('.nav-tabs .active').text() == "Select Host") {
+            if ($('.nav-tabs .active').text() == "Hardware Audit") {
+                return validateHardwareAudit();
+            } else if ($('.nav-tabs .active').text() == "Select Host") {
                 return validateSelectHost();
             } else if ($('.nav-tabs .active').text() == "Pre-Migrate") {
                 return validateSelectPackages();
@@ -83,6 +85,13 @@ $(document).ready(function(){
     
     
 });
+
+function validateHardwareAudit(){
+    if ($('#hardware_audit_version option:selected').val() == '') {
+        bootbox.alert("In order to perform hardware audit on selected device(s), you must specify the version of ASR9K-64 image you plan to migrate to.");
+        return false
+    }
+}
 
 function validateSelectHost(){
 
@@ -140,17 +149,17 @@ function validateSelectPackages(){
 
     }
     if (selected_image < 1) {
-        bootbox.alert("Please select the tar file containing ASR9K-X64 image and boot files before continuing.");
+        bootbox.alert("Please select the tar file containing ASR9K-64 image and boot files before continuing.");
         return false
     } else if (selected_image > 1) {
-        bootbox.alert("Please select only one tar file for ASR9K-X64 image and boot files before continuing.");
+        bootbox.alert("Please select only one tar file for ASR9K-64 image and boot files before continuing.");
         return false
     }
     if (selected_smu < 1) {
-        bootbox.alert("Please select the ASR9K unified FPD SMU for your ASR9K-X64 image before continuing.");
+        bootbox.alert("Please select the ASR9K unified FPD SMU for your ASR9K-64 image before continuing.");
         return false
     }else if (selected_smu > 1) {
-        bootbox.alert("Too many packages selected. Please select only the ASR9K-X64 image and the ASR9K unified FPD SMU before continuing.");
+        bootbox.alert("Too many packages selected. Please select only the ASR9K-64 image and the ASR9K unified FPD SMU before continuing.");
         return false
     }
 

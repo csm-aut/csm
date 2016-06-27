@@ -33,7 +33,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
     }
 
     if (found == false) {
-        bootbox.alert("Please make sure that the filename of your ASR9K-X64 image matches the wildcard expression 'asr9k*.tar*'.")
+        bootbox.alert("Please make sure that the filename of your ASR9K-64 tar file matches the wildcard expression 'asr9k*.tar*'.")
     }
 
 }

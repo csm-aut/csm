@@ -10,6 +10,7 @@
     ],
     "LC": [
       "A9K-8X100GE-L-SE",
+      "A9K-8X100GE-L-TR",
       "A9K-8X100GE-SE",
       "A99-8X100GE-SE",
       "A99-8X100GE-CM",
@@ -18,7 +19,15 @@
       "A99-12x100GE",
       "A9K-4X100GE-TR",
       "A99-8X100GE-TR",
-      "A9K-8X100GE-TR"
+      "A9K-8X100GE-TR",
+      "A9K-400G-DWDM-TR",
+      "A9K-400G-DWDM-SE",
+      "A9K-MOD400-TR",
+      "A9K-MOD400-SE",
+      "A9K-MOD200-TR",
+      "A9K-MOD200-SE",
+      "A9K-8X100GE-LB-TR",
+      "A9K-8X100GE-LB-SE"
     ],
     "FAN": [
       "ASR-9904-FAN",
@@ -33,6 +42,9 @@
       "PWR-3KW-AC-V2",
       "PWR-6KW-AC-V3",
       "PWR-4.4KW-DC-V3"
+    ],
+    "FC": [
+      "A99-SFC2"
     ]
   },
   "6.2.1": {
@@ -57,7 +69,15 @@
       "A99-12x100GE",
       "A9K-4X100GE-TR",
       "A99-8X100GE-TR",
-      "A9K-8X100GE-TR"
+      "A9K-8X100GE-TR",
+      "A9K-400G-DWDM-TR",
+      "A9K-400G-DWDM-SE",
+      "A9K-MOD400-TR",
+      "A9K-MOD400-SE",
+      "A9K-MOD200-TR",
+      "A9K-MOD200-SE",
+      "A9K-8X100GE-LB-TR",
+      "A9K-8X100GE-LB-SE"
     ],
     "FAN": [
       "ASR-9904-FAN",
@@ -72,6 +92,10 @@
       "PWR-3KW-AC-V2",
       "PWR-6KW-AC-V3",
       "PWR-4.4KW-DC-V3"
+    ],
+    "FC": [
+      "A99-SFC2",
+      "A99-SFC-S"
     ]
   }
 }

@@ -1,6 +1,6 @@
 {% from 'host/common.html' import edit_field %}
 
-<h4>Select Software Packages <span id="server-dialog-title"></span>
+<h4 class="info-text-left">Select Software Packages: <span id="server-dialog-title"></span>
 
 &nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_server_repo"></span>
 </h4>
@@ -29,7 +29,7 @@
 
 
 <div id="server-dialog-auto-select-software-panel">
-  <button id="server-dialog-auto-select-software" class="btn btn-primary center-block">Auto Select ASR9K-X64 Image</button>
+  <button id="server-dialog-auto-select-software" class="btn btn-primary center-block">Auto Select ASR9K-64 Tar</button>
 </div>
 
 
@@ -43,7 +43,7 @@
 </span>
 <legend></legend>
 
-<h4>Select a custom ASR9K-X64 config file to be loaded after migration:
+<h4 class="info-text-left">Select a custom ASR9K-64 config file to be loaded after migration:
   &nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_config_filename"></span>
 </h4>
 <div id="popover_config" style="display: none">
@@ -60,4 +60,5 @@ migrated admin config and then this customized config file.</pre>
     <option value=""></option>
   </select>
 </div>
-
+<br>
+<legend></legend>

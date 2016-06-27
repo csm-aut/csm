@@ -10,7 +10,10 @@
 
         <div class=col-sm-6>
             <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
-                <optgroup label="Migrate to ASR9K-X64">
+                <optgroup label="Verification">
+                    <option value="{{ install_action.migrationaudit }}">{{ install_action.migrationaudit }}</option>
+                </optgroup>
+                <optgroup label="Migration">
                     <option value="{{ install_action.premigrate }}">{{ install_action.premigrate }}</option>
                     <option value="{{ install_action.migrate }}">{{ install_action.migrate }}</option>
                     <option value="{{ install_action.postmigrate }}">{{ install_action.postmigrate }}</option>
@@ -39,7 +42,6 @@
     <div id="custom-command-profile-panel">
         {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
     </div>
-
 
     <input id="hidden_region" name="{{ form.hidden_region.name }}" value="{{ form.hidden_region.data }}" type="hidden">
     <input id="hidden_hosts" name="{{ form.hidden_hosts.name }}" value="{{ form.hidden_hosts.data }}" type="hidden">
@@ -97,6 +99,7 @@
 
             submit_spinner.hide();
 
+            var MIGRATION_AUDIT = "{{ install_action.migrationaudit }}";
             var PRE_MIGRATE = "{{ install_action.premigrate }}";
             var MIGRATE_SYSTEM = "{{ install_action.migrate }}";
             var POST_MIGRATE = "{{ install_action.postmigrate }}";
@@ -149,6 +152,8 @@
                 var install_actions = $(this).val();
                 if (has_one_of_these(install_actions, [ALL_FOR_MIGRATE])) {
                     $("#install_action").val([PRE_MIGRATE, MIGRATE_SYSTEM, POST_MIGRATE]).trigger('change');
+                } else if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) && install_actions.length > 1) {
+                    $("#install_action").val([MIGRATION_AUDIT]).trigger('change');
                 }
                 toggle_ui();
             });
@@ -170,7 +175,7 @@
 
             $('[data-toggle="popover_override_hw_req"]').popover({
                 trigger : 'click',
-                placement : 'top',
+                placement : 'left',
                 html : true,
                 content : function() {
                     return $('#popover_hw_req').html()
@@ -219,6 +224,10 @@
                         $('#wizard').bootstrapWizard('remove', $('#select-host').val(), true);
                     }
 
+                    if ($('#hardware-audit').val() != null) {
+                        $('#wizard').bootstrapWizard('remove', $('#hardware-audit').val(), true);
+                    }
+
                     if ($('#pre-migrate').val() != null) {
                         $('#wizard').bootstrapWizard('remove', $('#pre-migrate').val(), true);
                     }
@@ -231,8 +240,15 @@
                         add_new_tab('select-host', 'Select Host')
                     }
 
+                    if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
+                        add_new_tab("hardware-audit", "Select Software Version");
+                        document.getElementById("wizard-header").innerHTML = "<h3>Migration Audit<br></h3>";
+                    } else {
+                        document.getElementById("wizard-header").innerHTML = "<h3>Migrate to ASR9K-64<br></h3>";
+                    }
+
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
-                        add_new_tab("pre-migrate", "Pre-Migrate")
+                        add_new_tab("pre-migrate", "Pre-Migrate");
                     }
 
                     if (has_one_of_these(install_actions, [POST_MIGRATE])) {
@@ -254,7 +270,15 @@
             }
 
             $('#on-submit').click(function (e) {
+                //$('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').text());
+                //console.log('hardware_audit_version');
+                //console.log($('#hardware_audit_version option:selected').text());
+                //console.log($('#hidden_hardware_audit_version').val());
+                //return false;
 
+                if ($('.nav-tabs .active').text() == "Hardware Audit" && validateHardwareAudit() == false) {
+                    return false;
+                }
                 if ($('.nav-tabs .active').text() == "Select Host" && validateSelectHost() == false) {
                     return false;
                 }
@@ -275,6 +299,8 @@
 
             function on_submit() {
                 $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+
+                $('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').val());
 
                 $('#hidden_region').val($('#region').val());
                 $('#hidden_hosts').val(String(host_selector.get_selected_items()));
@@ -300,19 +326,15 @@
                 var install_actions = $('#install_action').val();
 
                 if ($('#hidden_edit').val() == 'False') {
-                    if (has_one_of_these(install_actions, [PRE_MIGRATE]) == false) {
+                    if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) || has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                      get_qualified_hosts_and_submit_form('');
+                    } else {
                         if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
                             get_qualified_hosts_and_submit_form(PRE_MIGRATE);
 
                         } else {
                             get_qualified_hosts_and_submit_form(MIGRATE_SYSTEM);
                         }
-                    } else {
-                        get_qualified_hosts_and_submit_form('');
-                        //var value = new Array(host_selector.get_selected_items().length + 1).join("-1,");
-                        //value = value.slice(0, -1);
-                        //$('#hidden_dependency').val(value);
-                        //submit_form_on_successfully_download_config_conversion_tool();
                     }
                 } else {
                     submit_form_on_successfully_download_config_conversion_tool();
@@ -493,6 +515,8 @@
                 $("#install_action").prop("disabled", true);
 
                 $('#region').val($('#hidden_region').val());
+                $('#hardware_audit_version').val($('#hidden_hardware_audit_version').val());
+
                 $('#server_dialog_server').val($('#hidden_server').val());
 
                 if (has_one_of_these($("#install_action").val(), [PRE_MIGRATE])) {
@@ -572,6 +596,9 @@
                            value="{{ form.hidden_override_hw_req.data }}" class="form-control" type="hidden">
                     <input id="hidden_config_filename" name="{{ form.hidden_config_filename.name }}"
                            value="{{ form.hidden_config_filename.data }}" class="form-control" type="hidden">
+                    <input id="hidden_hardware_audit_version" name="{{ form.hidden_hardware_audit_version.name }}"
+                           value="{{ form.hidden_hardware_audit_version.data }}" class="form-control" type="hidden">
+
 
                     <div class="btn col-sm-offset-5">
 
@@ -602,11 +629,9 @@
                                         <div class="form-horizontal">
                                         <!--        You can switch "ct-wizard-orange"  with one of the next bright colors: "ct-wizard-blue", "ct-wizard-green", "ct-wizard-orange", "ct-wizard-red"             -->
 
-                                        <div class="wizard-header">
+                                        <div class="wizard-header" id="wizard-header">
 
-                                            <h3>
-                                                Migrate to ASR9K-X64<br>
-                                            </h3>
+
                                         </div>
                                         <ul id="tabs" class="nav nav-tabs" role="tablist">
 
@@ -615,17 +640,23 @@
 
                                             <div class="tab-pane" id="select-host">
                                                 {{ select_region_hosts(form.region, form.role, form.software) }}
-                                                {% include("exr_migrate/override_hardware_requirement.html") %}
                                             </div>
 
                                             <div class="tab-pane" id="pre-migrate">
-                                              {% include("exr_migrate/select_server_repository.html") %}
+                                                {% include("exr_migrate/select_server_repository.html") %}
+                                                {% include("exr_migrate/override_hardware_requirement.html") %}
+                                            </div>
+
+                                            <div class="tab-pane" id="hardware-audit">
+                                              <h4 class="info-text-left">Select the version of ASR9K-64 you plan to migrate to: <span id="server-dialog-title"></span>
+                                              &nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req"></span></h4>
+                                                {{ edit_field(form.hardware_audit_version, field_width="col-sm-7", class="form-control") }}
                                             </div>
 
                                             <div class="tab-pane" id="post-migrate">
                                                 <!--h4>On failure to load IOS-XR configuration on eXR successfully,
                                                     would you like CSM to:</h4-->
-                                                <h4>When the IOS-XR configurations, either migrated by CSM or provided by you during Pre-Migrate,
+                                                <h4 class="info-text-left">When the IOS-XR configurations, either migrated by CSM or provided by you during Pre-Migrate,
                                                     cannot be applied on eXR directly, would you like CSM to:</h4>
                                                 <div class="btn-group">
                                                     <div>

@@ -91,6 +91,11 @@
     font-weight: 300;
     margin: 10px 0 30px;
 }
+.wizard-card .info-text-left{
+    text-align: left;
+    font-weight: 300;
+    margin: 10px 0 30px;
+}
 .wizard-card .choice{
     text-align: center;
     cursor: pointer;

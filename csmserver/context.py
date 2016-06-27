@@ -290,6 +290,10 @@ class InstallContext(ConnectionContext):
     @property
     def pre_migrate_config_filename(self):
         return self.load_data('config_filename')
+
+    @property
+    def hardware_audit_software_version(self):
+        return self.load_data('hardware_audit_version')
     
     def post_status(self, message):
         if self.db_session is not None and self.install_job is not None:
