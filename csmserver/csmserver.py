@@ -49,6 +49,7 @@ from forms import PreferencesForm
 from forms import ServerDialogForm
 from forms import BrowseServerDialogForm
 from forms import SoftwareProfileForm
+from forms import ExportSoftwareInformationForm
 
 from models import Host
 from models import JumpHost
@@ -87,6 +88,8 @@ from constants import get_log_directory
 from constants import get_repository_directory
 from constants import DefaultHostAuthenticationChoice
 from constants import PlatformFamily
+from constants import ExportSoftwareInformationFormat
+from constants import ExportSoftwareInformationLayout
 
 from common import get_last_successful_inventory_elapsed_time
 from common import get_host_active_packages 
@@ -168,6 +171,11 @@ from views.host_import import host_import
 from views.custom_command import custom_command
 
 from horizon.plugin_manager import PluginManager
+
+from report_writer import ExportSoftwareInfoHTMLConciseWriter
+from report_writer import ExportSoftwareInfoHTMLDefaultWriter
+from report_writer import ExportSoftwareInfoExcelConciseWriter
+from report_writer import ExportSoftwareInfoExcelDefaultWriter
 
 import os
 import stat
@@ -3137,15 +3145,53 @@ def get_platforms_and_releases_dict(db_session):
     return rows
 
 
+@app.route('/software/export/platform/<platform>/release/<release>', methods=['POST'])
+@login_required
+def export_software_information(platform, release):
+    smu_loader = SMUInfoLoader(platform, release)
+    if not smu_loader.is_valid:
+        return jsonify({'status': 'Failed'})
+
+    export_format = request.args.get('export_format')
+    export_layout = request.args.get('export_layout')
+    export_filter = request.args.get('filter')
+
+    if export_filter == 'Optimal':
+        smu_list = smu_loader.get_optimal_smu_list()
+        sp_list = smu_loader.get_optimal_sp_list()
+    else:
+        smu_list = smu_loader.get_smu_list()
+        sp_list = smu_loader.get_sp_list()
+
+    if export_format == ExportSoftwareInformationFormat.HTML:
+        if export_layout == ExportSoftwareInformationLayout.CONCISE:
+            writer = ExportSoftwareInfoHTMLConciseWriter(user=current_user, smu_loader=smu_loader,
+                                                         smu_list=smu_list, sp_list=sp_list)
+        else:
+            writer = ExportSoftwareInfoHTMLDefaultWriter(user=current_user, smu_loader=smu_loader,
+                                                         smu_list=smu_list, sp_list=sp_list)
+    else:
+        if export_layout == ExportSoftwareInformationLayout.CONCISE:
+            writer = ExportSoftwareInfoExcelConciseWriter(user=current_user, smu_loader=smu_loader,
+                                                          smu_list=smu_list, sp_list=sp_list)
+        else:
+            writer = ExportSoftwareInfoExcelDefaultWriter(user=current_user, smu_loader=smu_loader,
+                                                          smu_list=smu_list, sp_list=sp_list)
+
+    return send_file(writer.write_report(), as_attachment=True)
+
+
 @app.route('/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def get_smu_list(platform, release):        
     system_option = SystemOption.get(DBSession())
     form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
-    
+    export_software_information_form = ExportSoftwareInformationForm(request.form)
+
     return render_template('csm_client/get_smu_list.html', form=form, platform=platform,
-                           release=release, system_option=system_option)
+                           release=release, system_option=system_option,
+                           export_software_information_form=export_software_information_form)
 
 
 @app.route('/api/get_smu_list/platform/<platform>/release/<release>')

@@ -73,7 +73,9 @@ class PlatformFamily:
     ASR9K = 'ASR9K'
     CRS = 'CRS'
     NCS6K = 'NCS6K'
-    ASR9K_X64 = 'ASR9K-X64'
+    NCS5K = 'NCS5K'
+    NCS5500 = 'NCS5500'
+    ASR9K_64 = 'ASR9K-64'
     ASR900 = 'ASR900'
     N9K = 'N9K'
 
@@ -83,13 +85,6 @@ class PackageState:
     INACTIVE_COMMITTED = 'inactive-committed'
     ACTIVE = 'active'
     ACTIVE_COMMITTED = 'active-committed'
-
-
-class PackageStateForTab:
-    INACTIVE = 'Inactive'
-    INACTIVE_COMMITTED = 'Inactive Committed'
-    ACTIVE = 'Active'
-    ACTIVE_COMMITTED = 'Active Committed'
 
 
 class JobStatus:
@@ -152,3 +147,13 @@ class ProxyAgent:
 class DefaultHostAuthenticationChoice:
     ALL_HOSTS = "1"
     HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD = "2"
+
+
+class ExportSoftwareInformationFormat:
+    HTML = 'HTML'
+    MICROSOFT_EXCEL = 'Microsoft Excel'
+
+
+class ExportSoftwareInformationLayout:
+    CONCISE = 'Concise'
+    DEFAULT = 'Default'

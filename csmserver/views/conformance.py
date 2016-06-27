@@ -60,7 +60,7 @@ from constants import InstallAction
 from constants import JobStatus
 from constants import get_temp_directory
 
-from conformance_report import XLSWriter
+from conformance_report import ConformanceReportWriter
 from filters import get_datetime_string
 
 from smu_info_loader import SMUInfoLoader
@@ -471,15 +471,16 @@ def api_export_conformance_report(id):
     include_host_packages = request.args.get('include_host_packages')
     db_session = DBSession()
 
-    filename = get_temp_directory() + current_user.username + '_report.xls'
-
     conformance_report = get_conformance_report_by_id(db_session, id)
+    file_path = None
     if conformance_report is not None:
-        xls_writer = XLSWriter(conformance_report, filename,
-                               locale_datetime=locale_datetime, include_host_packages=bool(int(include_host_packages)))
-        xls_writer.write_report()
+        writer = ConformanceReportWriter(user=current_user,
+                                         conformance_report=conformance_report,
+                                         locale_datetime=locale_datetime,
+                                         include_host_packages=bool(int(include_host_packages)))
+        file_path = writer.write_report()
 
-    return send_file(filename, as_attachment=True)
+    return send_file(file_path, as_attachment=True)
 
 
 @conformance.route('/api/get_conformance_report_summary/report/<int:id>')
