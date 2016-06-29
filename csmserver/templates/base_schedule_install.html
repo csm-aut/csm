@@ -324,13 +324,14 @@ $(function() {
         }
 
         // Check Install Manager constraint.
-        // ASR9K-X64 can support up to 128 pies.
-        if (host_software_platform != null && host_software_platform == 'ASR9K-X64') {
+        // ASR9K-64 can support up to 128 pies.
+        console.log(host_software_platform)
+        if (host_software_platform != null && host_software_platform == 'ASR9K-64') {
             if (trim_lines(software_packages).split('\n').length > 128) {
                 bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 128 software packages at a time.  For Install Add, use a tar archive file instead.");
                 return false;
             }
-        // For checking ASR9K-X64 batch install
+        // For checking ASR9K-64 batch install
         } else if (host_software_platform == null) {
             if (software_packages.search(".*asr9k.*-x64.*") >= 0 && trim_lines(software_packages).split('\n').length > 128) {
                 bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 128 software packages at a time.  For Install Add, use a tar archive file instead.");
@@ -354,7 +355,7 @@ $(function() {
         return true;
     });
 
-    // For ASR9K/CRS/ASR9K-X64, software version above 5.3.2 can support up to 27 pies.
+    // For ASR9K/CRS, software version above 5.3.2 can support up to 27 pies.
     // In the future, this logic will need to be adjusted if we support other platforms.
     // If this function is called during Batch Schedule Install, the platform and version
     // will be null as multple hosts can be selected.
