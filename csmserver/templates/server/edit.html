@@ -56,7 +56,7 @@
             } else if (server_type == "FTP" || server_type == "SFTP") {
                 $('#authentiation-panel').show();
                 $('#label_server_url').text(server_type + ' Server Address');
-                $('#label_server_directory').text('Remote Directory');
+                $('#label_server_directory').text('Home Directory');
             } else if (server_type == "LOCAL") {
                 $('#label_server_url').text('Device Path (disk0:, harddisk:)');
                 $('#verify-reachability').hide();
@@ -131,18 +131,40 @@
             return false;
         });
 
+        $('[data-toggle="popover_directory"]').popover({
+            trigger : 'click',
+            placement : 'left',
+            html : true,
+            content : function() {
+                return $('#popover_directory').html()
+            }
+        });
     });
 </script>
 
 {% endblock extra_head %}
 
 {% block main %}
+<div id="popover_directory" style="display: none">
+  <pre>Note:
+      1. For TFTP Server, this is the file directory which is used by CSM Server to browse software
+         packages since TFTP protocol does not provide file browsing capability.  The file
+         directory should reference the same location as the TFTP Server.
+
+      2. For FTP/SFTP Server, this is the home directory when first log into the Server.  To identify
+         the home directory, log into the Server and type 'pwd'.
+
+      The File/Home Directory must be an absolute file path.
+  </pre>
+</div>
+
 <div class="row">
     <div class="well col-sm-offset-2 col-sm-8">
         <form id="form" method="post" class="form-horizontal">
             <legend>{% if isEdit %}Edit Server Repository{% else %}Create Server Repository{% endif %}</legend>
 
             {{ alert_duplicate(form.hostname.data, duplicate_error) }}
+
             {{ edit_field(form.hostname, field_width="col-sm-4", class="form-control",
                 placeholder="Unique Name on CSM Server") }}
             {{ edit_field(form.server_type, field_width="col-sm-2", class="form-control") }}
@@ -150,7 +172,11 @@
             {{ edit_field(form.vrf, maxlength=100, class="form-control") }}
 
             <div id="directory-panel">
-                {{ edit_field(form.server_directory, maxlength=100, class="form-control") }}
+                {% set extra_field ='<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue"
+                           aria-hidden="true" data-toggle="popover_directory"></span></a>' %}
+
+                {{ edit_field(form.server_directory, maxlength=100, class="form-control", extra_field=extra_field,
+                    placeholder="Use Absolute File Path") }}
             </div>
             <div id="authentiation-panel">
 
