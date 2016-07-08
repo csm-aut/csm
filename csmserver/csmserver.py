@@ -164,7 +164,7 @@ from cisco_service.bug_service import BugServiceHandler
 from package_utils import get_target_software_package_list
 from restful import restful_api
 
-from views.exr_migrate import exr_migrate
+from views.asr9k_64_migrate import asr9k_64_migrate
 from views.conformance import conformance
 from views.tar_support import tar_support
 from views.host_import import host_import
@@ -192,7 +192,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
 app.register_blueprint(restful_api)
-app.register_blueprint(exr_migrate)
+app.register_blueprint(asr9k_64_migrate)
 app.register_blueprint(conformance)
 app.register_blueprint(tar_support)
 app.register_blueprint(host_import)

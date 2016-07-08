@@ -30,7 +30,7 @@ from flask.ext.login import login_required, current_user
 from models import Host, InstallJob, SystemOption
 
 from wtforms import Form
-from wtforms import TextField, SelectField, HiddenField, SelectMultipleField
+from wtforms import StringField, SelectField, HiddenField, SelectMultipleField
 from wtforms.validators import required
 
 from smu_info_loader import IOSXR_URL
@@ -40,10 +40,10 @@ NOX_64_BINARY = "nox-linux-64.bin"
 NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 
 
-exr_migrate = Blueprint('exr_migrate', __name__, url_prefix='/exr_migrate')
+asr9k_64_migrate = Blueprint('asr9k_64_migrate', __name__, url_prefix='/asr9k_64_migrate')
 
 
-@exr_migrate.route('/schedule_migrate', methods=['GET', 'POST'])
+@asr9k_64_migrate.route('/schedule_migrate', methods=['GET', 'POST'])
 @login_required
 def schedule_migrate():
     # only operator and above can schedule migration
@@ -142,12 +142,12 @@ def schedule_migrate():
         form.hidden_dependency.data = ''
         form.hidden_hardware_audit_version.data = ''
 
-        return render_template('exr_migrate/schedule_migrate.html', form=form,
+        return render_template('asr9k_64_migrate/schedule_migrate.html', form=form,
                                install_action=get_install_migrations_dict(),
                                server_time=datetime.datetime.utcnow())
 
 
-@exr_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
+@asr9k_64_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
 @login_required
 def host_schedule_install_migration_edit(hostname, id):
     # only operator and above can edit migration
@@ -269,16 +269,17 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 form.scheduled_time_UTC.data = \
                 get_datetime_string(install_job.scheduled_time)
 
-    return render_template('exr_migrate/schedule_migrate.html', form=form, system_option=SystemOption.get(db_session),
+    return render_template('asr9k_64_migrate/schedule_migrate.html', form=form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url, install_action=get_install_migrations_dict())
 
 
-@exr_migrate.route('/select_host.html')
+@asr9k_64_migrate.route('/select_host.html')
 def select_host():
-    return render_template('exr_migrate/select_host.html')
+    return render_template('asr9k_64_migrate/select_host.html')
 
-@exr_migrate.route('/api/get_dependencies/')
+
+@asr9k_64_migrate.route('/api/get_dependencies/')
 @login_required
 def get_dependencies():
     db_session = DBSession()
@@ -309,10 +310,10 @@ def get_dependencies():
         else:
             dependency_list.append('-1')
 
-    return jsonify(**{'data': [{ 'dependency_list': dependency_list, 'disqualified_count' :  disqualified_count} ] } )
+    return jsonify(**{'data': [{'dependency_list': dependency_list, 'disqualified_count':  disqualified_count}]})
 
 
-@exr_migrate.route('/api/get_latest_config_migration_tool/')
+@asr9k_64_migrate.route('/api/get_latest_config_migration_tool/')
 @login_required
 def get_latest_config_migration_tool():
     """Check if the latest NoX is in file. Download if not."""
@@ -320,7 +321,7 @@ def get_latest_config_migration_tool():
 
     (success, date) = get_nox_binary_publish_date()
     if not success:
-        return jsonify( **{'data': [ { 'error': date } ] } )
+        return jsonify(**{'data': [{'error': date}]})
 
     need_new_nox = False
 
@@ -333,8 +334,7 @@ def get_latest_config_migration_tool():
                 need_new_nox = True
             f.close()
         except:
-            return jsonify( **{'data': [ { 'error': 'Exception was thrown when reading file '
-                                                    + fileloc + NOX_PUBLISH_DATE } ] } )
+            return jsonify(**{'data': [{'error': 'Exception was thrown when reading file ' + fileloc + NOX_PUBLISH_DATE}]})
 
     else:
         need_new_nox = True
@@ -344,19 +344,19 @@ def get_latest_config_migration_tool():
         check_32_or_64_system = subprocess.Popen(['uname', '-a'], stdout=subprocess.PIPE)
         out, err = check_32_or_64_system.communicate()
         if err:
-            return jsonify( **{'data': [ { 'error': 'Error when trying to determine whether the \
-                                                    linux system that you are hosting CSM on is \
-                                                    32 bit or 64 bit with command "uname -a".' } ] } )
+            return jsonify( **{'data': [{'error': 'Error when trying to determine whether the \
+                                                   linux system that you are hosting CSM Server on is \
+                                                   32 bit or 64 bit with command "uname -a".'}]})
 
         if "x86_64" in out:
             nox_to_use = NOX_64_BINARY
         else:
-            return jsonify( **{'data': [ { 'error': 'NoX is not available for 32 bit linux.' } ] } )
+            return jsonify(**{'data':[{'error': 'NoX is not available for 32 bit linux.'}]})
             # nox_to_use = NOX_32_BINARY
 
         (success, error_msg) = get_file_http(nox_to_use, fileloc)
         if not success:
-            return jsonify( **{'data': [ { 'error': error_msg } ] } )
+            return jsonify(**{'data': [{'error': error_msg}]})
 
         try:
             with open(fileloc + NOX_PUBLISH_DATE, 'w') as nox_publish_date_file:
@@ -364,10 +364,10 @@ def get_latest_config_migration_tool():
             nox_publish_date_file.close()
         except:
             nox_publish_date_file.close()
-            return jsonify( **{'data': [ { 'error': 'Exception was thrown when writing file ' +
-                                                    fileloc + NOX_PUBLISH_DATE } ] } )
+            return jsonify(**{'data': [{'error': 'Exception was thrown when writing file ' +
+                                                  fileloc + NOX_PUBLISH_DATE}]})
 
-    return jsonify( **{'data': [ { 'error': 'None' } ] } )
+    return jsonify(**{'data': [{'error': 'None'}]})
 
 
 def get_nox_binary_publish_date():
@@ -429,7 +429,7 @@ def fill_hardware_audit_version(choices):
 class ScheduleMigrationForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
 
-    scheduled_time = TextField('Scheduled Time', [required()])
+    scheduled_time = StringField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
     custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])
 
@@ -437,7 +437,7 @@ class ScheduleMigrationForm(Form):
     role = SelectField('Role', coerce=str, choices=[('Any', 'Any')])
     software = SelectField('Software Version', coerce=str, choices=[('Any', 'Any')])
 
-    server_dialog_target_software = TextField('Target Software Release')
+    server_dialog_target_software = StringField('Target Software Release')
     server_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
     server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
 

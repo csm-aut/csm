@@ -358,7 +358,7 @@
                 submit_spinner.show();
 
                 $.ajax({
-                    url: "/exr_migrate/api/get_latest_config_migration_tool/",
+                    url: "/asr9k_64_migrate/api/get_latest_config_migration_tool/",
                     dataType: 'json',
                     success: function (response) {
                         if (response.status == 'Failed') {
@@ -388,7 +388,7 @@
                 submit_spinner.show();
 
                 $.ajax({
-                    url: "/exr_migrate/api/get_dependencies/",
+                    url: "/asr9k_64_migrate/api/get_dependencies/",
                     dataType: 'json',
                     data: {hosts : $('#hidden_hosts').val(), dependency : dependency},
                     success: function (response) {
@@ -643,8 +643,8 @@
                                             </div>
 
                                             <div class="tab-pane" id="pre-migrate">
-                                                {% include("exr_migrate/select_server_repository.html") %}
-                                                {% include("exr_migrate/override_hardware_requirement.html") %}
+                                                {% include("asr9k_64_migrate/select_server_repository.html") %}
+                                                {% include("asr9k_64_migrate/override_hardware_requirement.html") %}
                                             </div>
 
                                             <div class="tab-pane" id="hardware-audit">
