@@ -129,6 +129,7 @@ from common import get_download_job_key
 from common import create_or_update_host
 from common import delete_host
 from common import get_last_install_action
+from common import get_last_completed_install_job_for_install_action
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -2498,14 +2499,9 @@ def api_get_last_successful_install_add_packages(host_id):
     result_list = []
     db_session = DBSession()
 
-    install_job_packages = db_session.query(InstallJobHistory.packages). \
-        filter((InstallJobHistory.host_id == host_id), 
-        and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD,
-             InstallJobHistory.status == JobStatus.COMPLETED)). \
-        order_by(InstallJobHistory.status_time.desc()).first()
-
-    if install_job_packages is not None:
-        result_list.append(install_job_packages)
+    install_job = get_last_completed_install_job_for_install_action(db_session, host_id, InstallAction.INSTALL_ADD)
+    if install_job is not None:
+        result_list.append(install_job.packages)
     
     return jsonify(**{'data': result_list})
 

@@ -32,7 +32,7 @@ from context import InstallContext
 from constants import InstallAction
 from constants import get_log_directory
 
-from common import get_last_successful_pre_upgrade_job, get_last_successful_pre_migrate_job
+from common import get_last_completed_install_job_for_install_action
 
 from utils import get_file_list
 from utils import generate_file_diff
@@ -115,7 +115,7 @@ class BaseHandler(object):
         return package_parser.get_packages_from_cli(ctx)
 
     def generate_post_upgrade_file_diff(self, ctx):
-        install_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
+        install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_UPGRADE)
         if install_job is None:
             return
 
@@ -123,7 +123,7 @@ class BaseHandler(object):
                                 target_file_directory=ctx.log_directory)
 
     def generate_post_migrate_file_diff(self, ctx):
-        install_job = get_last_successful_pre_migrate_job(ctx.db_session, ctx.host.id)
+        install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_MIGRATE)
         if install_job is None:
             return
 
