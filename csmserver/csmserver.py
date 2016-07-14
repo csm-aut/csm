@@ -149,6 +149,7 @@ from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
 from utils import datetime_from_utc_to_local
+from utils import get_software_platform
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -2887,20 +2888,26 @@ def check_host_reachability():
 def get_software_package_upgrade_list(hostname, target_release):
     rows = []
     db_session = DBSession()
-    
+
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
+
     match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname)
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
                                                        target_release, match_internal_name)
     for package in target_packages:
         rows.append(package)
-    if host.family == PlatformFamily.ASR9K and host.os_type == "eXR":
-        return jsonify(**{'data': [{ 'is_regex': 1, 'packages' :  rows}]})
 
-    return jsonify(**{'data': [{ 'is_regex': 0, 'packages' :  rows}]})
+    # ASR9K and ASR9K-64 belong to the same family, but are different software platforms
+    software_platform = get_software_platform(host.family, host.os_type)
+
+    if software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
+                             PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+        return jsonify(**{'data': [{'is_regex': 1, 'packages': rows}]})
+
+    return jsonify(**{'data': [{'is_regex': 0, 'packages': rows}]})
 
 
 @app.route('/api/check_jump_host_reachability')

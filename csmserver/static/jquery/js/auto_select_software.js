@@ -56,7 +56,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
                 for (i = 0; i < missing_package_list.length; i++) {
                     package_list += missing_package_list[i] + '<br>';
                 }
-                bootbox.alert("<img src='/static/error.png'> &nbsp;Unable to locate software packages that match the followings<br><br>" + package_list);
+                bootbox.alert("<img src='/static/error.png'> &nbsp;Unable to locate software packages that match the following names<br><br>" + package_list);
             }
         }
     });
