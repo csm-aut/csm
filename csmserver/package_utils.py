@@ -190,55 +190,56 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
     elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
                                PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
         platform_package_list = EXR_RPM_PACKAGES
-        for host_package in host_packages:
-            for internal_name, external_name in platform_package_list.items():
-                if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS, PlatformFamily.NCS6K]:
-                    if internal_name in host_package:
-                        if match_internal_name:
-                            target_list.append("{}-{}".format(internal_name, target_version))
+
+    for host_package in host_packages:
+        for internal_name, external_name in platform_package_list.items():
+            if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS, PlatformFamily.NCS6K]:
+                if internal_name in host_package:
+                    if match_internal_name:
+                        target_list.append("{}-{}".format(internal_name, target_version))
+                    else:
+                        target_list.append("{}-{}".format(external_name, target_version))
+                    break
+
+            elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
+                                       PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+                # Add family prefix
+                package_name = family.lower() + internal_name
+
+                # Further refining, for these platforms, '-x64' is not applicable
+                if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+                    package_name = package_name.replace('-x64', '')
+
+                if re.search(package_name, host_package):
+                    if match_internal_name:
+                        if "-xr" in host_package:
+                            if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K,
+                                                     PlatformFamily.NCS5500]:
+                                # Unlike ASR9K-64, these platforms have two separate packages
+                                # ncs5k-xr-6.0.1 and ncs5k-sysadmin-6.0.1
+                                target_list.append("{}-{}".format(family.lower() + '-xr', target_version))
+                                target_list.append("{}-{}".format(family.lower() + '-sysadmin', target_version))
+                            elif software_platform in [PlatformFamily.ASR9K_64]:
+                                # asr9k-mini-x64-6.1.1
+                                target_list.append("{}-{}".format(family.lower() + '-mini-x64', target_version))
                         else:
-                            target_list.append("{}-{}".format(external_name, target_version))
-                        break
-
-                elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
-                                           PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
-                    # Add family prefix
-                    package_name = family.lower() + internal_name
-
-                    # Further refining, for these platforms, 'x64-' is not applicable
-                    if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
-                        package_name = package_name.replace('-x64', '')
-
-                    if re.search(package_name, host_package):
-                        if match_internal_name:
-                            if "-xr" in host_package:
-                                if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K,
-                                                         PlatformFamily.NCS5500]:
-                                    # Unlike ASR9K-64, these platforms have two separate packages
-                                    # ncs5k-xr-6.0.1 and ncs5k-sysadmin-6.0.1
-                                    target_list.append("{}-{}".format(family.lower() + '-xr', target_version))
-                                    target_list.append("{}-{}".format(family.lower() + '-sysadmin', target_version))
-                                elif software_platform in [PlatformFamily.ASR9K_64]:
-                                    # asr9k-mini-x64-6.1.1
-                                    target_list.append("{}-{}".format(family.lower() + '-mini-x64', target_version))
-                            else:
-                                target_list.append("{}-{}".format(package_name,
-                                                                  'r' + target_version.replace('.', '')))
+                            target_list.append("{}-{}".format(package_name,
+                                                              'r' + target_version.replace('.', '')))
+                    else:
+                        # Produce the ISO image name
+                        if "-xr" in host_package:
+                            if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K,
+                                                     PlatformFamily.NCS5500]:
+                                # ncs5k-mini-x.iso-6.1.1
+                                target_list.append("{}-{}".format(family.lower() + '-mini-x.iso', target_version))
+                            elif software_platform in [PlatformFamily.ASR9K_64]:
+                                # asr9k-mini-x64.iso-6.1.1
+                                target_list.append("{}-{}".format(family.lower() + '-mini-x64.iso', target_version))
                         else:
-                            # Produce the ISO image name
-                            if "-xr" in host_package:
-                                if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K,
-                                                         PlatformFamily.NCS5500]:
-                                    # ncs5k-mini-x.iso-6.1.1
-                                    target_list.append("{}-{}".format(family.lower() + '-mini-x.iso', target_version))
-                                elif software_platform in [PlatformFamily.ASR9K_64]:
-                                    # asr9k-mini-x64.iso-6.1.1
-                                    target_list.append("{}-{}".format(family.lower() + '-mini-x64.iso', target_version))
-                            else:
-                                # ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
-                                target_list.append("{}-{}{}-{}".format(package_name,
-                                                                       'r' + target_version.replace('.', ''),
-                                                                       '.x86_64.rpm', target_version))
-                        break
-
+                            # ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
+                            target_list.append("{}-{}{}-{}".format(package_name,
+                                                                   'r' + target_version.replace('.', ''),
+                                                                   '.x86_64.rpm', target_version))
+                    break
+  
     return target_list
