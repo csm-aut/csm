@@ -172,8 +172,6 @@ from views.tar_support import tar_support
 from views.host_import import host_import
 from views.custom_command import custom_command
 
-from horizon.plugin_manager import PluginManager
-
 from report_writer import ExportSoftwareInfoHTMLConciseWriter
 from report_writer import ExportSoftwareInfoHTMLDefaultWriter
 from report_writer import ExportSoftwareInfoExcelConciseWriter
@@ -3709,30 +3707,6 @@ def download_system_logs():
     log_file.close()
 
     return send_file(os.path.join(log_file_path, 'system_logs'), as_attachment=True)
-
-
-@app.route('/api/plugins')
-@login_required
-def plugins():
-    pm = PluginManager()
-    pm.locate_plugins()
-    plugins = pm.load_plugins()
-    info = [plugin.to_dict() for plugin in plugins]
-    return jsonify(**{"data": info})
-
-@app.route('/api/plugins/<name>')
-@login_required
-def plugin_by_name(name):
-    pm = PluginManager()
-    pm.locate_plugins()
-    pm.load_plugins()
-    plugins = pm.get_plugins_by_name(name)
-    if not isinstance(plugins, list):
-        plugin = [plugins.to_dict()]
-    else:
-        plugin = [plugin.to_dict() for plugin in plugins]
-    return jsonify(**{"data": plugin})
-
 
 if __name__ == '__main__':
     initialize.init()  
