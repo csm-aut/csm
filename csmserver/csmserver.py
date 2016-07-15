@@ -2896,16 +2896,10 @@ def get_software_package_upgrade_list(hostname, target_release):
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
                                                        target_release, match_internal_name)
     for package in target_packages:
-        rows.append(package)
+        rows.append({'package' : package})
 
-    # ASR9K and ASR9K-64 belong to the same family, but are different software platforms
-    software_platform = get_software_platform(host.family, host.os_type)
+    return jsonify( **{'data':rows} )
 
-    if software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
-                             PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
-        return jsonify(**{'data': [{'is_regex': 1, 'packages': rows}]})
-
-    return jsonify(**{'data': [{'is_regex': 0, 'packages': rows}]})
 
 
 @app.route('/api/check_jump_host_reachability')
