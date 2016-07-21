@@ -98,8 +98,7 @@ var bootstrapWizardCreate = function(element, options) {
 		} else {
 			$navigation.find(baseItemSelector + ':eq('+$index+') a').tab('show');
 		}
-
-		if ($('.nav-tabs .active').text() == "Pre-Migrate") {
+		if ($('#wizard-dialog .nav-tabs .active').text() == "PRE-MIGRATE") {
 			get_server_list()
 
 		}
@@ -122,6 +121,7 @@ var bootstrapWizardCreate = function(element, options) {
 		} else {
 			$navigation.find(baseItemSelector + ':eq('+$index+') a').tab('show');
 		}
+
 	};
 
 	this.first = function(e) {

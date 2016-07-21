@@ -178,13 +178,11 @@ from report_writer import ExportSoftwareInfoExcelConciseWriter
 from report_writer import ExportSoftwareInfoExcelDefaultWriter
 
 import os
-import stat
 import io
 import logging
 import datetime
 import filters
 import collections
-import shutil
 import initialize
 import zipfile
 

@@ -27,11 +27,11 @@ $(document).ready(function(){
            
         },
         onNext: function(tab, navigation, index){
-            if ($('.nav-tabs .active').text() == "Hardware Audit") {
+            if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT SOFTWARE VERSION") {
                 return validateHardwareAudit();
-            } else if ($('.nav-tabs .active').text() == "Select Host") {
+            } else if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT HOST") {
                 return validateSelectHost();
-            } else if ($('.nav-tabs .active').text() == "Pre-Migrate") {
+            } else if ($('#wizard-dialog .nav-tabs .active').text() == "PRE-MIGRATE") {
                 return validateSelectPackages();
             }
 
@@ -155,11 +155,12 @@ function validateSelectPackages(){
         bootbox.alert("Please select only one tar file for ASR9K-64 image and boot files before continuing.");
         return false
     }
-    if (selected_smu < 1) {
-        bootbox.alert("Please select the ASR9K unified FPD SMU for your ASR9K-64 image before continuing.");
-        return false
-    }else if (selected_smu > 1) {
-        bootbox.alert("Too many packages selected. Please select only the ASR9K-64 image and the ASR9K unified FPD SMU before continuing.");
+    //if (selected_smu < 1) {
+    //    bootbox.alert("Please select the ASR9K unified FPD SMU for your ASR9K-64 image before continuing.");
+    //    return false
+    //}else if (selected_smu > 1) {
+    if (selected_smu > 1) {
+        bootbox.alert("Too many packages selected. Please select only the ASR9K-64 image and the ASR9K unified FPD SMU(only if your release version is below 6.1.1) before continuing.");
         return false
     }
 

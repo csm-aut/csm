@@ -3,58 +3,12 @@
 {% from 'host/common.html' import log_icon %}
 {% from 'host/common.html' import trace_icon %}
 {% from 'share/select_region_hosts.html' import select_region_hosts %}
+{% from 'exr_migrate/config_conversion.html' import config_conversion_gui, config_output_modal %}
+{% from 'exr_migrate/schedule_migration.html' import schedule_migration_gui %}
+{% from 'exr_migrate/schedule_migration.html' import schedule_migration_wizard %}
 
-{% macro schedule_migrate_gui() %}
-    <div class="form-group ">
-        <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
 
-        <div class=col-sm-6>
-            <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
-                <optgroup label="Verification">
-                    <option value="{{ install_action.migrationaudit }}">{{ install_action.migrationaudit }}</option>
-                </optgroup>
-                <optgroup label="Migration">
-                    <option value="{{ install_action.premigrate }}">{{ install_action.premigrate }}</option>
-                    <option value="{{ install_action.migrate }}">{{ install_action.migrate }}</option>
-                    <option value="{{ install_action.postmigrate }}">{{ install_action.postmigrate }}</option>
-                    <option value="{{ install_action.allformigrate }}">ALL</option>
-                </optgroup>
-            </select>
 
-        </div>
-    </div>
-
-    <div class="form-group ">
-        <label class="col-sm-4 control-label"
-               for="{{ form.scheduled_time.name }}">{{ form.scheduled_time.label() }}</label>
-
-        <div class="col-sm-6">
-            <div class="input-group date form_datetime">
-                <input id="scheduled-time" name="{{ form.scheduled_time.name }}" class="form-control" size="16"
-                       type="text" readonly>
-                <input id="scheduled-time-UTC" name="{{ form.scheduled_time_UTC.name }}"
-                       value="{{ form.scheduled_time_UTC.data }}" class="form-control" type="hidden">
-                <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
-            </div>
-        </div>
-    </div>
-
-    <div id="custom-command-profile-panel">
-        {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
-    </div>
-
-    <input id="hidden_region" name="{{ form.hidden_region.name }}" value="{{ form.hidden_region.data }}" type="hidden">
-    <input id="hidden_hosts" name="{{ form.hidden_hosts.name }}" value="{{ form.hidden_hosts.data }}" type="hidden">
-    <input id="hidden_dependency" name="{{ form.hidden_dependency.name }}" value="{{ form.hidden_dependency.data }}" type="hidden">
-    <input id="hidden_server" name="{{ form.hidden_server.name }}" value="{{ form.hidden_server.data }}" type="hidden">
-    <input id="hidden_server_name" name="{{ form.hidden_server_name.name }}" value="{{ form.hidden_server_name.data }}"
-           type="hidden">
-    <input id="hidden_server_directory" name="{{ form.hidden_server_directory.name }}"
-           value="{{ form.hidden_server_directory.data }}" type="hidden">
-    <input id="hidden_software_packages" name="{{ form.hidden_software_packages.name }}"
-           value="{{ form.hidden_software_packages.data }}" type="hidden">
-
-{% endmacro %}
 
 
 {% block extra_head %}
@@ -78,6 +32,12 @@
     <script src="/static/jquery/js/select_region_hosts.js"></script>
     <script src="/static/jquery/js/auto_select_migration_software.js"></script>
     <script src="/static/jquery/js/server_software_dialog.js"></script>
+    <script src="/static/jquery/js/select_file_from_server.js"></script>
+    <script src="/static/jquery/js/handle_config_conversion.js"></script>
+
+    <script src="{{ url_for('static', filename='jquery/js/handle_config_conversion.js') }}"></script>
+
+
 
     <style>
         .modal-dialog {
@@ -87,6 +47,29 @@
         a:link, a:visited {
             text-decoration: none;
         }
+
+        .btn-file {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-file input[type=file] {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 100%;
+            min-height: 100%;
+            font-size: 100px;
+            text-align: right;
+            filter: alpha(opacity=0);
+            opacity: 0;
+            background: red;
+            cursor: inherit;
+            display: block;
+        }
+        input[readonly] {
+            background-color: white !important;
+            cursor: text !important;
+        }
     </style>
 
 
@@ -94,6 +77,14 @@
 
 
         $(function () {
+            config_handler({{ input_filename|tojson }}, {{ err_msg|tojson }});
+
+            var selected_tab = $.cookie('migration-tab') == null ? '#schedule-migration' : $.cookie('migration-tab');
+            $('a[href=' + selected_tab + ']').tab('show');
+
+            $('#migration-tab').on('shown.bs.tab', function (e) {
+              $.cookie('migration-tab', $('.nav-tabs .active > a').attr('href'));
+            });
 
             var submit_spinner = $('#submit-spinner');
 
@@ -106,7 +97,7 @@
             var ALL_FOR_MIGRATE = "{{ install_action.allformigrate }}";
 
             $("#install_action").select2({placeholder: 'Select Desirable Migration Actions'});
-            $("#install_action").val("{{ form.install_action.data }}").trigger("change");
+            $("#install_action").val("{{ schedule_form.install_action.data }}").trigger("change");
             $("#custom_command_profile").select2({
                 placeholder: 'Optional'
             });
@@ -175,7 +166,7 @@
 
             $('[data-toggle="popover_override_hw_req"]').popover({
                 trigger : 'click',
-                placement : 'left',
+                placement : 'below',
                 html : true,
                 content : function() {
                     return $('#popover_hw_req').html()
@@ -237,22 +228,22 @@
                     }
 
                     if ($('#hidden_edit').val() != 'True') {
-                        add_new_tab('select-host', 'Select Host')
+                        add_new_tab('select-host', 'SELECT HOST')
                     }
 
                     if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
-                        add_new_tab("hardware-audit", "Select Software Version");
+                        add_new_tab("hardware-audit", "SELECT SOFTWARE VERSION");
                         document.getElementById("wizard-header").innerHTML = "<h3>Migration Audit<br></h3>";
                     } else {
                         document.getElementById("wizard-header").innerHTML = "<h3>Migrate to ASR9K-64<br></h3>";
                     }
 
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
-                        add_new_tab("pre-migrate", "Pre-Migrate");
+                        add_new_tab("pre-migrate", "PRE-MIGRATE");
                     }
 
                     if (has_one_of_these(install_actions, [POST_MIGRATE])) {
-                        add_new_tab("post-migrate", "Post-Migrate")
+                        add_new_tab("post-migrate", "POST-MIGRATE")
                     }
 
                     // make the first tab active
@@ -276,13 +267,13 @@
                 //console.log($('#hidden_hardware_audit_version').val());
                 //return false;
 
-                if ($('.nav-tabs .active').text() == "Hardware Audit" && validateHardwareAudit() == false) {
+                if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT SOFTWARE VERSION" && validateHardwareAudit() == false) {
                     return false;
                 }
-                if ($('.nav-tabs .active').text() == "Select Host" && validateSelectHost() == false) {
+                if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT HOST" && validateSelectHost() == false) {
                     return false;
                 }
-                if ($('.nav-tabs .active').text() == "Pre-Migrate" && validateSelectPackages() == false) {
+                if ($('#wizard-dialog .nav-tabs .active').text() == "PRE-MIGRATE" && validateSelectPackages() == false) {
                     return false;
                 }
 
@@ -341,11 +332,12 @@
                 }
 
 
+
             }
 
             $('#form').submit(function () {
 
-                //$('#form').submit();
+                //$('#schedule_form').submit();
                 this.submit();
                 //on_final_submit(this, null);
 
@@ -533,7 +525,7 @@
                 } else if ($('#hidden_best_effort_config').val() == '1') {
                     $('[name="config-handling"]')[1].checked = true;
                 }
-
+                console.log($('#hidden_override_hw_req').val());
                 if ($('#hidden_override_hw_req').val() == '1') {
                     $('[name="override_hw_req"]')[0].checked = true;
                 } else if ($('#hidden_override_hw_req').val() == '0') {
@@ -556,20 +548,36 @@
 
 {% block main %}
     <div>
-        <form id="form" method="post" class="form-horizontal">
+        <form id="form" method="post" class="form-horizontal" enctype=multipart/form-data>
             <div class="row">
-                <div class="well col-sm-offset-2 col-sm-8">
 
+              {% if host == null %}
+                <div class="well col-sm-offset-2 col-sm-8">
                     <legend>
-                      {% if host == null %}
-                          <h4>Schedule Migration</h4>
-                      {% else %}
+                        <ul class="nav nav-tabs" id="migration-tab">
+                          <li><a style="font-size:19px;font-family:Helvetica Neue" data-toggle="tab" href="#schedule-migration">Schedule Migration</a></li>
+                          <li><a style="font-size:19px;font-family:Helvetica Neue" data-toggle="tab" href="#configuration-conversion">Configuration Conversion</a></li>
+                        </ul>
+                    </legend>
+                    <div class="tab-content">
+                      <div id="schedule-migration" class="tab-pane fade in active">
+                        {{ schedule_migration_gui(schedule_form, install_action, install_job, edit_field) }}
+                      </div>
+                      <div id="configuration-conversion" class="tab-pane fade">
+                        {{ config_conversion_gui(config_form) }}
+                      </div>
+                    </div>
+                </div>
+
+              {% else %}
+                <div class="well col-sm-offset-2 col-sm-8">
+                    <legend>
                           <h4>Schedule Migration > Region: <span style="color: Gray;">{{ host.region.name }}</span> >
                               Host: <span
                                       style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span>
                           </h4>
-                      {% endif %}
                     </legend>
+
 
                   {% if install_job != null and install_job.status == 'failed' %}
                       <div class="alert alert-danger">
@@ -585,140 +593,15 @@
                         {% endif %}
                       </div>
                   {% endif %}
-
-                  {{ schedule_migrate_gui() }}
-
-                    <input id="hidden_edit" name="{{ form.hidden_edit.name }}" value="{{ form.hidden_edit.data }}"
-                           class="form-control" type="hidden">
-                    <input id="hidden_best_effort_config" name="{{ form.hidden_best_effort_config.name }}"
-                           value="{{ form.hidden_best_effort_config.data }}" class="form-control" type="hidden">
-                    <input id="hidden_override_hw_req" name="{{ form.hidden_override_hw_req.name }}"
-                           value="{{ form.hidden_override_hw_req.data }}" class="form-control" type="hidden">
-                    <input id="hidden_config_filename" name="{{ form.hidden_config_filename.name }}"
-                           value="{{ form.hidden_config_filename.data }}" class="form-control" type="hidden">
-                    <input id="hidden_hardware_audit_version" name="{{ form.hidden_hardware_audit_version.name }}"
-                           value="{{ form.hidden_hardware_audit_version.data }}" class="form-control" type="hidden">
-
-
-                    <div class="btn col-sm-offset-5">
-
-                      {% if install_job != null and install_job.install_action == 'Migrate' %}
-                          <button type="button" id="trigger-wizard" class="btn btn-primary">
-                          Re-Submit
-                      {% else %}
-                          <button type="button" id="trigger-wizard" class="btn btn-primary" data-toggle="modal"
-                                  data-target="#wizard-dialog">
-                          Continue
-                      {% endif %}
-                        </button>
-                        <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
-                    </div>
+                  {{ schedule_migration_gui(schedule_form, install_action, install_job, edit_field) }}
                 </div>
+              {% endif %}
+
             </div>
 
+          {{ schedule_migration_wizard(schedule_form, select_region_hosts, install_job, edit_field) }}
+          {{ config_output_modal(config_form, edit_field) }}
 
-            <div id="wizard-dialog" class="modal" role="dialog">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-
-                            <div class="modal-body">
-                                <!--      Wizard container        -->
-                                <button type="button" class="close" data-dismiss="modal">x</button>
-                                    <div class="card wizard-card csm-blue" id="wizard">
-                                        <form method="post" class="form-horizontal">
-                                        <div class="form-horizontal">
-                                        <!--        You can switch "ct-wizard-orange"  with one of the next bright colors: "ct-wizard-blue", "ct-wizard-green", "ct-wizard-orange", "ct-wizard-red"             -->
-
-                                        <div class="wizard-header" id="wizard-header">
-
-
-                                        </div>
-                                        <ul id="tabs" class="nav nav-tabs" role="tablist">
-
-                                        </ul>
-                                        <div class="tab-content">
-
-                                            <div class="tab-pane" id="select-host">
-                                                {{ select_region_hosts(form.region, form.role, form.software) }}
-                                            </div>
-
-                                            <div class="tab-pane" id="pre-migrate">
-                                                {% include("exr_migrate/select_server_repository.html") %}
-                                                {% include("exr_migrate/override_hardware_requirement.html") %}
-                                            </div>
-
-                                            <div class="tab-pane" id="hardware-audit">
-                                              <h4 class="info-text-left">Select the version of ASR9K-64 you plan to migrate to: <span id="server-dialog-title"></span>
-                                              &nbsp;&nbsp;<span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req"></span></h4>
-                                                {{ edit_field(form.hardware_audit_version, field_width="col-sm-7", class="form-control") }}
-                                            </div>
-
-                                            <div class="tab-pane" id="post-migrate">
-                                                <!--h4>On failure to load IOS-XR configuration on eXR successfully,
-                                                    would you like CSM to:</h4-->
-                                                <h4 class="info-text-left">When the IOS-XR configurations, either migrated by CSM or provided by you during Pre-Migrate,
-                                                    cannot be applied on eXR directly, would you like CSM to:</h4>
-                                                <div class="btn-group">
-                                                    <div>
-                                                        <input type="radio" id="config-handling" name="config-handling"
-                                                               class="toggle" value="-1"
-                                                               style="margin-right: 10px"><label for="config-handling">Abort
-                                                        the configuration commit</label>
-
-                                                    </div>
-
-                                                    <div>
-                                                        <input type="radio" id="config-handling" name="config-handling"
-                                                               class="toggle" value="1"
-                                                               style="margin-right: 10px"><label for="config-handling">Commit
-                                                        the configurations with best effort</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                        <div class="wizard-footer">
-                                            <div class="pull-right">
-
-                                                <input type='button' id="on-continue" class='btn btn-primary btn-next'
-                                                       name='next' value='Next'/>
-
-                                                <div class="form-actions">
-                                                    <button id="on-submit" type="button"
-                                                            class="btn btn-primary btn-finish" name='finish'
-                                                            value='Schedule'>
-                                                      {% if install_job != null and install_job.status == 'failed' %}
-                                                          Re-Submit
-                                                      {% else %}
-                                                          Schedule
-                                                      {% endif %}
-                                                    </button>
-                                                    <!--input type='submit' form="form" id="on-submit" class='btn btn-finish btn-fill btn-warning btn-wd btn-md' name='finish' value='Schedule' data-dismiss="modal" / -->
-                                                </div>
-                                            </div>
-                                            <div class="pull-left">
-                                                <input type='button' class='btn btn-default btn-previous'
-                                                       name='previous' value='Previous'/>
-                                                <!--input type='button' class='btn btn-default btn-cancel' name='cancel'
-                                                       value='Cancel' data-dismiss="modal"-->
-                                            </div>
-                                            <span class="submit-spinner">
-                                                <center><img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center>
-                                            </span>
-
-                                            <div class="clearfix"></div>
-                                        </div>
-                                        </div>
-                                        </form>
-                                    </div>
-                                    <!-- wizard container -->
-
-                            </div>
-
-                    </div>
-
-                </div>
-            </div>
         </form>
     </div>
 {% endblock main %}

@@ -2,8 +2,10 @@ import os
 import subprocess
 import requests
 import json
+import csv
+import time
 
-from constants import InstallAction, get_migration_directory, UserPrivilege
+from constants import InstallAction, get_migration_directory, UserPrivilege, ServerType
 
 from common import can_edit_install
 from common import can_install
@@ -17,6 +19,7 @@ from common import get_host
 from common import get_host_list
 from common import get_return_url
 from common import get_server_by_id
+from common import get_server_list
 from common import get_install_job_dependency_completed
 
 from database import DBSession
@@ -26,8 +29,12 @@ from filters import get_datetime_string
 
 from flask import Blueprint, jsonify, render_template, redirect, url_for, abort, request
 from flask.ext.login import login_required, current_user
+from flask import flash
+from flask import current_app, send_from_directory
+from werkzeug.utils import secure_filename
 
-from models import Host, InstallJob, SystemOption
+from models import Host, InstallJob, SystemOption, ConvertConfigJob
+from models import logger
 
 from wtforms import Form
 from wtforms import TextField, SelectField, HiddenField, SelectMultipleField
@@ -35,45 +42,356 @@ from wtforms.validators import required
 
 from smu_info_loader import IOSXR_URL
 
+from utils import create_temp_user_directory, create_directory
+
+from server_helper import TFTPServer, FTPServer, SFTPServer
+
+
 NOX_64_BINARY = "nox-linux-64.bin"
+NOX_64_MAC = "nox-mac64.bin"
+
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 
+ALLOWED_EXTENSIONS = set(['txt', 'cfg'])
+
+INPUT_CONFIG = "input_config.cfg"
+OUTPUT_CONFIG1 = "input_config.iox"
+OUTPUT_CONFIG2 = "input_config.cal"
+OUTPUT_ANALYSIS = "input_config.csv"
 
 exr_migrate = Blueprint('exr_migrate', __name__, url_prefix='/exr_migrate')
 
-
-@exr_migrate.route('/schedule_migrate', methods=['GET', 'POST'])
+"""
+@exr_migrate.route('/index', methods=['GET', 'POST'])
 @login_required
-def schedule_migrate():
+def home():
+    config_form = ConfigConversionForm(request.form)
+    db_session = DBSession()
+
+    servers = get_server_list(db_session)
+
+    fill_servers(config_form.select_server.choices, servers, False)
+
+    if request.method == 'POST':
+        return convert_config(request, 'exr_migrate/index.html')
+    return render_template('exr_migrate/index.html', config_form=config_form)
+
+
+@exr_migrate.route('/config_conversion', methods=['GET', 'POST'])
+@login_required
+def config_conversion():
+    input_file = send_from_directory(current_app.config.get('UPLOAD_FOLDER'), INPUT_CONFIG)
+    return render_template('exr_migrate/config_conversion.html', input_config=input_file)
+"""
+
+
+def get_config_conversion_path():
+    temp_user_dir = create_temp_user_directory(current_user.username)
+    config_conversion_path = os.path.normpath(os.path.join(temp_user_dir, "config_conversion"))
+    create_directory(config_conversion_path)
+    return config_conversion_path
+
+
+def convert_config(db_session, http_request, template, schedule_form):
+
+    config_form = init_config_form(db_session, http_request, get=True)
+
+    # input_config = request.form.get('input_config', "", type=str)
+    success, err_msg = download_latest_config_migration_tool()
+    if not success:
+        return render_template(template, config_form=config_form,
+                               input_filename="", err_msg=err_msg, schedule_form=schedule_form,
+                               install_action=get_install_migrations_dict(),
+                               server_time=datetime.datetime.utcnow())
+
+    # check if the post request has the file part
+    if 'file' not in http_request.files:
+        flash('No file in request.')
+        return render_template(template, config_form=config_form,
+                               input_filename="", err_msg="Internal error - No file.",
+                               schedule_form=schedule_form,
+                               install_action=get_install_migrations_dict(),
+                               server_time=datetime.datetime.utcnow(),)
+
+    input_file = http_request.files['file']
+    # if user does not select file, browser also
+    # submit a empty part without filename
+    if input_file.filename == '':
+        flash('No selected file.')
+        return render_template(template, config_form=config_form,
+                               input_filename="", err_msg="Internal error - No selected file.",
+                               schedule_form=schedule_form,
+                               install_action=get_install_migrations_dict(),
+                               server_time=datetime.datetime.utcnow(),)
+
+    config_conversion_path = get_config_conversion_path()
+    create_directory(config_conversion_path)
+
+    print "input_file.filename = " + str(input_file.filename)
+
+    # if input_file and allowed_file(input_file.filename):
+    if input_file:
+        filename = secure_filename(input_file.filename)
+        # input_file.save(os.path.join(current_app.config.get('UPLOAD_FOLDER'), filename))
+        input_file.save(os.path.join(config_conversion_path, filename))
+        print "saving file to = " + str(os.path.join(config_conversion_path, filename))
+
+    return render_template(template, config_form=config_form,
+                           input_filename=input_file.filename, err_msg="", schedule_form=schedule_form,
+                           install_action=get_install_migrations_dict(),
+                           server_time=datetime.datetime.utcnow())
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
+
+@exr_migrate.route('/api/convert_config_file')
+@login_required
+def convert_config_file():
+    filename = request.args.get('filename', '', type=str)
+
+    filename = secure_filename(filename)
+
+    config_conversion_path = get_config_conversion_path()
+
+    db_session = DBSession()
+
+    convert_config_job = ConvertConfigJob(file_path=os.path.join(config_conversion_path, filename),
+                                          status='Conversion Job Submitted')
+    db_session.add(convert_config_job)
+    db_session.commit()
+
+    job_id = convert_config_job.id
+
+    return jsonify({'status': 'OK', 'job_id': job_id})
+
+
+@exr_migrate.route('/api/get_config_conversion_progress')
+@login_required
+def get_config_conversion_progress():
+
+    job_id = request.args.get('job_id', 0, type=int)
+
+    db_session = DBSession()
+
+    convert_config_job = db_session.query(ConvertConfigJob).filter(ConvertConfigJob.id == job_id).first()
+    if convert_config_job is None:
+        logger.error('Unable to retrieve Convert Config Job: %s' % job_id)
+        return jsonify(status='Unable to retrieve job')
+    print "job status = " + str(convert_config_job.status)
+    return jsonify(status='OK', progress=convert_config_job.status)
+
+
+@exr_migrate.route('/api/get_file')
+@login_required
+def get_file():
+    which_file = request.args.get('file_number', 0, type=int)
+
+    filename = request.args.get('filename', '', type=str)
+
+    config_conversion_path = get_config_conversion_path()
+
+    secure_file_name = secure_filename(filename)
+
+    output_html = secure_file_name.rsplit('.', 1)[0] + ".html"
+    output_iox = secure_file_name.rsplit('.', 1)[0] + ".iox"
+
+    output_cal = secure_file_name.rsplit('.', 1)[0] + ".cal"
+
+    if which_file == 1:
+        return send_from_directory(config_conversion_path,
+                                   output_html, cache_timeout=0)
+    elif which_file == 2:
+        return send_from_directory(config_conversion_path,
+                                   output_iox, cache_timeout=0)
+    elif which_file == 3:
+        return send_from_directory(config_conversion_path,
+                                   output_cal, cache_timeout=0)
+
+    return jsonify(**{'data': 'file does not exist.'})
+
+
+@exr_migrate.route('/api/get_analysis')
+@login_required
+def process_config_conversion_output():
+    filename = request.args.get('filename', '', type=str)
+
+    config_conversion_path = get_config_conversion_path()
+
+    secure_file_name = secure_filename(filename)
+
+    stripped_filename = ".".join(secure_file_name.split(".")[0:-1]) if "." in secure_file_name else secure_file_name
+
+    output_csv = stripped_filename + ".csv"
+    html_file = stripped_filename + ".html"
+
+    analysis = []
+
+    map_csv_category_to_final_category = {
+        'KNOWN_SUPPORTED': 'supported',
+        'KNOWN_UNSUPPORTED': 'unsupported',
+        'UNKNOWN_UNSUPPORTED': 'unrecognized',
+        'KNOWN_UNIMPLEMENTED': 'unimplemented',
+        'ERROR_SYNTAX': 'syntaxerrors',
+        'UNPROCESSED': 'unprocessed'
+
+    }
+    with open(os.path.join(config_conversion_path, html_file), 'w') as output_html:
+        with open(os.path.join(config_conversion_path, secure_file_name), 'r') as input_file:
+            with open(os.path.join(config_conversion_path, output_csv), 'rb') as csvfile:
+                output_html.write('<pre style="background-color:white;border:none;word-wrap:initial;">\n')
+                reader = csv.reader(csvfile)
+                last_category = ""
+                for config_line in input_file:
+                    next_row = reader.next()
+                    if next_row and len(next_row) >= 2:
+
+                        category = next_row[1].strip()
+                        if category != last_category:
+                            if last_category != "":
+                                output_html.write('</div>')
+                            html_class = map_csv_category_to_final_category.get(category)
+                            output_html.write('<div class="' + html_class + '">\n')
+                            last_category = category
+                        output_html.write('<code>' + config_line.rstrip('\n') + '</code>\n')
+                output_html.write('</div>\n')
+                output_html.write('</pre>')
+    return send_from_directory(config_conversion_path, html_file, cache_timeout=0)
+
+
+@exr_migrate.route('/upload_config_to_server_repository')
+def upload_config_to_server_repository():
+    server_id = request.args.get('server_id', -1, type=int)
+    server_directory = request.args.get('server_directory', '', type=str)
+    filename = request.args.get('filename', '', type=str)
+
+    if server_id == -1:
+        logger.error('No server repository selected.')
+        return jsonify(status='No server repository selected.')
+
+    db_session = DBSession()
+    server = get_server_by_id(db_session, server_id)
+
+    if not server:
+        logger.error('Selected server repository not found in database.')
+        return jsonify(status='Selected server repository not found in database.')
+
+    if not server_directory:
+        server_directory = None
+
+    if not filename:
+        logger.error('No filename selected.')
+        return jsonify(status='No filename selected.')
+
+    config_conversion_path = get_config_conversion_path()
+
+    secure_file_name = secure_filename(filename)
+
+    output_iox = secure_file_name.rsplit('.', 1)[0] + ".iox"
+
+    output_cal = secure_file_name.rsplit('.', 1)[0] + ".cal"
+
+    print "server_id = " + str(server_id)
+    print str(server_directory)
+
+    status = upload_files_to_server_repository(os.path.join(config_conversion_path, output_iox),
+                                               server, server_directory, output_iox)
+    if status == "OK":
+        status = upload_files_to_server_repository(os.path.join(config_conversion_path, output_cal),
+                                                   server, server_directory, output_cal)
+    return jsonify(status=status)
+
+
+def upload_files_to_server_repository(sourcefile, server, selected_server_directory, destfile):
+    """
+    Upload files from their locations in the host linux system to the FTP/TFTP/SFTP server repository.
+
+    Arguments:
+    :param sourcefile: one string file path that points to a file on the system where CSM is hosted.
+                        The paths are all relative to csm/csmserver/.
+                        For example, if the source file is in csm_data/migration/filename,
+                        sourcefile = "../../csm_data/migration/filename"
+    :param server: the associated server repository object stored in CSM database
+    :param selected_server_directory: the designated directory in the server repository
+    :param destfile: one string filename that the source files should be named after being copied to
+                          the designated directory in the server repository. i.e., "thenewfilename"
+    :return: True if no error occurred.
+    """
+    server_type = server.server_type
+    if server_type == ServerType.TFTP_SERVER:
+        tftp_server = TFTPServer(server)
+        try:
+            tftp_server.upload_file(sourcefile, destfile,
+                                    sub_directory=selected_server_directory)
+        except Exception as inst:
+            print(inst)
+            logger.error('Unable to upload file to selected server directory in repository.')
+            return 'Unable to upload file'
+
+    elif server_type == ServerType.FTP_SERVER:
+        ftp_server = FTPServer(server)
+        try:
+            ftp_server.upload_file(sourcefile, destfile,
+                                   sub_directory=selected_server_directory)
+        except Exception as inst:
+            print(inst)
+            logger.error('Unable to upload file to selected server directory in repository.')
+            return 'Unable to upload file'
+
+    elif server_type == ServerType.SFTP_SERVER:
+        sftp_server = SFTPServer(server)
+        try:
+            sftp_server.upload_file(sourcefile, destfile,
+                                    sub_directory=selected_server_directory)
+        except Exception as inst:
+            print(inst)
+            logger.error('Unable to upload file to selected server directory in repository.')
+            return 'Unable to upload file'
+
+    else:
+        logger.error('Only FTP, SFTP and TFTP server repositories are supported for this action.')
+        return jsonify(status='Only FTP, SFTP and TFTP server repositories are supported for this action')
+
+    return 'OK'
+
+
+@exr_migrate.route('/migration', methods=['GET', 'POST'])
+@login_required
+def migration():
     # only operator and above can schedule migration
     if not can_install(current_user):
         render_template('user/not_authorized.html', user=current_user)
 
+    # temp_user_dir = create_temp_user_directory(current_user.username)
+    # config_file_path = os.path.normpath(os.path.join(temp_user_dir, "config_conversion"))
+    # create_directory(config_file_path)
+    # current_app.config['UPLOAD_FOLDER'] = config_file_path
+    # print "current_app.config.get('UPLOAD_FOLDER') = " + current_app.config.get('UPLOAD_FOLDER')
+
     db_session = DBSession()
-
-    hosts = get_host_list(db_session)
-    if hosts is None:
-        abort(404)
-
-    form = ScheduleMigrationForm(request.form)
-    fill_regions(form.region.choices)
-    fill_hardware_audit_version(form.hardware_audit_version.choices)
-    fill_custom_command_profiles(form.custom_command_profile.choices)
 
     return_url = get_return_url(request, 'install_dashboard')
 
+    schedule_form = init_schedule_form(db_session, request, get=request.method == 'GET')
+    config_form = init_config_form(db_session, request, get=request.method == 'GET')
+
     if request.method == 'POST':
+        print(str(config_form.data))
+        if config_form.hidden_submit_config_form.data == "True":
+            return convert_config(db_session, request, 'exr_migrate/migration.html', schedule_form)
 
         # Retrieves from the multi-select box
-        hostnames = form.hidden_hosts.data.split(',')
+        hostnames = schedule_form.hidden_hosts.data.split(',')
 
-        install_action = form.install_action.data
+        install_action = schedule_form.install_action.data
 
         if hostnames is not None:
-            print(str(form.data))
+            print(str(schedule_form.data))
             print(str(hostnames))
-            dependency_list = form.hidden_dependency.data.split(',')
+            dependency_list = schedule_form.hidden_dependency.data.split(',')
             index = 0
             for hostname in hostnames:
 
@@ -82,15 +400,15 @@ def schedule_migrate():
                 if host is not None:
 
                     db_session = DBSession()
-                    scheduled_time = form.scheduled_time_UTC.data
-                    software_packages = form.hidden_software_packages.data
-                    server = form.hidden_server.data
-                    server_directory = form.hidden_server_directory.data
-                    best_effort_config = form.hidden_best_effort_config.data
-                    config_filename = form.hidden_config_filename.data
-                    override_hw_req = form.hidden_override_hw_req.data
-                    custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
-                    hardware_audit_version = form.hidden_hardware_audit_version.data
+                    scheduled_time = schedule_form.scheduled_time_UTC.data
+                    software_packages = schedule_form.hidden_software_packages.data
+                    server = schedule_form.hidden_server.data
+                    server_directory = schedule_form.hidden_server_directory.data
+                    best_effort_config = schedule_form.hidden_best_effort_config.data
+                    config_filename = schedule_form.hidden_config_filename.data
+                    override_hw_req = schedule_form.hidden_override_hw_req.data
+                    custom_command_profile = ','.join([str(i) for i in schedule_form.custom_command_profile.data])
+                    hardware_audit_version = schedule_form.hidden_hardware_audit_version.data
 
                     host.context[0].data['best_effort_config_applying'] = best_effort_config
                     host.context[0].data['config_filename'] = config_filename
@@ -126,25 +444,56 @@ def schedule_migrate():
 
         return redirect(url_for(return_url))
     else:
+
+        return render_template('exr_migrate/migration.html',
+                               schedule_form=schedule_form,
+                               install_action=get_install_migrations_dict(),
+                               server_time=datetime.datetime.utcnow(),
+                               config_form=config_form,
+                               input_filename="",
+                               err_msg="",
+                               )
+
+
+def init_schedule_form(db_session, http_request, get=False):
+    hosts = get_host_list(db_session)
+    if hosts is None:
+        abort(404)
+
+    schedule_form = ScheduleMigrationForm(http_request.form)
+    fill_regions(schedule_form.region.choices)
+    fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
+    fill_custom_command_profiles(schedule_form.custom_command_profile.choices)
+
+    if get:
         # Initialize the hidden fields
 
-        form.hidden_server_name.data = ''
-        form.hidden_server.data = -1
-        form.hidden_server_directory.data = ''
-        form.hidden_pending_downloads.data = ''
-        form.hidden_region.data = -1
-        form.hidden_hosts.data = ''
-        form.hidden_software_packages.data = ''
-        form.hidden_edit.data = 'False'
-        form.hidden_best_effort_config.data = '0'
-        form.hidden_config_filename.data = ''
-        form.hidden_override_hw_req.data = '0'
-        form.hidden_dependency.data = ''
-        form.hidden_hardware_audit_version.data = ''
+        schedule_form.hidden_server_name.data = ''
+        schedule_form.hidden_server.data = -1
+        schedule_form.hidden_server_directory.data = ''
+        schedule_form.hidden_pending_downloads.data = ''
+        schedule_form.hidden_region.data = -1
+        schedule_form.hidden_hosts.data = ''
+        schedule_form.hidden_software_packages.data = ''
+        schedule_form.hidden_edit.data = 'False'
+        schedule_form.hidden_best_effort_config.data = '0'
+        schedule_form.hidden_config_filename.data = ''
+        schedule_form.hidden_override_hw_req.data = '0'
+        schedule_form.hidden_dependency.data = ''
+        schedule_form.hidden_hardware_audit_version.data = ''
+    return schedule_form
 
-        return render_template('exr_migrate/schedule_migrate.html', form=form,
-                               install_action=get_install_migrations_dict(),
-                               server_time=datetime.datetime.utcnow())
+
+def init_config_form(db_session, http_request, get=False):
+    config_form = ConfigConversionForm(http_request.form)
+    servers = get_server_list(db_session)
+
+    fill_servers(config_form.select_server.choices, servers, False)
+
+    if get:
+        config_form.hidden_submit_config_form.data = 'False'
+
+    return config_form
 
 
 @exr_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
@@ -175,12 +524,12 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
     return_url = get_return_url(request, 'host_dashboard')
 
-    form = ScheduleMigrationForm(request.form)
+    schedule_form = ScheduleMigrationForm(request.form)
 
     # Fills the selections
-    fill_servers(form.server_dialog_server.choices, host.region.servers, include_local=False)
-    fill_custom_command_profiles(form.custom_command_profile.choices)
-    fill_hardware_audit_version(form.hardware_audit_version.choices)
+    fill_servers(schedule_form.server_dialog_server.choices, host.region.servers, include_local=False)
+    fill_custom_command_profiles(schedule_form.custom_command_profile.choices)
+    fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
 
     if request.method == 'POST':
         if install_job is not None:
@@ -188,17 +537,17 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             # Thus, there will be no value returned by form.install_action.data.  So, re-use the existing ones.
             install_action = [ install_job.install_action ]
         else:
-            install_action = form.install_action.data
+            install_action = schedule_form.install_action.data
 
-        scheduled_time = form.scheduled_time_UTC.data
-        software_packages = form.hidden_software_packages.data
-        server = form.hidden_server.data
-        server_directory = form.hidden_server_directory.data
-        best_effort_config = form.hidden_best_effort_config.data
-        override_hw_req = form.hidden_override_hw_req.data
-        config_filename = form.hidden_config_filename.data
-        hardware_audit_version = form.hidden_hardware_audit_version.data
-        custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
+        scheduled_time = schedule_form.scheduled_time_UTC.data
+        software_packages = schedule_form.hidden_software_packages.data
+        server = schedule_form.hidden_server.data
+        server_directory = schedule_form.hidden_server_directory.data
+        best_effort_config = schedule_form.hidden_best_effort_config.data
+        override_hw_req = schedule_form.hidden_override_hw_req.data
+        config_filename = schedule_form.hidden_config_filename.data
+        hardware_audit_version = schedule_form.hidden_hardware_audit_version.data
+        custom_command_profile = ','.join([str(i) for i in schedule_form.custom_command_profile.data])
 
         host.context[0].data['best_effort_config_applying'] = best_effort_config
         host.context[0].data['config_filename'] = config_filename
@@ -208,7 +557,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         # install_action is a list object which can only contain one install action
         # at this editing time, accept the selected dependency if any
 
-        dependency = int(form.hidden_dependency.data)
+        dependency = int(schedule_form.hidden_dependency.data)
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                      scheduled_time=scheduled_time, software_packages=software_packages,
                                      server=server, server_directory=server_directory,
@@ -219,64 +568,66 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
     elif request.method == 'GET':
         # Initialize the hidden fields
-        form.hidden_server.data = -1
-        form.hidden_server_name.data = ''
-        form.hidden_server_directory.data = ''
-        form.hidden_pending_downloads.data = ''
-        form.hidden_edit.data = install_job is not None
+        schedule_form.hidden_server.data = -1
+        schedule_form.hidden_server_name.data = ''
+        schedule_form.hidden_server_directory.data = ''
+        schedule_form.hidden_pending_downloads.data = ''
+        schedule_form.hidden_edit.data = install_job is not None
 
-        form.hidden_region.data = str(host.region.name)
-        fill_default_region(form.region.choices, host.region)
-        form.hidden_hosts.data = hostname
-        form.hidden_dependency.data = ''
+        schedule_form.hidden_region.data = str(host.region.name)
+        fill_default_region(schedule_form.region.choices, host.region)
+        schedule_form.hidden_hosts.data = hostname
+        schedule_form.hidden_dependency.data = ''
 
         # In Edit mode
         if install_job is not None:
-            form.install_action.data = install_job.install_action
+            schedule_form.install_action.data = install_job.install_action
 
             if install_job.custom_command_profile_id:
                 ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
-                form.custom_command_profile.data = ids
+                schedule_form.custom_command_profile.data = ids
 
-            form.hidden_best_effort_config.data = host.context[0].data.get('best_effort_config_applying')
-            form.hidden_override_hw_req.data = host.context[0].data.get('override_hw_req')
-            form.hidden_config_filename.data = host.context[0].data.get('config_filename')
-            form.hidden_hardware_audit_version.data = host.context[0].data.get('hardware_audit_version')
+            schedule_form.hidden_best_effort_config.data = host.context[0].data.get('best_effort_config_applying')
+            schedule_form.hidden_override_hw_req.data = host.context[0].data.get('override_hw_req')
+            schedule_form.hidden_config_filename.data = host.context[0].data.get('config_filename')
+            schedule_form.hidden_hardware_audit_version.data = host.context[0].data.get('hardware_audit_version')
 
             if install_job.server_id is not None:
-                form.hidden_server.data = install_job.server_id
+                schedule_form.hidden_server.data = install_job.server_id
                 server = get_server_by_id(db_session, install_job.server_id)
                 if server is not None:
-                    form.hidden_server_name.data = server.hostname
+                    schedule_form.hidden_server_name.data = server.hostname
 
-                form.hidden_server_directory.data = '' if install_job.server_directory is None \
+                schedule_form.hidden_server_directory.data = '' if install_job.server_directory is None \
                     else install_job.server_directory
 
-            form.hidden_pending_downloads.data = '' if install_job.pending_downloads is None \
+            schedule_form.hidden_pending_downloads.data = '' if install_job.pending_downloads is None \
                 else install_job.pending_downloads
 
             # Form a line separated list for the textarea
             if install_job.packages is not None:
 
-                form.hidden_software_packages.data = install_job.packages
+                schedule_form.hidden_software_packages.data = install_job.packages
 
             if install_job.dependency is not None:
-                form.hidden_dependency.data = str(install_job.dependency)
+                schedule_form.hidden_dependency.data = str(install_job.dependency)
             else:
-                form.hidden_dependency.data = '-1'
+                schedule_form.hidden_dependency.data = '-1'
 
             if install_job.scheduled_time is not None:
-                form.scheduled_time_UTC.data = \
+                schedule_form.scheduled_time_UTC.data = \
                 get_datetime_string(install_job.scheduled_time)
 
-    return render_template('exr_migrate/schedule_migrate.html', form=form, system_option=SystemOption.get(db_session),
+    return render_template('exr_migrate/migration.html', schedule_form=schedule_form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
-                           return_url=return_url, install_action=get_install_migrations_dict())
+                           return_url=return_url, install_action=get_install_migrations_dict(), input_filename="",
+                           err_msg="")
 
 
 @exr_migrate.route('/select_host.html')
 def select_host():
     return render_template('exr_migrate/select_host.html')
+
 
 @exr_migrate.route('/api/get_dependencies/')
 @login_required
@@ -312,15 +663,13 @@ def get_dependencies():
     return jsonify(**{'data': [{ 'dependency_list': dependency_list, 'disqualified_count' :  disqualified_count} ] } )
 
 
-@exr_migrate.route('/api/get_latest_config_migration_tool/')
-@login_required
-def get_latest_config_migration_tool():
+def download_latest_config_migration_tool():
     """Check if the latest NoX is in file. Download if not."""
     fileloc = get_migration_directory()
 
     (success, date) = get_nox_binary_publish_date()
     if not success:
-        return jsonify( **{'data': [ { 'error': date } ] } )
+        return False, "Failed to get the publish date of the most recent NoX conversion tool on CCO."
 
     need_new_nox = False
 
@@ -333,8 +682,7 @@ def get_latest_config_migration_tool():
                 need_new_nox = True
             f.close()
         except:
-            return jsonify( **{'data': [ { 'error': 'Exception was thrown when reading file '
-                                                    + fileloc + NOX_PUBLISH_DATE } ] } )
+            return False, 'Exception was thrown when reading file ' + fileloc + NOX_PUBLISH_DATE
 
     else:
         need_new_nox = True
@@ -344,19 +692,19 @@ def get_latest_config_migration_tool():
         check_32_or_64_system = subprocess.Popen(['uname', '-a'], stdout=subprocess.PIPE)
         out, err = check_32_or_64_system.communicate()
         if err:
-            return jsonify( **{'data': [ { 'error': 'Error when trying to determine whether the \
-                                                    linux system that you are hosting CSM on is \
-                                                    32 bit or 64 bit with command "uname -a".' } ] } )
+            return False, 'Error when trying to determine whether the ' + \
+                          'linux system that you are hosting CSM on is ' + \
+                          '32 bit or 64 bit with command "uname -a".'
 
         if "x86_64" in out:
             nox_to_use = NOX_64_BINARY
         else:
-            return jsonify( **{'data': [ { 'error': 'NoX is not available for 32 bit linux.' } ] } )
+            return False, 'NoX is not available for 32 bit linux.'
             # nox_to_use = NOX_32_BINARY
 
         (success, error_msg) = get_file_http(nox_to_use, fileloc)
         if not success:
-            return jsonify( **{'data': [ { 'error': error_msg } ] } )
+            return False, error_msg
 
         try:
             with open(fileloc + NOX_PUBLISH_DATE, 'w') as nox_publish_date_file:
@@ -364,10 +712,18 @@ def get_latest_config_migration_tool():
             nox_publish_date_file.close()
         except:
             nox_publish_date_file.close()
-            return jsonify( **{'data': [ { 'error': 'Exception was thrown when writing file ' +
-                                                    fileloc + NOX_PUBLISH_DATE } ] } )
+            return False, 'Exception was thrown when writing file ' + fileloc + NOX_PUBLISH_DATE
 
-    return jsonify( **{'data': [ { 'error': 'None' } ] } )
+    return True, 'None'
+
+
+@exr_migrate.route('/api/get_latest_config_migration_tool/')
+@login_required
+def get_latest_config_migration_tool():
+    """Check if the latest NoX is in file. Download if not."""
+    success, err_msg = download_latest_config_migration_tool()
+
+    return jsonify( **{'data': [ { 'error': err_msg } ] } )
 
 
 def get_nox_binary_publish_date():
@@ -460,3 +816,14 @@ class ScheduleMigrationForm(Form):
 
     hardware_audit_version = SelectField('ASR9K-64 Software Version', coerce=str, choices=[('Any', 'Any')])
     hidden_hardware_audit_version = HiddenField('')
+
+
+class ConfigConversionForm(Form):
+    select_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
+    select_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
+    # select_file = SelectField('Configuration File', coerce=str, choices=[('', '')])
+    # hidden_server = HiddenField('')
+    # hidden_server_name = HiddenField('')
+    # hidden_server_directory = HiddenField('')
+    # hidden_config_file = HiddenField('')
+    hidden_submit_config_form = HiddenField('')

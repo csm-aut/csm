@@ -24,11 +24,12 @@
 # =============================================================================
 from database import DBSession
 from models import logger
-from models import EmailJob, CreateTarJob
+from models import EmailJob, CreateTarJob, ConvertConfigJob
 
 from multi_process import JobManager
 from work_units.email_work_unit import EmailWorkUnit
 from work_units.create_tar_work_unit import CreateTarWorkUnit
+from work_units.convert_config_work_unit import ConvertConfigWorkUnit
 
 from constants import JobStatus
 
@@ -42,6 +43,7 @@ class GenericJobManager(JobManager):
 
         self.handle_email_jobs(db_session)
         self.handle_create_tar_jobs(db_session)
+        self.handle_convert_config_jobs(db_session)
 
         db_session.close()
 
@@ -64,3 +66,15 @@ class GenericJobManager(JobManager):
                         self.submit_job(CreateTarWorkUnit(create_tar_job.id))
         except Exception:
             logger.exception('Unable to dispatch create tar job')
+
+    def handle_convert_config_jobs(self, db_session):
+        try:
+            convert_config_jobs = db_session.query(ConvertConfigJob).filter().all()
+            if convert_config_jobs:
+                for convert_config_job in convert_config_jobs:
+                    if convert_config_job.status != JobStatus.COMPLETED and convert_config_job.status != JobStatus.FAILED:
+                        self.submit_job(ConvertConfigWorkUnit(convert_config_job.id))
+        except Exception as inst:
+            print str(inst)
+            print str(inst.args)
+            logger.exception('Unable to dispatch convert config job')
