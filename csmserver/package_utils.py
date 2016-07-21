@@ -213,12 +213,9 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                 if re.search(package_name, host_package):
                     if match_internal_name:
                         if "-xr" in host_package:
-                            if software_platform in [PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
-                                # Unlike ASR9K-64, when a mini is installed, it becomes two separate packages
-                                # ncs5k-xr-6.0.1 and ncs5k-sysadmin-6.0.1
-                                target_list.append("{}-{}".format(family.lower() + '-xr', target_version))
-                                target_list.append("{}-{}".format(family.lower() + '-sysadmin', target_version))
-                            elif software_platform in [PlatformFamily.NCS1K]:
+                            if software_platform in [PlatformFamily.NCS1K,
+                                                     PlatformFamily.NCS5K,
+                                                     PlatformFamily.NCS5500]:
                                 # ncs1k-mini-x-6.1.1
                                 target_list.append("{}-{}".format(family.lower() + '-mini-x', target_version))
                             elif software_platform in [PlatformFamily.ASR9K_64]:
@@ -230,7 +227,9 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                     else:
                         # Produce the ISO image name
                         if "-xr" in host_package:
-                            if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+                            if software_platform in [PlatformFamily.NCS1K,
+                                                     PlatformFamily.NCS5K,
+                                                     PlatformFamily.NCS5500]:
                                 # ncs5k-mini-x.iso-6.1.1
                                 target_list.append("{}-{}".format(family.lower() + '-mini-x.iso', target_version))
                             elif software_platform in [PlatformFamily.ASR9K_64]:
