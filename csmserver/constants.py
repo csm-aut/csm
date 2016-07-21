@@ -71,12 +71,13 @@ class ConnectionType:
 
 class PlatformFamily:
     ASR9K = 'ASR9K'
-    CRS = 'CRS'
-    NCS6K = 'NCS6K'
-    NCS5K = 'NCS5K'
-    NCS5500 = 'NCS5500'
     ASR9K_64 = 'ASR9K-64'
     ASR900 = 'ASR900'
+    CRS = 'CRS'
+    NCS1K = 'NCS1K'
+    NCS5K = 'NCS5K'
+    NCS5500 = 'NCS5500'
+    NCS6K = 'NCS6K'
     N9K = 'N9K'
 
 

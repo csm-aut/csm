@@ -26,6 +26,7 @@
 import re
 
 from constants import PlatformFamily
+from utils import get_software_platform
 
 # The key is part of the internal name, the value is part of the external name (without version info)
 
@@ -68,52 +69,6 @@ ASR9K_PACKAGES = {
     'asr9k-video-px': 'asr9k-video-px.pie',
 }
 
-# When matching, ASR9K X64 packages will be matched as regex
-# The others will be used as literal string
-#
-# Engineering Names:
-# asr9k-mcast-x64-2.0.0.0-r61113I          asr9k-mcast-x64-2.0.0.0-r61113I.x86_64.rpm-6.1.1
-#
-# Production Images:
-# Internal Names:                          External Names:
-#
-# asr9k-bgp-x64-1.0.0.0-r611               asr9k-bgp-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-diags-x64-1.0.0.0-r611             asr9k-diags-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-eigrp-x64-1.0.0.0-r611             asr9k-eigrp-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-isis-x64-1.1.0.0-r611              asr9k-isis-x64-1.1.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-k9sec-x64-2.1.0.0-r611             asr9k-k9sec-x64-2.1.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-li-x64-1.1.0.0-r611                asr9k-li-x64-1.1.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-m2m-x64-2.0.0.0-r611               asr9k-m2m-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-mcast-x64-2.0.0.0-r611             asr9k-mcast-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-mgbl-x64-3.0.0.0-r611              asr9k-mgbl-x64-3.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-mpls-te-rsvp-x64-1.1.0.0-r611      asr9k-mpls-te-rsvp-x64-1.1.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-mpls-x64-2.0.0.0-r611              asr9k-mpls-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-optic-x64-1.0.0.0-r611             asr9k-optic-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-ospf-x64-1.0.0.0-r611              asr9k-ospf-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-parser-x64-2.0.0.0-r611            asr9k-parser-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
-# asr9k-xr-6.1.1                           asr9k-full-x64.iso-6.1.1/asr9k-mini-x64.iso-6.1.1
-#
-
-ASR9K_64_PACKAGES = {
-    'asr9k-bgp-x64-\d\.\d\.\d\.\d': 'asr9k-bgp-x64-\d\.\d\.\d\.\d',
-    'asr9k-diags-x64-\d\.\d\.\d\.\d': 'asr9k-diags-x64-\d\.\d\.\d\.\d',
-    'asr9k-eigrp-x64-\d\.\d\.\d\.\d': 'asr9k-eigrp-x64-\d\.\d\.\d\.\d',
-    'asr9k-xr': 'asr9k-full-x64\.iso',
-    'asr9k-isis-x64-\d\.\d\.\d\.\d': 'asr9k-isis-x64-\d\.\d\.\d\.\d',
-    'asr9k-k9sec-x64-\d\.\d\.\d\.\d': 'asr9k-k9sec-x64-\d\.\d\.\d\.\d',
-    'asr9k-li-x64-\d\.\d\.\d\.\d': 'asr9k-li-x64-\d\.\d\.\d\.\d',
-    'asr9k-m2m-x64-\d\.\d\.\d\.\d': 'asr9k-m2m-x64-\d\.\d\.\d\.\d',
-    'asr9k-mcast-x64-\d\.\d\.\d\.\d': 'asr9k-mcast-x64-\d\.\d\.\d\.\d',
-    'asr9k-mgbl-x64-\d\.\d\.\d\.\d': 'asr9k-mgbl-x64-\d\.\d\.\d\.\d',
-    'asr9k-xr': 'asr9k-mini-x64\.iso',
-    'asr9k-mpls-te-rsvp-x64-\d\.\d\.\d\.\d': 'asr9k-mpls-te-rsvp-x64-\d\.\d\.\d\.\d',
-    'asr9k-mpls-x64-\d\.\d\.\d\.\d': 'asr9k-mpls-x64-\d\.\d\.\d\.\d',
-    'asr9k-optic-x64-\d\.\d\.\d\.\d': 'asr9k-optic-x64-\d\.\d\.\d\.\d',
-    'asr9k-ospf-x64-\d\.\d\.\d\.\d': 'asr9k-ospf-x64-\d\.\d\.\d\.\d',
-    'asr9k-parser-x64-\d\.\d\.\d\.\d': 'asr9k-parser-x64-\d\.\d\.\d\.\d'
-}
-
-#
 # NCS6K:
 # Production Images:
 # Internal Names:           External Names:
@@ -141,33 +96,77 @@ NCS6K_PACKAGES = {
 #
 # NCS5K:
 # Production Images:
-# Internal Names:                 External Names
+# Internal Names:                         External Names
 #
 # ncs5k-full-x.iso-6.0.1
-# ncs5k-isis-2.0.0.0-r601         ncs5k-isis-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5k-k9sec-2.0.0.0-r601        ncs5k-k9sec-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5k-mcast-2.0.0.0-r601        ncs5k-mcast-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5k-mgbl-3.0.0.0-r601         ncs5k-mgbl-3.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5k-xr-6.0.1                  ncs5k-mini-x.iso-6.0.1
-# ncs5k-mpls-2.0.0.0-r601         ncs5k-mpls-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5k-ospf-1.0.0.0-r601         ncs5k-ospf-1.0.0.0-r601.x86_64.rpm-6.0.1
-#
-
+# ncs5k-isis-2.0.0.0-r601                 ncs5k-isis-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5k-k9sec-2.0.0.0-r601                ncs5k-k9sec-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5k-mcast-2.0.0.0-r601                ncs5k-mcast-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5k-mgbl-3.0.0.0-r601                 ncs5k-mgbl-3.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5k-xr-6.0.1                          ncs5k-mini-x.iso-6.0.1
+# ncs5k-mpls-2.0.0.0-r601                 ncs5k-mpls-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5k-ospf-1.0.0.0-r601                 ncs5k-ospf-1.0.0.0-r601.x86_64.rpm-6.0.1
 #
 # NCS5500:
 # Production Images:
-# Internal Names:                      External Names:
+# Internal Names:                          External Names:
 #
-# ncs5500-eigrp-2.0.0.0-r601           ncs5500-eigrp-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-isis-2.0.0.0-r601            ncs5500-isis-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-k9sec-2.0.0.0-r601           ncs5500-k9sec-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-m2m-2.0.0.0-r601             ncs5500-m2m-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-mgbl-3.0.0.0-r601            ncs5500-mgbl-3.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-xr-6.0.1                     ncs5500-mini-x.iso-6.0.1
-# ncs5500-mpls-2.0.0.0-r601            ncs5500-mpls-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-mpls-te-rsvp-2.0.0.0-r601    ncs5500-mpls-te-rsvp-2.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-ospf-1.0.0.0-r601            ncs5500-ospf-1.0.0.0-r601.x86_64.rpm-6.0.1
-# ncs5500-parser-1.0.0.0-r601          ncs5500-parser-1.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-eigrp-2.0.0.0-r601               ncs5500-eigrp-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-isis-2.0.0.0-r601                ncs5500-isis-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-k9sec-2.0.0.0-r601               ncs5500-k9sec-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-m2m-2.0.0.0-r601                 ncs5500-m2m-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-mgbl-3.0.0.0-r601                ncs5500-mgbl-3.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-xr-6.0.1                         ncs5500-mini-x.iso-6.0.1
+# ncs5500-mpls-2.0.0.0-r601                ncs5500-mpls-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-mpls-te-rsvp-2.0.0.0-r601        ncs5500-mpls-te-rsvp-2.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-ospf-1.0.0.0-r601                ncs5500-ospf-1.0.0.0-r601.x86_64.rpm-6.0.1
+# ncs5500-parser-1.0.0.0-r601              ncs5500-parser-1.0.0.0-r601.x86_64.rpm-6.0.1
+
+# ASR9K-64
+# Engineering Package - Internal Name:     External Name:
+# asr9k-mcast-x64-1.0.0.0-r61113I          asr9k-mcast-x64-1.0.0.0-r61113I.x86_64.rpm-6.1.1
+#
+# Production Package - Internal Name:      External Name:
+# asr9k-xr-6.1.1                           asr9k-full-x64.iso-6.1.1/asr9k-mini-x64.iso-6.1.1
+# asr9k-mcast-x64-1.0.0.0-r611             asr9k-mcast-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
+
+# asr9k-eigrp-x64-1.0.0.0-r611             asr9k-eigrp-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-isis-x64-1.1.0.0-r611              asr9k-isis-x64-1.1.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-k9sec-x64-2.1.0.0-r611             asr9k-k9sec-x64-2.1.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-li-x64-1.1.0.0-r611                asr9k-li-x64-1.1.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-m2m-x64-2.0.0.0-r611               asr9k-m2m-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-mcast-x64-2.0.0.0-r611             asr9k-mcast-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-mgbl-x64-3.0.0.0-r611              asr9k-mgbl-x64-3.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-mpls-te-rsvp-x64-1.1.0.0-r611      asr9k-mpls-te-rsvp-x64-1.1.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-mpls-x64-2.0.0.0-r611              asr9k-mpls-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-optic-x64-1.0.0.0-r611             asr9k-optic-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-ospf-x64-1.0.0.0-r611              asr9k-ospf-x64-1.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-parser-x64-2.0.0.0-r611            asr9k-parser-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
+# asr9k-xr-6.1.1                           asr9k-full-x64.iso-6.1.1/asr9k-mini-x64.iso-6.1.1
+
+EXR_RPM_PACKAGES = {
+    # This list will cover all eXR platforms.  They are arranged in alphabetical order for human consumption.
+    '-bgp-x64-\d\.\d\.\d\.\d': '-bgp-x64-\d\.\d\.\d\.\d',
+    '-diags-x64-\d\.\d\.\d\.\d': '-diags-x64-\d\.\d\.\d\.\d',
+    '-doc-x64-\d\.\d\.\d\.\d': '-diags-x64-\d\.\d\.\d\.\d',
+    '-eigrp-x64-\d\.\d\.\d\.\d': '-eigrp-x64-\d\.\d\.\d\.\d',
+    '-fwding-x64-\d\.\d\.\d\.\d': '-fwding-x64-\d\.\d\.\d\.\d',
+    '-infra-x64-\d\.\d\.\d\.\d': '-infra-x64-\d\.\d\.\d\.\d',
+    '-infra-test-x64-\d\.\d\.\d\.\d': '-infra-test-x64-\d\.\d\.\d\.\d',
+    '-isis-x64-\d\.\d\.\d\.\d': '-isis-x64-\d\.\d\.\d\.\d',
+    '-k9sec-x64-\d\.\d\.\d\.\d': '-k9sec-x64-\d\.\d\.\d\.\d',
+    '-li-x64-\d\.\d\.\d\.\d': '-li-x64-\d\.\d\.\d\.\d',
+    '-m2m-x64-\d\.\d\.\d\.\d': '-m2m-x64-\d\.\d\.\d\.\d',
+    '-mcast-x64-\d\.\d\.\d\.\d': '-mcast-x64-\d\.\d\.\d\.\d',
+    '-mgbl-x64-\d\.\d\.\d\.\d': '-mgbl-x64-\d\.\d\.\d\.\d',
+    '-xr': '-mini-x64',
+    '-mpls-x64-\d\.\d\.\d\.\d': '-mpls-x64-\d\.\d\.\d\.\d',
+    '-mpls-te-rsvp-x64-\d\.\d\.\d\.\d': '-mpls-te-rsvp-x64-\d\.\d\.\d\.\d',
+    '-optic-x64-\d\.\d\.\d\.\d': '-optic-x64-\d\.\d\.\d\.\d',
+    '-ospf-x64-\d\.\d\.\d\.\d': '-ospf-x64-\d\.\d\.\d\.\d',
+    '-parser-x64-\d\.\d\.\d\.\d': '-parser-x64-\d\.\d\.\d\.\d',
+    '-rm-x64-\d\.\d\.\d\.\d': '-rm-x64-\d\.\d\.\d\.\d',
+}
 
 
 def get_target_software_package_list(family, os_type, host_packages, target_version, match_internal_name=False):
@@ -175,41 +174,72 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
     If match_internal_name is true, it matches the host_packages instead of the physical name
     on the server repository.
     """
+
     target_list = []
     platform_package_list = {}
-    target_version_for_iso = ""
-    target_version_for_rpm = ""
 
-    if family == PlatformFamily.ASR9K:
-        if os_type == "XR":
-            platform_package_list = ASR9K_PACKAGES
-        elif os_type == "eXR":
-            platform_package_list = ASR9K_64_PACKAGES
-            # Internal Names:                 External Names:
-            # asr9k-xr-6.1.1                  asr9k-full-x64.iso-6.1.1/asr9k-mini-x64.iso-6.1.1
-            # asr9k-mcast-x64-2.0.0.0-r611    asr9k-mcast-x64-2.0.0.0-r611.x86_64.rpm-6.1.1
-            target_version_for_iso = target_version + '(?:\.\d+I)?'
-            target_version_for_rpm = 'r' + target_version.replace('.', '') + '(?:\d+I)?'
-            if not match_internal_name:
-                target_version_for_rpm += '\.x86_64\.rpm'
+    # ASR9K and ASR9K-64 belong to the same family, but are different software platforms
+    software_platform = get_software_platform(family, os_type)
 
-    elif family == PlatformFamily.CRS:
+    if software_platform == PlatformFamily.ASR9K:
+        platform_package_list = ASR9K_PACKAGES
+    elif software_platform == PlatformFamily.CRS:
         platform_package_list = CRS_PACKAGES
-    elif family == PlatformFamily.NCS6K:
+    elif software_platform == PlatformFamily.NCS6K:
         platform_package_list = NCS6K_PACKAGES
+    elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
+                               PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+        platform_package_list = EXR_RPM_PACKAGES
 
-    for k, v in platform_package_list.items():
-        for package in host_packages:
-            if k in package or re.search(k, package):
-                if match_internal_name:
-                    target_list.append("{}-{}".format(k, target_version))
-                else:
-                    if family == PlatformFamily.ASR9K and os_type == "eXR":
-                        if "asr9k-xr" in package:
-                            target_list.append("{}-{}".format(v, target_version_for_iso))
-                        else:
-                            target_list.append("{}-{}".format(v, target_version_for_rpm))
+    for host_package in host_packages:
+        for internal_name, external_name in platform_package_list.items():
+            if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS, PlatformFamily.NCS6K]:
+                if internal_name in host_package:
+                    if match_internal_name:
+                        target_list.append("{}-{}".format(internal_name, target_version))
                     else:
-                        target_list.append("{}-{}".format(v, target_version))
+                        target_list.append("{}-{}".format(external_name, target_version))
+                    break
 
+            elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
+                                       PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+                # Add family prefix
+                package_name = family.lower() + internal_name
+
+                # Further refining, for these platforms, '-x64' is not applicable
+                if software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+                    package_name = package_name.replace('-x64', '')
+
+                if re.search(package_name, host_package):
+                    if match_internal_name:
+                        if "-xr" in host_package:
+                            if software_platform in [PlatformFamily.NCS1K,
+                                                     PlatformFamily.NCS5K,
+                                                     PlatformFamily.NCS5500]:
+                                # ncs1k-mini-x-6.1.1
+                                target_list.append("{}-{}".format(family.lower() + '-mini-x', target_version))
+                            elif software_platform in [PlatformFamily.ASR9K_64]:
+                                # asr9k-mini-x64-6.1.1
+                                target_list.append("{}-{}".format(family.lower() + '-mini-x64', target_version))
+                        else:
+                            target_list.append("{}-{}".format(package_name,
+                                                              'r' + target_version.replace('.', '')))
+                    else:
+                        # Produce the ISO image name
+                        if "-xr" in host_package:
+                            if software_platform in [PlatformFamily.NCS1K,
+                                                     PlatformFamily.NCS5K,
+                                                     PlatformFamily.NCS5500]:
+                                # ncs5k-mini-x.iso-6.1.1
+                                target_list.append("{}-{}".format(family.lower() + '-mini-x.iso', target_version))
+                            elif software_platform in [PlatformFamily.ASR9K_64]:
+                                # asr9k-mini-x64.iso-6.1.1
+                                target_list.append("{}-{}".format(family.lower() + '-mini-x64.iso', target_version))
+                        else:
+                            # ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
+                            target_list.append("{}-{}{}-{}".format(package_name,
+                                                                   'r' + target_version.replace('.', ''),
+                                                                   '.x86_64.rpm', target_version))
+                    break
+  
     return target_list

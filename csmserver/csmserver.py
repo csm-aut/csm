@@ -129,6 +129,7 @@ from common import get_download_job_key
 from common import create_or_update_host
 from common import delete_host
 from common import get_last_install_action
+from common import get_last_completed_install_job_for_install_action
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -148,6 +149,7 @@ from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
 from utils import datetime_from_utc_to_local
+from utils import get_software_platform
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -164,13 +166,11 @@ from cisco_service.bug_service import BugServiceHandler
 from package_utils import get_target_software_package_list
 from restful import restful_api
 
-from views.exr_migrate import exr_migrate
+from views.asr9k_64_migrate import asr9k_64_migrate
 from views.conformance import conformance
 from views.tar_support import tar_support
 from views.host_import import host_import
 from views.custom_command import custom_command
-
-from horizon.plugin_manager import PluginManager
 
 from report_writer import ExportSoftwareInfoHTMLConciseWriter
 from report_writer import ExportSoftwareInfoHTMLDefaultWriter
@@ -190,7 +190,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
 app.register_blueprint(restful_api)
-app.register_blueprint(exr_migrate)
+app.register_blueprint(asr9k_64_migrate)
 app.register_blueprint(conformance)
 app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
@@ -2496,14 +2496,9 @@ def api_get_last_successful_install_add_packages(host_id):
     result_list = []
     db_session = DBSession()
 
-    install_job_packages = db_session.query(InstallJobHistory.packages). \
-        filter((InstallJobHistory.host_id == host_id), 
-        and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD,
-             InstallJobHistory.status == JobStatus.COMPLETED)). \
-        order_by(InstallJobHistory.status_time.desc()).first()
-
-    if install_job_packages is not None:
-        result_list.append(install_job_packages)
+    install_job = get_last_completed_install_job_for_install_action(db_session, host_id, InstallAction.INSTALL_ADD)
+    if install_job is not None:
+        result_list.append(install_job.packages)
     
     return jsonify(**{'data': result_list})
 
@@ -2889,20 +2884,20 @@ def check_host_reachability():
 def get_software_package_upgrade_list(hostname, target_release):
     rows = []
     db_session = DBSession()
-    
+
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
+
     match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname)
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
                                                        target_release, match_internal_name)
     for package in target_packages:
-        rows.append(package)
-    if host.family == PlatformFamily.ASR9K and host.os_type == "eXR":
-        return jsonify(**{'data': [{ 'is_regex': 1, 'packages' :  rows}]})
+        rows.append({'package' : package})
 
-    return jsonify(**{'data': [{ 'is_regex': 0, 'packages' :  rows}]})
+    return jsonify( **{'data':rows} )
+
 
 
 @app.route('/api/check_jump_host_reachability')
@@ -3704,30 +3699,6 @@ def download_system_logs():
     log_file.close()
 
     return send_file(os.path.join(log_file_path, 'system_logs'), as_attachment=True)
-
-
-@app.route('/api/plugins')
-@login_required
-def plugins():
-    pm = PluginManager()
-    pm.locate_plugins()
-    plugins = pm.load_plugins()
-    info = [plugin.to_dict() for plugin in plugins]
-    return jsonify(**{"data": info})
-
-@app.route('/api/plugins/<name>')
-@login_required
-def plugin_by_name(name):
-    pm = PluginManager()
-    pm.locate_plugins()
-    pm.load_plugins()
-    plugins = pm.get_plugins_by_name(name)
-    if not isinstance(plugins, list):
-        plugin = [plugins.to_dict()]
-    else:
-        plugin = [plugin.to_dict() for plugin in plugins]
-    return jsonify(**{"data": plugin})
-
 
 if __name__ == '__main__':
     initialize.init()  

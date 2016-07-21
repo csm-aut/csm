@@ -48,6 +48,8 @@ from models import InstallJob
 from models import InstallJobHistory
 from models import SystemOption
 
+from common import get_last_completed_install_job_for_install_action
+
 import traceback
 import datetime
 import urllib
@@ -134,7 +136,9 @@ class InstallWorkUnit(WorkUnit):
     def get_last_operation_id(self, db_session, install_activate_job, trace=None):
 
         if install_activate_job.install_action == InstallAction.INSTALL_ACTIVATE:
-            install_add_job = self.get_last_successful_install_job(db_session, install_activate_job.host_id)
+            install_add_job = get_last_completed_install_job_for_install_action(db_session,
+                                                                                install_activate_job.host_id,
+                                                                                InstallAction.INSTALL_ADD)
             if install_add_job is not None:
                 # Check if Last Install Add and Activate have the same packages.
                 # If they have, then return the operation id.
@@ -147,12 +151,6 @@ class InstallWorkUnit(WorkUnit):
                     return install_add_job.operation_id
 
         return -1
-
-    def get_last_successful_install_job(self, db_session, host_id):
-        return db_session.query(InstallJobHistory). \
-            filter((InstallJobHistory.host_id == host_id),
-                   and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD)). \
-            order_by(InstallJobHistory.status_time.desc()).first()
 
     def archive_install_job(self, db_session, logger, ctx, host, install_job, job_status, process_name, trace=None):
 

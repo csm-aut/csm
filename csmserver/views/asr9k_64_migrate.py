@@ -37,7 +37,7 @@ from models import Host, InstallJob, SystemOption, ConvertConfigJob
 from models import logger
 
 from wtforms import Form
-from wtforms import TextField, SelectField, HiddenField, SelectMultipleField
+from wtforms import StringField, SelectField, HiddenField, SelectMultipleField
 from wtforms.validators import required
 
 from smu_info_loader import IOSXR_URL
@@ -60,7 +60,7 @@ OUTPUT_CONFIG1 = "input_config.iox"
 OUTPUT_CONFIG2 = "input_config.cal"
 OUTPUT_ANALYSIS = "input_config.csv"
 
-exr_migrate = Blueprint('exr_migrate', __name__, url_prefix='/exr_migrate')
+asr9k_64_migrate = Blueprint('asr9k_64_migrate', __name__, url_prefix='/asr9k_64_migrate')
 
 """
 @exr_migrate.route('/index', methods=['GET', 'POST'])
@@ -148,7 +148,7 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
-@exr_migrate.route('/api/convert_config_file')
+@asr9k_64_migrate.route('/api/convert_config_file')
 @login_required
 def convert_config_file():
     filename = request.args.get('filename', '', type=str)
@@ -169,7 +169,7 @@ def convert_config_file():
     return jsonify({'status': 'OK', 'job_id': job_id})
 
 
-@exr_migrate.route('/api/get_config_conversion_progress')
+@asr9k_64_migrate.route('/api/get_config_conversion_progress')
 @login_required
 def get_config_conversion_progress():
 
@@ -185,7 +185,7 @@ def get_config_conversion_progress():
     return jsonify(status='OK', progress=convert_config_job.status)
 
 
-@exr_migrate.route('/api/get_file')
+@asr9k_64_migrate.route('/api/get_file')
 @login_required
 def get_file():
     which_file = request.args.get('file_number', 0, type=int)
@@ -214,7 +214,7 @@ def get_file():
     return jsonify(**{'data': 'file does not exist.'})
 
 
-@exr_migrate.route('/api/get_analysis')
+@asr9k_64_migrate.route('/api/get_analysis')
 @login_required
 def process_config_conversion_output():
     filename = request.args.get('filename', '', type=str)
@@ -262,7 +262,7 @@ def process_config_conversion_output():
     return send_from_directory(config_conversion_path, html_file, cache_timeout=0)
 
 
-@exr_migrate.route('/upload_config_to_server_repository')
+@asr9k_64_migrate.route('/upload_config_to_server_repository')
 def upload_config_to_server_repository():
     server_id = request.args.get('server_id', -1, type=int)
     server_directory = request.args.get('server_directory', '', type=str)
@@ -358,7 +358,7 @@ def upload_files_to_server_repository(sourcefile, server, selected_server_direct
     return 'OK'
 
 
-@exr_migrate.route('/migration', methods=['GET', 'POST'])
+@asr9k_64_migrate.route('/migration', methods=['GET', 'POST'])
 @login_required
 def migration():
     # only operator and above can schedule migration
@@ -444,8 +444,7 @@ def migration():
 
         return redirect(url_for(return_url))
     else:
-
-        return render_template('exr_migrate/migration.html',
+        return render_template('asr9k_64_migrate/../templates/migration.html',
                                schedule_form=schedule_form,
                                install_action=get_install_migrations_dict(),
                                server_time=datetime.datetime.utcnow(),
@@ -496,7 +495,7 @@ def init_config_form(db_session, http_request, get=False):
     return config_form
 
 
-@exr_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
+@asr9k_64_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
 @login_required
 def host_schedule_install_migration_edit(hostname, id):
     # only operator and above can edit migration
@@ -618,18 +617,18 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 schedule_form.scheduled_time_UTC.data = \
                 get_datetime_string(install_job.scheduled_time)
 
-    return render_template('exr_migrate/migration.html', schedule_form=schedule_form, system_option=SystemOption.get(db_session),
+    return render_template('asr9k_64_migrate/../templates/migration.html', schedule_form=schedule_form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url, install_action=get_install_migrations_dict(), input_filename="",
                            err_msg="")
 
 
-@exr_migrate.route('/select_host.html')
+@asr9k_64_migrate.route('/select_host.html')
 def select_host():
-    return render_template('exr_migrate/select_host.html')
+    return render_template('asr9k_64_migrate/select_host.html')
 
 
-@exr_migrate.route('/api/get_dependencies/')
+@asr9k_64_migrate.route('/api/get_dependencies/')
 @login_required
 def get_dependencies():
     db_session = DBSession()
@@ -660,7 +659,7 @@ def get_dependencies():
         else:
             dependency_list.append('-1')
 
-    return jsonify(**{'data': [{ 'dependency_list': dependency_list, 'disqualified_count' :  disqualified_count} ] } )
+    return jsonify(**{'data': [{'dependency_list': dependency_list, 'disqualified_count':  disqualified_count}]})
 
 
 def download_latest_config_migration_tool():
@@ -705,7 +704,6 @@ def download_latest_config_migration_tool():
         (success, error_msg) = get_file_http(nox_to_use, fileloc)
         if not success:
             return False, error_msg
-
         try:
             with open(fileloc + NOX_PUBLISH_DATE, 'w') as nox_publish_date_file:
                 nox_publish_date_file.write(date)
@@ -717,7 +715,7 @@ def download_latest_config_migration_tool():
     return True, 'None'
 
 
-@exr_migrate.route('/api/get_latest_config_migration_tool/')
+@asr9k_64_migrate.route('/api/get_latest_config_migration_tool/')
 @login_required
 def get_latest_config_migration_tool():
     """Check if the latest NoX is in file. Download if not."""
@@ -785,7 +783,7 @@ def fill_hardware_audit_version(choices):
 class ScheduleMigrationForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
 
-    scheduled_time = TextField('Scheduled Time', [required()])
+    scheduled_time = StringField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
     custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[(-1, '')])
 
@@ -793,7 +791,7 @@ class ScheduleMigrationForm(Form):
     role = SelectField('Role', coerce=str, choices=[('Any', 'Any')])
     software = SelectField('Software Version', coerce=str, choices=[('Any', 'Any')])
 
-    server_dialog_target_software = TextField('Target Software Release')
+    server_dialog_target_software = StringField('Target Software Release')
     server_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
     server_dialog_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
 
