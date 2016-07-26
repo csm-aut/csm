@@ -28,8 +28,8 @@ class ConvertConfigWorkUnit(WorkUnit):
 
             file_path = self.convert_config_job.file_path
 
-            # nox_to_use = get_migration_directory() + NOX_64_BINARY
-            nox_to_use = get_migration_directory() + NOX_64_MAC
+            nox_to_use = get_migration_directory() + NOX_64_BINARY
+            # nox_to_use = get_migration_directory() + NOX_64_MAC
             print "start executing nox conversion..."
             try:
                 commands = [subprocess.Popen(["chmod", "+x", nox_to_use]),
