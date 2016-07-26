@@ -1,7 +1,7 @@
 <div id="override">
     <h4 class="info-text-left">By default, migration requires that all RSP, RP, FC, FAN and PEM on device are supported in ASR9K-64 and are in operational states.
-      Do you wish to skip the hardware audit for FAN and PEM?
-      <a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req"></span></a>
+      Do you wish to skip the hardware audit for FAN and PEM?&nbsp;&nbsp;
+      <a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_left"></span></a>
       </h4>
 
     <div id="popover_hw_req" style="display: none">
@@ -47,20 +47,19 @@
                         <td>ASR-9922-FAN-V2</td><td></td><td></td>
                     </tr>
                     <tr>
-                        <td><span style="color:red">*A99-RSP-SE</span></td><td>A99-8X100GE-TR</td>
+                        <td>A9K-RSP880-RL-SE</td><td>A99-8X100GE-TR</td>
                         <td></td><td></td><td></td>
                     </tr>
                     <tr>
-                        <td><span style="color:red">*A99-RSP-TR</span></td><td>A9K-8X100GE-TR</td>
-                        <td></td><td></td><td></td>
-                    </tr>
-
-                    <tr>
-                        <td></td><td>A9K-4X100GE-SE</td>
+                        <td>A9K-RSP880-RL-TR</td><td>A9K-8X100GE-TR</td>
                         <td></td><td></td><td></td>
                     </tr>
                     <tr>
-                        <td></td><td>A9K-4X100GE-TR</td>
+                        <td><span style="color:red">*A99-RSP-SE</span></td><td>A9K-8X100GE-LB-SE</td>
+                        <td></td><td></td><td></td>
+                    </tr>
+                    <tr>
+                        <td><span style="color:red">*A99-RSP-TR</span></td><td>A9K-8X100GE-LB-TR</td>
                         <td></td><td></td><td></td>
                     </tr>
                     <tr>
@@ -68,11 +67,11 @@
                         <td></td><td></td><td></td>
                     </tr>
                     <tr>
-                        <td></td><td>A9K-8X100GE-LB-TR</td>
+                        <td></td><td>A9K-4X100GE-SE</td>
                         <td></td><td></td><td></td>
                     </tr>
                     <tr>
-                        <td></td><td>A9K-8X100GE-LB-SE</td>
+                        <td></td><td>A9K-4X100GE-TR</td>
                         <td></td><td></td><td></td>
                     </tr>
                     <tr>
@@ -109,8 +108,7 @@
           <h5>&nbsp;&nbsp;2. All FC's are supported in ASR9K-64 and are in OK state.</h5>
           <h5>&nbsp;&nbsp;3. All supported LC's are in IOS XR RUN state.</h5>
           <h5>&nbsp;&nbsp;4. All supported FAN/PEM's are in READY state.</h5>
-          <h5>By default, on top of the minimal hardware requirements, the hardware audit checks that all FAN's and PEM's are supported in ASR9K-64 and are in operational
-              states.</h5>
+          <h5>By default, on top of the minimal hardware requirements, the hardware audit checks that all FAN's and PEM's are supported in ASR9K-64.</h5>
           <h5>While you can skip the hardware audit for FAN's and PEM's, note that migration may fail for unsupported LC's, FAN's and PEM's.</h5>
 
         </div>

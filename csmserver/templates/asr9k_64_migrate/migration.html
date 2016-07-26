@@ -3,9 +3,9 @@
 {% from 'host/common.html' import log_icon %}
 {% from 'host/common.html' import trace_icon %}
 {% from 'share/select_region_hosts.html' import select_region_hosts %}
-{% from 'exr_migrate/config_conversion.html' import config_conversion_gui, config_output_modal %}
-{% from 'exr_migrate/schedule_migration.html' import schedule_migration_gui %}
-{% from 'exr_migrate/schedule_migration.html' import schedule_migration_wizard %}
+{% from 'asr9k_64_migrate/config_conversion.html' import config_conversion_gui, config_output_modal %}
+{% from 'asr9k_64_migrate/schedule_migration.html' import schedule_migration_gui %}
+{% from 'asr9k_64_migrate/schedule_migration.html' import schedule_migration_wizard %}
 
 
 
@@ -164,9 +164,18 @@
                 }
             });
 
-            $('[data-toggle="popover_override_hw_req"]').popover({
+            $('[data-toggle="popover_override_hw_req_below"]').popover({
                 trigger : 'click',
-                placement : 'below',
+                placement : 'bottom',
+                html : true,
+                content : function() {
+                    return $('#popover_hw_req').html()
+                }
+            });
+
+            $('[data-toggle="popover_override_hw_req_left"]').popover({
+                trigger : 'click',
+                placement : 'left',
                 html : true,
                 content : function() {
                     return $('#popover_hw_req').html()
@@ -350,7 +359,7 @@
                 submit_spinner.show();
 
                 $.ajax({
-                    url: "/exr_migrate/api/get_latest_config_migration_tool/",
+                    url: "/asr9k_64_migrate/api/get_latest_config_migration_tool/",
                     dataType: 'json',
                     success: function (response) {
                         if (response.status == 'Failed') {
@@ -380,7 +389,7 @@
                 submit_spinner.show();
 
                 $.ajax({
-                    url: "/exr_migrate/api/get_dependencies/",
+                    url: "/asr9k_64_migrate/api/get_dependencies/",
                     dataType: 'json',
                     data: {hosts : $('#hidden_hosts').val(), dependency : dependency},
                     success: function (response) {
@@ -525,7 +534,6 @@
                 } else if ($('#hidden_best_effort_config').val() == '1') {
                     $('[name="config-handling"]')[1].checked = true;
                 }
-                console.log($('#hidden_override_hw_req').val());
                 if ($('#hidden_override_hw_req').val() == '1') {
                     $('[name="override_hw_req"]')[0].checked = true;
                 } else if ($('#hidden_override_hw_req').val() == '0') {
@@ -600,7 +608,9 @@
             </div>
 
           {{ schedule_migration_wizard(schedule_form, select_region_hosts, install_job, edit_field) }}
-          {{ config_output_modal(config_form, edit_field) }}
+          {% if config_form != null %}}
+            {{ config_output_modal(config_form, edit_field) }}
+          {% endif %}
 
         </form>
     </div>

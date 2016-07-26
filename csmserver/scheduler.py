@@ -240,7 +240,7 @@ class Scheduler(threading.Thread):
             db_session.commit()
         except:
             db_session.rollback()
-            logger.exception('purge_tar_job() hit exception')
+            logger.exception('purge_config_job() hit exception')
 
 if __name__ == '__main__':
     pass

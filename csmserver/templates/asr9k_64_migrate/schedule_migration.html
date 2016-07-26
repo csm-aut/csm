@@ -107,13 +107,13 @@
                                             </div>
 
                                             <div class="tab-pane" id="pre-migrate">
-                                                {% include("exr_migrate/select_server_repository.html") %}
-                                                {% include("exr_migrate/override_hardware_requirement.html") %}
+                                                {% include("asr9k_64_migrate/select_server_repository.html") %}
+                                                {% include("asr9k_64_migrate/override_hardware_requirement.html") %}
                                             </div>
 
                                             <div class="tab-pane" id="hardware-audit">
                                               <h4 class="info-text-left">Select the version of ASR9K-64 you plan to migrate to: <span id="server-dialog-title"></span>
-                                              &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req"></span></a></h4>
+                                              &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_below"></span></a></h4>
                                                 {{ edit_field(schedule_form.hardware_audit_version, field_width="col-sm-7", class="form-control") }}
                                             </div>
 

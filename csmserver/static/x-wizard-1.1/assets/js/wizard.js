@@ -137,7 +137,7 @@ function validateSelectPackages(){
     var unselected_items = server_software_selector.get_unselected_items();
 
     for (var index in selected_items) {
-        if (selected_items[index].match("asr9k.*\.tar.*")) {
+        if (selected_items[index].match("asr9k.*\.tar.*\\d\\.\\d\\.\\d.*")) {
             selected_image++;
         }
         if (selected_items[index].match("asr9k.*\.pie.*")) {
@@ -149,7 +149,7 @@ function validateSelectPackages(){
 
     }
     if (selected_image < 1) {
-        bootbox.alert("Please select the tar file containing ASR9K-64 image and boot files before continuing.");
+        bootbox.alert("Please select the tar file containing ASR9K-64 image and boot files before continuing. The filename of your ASR9K-64 tar file must match the wildcard expression 'asr9k*.tar*' and contain the suffix three digit ASR9K-64 software version number such as '6.1.1'.");
         return false
     } else if (selected_image > 1) {
         bootbox.alert("Please select only one tar file for ASR9K-64 image and boot files before continuing.");

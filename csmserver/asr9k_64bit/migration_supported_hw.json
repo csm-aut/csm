@@ -6,7 +6,9 @@
       "A99-RP2-SE",
       "A99-RP2-TR",
       "A9K-RSP880-SE",
-      "A9K-RSP880-TR"
+      "A9K-RSP880-TR",
+      "A9K-RSP880-RL-TR",
+      "A9K-RSP880-RL-SE"
     ],
     "LC": [
       "A9K-8X100GE-L-SE",
@@ -15,19 +17,13 @@
       "A99-8X100GE-SE",
       "A99-8X100GE-CM",
       "A9K-8X100GE-CM",
-      "A9K-4X100GE-SE",
-      "A99-12x100GE",
-      "A9K-4X100GE-TR",
       "A99-8X100GE-TR",
       "A9K-8X100GE-TR",
-      "A9K-400G-DWDM-TR",
-      "A9K-400G-DWDM-SE",
-      "A9K-MOD400-TR",
-      "A9K-MOD400-SE",
-      "A9K-MOD200-TR",
-      "A9K-MOD200-SE",
       "A9K-8X100GE-LB-TR",
-      "A9K-8X100GE-LB-SE"
+      "A9K-8X100GE-LB-SE",
+      "A9K-4X100GE-SE",
+      "A9K-4X100GE-TR",
+      "A99-12x100GE"
     ],
     "FAN": [
       "ASR-9904-FAN",
@@ -56,7 +52,9 @@
       "A9K-RSP880-SE",
       "A9K-RSP880-TR",
       "A99-RSP-SE",
-      "A99-RSP-TR"
+      "A99-RSP-TR",
+      "A9K-RSP880-RL-TR",
+      "A9K-RSP880-RL-SE"
     ],
     "LC": [
       "A9K-8X100GE-L-SE",
@@ -65,19 +63,19 @@
       "A99-8X100GE-SE",
       "A99-8X100GE-CM",
       "A9K-8X100GE-CM",
-      "A9K-4X100GE-SE",
-      "A99-12x100GE",
-      "A9K-4X100GE-TR",
       "A99-8X100GE-TR",
       "A9K-8X100GE-TR",
+      "A9K-8X100GE-LB-TR",
+      "A9K-8X100GE-LB-SE",
+      "A9K-4X100GE-SE",
+      "A9K-4X100GE-TR",
+      "A99-12x100GE",
       "A9K-400G-DWDM-TR",
       "A9K-400G-DWDM-SE",
       "A9K-MOD400-TR",
       "A9K-MOD400-SE",
       "A9K-MOD200-TR",
-      "A9K-MOD200-SE",
-      "A9K-8X100GE-LB-TR",
-      "A9K-8X100GE-LB-SE"
+      "A9K-MOD200-SE"
     ],
     "FAN": [
       "ASR-9904-FAN",

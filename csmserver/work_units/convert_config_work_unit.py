@@ -4,7 +4,6 @@ from constants import get_migration_directory, JobStatus
 from models import ConvertConfigJob
 from multi_process import WorkUnit
 
-
 NOX_64_BINARY = "nox-linux-64.bin"
 NOX_64_MAC = "nox-mac64.bin"
 
@@ -38,9 +37,6 @@ class ConvertConfigWorkUnit(WorkUnit):
                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                             ]
 
-                # while commands[1].poll() is None:
-                #    print("Still working...")
-                #    time.sleep(10)
                 nox_output, nox_error = commands[1].communicate()
                 print "the nox finished its job."
             except OSError:

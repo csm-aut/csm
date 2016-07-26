@@ -10,10 +10,12 @@
     </label>
     &nbsp;&nbsp;<span id="selected_file_name"></span-->
 
-    <div style="float:left">
-      <label class="control-label">
+      <div class="col-sm-6" style="font-size: 15px">
         Select an ASR9K admin or IOS-XR configuration file:
-      </label>
+      </div>
+  <p>&nbsp;&nbsp;</p>
+    <div style="float:left;padding-left: 30%">
+      <p>&nbsp;&nbsp;</p>
     </div>
     <div class="form-group ">
         <div class="col-sm-6">
@@ -23,11 +25,10 @@
                         Choose File<input class="form-control" type=file name=file>
                     </span>
                 </span>
-                <input type="text" class="form-control" style="width:75%" readonly>
+                <input id="selected_file_name" type="text" class="form-control" style="width:75%" readonly>
             </div>
         </div>
     </div>
-  <p>&nbsp;&nbsp;</p>
     <div class="btn col-sm-offset-5">
         <button id="convert" type="button" class="btn btn-primary">Convert</button>
         <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
@@ -83,7 +84,7 @@
 
               <div class="row">
                 <hr style="margin-top:30px;margin-bottom:20px;width:100%;float:left">
-                <h4 style="color:Gray;width:100%;float:left;margin-bottom:30px">Upload Converted Configuration(s) to Server Repository:
+                <h4 style="color:Gray;width:100%;float:left;margin-bottom:30px">Select Server Repository to Upload Converted Configuration File(s):
                   &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_upload"></span></a>
                 </h4>
                 <div id="popover_upload_config" style="display: none">

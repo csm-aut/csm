@@ -3,9 +3,8 @@ import subprocess
 import requests
 import json
 import csv
-import time
 
-from constants import InstallAction, get_migration_directory, UserPrivilege, ServerType
+from constants import InstallAction, get_migration_directory, ServerType
 
 from common import can_edit_install
 from common import can_install
@@ -30,10 +29,10 @@ from filters import get_datetime_string
 from flask import Blueprint, jsonify, render_template, redirect, url_for, abort, request
 from flask.ext.login import login_required, current_user
 from flask import flash
-from flask import current_app, send_from_directory
+from flask import send_from_directory
 from werkzeug.utils import secure_filename
 
-from models import Host, InstallJob, SystemOption, ConvertConfigJob
+from models import InstallJob, SystemOption, ConvertConfigJob
 from models import logger
 
 from wtforms import Form
@@ -48,42 +47,11 @@ from server_helper import TFTPServer, FTPServer, SFTPServer
 
 
 NOX_64_BINARY = "nox-linux-64.bin"
-NOX_64_MAC = "nox-mac64.bin"
 
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 
-ALLOWED_EXTENSIONS = set(['txt', 'cfg'])
-
-INPUT_CONFIG = "input_config.cfg"
-OUTPUT_CONFIG1 = "input_config.iox"
-OUTPUT_CONFIG2 = "input_config.cal"
-OUTPUT_ANALYSIS = "input_config.csv"
-
 asr9k_64_migrate = Blueprint('asr9k_64_migrate', __name__, url_prefix='/asr9k_64_migrate')
-
-"""
-@exr_migrate.route('/index', methods=['GET', 'POST'])
-@login_required
-def home():
-    config_form = ConfigConversionForm(request.form)
-    db_session = DBSession()
-
-    servers = get_server_list(db_session)
-
-    fill_servers(config_form.select_server.choices, servers, False)
-
-    if request.method == 'POST':
-        return convert_config(request, 'exr_migrate/index.html')
-    return render_template('exr_migrate/index.html', config_form=config_form)
-
-
-@exr_migrate.route('/config_conversion', methods=['GET', 'POST'])
-@login_required
-def config_conversion():
-    input_file = send_from_directory(current_app.config.get('UPLOAD_FOLDER'), INPUT_CONFIG)
-    return render_template('exr_migrate/config_conversion.html', input_config=input_file)
-"""
 
 
 def get_config_conversion_path():
@@ -97,7 +65,6 @@ def convert_config(db_session, http_request, template, schedule_form):
 
     config_form = init_config_form(db_session, http_request, get=True)
 
-    # input_config = request.form.get('input_config', "", type=str)
     success, err_msg = download_latest_config_migration_tool()
     if not success:
         return render_template(template, config_form=config_form,
@@ -128,24 +95,14 @@ def convert_config(db_session, http_request, template, schedule_form):
     config_conversion_path = get_config_conversion_path()
     create_directory(config_conversion_path)
 
-    print "input_file.filename = " + str(input_file.filename)
-
-    # if input_file and allowed_file(input_file.filename):
     if input_file:
         filename = secure_filename(input_file.filename)
-        # input_file.save(os.path.join(current_app.config.get('UPLOAD_FOLDER'), filename))
         input_file.save(os.path.join(config_conversion_path, filename))
-        print "saving file to = " + str(os.path.join(config_conversion_path, filename))
 
     return render_template(template, config_form=config_form,
                            input_filename=input_file.filename, err_msg="", schedule_form=schedule_form,
                            install_action=get_install_migrations_dict(),
                            server_time=datetime.datetime.utcnow())
-
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
 @asr9k_64_migrate.route('/api/convert_config_file')
@@ -160,7 +117,7 @@ def convert_config_file():
     db_session = DBSession()
 
     convert_config_job = ConvertConfigJob(file_path=os.path.join(config_conversion_path, filename),
-                                          status='Conversion Job Submitted')
+                                          status='Preparing the Conversion')
     db_session.add(convert_config_job)
     db_session.commit()
 
@@ -181,7 +138,6 @@ def get_config_conversion_progress():
     if convert_config_job is None:
         logger.error('Unable to retrieve Convert Config Job: %s' % job_id)
         return jsonify(status='Unable to retrieve job')
-    print "job status = " + str(convert_config_job.status)
     return jsonify(status='OK', progress=convert_config_job.status)
 
 
@@ -194,12 +150,11 @@ def get_file():
 
     config_conversion_path = get_config_conversion_path()
 
-    secure_file_name = secure_filename(filename)
+    stripped_filename = get_stripped_filename(filename)
 
-    output_html = secure_file_name.rsplit('.', 1)[0] + ".html"
-    output_iox = secure_file_name.rsplit('.', 1)[0] + ".iox"
-
-    output_cal = secure_file_name.rsplit('.', 1)[0] + ".cal"
+    output_html = stripped_filename + ".html"
+    output_iox = stripped_filename + ".iox"
+    output_cal = stripped_filename + ".cal"
 
     if which_file == 1:
         return send_from_directory(config_conversion_path,
@@ -221,14 +176,10 @@ def process_config_conversion_output():
 
     config_conversion_path = get_config_conversion_path()
 
-    secure_file_name = secure_filename(filename)
-
-    stripped_filename = ".".join(secure_file_name.split(".")[0:-1]) if "." in secure_file_name else secure_file_name
+    stripped_filename = get_stripped_filename(filename)
 
     output_csv = stripped_filename + ".csv"
     html_file = stripped_filename + ".html"
-
-    analysis = []
 
     map_csv_category_to_final_category = {
         'KNOWN_SUPPORTED': 'supported',
@@ -240,7 +191,7 @@ def process_config_conversion_output():
 
     }
     with open(os.path.join(config_conversion_path, html_file), 'w') as output_html:
-        with open(os.path.join(config_conversion_path, secure_file_name), 'r') as input_file:
+        with open(os.path.join(config_conversion_path, secure_filename(filename)), 'r') as input_file:
             with open(os.path.join(config_conversion_path, output_csv), 'rb') as csvfile:
                 output_html.write('<pre style="background-color:white;border:none;word-wrap:initial;">\n')
                 reader = csv.reader(csvfile)
@@ -288,14 +239,11 @@ def upload_config_to_server_repository():
 
     config_conversion_path = get_config_conversion_path()
 
-    secure_file_name = secure_filename(filename)
+    stripped_filename = get_stripped_filename(filename)
 
-    output_iox = secure_file_name.rsplit('.', 1)[0] + ".iox"
+    output_iox = stripped_filename + ".iox"
 
-    output_cal = secure_file_name.rsplit('.', 1)[0] + ".cal"
-
-    print "server_id = " + str(server_id)
-    print str(server_directory)
+    output_cal = stripped_filename + ".cal"
 
     status = upload_files_to_server_repository(os.path.join(config_conversion_path, output_iox),
                                                server, server_directory, output_iox)
@@ -303,6 +251,11 @@ def upload_config_to_server_repository():
         status = upload_files_to_server_repository(os.path.join(config_conversion_path, output_cal),
                                                    server, server_directory, output_cal)
     return jsonify(status=status)
+
+
+def get_stripped_filename(filename):
+    secure_file_name = secure_filename(filename)
+    return secure_file_name.rsplit('.', 1)[0]
 
 
 def upload_files_to_server_repository(sourcefile, server, selected_server_directory, destfile):
@@ -381,7 +334,7 @@ def migration():
     if request.method == 'POST':
         print(str(config_form.data))
         if config_form.hidden_submit_config_form.data == "True":
-            return convert_config(db_session, request, 'exr_migrate/migration.html', schedule_form)
+            return convert_config(db_session, request, 'asr9k_64_migrate/migration.html', schedule_form)
 
         # Retrieves from the multi-select box
         hostnames = schedule_form.hidden_hosts.data.split(',')
@@ -404,16 +357,19 @@ def migration():
                     software_packages = schedule_form.hidden_software_packages.data
                     server = schedule_form.hidden_server.data
                     server_directory = schedule_form.hidden_server_directory.data
-                    best_effort_config = schedule_form.hidden_best_effort_config.data
-                    config_filename = schedule_form.hidden_config_filename.data
-                    override_hw_req = schedule_form.hidden_override_hw_req.data
                     custom_command_profile = ','.join([str(i) for i in schedule_form.custom_command_profile.data])
-                    hardware_audit_version = schedule_form.hidden_hardware_audit_version.data
 
-                    host.context[0].data['best_effort_config_applying'] = best_effort_config
-                    host.context[0].data['config_filename'] = config_filename
-                    host.context[0].data['override_hw_req'] = override_hw_req
-                    host.context[0].data['hardware_audit_version'] = hardware_audit_version
+                    if InstallAction.MIGRATION_AUDIT in install_action:
+                        host.context[0].data['hardware_audit_version'] = \
+                            schedule_form.hidden_hardware_audit_version.data
+
+                    if InstallAction.PRE_MIGRATE in install_action:
+                        host.context[0].data['config_filename'] = schedule_form.hidden_config_filename.data
+                        host.context[0].data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
+
+                    if InstallAction.POST_MIGRATE in install_action:
+                        host.context[0].data['best_effort_config_applying'] = \
+                            schedule_form.hidden_best_effort_config.data
 
                     # If the dependency is a previous job id, it's non-negative int string.
                     if int(dependency_list[index]) >= 0:
@@ -444,7 +400,7 @@ def migration():
 
         return redirect(url_for(return_url))
     else:
-        return render_template('asr9k_64_migrate/../templates/migration.html',
+        return render_template('asr9k_64_migrate/migration.html',
                                schedule_form=schedule_form,
                                install_action=get_install_migrations_dict(),
                                server_time=datetime.datetime.utcnow(),
@@ -517,10 +473,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     if host is None:
         abort(404)
 
-    if install_job is not None:
-
-        print(str(install_job.install_action))
-
     return_url = get_return_url(request, 'host_dashboard')
 
     schedule_form = ScheduleMigrationForm(request.form)
@@ -542,16 +494,19 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         software_packages = schedule_form.hidden_software_packages.data
         server = schedule_form.hidden_server.data
         server_directory = schedule_form.hidden_server_directory.data
-        best_effort_config = schedule_form.hidden_best_effort_config.data
-        override_hw_req = schedule_form.hidden_override_hw_req.data
-        config_filename = schedule_form.hidden_config_filename.data
-        hardware_audit_version = schedule_form.hidden_hardware_audit_version.data
         custom_command_profile = ','.join([str(i) for i in schedule_form.custom_command_profile.data])
 
-        host.context[0].data['best_effort_config_applying'] = best_effort_config
-        host.context[0].data['config_filename'] = config_filename
-        host.context[0].data['override_hw_req'] = override_hw_req
-        host.context[0].data['hardware_audit_version'] = hardware_audit_version
+        if InstallAction.MIGRATION_AUDIT in install_action:
+            host.context[0].data['hardware_audit_version'] = \
+                schedule_form.hidden_hardware_audit_version.data
+
+        if InstallAction.PRE_MIGRATE in install_action:
+            host.context[0].data['config_filename'] = schedule_form.hidden_config_filename.data
+            host.context[0].data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
+
+        if InstallAction.POST_MIGRATE in install_action:
+            host.context[0].data['best_effort_config_applying'] = \
+                schedule_form.hidden_best_effort_config.data
 
         # install_action is a list object which can only contain one install action
         # at this editing time, accept the selected dependency if any
@@ -614,10 +569,9 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 schedule_form.hidden_dependency.data = '-1'
 
             if install_job.scheduled_time is not None:
-                schedule_form.scheduled_time_UTC.data = \
-                get_datetime_string(install_job.scheduled_time)
+                schedule_form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
 
-    return render_template('asr9k_64_migrate/../templates/migration.html', schedule_form=schedule_form, system_option=SystemOption.get(db_session),
+    return render_template('asr9k_64_migrate/migration.html', schedule_form=schedule_form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url, install_action=get_install_migrations_dict(), input_filename="",
                            err_msg="")

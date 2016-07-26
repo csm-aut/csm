@@ -278,22 +278,6 @@ class InstallContext(ConnectionContext):
                 return server.server_url
         
         return None
-
-    @property
-    def post_migrate_config_handling_option(self):
-        return self.load_data('best_effort_config_applying')
-
-    @property
-    def pre_migrate_override_hw_req(self):
-        return self.load_data('override_hw_req')
-
-    @property
-    def pre_migrate_config_filename(self):
-        return self.load_data('config_filename')
-
-    @property
-    def hardware_audit_software_version(self):
-        return self.load_data('hardware_audit_version')
     
     def post_status(self, message):
         if self.db_session is not None and self.install_job is not None:

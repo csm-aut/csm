@@ -72,9 +72,8 @@ class GenericJobManager(JobManager):
             convert_config_jobs = db_session.query(ConvertConfigJob).filter().all()
             if convert_config_jobs:
                 for convert_config_job in convert_config_jobs:
-                    if convert_config_job.status != JobStatus.COMPLETED and convert_config_job.status != JobStatus.FAILED:
+                    if convert_config_job.status != JobStatus.COMPLETED and \
+                       convert_config_job.status != JobStatus.FAILED:
                         self.submit_job(ConvertConfigWorkUnit(convert_config_job.id))
-        except Exception as inst:
-            print str(inst)
-            print str(inst.args)
+        except Exception:
             logger.exception('Unable to dispatch convert config job')

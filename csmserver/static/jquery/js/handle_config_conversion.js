@@ -15,6 +15,7 @@ function config_handler(input_filename, err_msg) {
     browse_spinner.hide();
     upload_spinner.hide();
     upload_success.hide();
+    progressSpan.html('');
 
     $('[data-toggle="popover_upload"]').popover({
         trigger : 'click',
@@ -42,8 +43,8 @@ function config_handler(input_filename, err_msg) {
         var input = $(this).parents('.input-group').find(':text'),
         log = numFiles > 1 ? numFiles + ' files selected' : label;
 
-        if( input.length ) {
-            input.val(log);
+        if( $('#selected_file_name').length ) {
+            $('#selected_file_name').val(log);
         }
     });
 
@@ -63,17 +64,6 @@ function config_handler(input_filename, err_msg) {
         upload_success.hide();
     });
 
-    //$('input[type=file]').change(function(e){
-    //    can_show_modal_directly = false;
-    //    console.log($(this).val().split('\\'));
-    //    $('#selected_file_name').text($(this).val().split('\\').pop());
-    //});
-
-
-    //var input_config_name = "{{ input_config }}";
-    //var output_config_name = "{{ output_config }}";
-    //var input_filename = "{{ input_filename }}";
-    console.log(input_filename);
 
     function get_input_config() {
 
@@ -91,7 +81,8 @@ function config_handler(input_filename, err_msg) {
 
     }
     function get_input_config_directly() {
-
+      browse_spinner.show();
+      progressSpan.html('Loading the files.');
       $.ajax({
            url : "api/get_file",
            data : {file_number : 1, filename : input_filename},
@@ -119,7 +110,15 @@ function config_handler(input_filename, err_msg) {
                          document.getElementById('output_config').innerHTML = '<pre style="background-color:white;border:none;word-wrap:initial;">' + data + data2 + '</pre>';
                          browse_spinner.hide();
                          progressSpan.html('');
+                         document.getElementById("filter_supported").checked = true;
+                         document.getElementById("filter_unsupported").checked = true;
+                         document.getElementById("filter_unprocessed").checked = true;
+                         document.getElementById("filter_unrecognized").checked = true;
+                         document.getElementById("filter_unimplemented").checked = true;
+                         document.getElementById("filter_syntaxerrors").checked = true;
+
                          $('#config-output-dialog').modal({show: true, backdrop: 'static'});
+
                      }
                  });
            }
@@ -133,7 +132,6 @@ function config_handler(input_filename, err_msg) {
             dataType: 'json',
             data: {filename : input_filename},
             success: function(data) {
-                //progressSpan.html('Job Submitted.');
                 if (data.status == 'OK') {
                     job_id = data.job_id;
                     update_progress(job_id);
@@ -158,19 +156,16 @@ function config_handler(input_filename, err_msg) {
             },
             success: function(data) {
                 if(data.progress != "completed" && data.progress != "failed"){
-                    console.log("still in progress");
                     if(data.progress != null){
                         progressSpan.html(data.progress);
                     }
                     setTimeout(function(){update_progress(job_id);}, 10000);
                 } else if (data.progress == "failed"){
-                    console.log("failed!");
                       browse_spinner.hide();
                       progressSpan.html('');
                       $(window).unbind('beforeunload');
-                      bootbox.alert("Config conversion has encountered an error and failed!");
+                      bootbox.alert("Configuration conversion has encountered an error and failed!");
                 } else {
-                    console.log("completed!");
                       progressSpan.html('Conversion completed. Loading the files.');
                       $(window).unbind('beforeunload');
                     get_input_config();
@@ -199,47 +194,30 @@ function config_handler(input_filename, err_msg) {
     }
 
     if (input_filename) {
-        var input = $('.btn-file :file').parents('.input-group').find(':text');
-        input.val(input_filename);
+        $('#selected_file_name').val(input_filename);
 
-        //$('#selected_file_name').text(input_filename);
         if (err_msg == null || err_msg == "") {
             convert_config();
-            //get_input_config([]);
-            //get_output_config();
-
-            //$('#config-output-dialog').modal({show: true, backdrop: 'static'});
         }
     }
 
     if (err_msg != null && err_msg != "") {
         bootbox.alert(err_msg);
         can_show_modal_directly = false;
-        var input = $('.btn-file :file').parents('.input-group').find(':text');
-        input.val("");
-        //$('#selected_file_name').text("");
+        $('#selected_file_name').val("");
     }
 
     $('#convert').on('click', function (e) {
-        if($('.btn-file :file').val() == ''){
+        if($('#selected_file_name').val() == ''){
             bootbox.alert("Please select a configuration file.");
             return false;
         }
-
-        //if ($('#selected_file_name').text() == null || $('#selected_file_name').text() == "") {
-        //    bootbox.alert("Please select a configuration file.");
-        //    return false;
-        //}
-        //$('#input-config-upload').attr("href", "{{ url_for('exr_migrate.upload_config_to_server_repository') }}?file_path=" + input_filename);
         if (can_show_modal_directly) {
-            console.log("getting input html directly.");
             get_input_config_directly();
 
             return false;
         }
-        console.log($('#hidden_submit_config_form').val());
         $('#hidden_submit_config_form').val('True');
-        console.log($('#hidden_submit_config_form').val());
         //return false;
         $('#form').submit();
 
@@ -250,24 +228,6 @@ function config_handler(input_filename, err_msg) {
     });
 
     $('#filter_unprocessed').change(function() {
-      //element.trigger("custom_event");
-        //var all = document.getElementsByClassName('unprocessed');
-        //console.log(all);
-        //myElements = document.querySelectorAll(".unprocessed");
-        //console.log(myElements);
-        //for (var i = 0; i < myElements.length; i++) {
-        //    console.log(myElements[i].style);
-        //    console.log(myElements[i].style.display);
-        //    myElements[i].style.display = 'none';
-
-        //}
-        //for (element in myElements) {
-        //    element.classList.add("hide_class");
-            //console.log(element.style);
-            //console.log(element.style.display);
-            //element.style.display = 'hide';
-        //}
-
       checkbox_on_click(this, ".unprocessed");
     });
     $('#filter_supported').change(function() {
@@ -289,15 +249,13 @@ function config_handler(input_filename, err_msg) {
 
     function checkbox_on_click(checkbox, element) {
         if ( $(checkbox).is(":checked")) {
-          console.log("show!");
-          //$(element).show();
+          //not using jquery - $(element).show(); - because the number of elements is too large - maximum stack exceeded
           [].forEach.call(document.querySelectorAll(element), function (el) {
             el.style.display = 'block';
             });
         } else {
             // if not checked ...
-          console.log("hide!");
-          //$(element).hide();
+          //not using jquery - $(element).hide(); - same reason
             [].forEach.call(document.querySelectorAll(element), function (el) {
             el.style.display = 'none';
             });

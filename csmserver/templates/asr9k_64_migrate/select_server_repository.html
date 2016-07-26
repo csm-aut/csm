@@ -7,12 +7,14 @@
 <div id="popover_packages" style="display: none">
   <pre>Note:
 1. Only FTP, TFTP and SFTP server repositories are supported for migration.
-2. Two packages must be selected from the specific server repository and directory:
-   a. A tar file containing ASR9K IOS-XR 64 Bit image and boot files with filename matching
-      wildcard expression '*.tar'.
-   b. The ASR9K unified FPD SMU required for running ASR9K IOS-XR 64 Bit image. (Your device must
-      already have FPD package installed on ASR9K IOS-XR 32 bit image. On top of that, an additional
-      unified FPD SMU is required here.) The filename must match wildcard expression 'asr9k*.pie*'</pre>
+2. Two packages can be selected:
+   a. A tar file containing ASR9K-64 image and boot files with filename matching wildcard
+      expression 'asr9k*.tar*' must be selected. The filename must also contain the software
+      version of ASR9K-64, i.e., "6.1.1".
+   b. The ASR9K unified FPD SMU required for running ASR9K-64 image. Your device must already
+      have FPD package installed on ASR9K image. On top of that, an unified FPD SMU is mandatory
+      if the current software version on device(s) is below 6.1.1. The filename must match
+      wildcard expression 'asr9k*.pie*'</pre>
 </div>
 
 {{ edit_field(schedule_form.server_dialog_server, field_width="col-sm-7", class="form-control") }}
@@ -47,10 +49,12 @@
   &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_config_filename"></span></a>
 </h4>
 <div id="popover_config" style="display: none">
-  <pre>   If no file is provided here, CSM Server will migrate the existing admin and IOS-XR config
+  <pre>Note:
+If no file is provided here, CSM Server will migrate the existing admin and IOS-XR config
 files on device using the NoX tool. Then, during Post-Migrate, CSM Server will attempt to load
 the migrated config files.
-   Alternatively, you can supply the IOS-XR config for the ASR9K IOS-XR 64 Bit image.
+
+Alternatively, you can supply the IOS-XR config for the ASR9K IOS-XR 64 Bit image.
 Once the new 64 bit image boots up, during Post-Migrate, CSM Server will attempt to load the
 migrated admin config and then this customized config file.</pre>
 </div>
