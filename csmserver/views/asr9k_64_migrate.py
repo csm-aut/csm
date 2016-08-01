@@ -117,7 +117,7 @@ def convert_config_file():
     db_session = DBSession()
 
     convert_config_job = ConvertConfigJob(file_path=os.path.join(config_conversion_path, filename),
-                                          status='Preparing the Conversion')
+                                          status='Preparing the conversion')
     db_session.add(convert_config_job)
     db_session.commit()
 

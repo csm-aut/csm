@@ -96,7 +96,7 @@
             var POST_MIGRATE = "{{ install_action.postmigrate }}";
             var ALL_FOR_MIGRATE = "{{ install_action.allformigrate }}";
 
-            $("#install_action").select2({placeholder: 'Select Desirable Migration Actions'});
+            $("#install_action").select2({placeholder: 'Select Desirable Action(s)'});
             $("#install_action").val("{{ schedule_form.install_action.data }}").trigger("change");
             $("#custom_command_profile").select2({
                 placeholder: 'Optional'
@@ -173,9 +173,9 @@
                 }
             });
 
-            $('[data-toggle="popover_override_hw_req_left"]').popover({
+            $('[data-toggle="popover_override_hw_req_right"]').popover({
                 trigger : 'click',
-                placement : 'left',
+                placement : 'right',
                 html : true,
                 content : function() {
                     return $('#popover_hw_req').html()

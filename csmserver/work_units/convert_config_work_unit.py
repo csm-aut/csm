@@ -23,7 +23,7 @@ class ConvertConfigWorkUnit(WorkUnit):
                 logger.error('Unable to retrieve convert config job: %s' % self.job_id)
                 return
 
-            self.convert_config_job.set_status("Converting the Configurations")
+            self.convert_config_job.set_status("Converting the configurations")
             self.db_session.commit()
 
             file_path = self.convert_config_job.file_path
