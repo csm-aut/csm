@@ -193,10 +193,21 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
 
     for host_package in host_packages:
         for internal_name, external_name in platform_package_list.items():
-            if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS, PlatformFamily.NCS6K]:
+            if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
                 if internal_name in host_package:
                     if match_internal_name:
                         target_list.append("{}-{}".format(internal_name, target_version))
+                    else:
+                        target_list.append("{}-{}".format(external_name, target_version))
+                    break
+
+            elif software_platform in PlatformFamily.NCS6K:
+                if internal_name in host_package:
+                    if match_internal_name:
+                        if "-xr" in host_package:
+                            target_list.append("{}-{}".format(family.lower() + '-mini-x', target_version))
+                        else:
+                            target_list.append("{}-{}".format(internal_name, target_version))
                     else:
                         target_list.append("{}-{}".format(external_name, target_version))
                     break
