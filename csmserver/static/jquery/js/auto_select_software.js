@@ -26,7 +26,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
                 if (target_package_list.length > 0) {
                     selector.select_partial_match(target_package_list);
                 } else {
-                    bootbox.alert("<img src='/static/error.png'> &nbsp;Unable to identify " +
+                    bootbox.alert("<img src='/static/error.png'> &nbsp;Auto Select was unable to identify " +
                         "software packages on the device to match with the Target Software Release.");
                 }
             });
@@ -56,8 +56,8 @@ function auto_select_software(hostname, selector, target_release, match_internal
                 for (i = 0; i < missing_package_list.length; i++) {
                     package_list += missing_package_list[i] + '<br>';
                 }
-                bootbox.alert("<img src='/static/error.png'> &nbsp;Unable to locate software packages that match " +
-                    "the following names or patterns.<br><br>" + package_list);
+                bootbox.alert("<img src='/static/error.png'> &nbsp;Auto Select was unable to locate the following " +
+                    "software packages for a successful software upgrade or downgrade.<br><br>" + package_list);
             }
         }
     });
