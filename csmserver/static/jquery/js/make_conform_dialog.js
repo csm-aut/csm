@@ -171,7 +171,7 @@ $(function() {
                     }
                     $('#make-conform-dialog').modal('hide');
                 } else {
-                    bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to create scheduled installation.');
+                    bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
                 }
             }
         });

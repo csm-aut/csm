@@ -637,8 +637,9 @@ def api_create_install_jobs():
             dependency = new_install_job.id
 
         return jsonify({'status': 'OK'})
-    except Exception:
-        return jsonify({'status': 'Failed'})
+    except Exception as e:
+        logger.exception('api_create_install_job hit exception')
+        return jsonify({'status': 'Failed Reason: ' + e.message})
 
 
 @conformance.route('/export_software_profiles', methods=['POST'])

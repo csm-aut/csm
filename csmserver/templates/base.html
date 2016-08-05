@@ -15,6 +15,8 @@
     <li><a href="{{ url_for('static', filename='documents/tools.pdf') }}">Tools</a></li>
     <li><a href="{{ url_for('static', filename='documents/migrate_to_asr9k_64.pdf') }}">ASR9K to ASR9K-64 Migration</a></li>
     <li><a href="{{ url_for('static', filename='documents/additional_topics.pdf') }}">Additional Topics</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('about') }}">About CSM Server</a></li>
 {% endmacro %}
 
 {% macro non_admin_tools_menu() %}
