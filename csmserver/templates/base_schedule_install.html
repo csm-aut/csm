@@ -323,27 +323,8 @@ $(function() {
             return false;
         }
 
-        // For ASR9K/CRS, software version above 5.3.2 can support up to 27 pies.
-        // Prior to this release, only 16 pies are supported.
-        if (host_software_platform != null && host_software_version != null &&
-           (host_software_platform == 'ASR9K' || host_software_platform == 'CRS')) {
-            var version = host_software_version;
-            // Normalize the version from 5.3.3.23I -> 5.3.3
-            if (version.length > 5) {
-                version.substring(0, 5);
-            }
-
-            version = parseInt(version.replace(/\./g,''));
-            if (!isNaN(version)) {
-                var package_count = trim_lines(software_packages).split('\n').length;
-                if (version >= 532 && package_count > 27) {
-                    bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 27 software packages at a time.  For Install Add, use a tar archive file instead.");
-                    return false;
-                } else if (version < 532 && package_count > 16) {
-                    bootbox.alert("Due to the limitation of the Install Manager on the device, it can only handle a maximum of 16 software packages at a time.  For Install Add, use a tar archive file instead.");
-                    return false;
-                }
-            }
+        if (!validate_package_count_restriction(host_software_platform, host_software_version, software_packages)) {
+            return false;
         }
 
         $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));

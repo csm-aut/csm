@@ -550,3 +550,33 @@ function display_server_unreachable_dialog(validate_object) {
         }
     });
 }
+
+function validate_package_count_restriction(software_platform, software_version, software_packages) {
+    // For ASR9K/CRS, software version above 5.3.2 can support up to 27 pies.
+    // Prior to this release, only 16 pies are supported.
+    if (software_platform != null && software_version != null && software_packages != null &&
+       (software_platform == 'ASR9K' || software_platform == 'CRS')) {
+        var version = software_version;
+        // Normalize the version from 5.3.3.23I -> 5.3.3
+        if (version.length > 5) {
+            version.substring(0, 5);
+        }
+
+        version = parseInt(version.replace(/\./g,''));
+        if (!isNaN(version)) {
+            var package_count = trim_lines(software_packages).split('\n').length;
+            if (version >= 532 && package_count > 27) {
+                bootbox.alert("Due to the limitation of the Install Manager on the device, " +
+                    "it can only handle a maximum of 27 software packages for Release " + software_version + ".  " +
+                    "For Install Add, use a tar archive file instead.");
+                return false;
+            } else if (version < 532 && package_count > 16) {
+                bootbox.alert("Due to the limitation of the Install Manager on the device, " +
+                    "it can only handle a maximum of 16 software packages for Release " + software_version + ".  " +
+                    "For Install Add, use a tar archive file instead.");
+                return false;
+            }
+        }
+    }
+    return true;
+}

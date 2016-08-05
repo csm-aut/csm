@@ -399,8 +399,6 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
                     hostname=hostname,
                     platform='MISSING',
                     software='MISSING',
-                    inventory_status='MISSING',
-                    last_successful_retrieval='MISSING',
                     host_packages='MISSING',
                     missing_packages='MISSING')
 
@@ -525,8 +523,8 @@ def api_get_conformance_report(id):
         entries = conformance_report.entries
         for entry in entries:
             row = {'hostname': entry.hostname,
-                   'platform': entry.platform,
-                   'software': entry.software,
+                   'software_platform': entry.platform,
+                   'software_version': entry.software,
                    'missing_packages': entry.missing_packages,
                    'host_packages': entry.host_packages,
                    'conformed': entry.conformed,
