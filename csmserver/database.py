@@ -28,6 +28,8 @@ from sqlalchemy.engine.url import URL
 
 from salts import encode, decode
 from utils import import_module
+
+from constants import get_csm_data_directory
 import os
 
 # DO NOT MODIFY THESE STRINGS.  THEY ARE USED FOR ENCRYPTION.
@@ -39,7 +41,7 @@ ENCRYPT = {'key': 'csmserver', 'string1': STRING1, 'string2': STRING2}
 
 # Make sure the CURRENT_SCHEMA_VERSION is an integer
 CURRENT_SCHEMA_VERSION = 5
-ENABLE_DEBUG=False
+ENABLE_DEBUG = False
 
 
 def create_database_if_not_exists(db_settings):
@@ -54,7 +56,7 @@ def create_database_if_not_exists(db_settings):
         del db_dict['database']
         engine = create_engine(URL(**db_dict))
         engine.execute("create database if not exists " + db_settings['database'])
-    
+
 
 def get_database_settings():
     """
@@ -90,8 +92,10 @@ def get_database_settings():
     if module is None:
         module = import_module('configparser')
         
-    config = module.RawConfigParser()  
-    config.read(os.getcwd() + os.path.sep + 'database.ini')
+    config = module.RawConfigParser()
+
+    # The database.ini should be in the csm_data directory which should be at the same level as the csm directory.
+    config.read(os.path.join(get_csm_data_directory(), 'database.ini'))
 
     db_dict = dict(config.items('Database'))
     username = decode(ENCRYPT, db_dict['username'])
