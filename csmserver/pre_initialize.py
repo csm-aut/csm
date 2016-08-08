@@ -56,7 +56,7 @@ def init():
         print('LDAP authentication is not supported because it has not been installed.')
 
     # For refresh installation, move database.ini to csm_data
-    relocate_database_ini()
+    # relocate_database_ini()
 
 
 if __name__ == '__main__':

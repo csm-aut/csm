@@ -95,7 +95,8 @@ def get_database_settings():
     config = module.RawConfigParser()
 
     # The database.ini should be in the csm_data directory which should be at the same level as the csm directory.
-    config.read(os.path.join(get_csm_data_directory(), 'database.ini'))
+    config.read(os.path.join(os.getcwd(), 'database.ini'))
+    # config.read(os.path.join(get_csm_data_directory(), 'database.ini'))
 
     db_dict = dict(config.items('Database'))
     username = decode(ENCRYPT, db_dict['username'])
