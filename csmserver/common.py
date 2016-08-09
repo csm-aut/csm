@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask.ext.login import current_user
+from flask import g, send_file
 from sqlalchemy import or_, and_
 
 from csm_exceptions.exceptions import HostNotFound
@@ -74,9 +75,13 @@ from smu_utils import TAR_INDICATOR
 from utils import get_log_directory
 from utils import is_empty, get_datetime
 from utils import remove_extra_spaces
+from utils import create_directory
+from utils import create_temp_user_directory
+from utils import make_file_writable
 
 import os
 import shutil
+import zipfile
 
 
 def fill_servers(choices, servers, include_local=True):
@@ -113,6 +118,17 @@ def fill_dependency_from_host_install_jobs(choices, install_jobs, current_instal
         if install_job.id != current_install_job_id:
             choices.append((install_job.id, '%s - %s' % (install_job.install_action,
                             get_datetime_string(install_job.scheduled_time))))
+
+
+def delete_install_job_dependencies(db_session, id):
+    deleted = []
+    dependencies = db_session.query(InstallJob).filter(InstallJob.dependency == id).all()
+    for dependency in dependencies:
+        if dependency.status is None:
+            db_session.delete(dependency)
+            deleted.append(dependency.id)
+        deleted = list(set((delete_install_job_dependencies(db_session, dependency.id)) + deleted))
+    return deleted
 
 
 def fill_jump_hosts(choices):
@@ -229,6 +245,10 @@ def get_server_list(db_session):
 
 def get_host(db_session, hostname):
     return db_session.query(Host).filter(Host.hostname == hostname).first()
+
+
+def get_host_by_id(db_session, id):
+    return db_session.query(Host).filter(Host.id == id).first()
 
 
 def get_host_list(db_session):
@@ -466,8 +486,13 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
 
     install_job.packages = ','.join(install_job_packages)
     install_job.dependency = dependency if dependency > 0 else None
-    install_job.created_by = current_user.username
-    install_job.user_id = current_user.id
+
+    if hasattr(current_user, 'username'):
+        install_job.created_by = current_user.username
+        install_job.user_id = current_user.id
+    else:
+        install_job.created_by = g.api_user.username
+        install_job.user_id = g.api_user.id
 
     if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE or \
        install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM or \
@@ -550,6 +575,28 @@ def is_pending_on_download(db_session, filename, server_id, server_directory):
         return True
 
     return False
+
+
+# Accepts an array containing paths to specific files
+def download_session_logs(file_list):
+    if hasattr(current_user, 'username'):
+        username = current_user.username
+    else:
+        username = g.api_user.username
+
+    temp_user_dir = create_temp_user_directory(username)
+    session_zip_path = os.path.normpath(os.path.join(temp_user_dir, "session_logs"))
+    zip_file = os.path.join(session_zip_path, "session_logs.zip")
+    create_directory(session_zip_path)
+    make_file_writable(session_zip_path)
+
+    zout = zipfile.ZipFile(zip_file, mode='w')
+    for f in file_list:
+        zout.write(os.path.normpath(f), os.path.basename(f))
+
+    zout.close()
+
+    return send_file(zip_file, as_attachment=True)
 
 
 def get_last_successful_pre_upgrade_job(db_session, host_id):

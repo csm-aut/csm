@@ -2135,7 +2135,7 @@ def delete_all_installs(status=None):
         for install_job in install_jobs:
             db_session.delete(install_job)
             if status == JobStatus.FAILED:
-                delete_install_job_dependencies(db_session, install_job)
+                delete_install_job_dependencies(db_session, install_job.id)
         
         db_session.commit()    
 
@@ -2182,7 +2182,7 @@ def delete_all_installs_for_host(hostname, status=None):
         for install_job in install_jobs:
             db_session.delete(install_job)
             if status == JobStatus.FAILED:
-                delete_install_job_dependencies(db_session, install_job)
+                delete_install_job_dependencies(db_session, install_job.id)
             
         db_session.commit()
         return jsonify({'status': 'OK'})
@@ -2207,7 +2207,7 @@ def delete_install_job(id):
         # Install jobs that are in progress cannot be deleted.
         if install_job.status is None or install_job.status == JobStatus.FAILED:
             db_session.delete(install_job)        
-        delete_install_job_dependencies(db_session, install_job)
+        delete_install_job_dependencies(db_session, install_job.id)
         
         db_session.commit()
         
@@ -2216,14 +2216,6 @@ def delete_install_job(id):
     except:  
         logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
-    
-
-def delete_install_job_dependencies(db_session, install_job):
-    dependencies = db_session.query(InstallJob).filter(InstallJob.dependency == install_job.id).all()
-    for dependency in dependencies:
-        if dependency.status is None:
-            db_session.delete(dependency)
-        delete_install_job_dependencies(db_session, dependency)
 
 
 @app.route('/hosts/<hostname>/<table>/session_log/<int:id>/')
@@ -3594,19 +3586,7 @@ def download_session_log():
 @login_required
 def api_download_session_logs():
     file_list = request.args.getlist('file_list[]')[0].split(',')
-    temp_user_dir = create_temp_user_directory(current_user.username)
-    session_zip_path = os.path.normpath(os.path.join(temp_user_dir, "session_logs"))
-    zip_file = os.path.join(session_zip_path, "session_logs.zip")
-    create_directory(session_zip_path)
-    make_file_writable(session_zip_path)
-
-    zout = zipfile.ZipFile(zip_file, mode='w')
-    for f in file_list:
-        zout.write(os.path.normpath(f), os.path.basename(f))
-
-    zout.close()
-
-    return send_file(zip_file, as_attachment=True)
+    return download_session_logs(file_list)
 
 
 @app.route('/download_system_logs')

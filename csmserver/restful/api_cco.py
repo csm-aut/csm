@@ -60,12 +60,18 @@ def api_get_cco_software(request):
         smu_loader = SMUInfoLoader(platform, release)
         if smu_loader is not None and smu_loader.is_valid:
             smu_list = smu_loader.get_optimal_smu_list()
-            if optimal and optimal == 'no':
+            sp_list = smu_loader.get_optimal_sp_list()
+            if optimal and optimal == 'false':
                 smu_list = smu_loader.get_smu_list()
+                sp_list = smu_loader.get_sp_list()
 
             for smu_info in smu_list:
                 if datetime.datetime.strptime(smu_info.posted_date.split()[0], "%m/%d/%Y") >= date:
                     rows.append(get_smu_info(smu_info))
+
+            for sp_info in sp_list:
+                if datetime.datetime.strptime(sp_info.posted_date.split()[0], "%m/%d/%Y") >= date:
+                    rows.append(get_smu_info(sp_info))
 
         if rows:
             return jsonify(**{ENVELOPE: {'software_list': rows}})
