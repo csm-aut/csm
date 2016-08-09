@@ -31,6 +31,7 @@ from models import InventoryJobHistory
 from models import InstallJobHistory
 from models import DownloadJobHistory
 from models import CreateTarJob
+from models import ConvertConfigJob
 
 from constants import get_log_directory
 from constants import JobStatus
@@ -110,6 +111,7 @@ class Scheduler(threading.Thread):
         self.purge_install_job_history(db_session, system_option.install_history_per_host)
         self.purge_download_job_history(db_session, system_option.download_history_per_user)
         self.purge_tar_job(db_session)
+        self.purge_config_job(db_session)
 
     def purge_system_log(self, db_session, max_entry):
         try:
@@ -226,6 +228,19 @@ class Scheduler(threading.Thread):
         except:
             db_session.rollback()
             logger.exception('purge_tar_job() hit exception')
+
+    def purge_config_job(self, db_session):
+        # Deleting old ConvertConfigJobs
+        try:
+            convert_config_jobs = db_session.query(ConvertConfigJob).all()
+            for convert_config_job in convert_config_jobs:
+                if convert_config_job.status == JobStatus.COMPLETED or convert_config_job.status == JobStatus.FAILED:
+                    db_session.delete(convert_config_job)
+
+            db_session.commit()
+        except:
+            db_session.rollback()
+            logger.exception('purge_config_job() hit exception')
 
 if __name__ == '__main__':
     pass

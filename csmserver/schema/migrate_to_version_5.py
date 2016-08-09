@@ -24,6 +24,7 @@
 # =============================================================================
 from schema.base import BaseMigrate
 from database import DBSession
+from models import InventoryJob
 
 
 sql_statements = [
@@ -48,5 +49,15 @@ class SchemaMigrate(BaseMigrate):
         for sql in sql_statements:
             try:
                 db_session.execute(sql)
-            except Exception as inst:
+            except Exception as e:
                 pass
+
+        try:
+            # Re-discover all software inventory for all hosts due to changes in Condoor
+            inventory_jobs = db_session.query(InventoryJob)
+            for inventory_job in inventory_jobs:
+                inventory_job.request_update = True
+
+            db_session.commit()
+        except Exception as e:
+            pass

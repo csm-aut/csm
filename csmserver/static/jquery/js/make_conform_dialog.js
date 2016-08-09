@@ -9,6 +9,8 @@
  */
 
 var make_conform_dialog_spinner;
+var host_software_platform = null;
+var host_software_version = null;
 
 $(function() {
     make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
@@ -98,6 +100,11 @@ $(function() {
             return false;
         }
 
+        var software_packages = $('#software_packages').val().trim();
+        if (!validate_package_count_restriction(host_software_platform, host_software_version, software_packages)) {
+            return false;
+        }
+
         on_submit_install_jobs();
 
         return false;
@@ -171,7 +178,7 @@ $(function() {
                     }
                     $('#make-conform-dialog').modal('hide');
                 } else {
-                    bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to create scheduled installation.');
+                    bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
                 }
             }
         });
@@ -191,7 +198,10 @@ function get_server_time() {
     });
 }
 
-function display_make_conform_dialog(hostname, missing_packages) {
+function display_make_conform_dialog(hostname, software_platform, software_version, missing_packages) {
+    host_software_platform  = software_platform;
+    host_software_version = software_version;
+
     // Reset variables
     $("#install_action").val(null).trigger("change");
     $('#select_server').val(-1);

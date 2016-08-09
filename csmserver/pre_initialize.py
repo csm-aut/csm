@@ -22,23 +22,42 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
-from database import DBSession
+from utils import create_directory
+from utils import is_ldap_supported
+
+from constants import get_csm_data_directory
+from constants import get_log_directory
+from constants import get_repository_directory
+from constants import get_temp_directory
+from constants import get_migration_directory
+
+import os
+import shutil
+
+# Handle legacy: Rename directory autlogs to log
+if os.path.isdir(os.path.join(get_csm_data_directory(), 'autlogs')):
+    shutil.move(os.path.join(get_csm_data_directory(), 'autlogs'), get_log_directory())
 
 
-class BaseMigrate(object):
-    def __init__(self, version):
-        self.version = version
+def relocate_database_ini():
+    csm_data_database_ini = os.path.join(get_csm_data_directory(), 'database.ini')
+    if not os.path.isfile(csm_data_database_ini):
+        shutil.move(os.path.join(os.getcwd(), 'database.ini'), csm_data_database_ini)
 
-    def update_schema_version(self):
-        db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        system_version.schema_version = self.version
-        db_session.commit()
 
-    def execute(self):
-        self.start()
-        self.update_schema_version()
+def init():
+    # Create the necessary supporting directories
+    create_directory(get_log_directory())
+    create_directory(get_repository_directory())
+    create_directory(get_temp_directory())
+    create_directory(get_migration_directory())
 
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+    if not is_ldap_supported():
+        print('LDAP authentication is not supported because it has not been installed.')
+
+    # For refresh installation, move database.ini to csm_data
+    # relocate_database_ini()
+
+
+if __name__ == '__main__':
+    init()

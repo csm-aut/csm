@@ -36,10 +36,11 @@ csm_data
 """
 UNKNOWN = 'Unknown'
 DIRECTORY_BASE = '../../csm_data/'
-DIRECTORY_LOG = DIRECTORY_BASE + 'autlogs/'
+DIRECTORY_LOG = DIRECTORY_BASE + 'logs/'
 DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'
 DIRECTORY_TEMP = DIRECTORY_BASE + 'temp/'
 DIRECTORY_MIGRATION = DIRECTORY_BASE + 'migration/'
+
 
 def get_csm_data_directory():
     return DIRECTORY_BASE
@@ -70,10 +71,13 @@ class ConnectionType:
 
 class PlatformFamily:
     ASR9K = 'ASR9K'
-    CRS = 'CRS'
-    NCS6K = 'NCS6K'
-    ASR9K_X64 = 'ASR9K-X64'
+    ASR9K_64 = 'ASR9K-64'
     ASR900 = 'ASR900'
+    CRS = 'CRS'
+    NCS1K = 'NCS1K'
+    NCS5K = 'NCS5K'
+    NCS5500 = 'NCS5500'
+    NCS6K = 'NCS6K'
     N9K = 'N9K'
 
 
@@ -82,13 +86,6 @@ class PackageState:
     INACTIVE_COMMITTED = 'inactive-committed'
     ACTIVE = 'active'
     ACTIVE_COMMITTED = 'active-committed'
-
-
-class PackageStateForTab:
-    INACTIVE = 'Inactive'
-    INACTIVE_COMMITTED = 'Inactive Committed'
-    ACTIVE = 'Active'
-    ACTIVE_COMMITTED = 'Active Committed'
 
 
 class JobStatus:
@@ -116,11 +113,11 @@ class InstallAction:
     INSTALL_REMOVE = 'Remove'
     INSTALL_DEACTIVATE = 'Deactivate'
     INSTALL_ROLLBACK = 'Rollback'
+    MIGRATION_AUDIT = 'Migration-Audit'
     PRE_MIGRATE = 'Pre-Migrate'
     MIGRATE_SYSTEM = 'Migrate'
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
-
 
 
 class PackageType:
@@ -151,3 +148,13 @@ class ProxyAgent:
 class DefaultHostAuthenticationChoice:
     ALL_HOSTS = "1"
     HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD = "2"
+
+
+class ExportSoftwareInformationFormat:
+    HTML = 'HTML'
+    MICROSOFT_EXCEL = 'Microsoft Excel'
+
+
+class ExportSoftwareInformationLayout:
+    CONCISE = 'Concise'
+    DEFAULT = 'Default'

@@ -907,6 +907,20 @@ class CreateTarJob(Base):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
 
+
+class ConvertConfigJob(Base):
+    __tablename__ = 'convert_config_job'
+
+    id = Column(Integer, primary_key=True)
+    file_path = Column(String(200))
+    status = Column(String(200))
+    status_time = Column(DateTime)
+
+    def set_status(self, status):
+        self.status = status
+        self.status_time = datetime.datetime.utcnow()
+
+
 class CustomCommandProfile(Base):
     __tablename__ = 'custom_command_profile'
 
@@ -949,8 +963,6 @@ class LogHandler(logging.Handler):
             created_time=datetime.datetime.utcnow())
 
         self.db_session.add(log)
-        self.db_session.rollback()
-        self.db_session.flush()
         self.db_session.commit()
         
 logger = logging.getLogger('logger')

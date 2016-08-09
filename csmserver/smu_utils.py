@@ -22,8 +22,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from constants import UNKNOWN
 from constants import PackageType
-from platform_matcher import get_platform, get_release, UNKNOWN
 from smu_info_loader import SMUInfoLoader
 from smu_advisor import get_excluded_supersede_list 
 from smu_advisor import get_missing_required_prerequisites
@@ -66,7 +66,7 @@ def get_smu_lookup_name(name):
         return name
     
     # The worst case scenario of the name could be "disk0:asr9k-px-4.2.1.CSCud90009-1.0.0.pie"
-    # .smu is for NCS6K, .rpm is for ASR9K-X64
+    # .smu is for NCS6K, .rpm is for ASR9K-64
     rep_dict = {'.pie': '', '.smu': '', '.rpm': ''}
     name = multiple_replace(name, rep_dict)
     
@@ -107,7 +107,7 @@ def get_unique_set_from_dict(smu_info_dict):
 
 def get_missing_prerequisite_list(smu_list):
     result_list = []   
-    platform, release = get_platform_and_release(smu_list)
+    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
     
     if platform == UNKNOWN or release == UNKNOWN:
         return result_list
@@ -141,24 +141,6 @@ def get_missing_prerequisite_list(smu_list):
     return result_list
 
 
-def get_platform_and_release(package_list):
-    """
-    Given a package list (SMU/SP/Pacages), return the platform and release.
-    """
-    platform = UNKNOWN
-    release = UNKNOWN
-    
-    # Identify the platform and release
-    for line in package_list:
-        platform = get_platform(line)
-        release = get_release(line)
-        
-        if platform != UNKNOWN and release != UNKNOWN:
-            break
-        
-    return platform, release
-
-
 def get_download_info_dict(smu_list):
     """
     Given a SMU list, return a dictionary which contains
@@ -166,7 +148,7 @@ def get_download_info_dict(smu_list):
     value: cco filename  (can be None if smu_name is not in the XML file)
     """
     download_info_dict = {}
-    platform, release = get_platform_and_release(smu_list)
+    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
     
     if platform == UNKNOWN or release == UNKNOWN:
         return download_info_dict, None
@@ -195,7 +177,7 @@ def get_validated_list(smu_list):
     result_list = []
     
     # Identify the platform and release
-    platform, release = get_platform_and_release(smu_list)
+    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
     
     if platform == UNKNOWN or release == UNKNOWN:
         for line in smu_list:
@@ -206,7 +188,7 @@ def get_validated_list(smu_list):
     smu_loader = SMUInfoLoader(platform, release)
     
     file_suffix = smu_loader.file_suffix
-    smu_info_list= []
+    smu_info_list = []
     smu_name_set = set()
     
     for line in smu_list:
@@ -215,7 +197,8 @@ def get_validated_list(smu_list):
         
         if smu_info is None:
             # Check if the entry is a package type
-            if get_platform(smu_name) == UNKNOWN:
+            platform, release = SMUInfoLoader.get_platform_and_release(smu_name)
+            if platform == UNKNOWN:
                 unrecognized_list.append(smu_name)
             else:
                 package_list.append(smu_name)

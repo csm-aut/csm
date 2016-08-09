@@ -22,6 +22,27 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+"""
+SMUInfoLoader loads software information from XML files that are posted on CCO.
+The XML files encode information for SMU, Service Pack, and Release Software for
+a particular software platform and release.  If the requested XML file cannot be located,
+it will attempt to load the information from the database.
+
+The catalog file at this link contains all supported software platforms and releases
+http://www.cisco.com/web/Cisco_IOS_XR_Software/SMUMetaFile/catalog.dat
+
+Individual XML file can be retrieved using URL similar to the one below
+http://www.cisco.com/web/Cisco_IOS_XR_Software/SMUMetaFile/asr9k_px_5.3.0.xml
+
+Current defined software platforms are
+asr9k_px
+crs_px
+ncs6k
+ncs6k_sysadmin
+
+The releases are expected to be in this format x.x.x (e.g. 5.3.0)
+"""
+
 from xml.dom import minidom
 
 from sqlalchemy.exc import IntegrityError
@@ -32,6 +53,7 @@ from models import SMUInfo
 from models import CCOCatalog
 from models import logger
 from models import SystemOption
+from constants import UNKNOWN
 from constants import PackageType
 from constants import PlatformFamily
 
@@ -80,6 +102,13 @@ XML_TAG_SP = 'sp'
 XML_TAG_SMU_INTRANSIT = 'smuIntransit'
 XML_TAG_TAR = 'tar'
 
+# These are the platform prefixes used by the XML files
+# Any additions to this list will require modifying
+# get_platform() and get_release()
+CCO_PLATFORM_ASR9K = 'asr9k_px'
+CCO_PLATFORM_CRS = 'crs_px'
+CCO_PLATFORM_NCS6K = 'ncs6k'
+CCO_PLATFORM_NCS6K_SYSADMIN = 'ncs6k_sysadmin'
 
 class SMUInfoLoader(object):
     """
@@ -101,11 +130,11 @@ class SMUInfoLoader(object):
 
     def get_cco_supported_platform(self, platform):
         if platform == PlatformFamily.ASR9K:
-            return 'asr9k_px'
+            return CCO_PLATFORM_ASR9K
         elif platform == PlatformFamily.CRS:
-            return 'crs_px'
+            return CCO_PLATFORM_CRS
         elif platform == PlatformFamily.NCS6K:
-            return 'ncs6k'
+            return CCO_PLATFORM_NCS6K
         else:
             return platform
 
@@ -339,6 +368,19 @@ class SMUInfoLoader(object):
                 return smu
         return None
 
+    def get_ddts_from_names(self, name_list):
+        """
+        :param name_list: A list of SMU/SP names
+        :return: An array of corresponding DDTS
+        """
+        results = []
+        for name in name_list:
+            smu_info = self.get_smu_info(name)
+            if smu_info:
+                results.append(smu_info.ddts)
+
+        return results
+
     @classmethod   
     def get_smu_meta_file(cls, platform, release):
         try:
@@ -491,6 +533,51 @@ class SMUInfoLoader(object):
             csm_messages.append({'token': date_token, 'message': message})
         
         return csm_messages
+
+    @classmethod
+    def get_platform_and_release(cls, package_name):
+        """
+        Given a package_name, return the software platform and release that can be used to load an XML file.
+        However, there is no guarantee that such XML exists.  Always call SMUInfoLoader.is_valid() to verify.
+
+        'Unknown' may be returned for invalid platform or release.
+        """
+        package_list = None
+        if isinstance(package_name, str):
+            package_list = [package_name]
+        elif isinstance(package_name, list):
+            package_list = list(package_name)
+
+        if package_list:
+            for package_name in package_list:
+                platform = UNKNOWN
+                release = UNKNOWN
+
+                if 'asr9k' in package_name and '-px' in package_name or 'ASR9K-iosxr' in package_name:
+                    # Release Software Name: ASR9K-iosxr-px-k9-5.3.1.tar
+                    # External Name: asr9k-mcast-px.pie-5.3.2 | asr9k-px-5.3.3.CSCuy81837.pie
+                    # Internal Name: disk0:asr9k-mcast-px-5.3.2 | disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
+                    platform = CCO_PLATFORM_ASR9K
+                elif 'hfr' in package_name and '-px' in package_name:
+                    # Internal Name: disk0:hfr-mini-px-4.2.1 | disk0:hfr-px-4.2.3.CSCtz89449
+                    platform = CCO_PLATFORM_CRS
+                elif 'ncs6k-sysadmin' in package_name:
+                    # External Name: ncs6k-sysadmin.iso-5.2.4
+                    # Internal Name: ncs6k-sysadmin-5.2.4
+                    platform = CCO_PLATFORM_NCS6K_SYSADMIN
+                elif 'ncs6k' in package_name:
+                    # External Name: ncs6k-mgbl.pkg-5.2.4
+                    # Internal Name: ncs6k-mgbl-5.2.4
+                    platform = CCO_PLATFORM_NCS6K
+
+                if platform in [CCO_PLATFORM_ASR9K, CCO_PLATFORM_CRS, CCO_PLATFORM_NCS6K, CCO_PLATFORM_NCS6K_SYSADMIN]:
+                    matches = re.findall("\d+\.\d+\.\d+", package_name)
+                    release = matches[0] if matches else UNKNOWN
+
+                if platform != UNKNOWN and release != UNKNOWN:
+                    return platform, release
+
+        return UNKNOWN, UNKNOWN
 
 if __name__ == '__main__':
     SMUInfoLoader.refresh_all()

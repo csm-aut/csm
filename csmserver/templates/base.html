@@ -13,8 +13,10 @@
     <li><a href="{{ url_for('static', filename='documents/admin_tools.pdf') }}">Admin Tools</a></li>
     {% endif %}
     <li><a href="{{ url_for('static', filename='documents/tools.pdf') }}">Tools</a></li>
-    <li><a href="{{ url_for('static', filename='documents/migrate_to_asr9k_x64.pdf') }}">Migrate to ASR9K-X64</a></li>
+    <li><a href="{{ url_for('static', filename='documents/migrate_to_asr9k_64.pdf') }}">ASR9K to ASR9K-64 Migration</a></li>
     <li><a href="{{ url_for('static', filename='documents/additional_topics.pdf') }}">Additional Topics</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('about') }}">About CSM Server</a></li>
 {% endmacro %}
 
 {% macro non_admin_tools_menu() %}
@@ -31,7 +33,7 @@
     <li class="divider"></li>
     <li><a href="{{ url_for('custom_command.home') }}">Custom Command Profile</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('exr_migrate.schedule_migrate') }}">Migrate to ASR9K-X64</a></li>
+    <li><a href="{{ url_for('asr9k_64_migrate.migration') }}">ASR9K to ASR9K-64 Migration</a></li>
     {% endif %}
 {% endmacro %}
 

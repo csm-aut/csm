@@ -27,9 +27,11 @@ $(document).ready(function(){
            
         },
         onNext: function(tab, navigation, index){
-            if ($('.nav-tabs .active').text() == "Select Host") {
+            if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT SOFTWARE VERSION") {
+                return validateHardwareAudit();
+            } else if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT HOST") {
                 return validateSelectHost();
-            } else if ($('.nav-tabs .active').text() == "Pre-Migrate") {
+            } else if ($('#wizard-dialog .nav-tabs .active').text() == "PRE-MIGRATE") {
                 return validateSelectPackages();
             }
 
@@ -84,6 +86,13 @@ $(document).ready(function(){
     
 });
 
+function validateHardwareAudit(){
+    if ($('#hardware_audit_version option:selected').val() == '') {
+        bootbox.alert("In order to perform hardware audit on selected device(s), you must specify the version of ASR9K-64 image you plan to migrate to.");
+        return false
+    }
+}
+
 function validateSelectHost(){
 
     if (host_selector.get_selected_items().length < 1) {
@@ -107,9 +116,6 @@ function validateSelectHost(){
             server_software_retrieve_file_list(server, $('#server_dialog_server_directory'), server_directory);
         } else {
             server_software_selector.initialize([], []);
-            config_selector.html("");
-            config_selector.append("<option value=\"\" disabled selected style=\"display: none;\">Optional</option>");
-            config_selector.append("<option value=\"\"></option>");
         }
 
     }
@@ -124,15 +130,15 @@ function validateSelectPackages(){
         bootbox.alert("Please select server repository");
         return false
     }
-    var selected_ISO = 0;
+    var selected_image = 0;
     var selected_smu = 0;
     var selected_config = false;
     var selected_items = server_software_selector.get_selected_items();
     var unselected_items = server_software_selector.get_unselected_items();
 
     for (var index in selected_items) {
-        if (selected_items[index].match("asr9k.*\.iso.*")) {
-            selected_ISO++;
+        if (selected_items[index].match("asr9k.*\.tar.*\\d\\.\\d\\.\\d.*")) {
+            selected_image++;
         }
         if (selected_items[index].match("asr9k.*\.pie.*")) {
             selected_smu++;
@@ -142,18 +148,19 @@ function validateSelectPackages(){
         }
 
     }
-    if (selected_ISO < 1) {
-        bootbox.alert("Please select an ASR9K-X64 image before continuing.");
+    if (selected_image < 1) {
+        bootbox.alert("Please select the tar file containing ASR9K-64 image and boot files before continuing. The filename of your ASR9K-64 tar file must match the wildcard expression 'asr9k*.tar*' and contain the suffix three digit ASR9K-64 software version number such as '6.1.1'.");
         return false
-    } else if (selected_ISO > 1) {
-        bootbox.alert("Please select only one ASR9K-X64 image before continuing.");
+    } else if (selected_image > 1) {
+        bootbox.alert("Please select only one tar file for ASR9K-64 image and boot files before continuing.");
         return false
     }
-    if (selected_smu < 1) {
-        bootbox.alert("Please select the ASR9K unified FPD SMU for your ASR9K-X64 image before continuing.");
-        return false
-    }else if (selected_smu > 1) {
-        bootbox.alert("Too many packages selected. Please select only the ASR9K-X64 image and the ASR9K unified FPD SMU before continuing.");
+    //if (selected_smu < 1) {
+    //    bootbox.alert("Please select the ASR9K unified FPD SMU for your ASR9K-64 image before continuing.");
+    //    return false
+    //}else if (selected_smu > 1) {
+    if (selected_smu > 1) {
+        bootbox.alert("Too many packages selected. Please select only the ASR9K-64 image and the ASR9K unified FPD SMU(only if your release version is below 6.1.1) before continuing.");
         return false
     }
 

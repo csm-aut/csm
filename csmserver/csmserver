@@ -42,6 +42,7 @@ function start_csmserver()
 
     # This will force database creation for a new installation via a single entry point.
     # Otherwise, gunicorn multiple workers will create contention when they all start.
+    $PYTHON pre_initialize.py
     $PYTHON initialize.py
 
     # if not in debug mode, hide the outputs
@@ -70,6 +71,7 @@ function start_secure_csmserver
 
     echo "starting Secure CSM Server"
 
+    $PYTHON pre_initialize.py
     $PYTHON initialize.py
 
     # if not in debug mode, hide the outputs

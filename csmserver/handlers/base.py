@@ -26,13 +26,13 @@ from models import UDI
 from models import get_db_session_logger
 
 from context import ConnectionContext
-from context import SoftwareContext
+from context import InventoryContext
 from context import InstallContext
 
 from constants import InstallAction
 from constants import get_log_directory
 
-from common import get_last_successful_pre_upgrade_job, get_last_successful_pre_migrate_job
+from common import get_last_completed_install_job_for_install_action
 
 from utils import get_file_list
 from utils import generate_file_diff
@@ -43,17 +43,11 @@ from utils import get_software_version
 from filters import get_datetime_string
 
 from parsers.loader import get_package_parser_class
-
-
-try:
-    from csmpe import CSMPluginManager
-    csmpe_installed = True
-except ImportError:
-    from horizon.plugin_manager import PluginManager
-    csmpe_installed = False
+from csmpe import CSMPluginManager
 
 import os
 import condoor
+
 
 class BaseHandler(object):
     def execute(self, ctx):
@@ -73,7 +67,7 @@ class BaseHandler(object):
         if isinstance(ctx, ConnectionContext):
             self.update_device_info(ctx)
 
-        if isinstance(ctx, SoftwareContext):
+        if isinstance(ctx, InventoryContext) or isinstance(ctx, InstallContext):
             self.get_software(ctx)
 
         if isinstance(ctx, InstallContext):
@@ -112,15 +106,10 @@ class BaseHandler(object):
         package_parser_class = get_package_parser_class(ctx.host.software_platform)
         package_parser = package_parser_class()
 
-        return package_parser.get_packages_from_cli(
-            ctx.host,
-            install_inactive_cli=ctx.inactive_cli,
-            install_active_cli=ctx.active_cli,
-            install_committed_cli=ctx.committed_cli
-        )
+        return package_parser.get_packages_from_cli(ctx)
 
     def generate_post_upgrade_file_diff(self, ctx):
-        install_job = get_last_successful_pre_upgrade_job(ctx.db_session, ctx.host.id)
+        install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_UPGRADE)
         if install_job is None:
             return
 
@@ -128,7 +117,7 @@ class BaseHandler(object):
                                 target_file_directory=ctx.log_directory)
 
     def generate_post_migrate_file_diff(self, ctx):
-        install_job = get_last_successful_pre_migrate_job(ctx.db_session, ctx.host.id)
+        install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_MIGRATE)
         if install_job is None:
             return
 
@@ -189,60 +178,20 @@ class BaseConnectionHandler(BaseHandler):
 
 class BaseInventoryHandler(BaseHandler):
     def start(self, ctx):
-        if csmpe_installed:
-            pm = CSMPluginManager(ctx)
+        pm = CSMPluginManager(ctx)
 
         try:
-            if csmpe_installed:
-                pm.dispatch("run")
-            else:
-                conn = condoor.Connection(ctx.host.hostname, ctx.host_urls, log_dir=ctx.log_directory)
-                try:
-                    conn.discovery()
-                except condoor.GeneralError as e:
-                    logger = get_db_session_logger(ctx.db_session)
-                    logger.exception('BaseInventoryHandler hit exception')
-                    return
-
-                conn.connect()
-
-                if conn.os_type == "XR":
-                    ctx.inactive_cli = conn.send('sh install inactive summary')
-                    ctx.active_cli = conn.send('sh install active summary')
-                    ctx.committed_cli = conn.send('sh install committed summary')
-                elif conn.os_type == "eXR":
-                    ctx.inactive_cli = conn.send('sh install inactive')
-                    ctx.active_cli = conn.send('sh install active')
-                    ctx.committed_cli = conn.send('sh install committed')
-                elif conn.os_type == "XE":
-                    ctx.committed_cli = conn.send('sh version')
-                    conn.send('cd bootflash:')
-                    ctx.inactive_cli = conn.send('dir')
-                elif conn.os_type == "NX-OS":
-                    ctx.inactive_cli = conn.send('sh install inactive')
-                    ctx.committed_cli = conn.send('sh install packages | grep lib32_n9000')
-
-                ctx.success = True
+            pm.dispatch("run")
         except condoor.GeneralError as e:
             logger = get_db_session_logger(ctx.db_session)
             logger.exception('BaseInventoryHandler hit exception')
-            if conn:
-                conn.disconnect()
 
 
 class BaseInstallHandler(BaseHandler):
     def start(self, ctx):
-
-        if csmpe_installed:
-            pm = CSMPluginManager(ctx)
-        else:
-            pm = PluginManager()
-
+        pm = CSMPluginManager(ctx)
         try:
-            if csmpe_installed:
-                pm.dispatch("run")
-            else:
-                pm.run(ctx)
+            pm.dispatch("run")
         except condoor.GeneralError as e:
             logger = get_db_session_logger(ctx.db_session)
             logger.exception(e.message)

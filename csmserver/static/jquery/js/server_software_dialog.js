@@ -11,8 +11,6 @@ var server_software_hostname;
 var server_software_dialog_spinner;
 var server_software_selector;
 
-var config_selector;
-
 $(function() {
 
     server_software_dialog_spinner = $('#server-software-dialog-browse-spinner');
@@ -20,8 +18,6 @@ $(function() {
     
     server_software_selector = $('#server-software-selector').DualListBox();
 
-    config_selector = $('#config_filename');
-    
     $('#server-dialog-auto-select-software').on('click', function(e) {
         // Cancel default behavior
         e.preventDefault(); 
@@ -140,26 +136,5 @@ function server_software_populate_file_list(element, server_directory_selector, 
     }
     server_software_selector.initialize(available_software, []);
 
-    if (config_selector != null) {
-
-        config_selector.html("");
-        config_selector.append("<option value=\"\" disabled selected style=\"display: none;\">Optional</option>");
-        config_selector.append("<option value=\"\"></option>");
-        $(available_software).each(function (i) { //populate child options
-            config_selector.append("<option value=\""+available_software[i].id +"\">"+available_software[i].name + "</option>");
-        });
-    }
-
-        // In edit mode.
-    if ($('#hidden_edit') != null && $('#hidden_edit').val() == 'True' && $('#hidden_software_packages') != null) {
-        var previously_selected_packages = $('#hidden_software_packages').val().split(',');
-        //console.log("previously_selected_packages = " + String(previously_selected_packages));
-        server_software_selector.select_partial_match(previously_selected_packages);
-    }
-
-    if ($('#hidden_edit') != null && $('#hidden_edit').val() == 'True' && $('#hidden_config_filename') != null) {
-        $('#config_filename').val($('#hidden_config_filename').val());
-        //console.log("config_filename = " + $('#config_filename').val());
-    }
 }
  

@@ -28,8 +28,7 @@ from flask import render_template
 from flask import jsonify, abort, send_file
 from flask import request, Response, redirect, url_for, make_response
 from flask.ext.login import LoginManager, current_user
-from flask.ext.login import login_user, login_required, logout_user  
-from platform_matcher import get_platform, get_release, UNKNOWN
+from flask.ext.login import login_user, login_required, logout_user
 
 from werkzeug.contrib.fixers import ProxyFix
 
@@ -50,12 +49,11 @@ from forms import PreferencesForm
 from forms import ServerDialogForm
 from forms import BrowseServerDialogForm
 from forms import SoftwareProfileForm
+from forms import ExportSoftwareInformationForm
 
 from models import Host
-from models import HostContext
 from models import JumpHost
 from models import InventoryJob
-from models import ConnectionParam
 from models import Log, logger 
 from models import InventoryJobHistory
 from models import InstallJob
@@ -65,7 +63,6 @@ from models import User
 from models import Server
 from models import SMTPServer
 from models import SystemOption
-from models import SystemVersion
 from models import System
 from models import Package
 from models import Preferences
@@ -84,12 +81,15 @@ from constants import JobStatus
 from constants import PackageState
 from constants import ServerType
 from constants import UserPrivilege
+from constants import UNKNOWN
 from constants import ConnectionType
 from constants import BUG_SEARCH_URL
 from constants import get_log_directory
 from constants import get_repository_directory
-from constants import get_temp_directory
 from constants import DefaultHostAuthenticationChoice
+from constants import PlatformFamily
+from constants import ExportSoftwareInformationFormat
+from constants import ExportSoftwareInformationLayout
 
 from common import get_last_successful_inventory_elapsed_time
 from common import get_host_active_packages 
@@ -99,7 +99,6 @@ from common import fill_dependency_from_host_install_jobs
 from common import fill_regions    
 from common import fill_jump_hosts
 from common import fill_custom_command_profiles
-from common import get_custom_command_profile_by_id
 from common import get_host
 from common import get_host_list
 from common import get_jump_host_by_id
@@ -127,11 +126,10 @@ from common import can_create
 from common import create_or_update_install_job
 from common import create_download_jobs
 from common import get_download_job_key
-from common import get_last_successful_pre_upgrade_job
 from common import create_or_update_host
 from common import delete_host
-
-from common import *
+from common import get_last_install_action
+from common import get_last_completed_install_job_for_install_action
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
@@ -151,6 +149,7 @@ from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
 from utils import datetime_from_utc_to_local
+from utils import get_software_platform
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -158,7 +157,6 @@ from wtforms.validators import Required
 from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
-from smu_utils import get_platform_and_release
 from smu_utils import SMU_INDICATOR
 
 from smu_info_loader import SMUInfoLoader
@@ -168,22 +166,23 @@ from cisco_service.bug_service import BugServiceHandler
 from package_utils import get_target_software_package_list
 from restful import restful_api
 
-from views.exr_migrate import exr_migrate
+from views.asr9k_64_migrate import asr9k_64_migrate
 from views.conformance import conformance
 from views.tar_support import tar_support
 from views.host_import import host_import
 from views.custom_command import custom_command
 
-from horizon.plugin_manager import PluginManager
+from report_writer import ExportSoftwareInfoHTMLConciseWriter
+from report_writer import ExportSoftwareInfoHTMLDefaultWriter
+from report_writer import ExportSoftwareInfoExcelConciseWriter
+from report_writer import ExportSoftwareInfoExcelDefaultWriter
 
 import os
-import stat
 import io
 import logging
 import datetime
 import filters
 import collections
-import shutil
 import initialize
 import zipfile
 
@@ -191,7 +190,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
 app.register_blueprint(restful_api)
-app.register_blueprint(exr_migrate)
+app.register_blueprint(asr9k_64_migrate)
 app.register_blueprint(conformance)
 app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
@@ -249,8 +248,8 @@ def get_host_platform_version(region_id):
     host_dict = {}
     if hosts is not None:
         for host in hosts:
-            platform = 'Unknown' if host.software_platform is None else host.software_platform
-            software = 'Unknown' if host.software_version is None else host.software_version
+            platform = UNKNOWN if host.software_platform is None else host.software_platform
+            software = UNKNOWN if host.software_version is None else host.software_version
               
             key = '{}={}'.format(platform, software)
             if key in host_dict:
@@ -505,7 +504,7 @@ def get_managed_hosts(region_id):
                 if host.software_version is not None:
                     row['software'] = host.software_platform + ' (' + host.software_version + ')'
                 else:
-                    row['software'] = 'Unknown'
+                    row['software'] = UNKNOWN
 
                 inventory_job = host.inventory_job[0]
                 if inventory_job is not None and inventory_job.last_successful_time is not None:
@@ -1075,8 +1074,35 @@ def api_get_last_successful_inventory_elapsed_time(hostname):
     ]})
 
 
+@app.route('/api/hosts/<hostname>/packages')
+@login_required
+def api_get_host_packages_by_states(hostname):
+    """
+    Returns the software packages that satisfy the requested package states (e.g. 'active,committed')
+    """
+    package_state = request.args.get('package_state')
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
 
-@app.route('/api/hosts/<hostname>/packages/<package_state>', methods=['GET','POST'])
+    rows = []
+    if host is not None:
+        # It is possible that package_state contains a commas delimited state list.
+        # In this case, the union of those packages will be used.
+        package_states = package_state.split(',')
+        packages = []
+        for package_state in package_states:
+            packages_list = db_session.query(Package).filter(
+                and_(Package.host_id == host.id, Package.state == package_state)). order_by(Package.name).all()
+            if len(packages_list) > 0:
+                packages.extend(packages_list)
+
+        for package in packages:
+            rows.append({'package': package.name if package.location is None else package.location + ':' + package.name})
+
+    return jsonify(**{'data': rows})
+
+
+@app.route('/api/hosts/<hostname>/packages/<package_state>')
 @login_required
 def api_get_host_dashboard_packages(hostname, package_state):
     db_session = DBSession()
@@ -1167,7 +1193,7 @@ def api_get_host_dashboard_cookie(hostname):
         row = {}
         connection_param = host.connection_param[0]
         row['hostname'] = host.hostname
-        row['region'] = host.region.name if host.region is not None else 'Unknown'
+        row['region'] = host.region.name if host.region is not None else UNKNOWN
         row['roles'] = host.roles
         row['platform'] = host.platform
         row['software_platform'] = host.software_platform
@@ -1486,7 +1512,7 @@ def get_download_job_json_dict(db_session, download_jobs):
                                                '<br><span style="color: Gray;"><b>Sub-directory:</b></span> ' + \
                                                download_job.server_directory
             else:
-                row['server_repository'] = 'Unknown'
+                row['server_repository'] = UNKNOWN
                 
             row['status'] = download_job.status
             row['status_time'] = download_job.status_time               
@@ -1850,8 +1876,7 @@ def api_create_download_jobs():
     
         # Derives the platform and release using the first SMU name.
         if len(smu_list) > 0 and len(pending_downloads) > 0:
-            platform = get_platform(smu_list[0])
-            release = get_release(smu_list[0])
+            platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
 
             create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
     except:
@@ -1907,7 +1932,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server = form.hidden_server.data
         server_directory = form.hidden_server_directory.data
         pending_downloads = form.hidden_pending_downloads.data
-        custom_command_profile = (',').join([str(i) for i in form.custom_command_profile.data])
+        custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
         
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
@@ -2463,14 +2488,9 @@ def api_get_last_successful_install_add_packages(host_id):
     result_list = []
     db_session = DBSession()
 
-    install_job_packages = db_session.query(InstallJobHistory.packages). \
-        filter((InstallJobHistory.host_id == host_id), 
-        and_(InstallJobHistory.install_action == InstallAction.INSTALL_ADD,
-             InstallJobHistory.status == JobStatus.COMPLETED)). \
-        order_by(InstallJobHistory.status_time.desc()).first()
-
-    if install_job_packages is not None:
-        result_list.append(install_job_packages)
+    install_job = get_last_completed_install_job_for_install_action(db_session, host_id, InstallAction.INSTALL_ADD)
+    if install_job is not None:
+        result_list.append(install_job.packages)
     
     return jsonify(**{'data': result_list})
 
@@ -2718,7 +2738,7 @@ def api_get_hosts_by_region(region_id, role, software):
             if host.software_platform is not None and host.software_version is not None:
                 host_platform_software = host.software_platform + ' (' + host.software_version + ')'
             else:
-                host_platform_software = 'Unknown'
+                host_platform_software = UNKNOWN
 
             if not selected_software or host_platform_software in selected_software:
                 row = {'hostname': host.hostname,
@@ -2856,18 +2876,20 @@ def check_host_reachability():
 def get_software_package_upgrade_list(hostname, target_release):
     rows = []
     db_session = DBSession()
-    
+
     host = get_host(db_session, hostname)
     if host is None:
         abort(404)
-    
+
     match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
-    host_packages = get_host_active_packages(hostname) 
-    target_packages = get_target_software_package_list(host.family, host_packages, target_release, match_internal_name)
+    host_packages = get_host_active_packages(hostname)
+    target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
+                                                       target_release, match_internal_name)
     for package in target_packages:
-        rows.append({'package': package})
-        
-    return jsonify(**{'data': rows})
+        rows.append({'package' : package})
+
+    return jsonify( **{'data':rows} )
+
 
 
 @app.route('/api/check_jump_host_reachability')
@@ -3108,15 +3130,53 @@ def get_platforms_and_releases_dict(db_session):
     return rows
 
 
+@app.route('/software/export/platform/<platform>/release/<release>', methods=['POST'])
+@login_required
+def export_software_information(platform, release):
+    smu_loader = SMUInfoLoader(platform, release)
+    if not smu_loader.is_valid:
+        return jsonify({'status': 'Failed'})
+
+    export_format = request.args.get('export_format')
+    export_layout = request.args.get('export_layout')
+    export_filter = request.args.get('filter')
+
+    if export_filter == 'Optimal':
+        smu_list = smu_loader.get_optimal_smu_list()
+        sp_list = smu_loader.get_optimal_sp_list()
+    else:
+        smu_list = smu_loader.get_smu_list()
+        sp_list = smu_loader.get_sp_list()
+
+    if export_format == ExportSoftwareInformationFormat.HTML:
+        if export_layout == ExportSoftwareInformationLayout.CONCISE:
+            writer = ExportSoftwareInfoHTMLConciseWriter(user=current_user, smu_loader=smu_loader,
+                                                         smu_list=smu_list, sp_list=sp_list)
+        else:
+            writer = ExportSoftwareInfoHTMLDefaultWriter(user=current_user, smu_loader=smu_loader,
+                                                         smu_list=smu_list, sp_list=sp_list)
+    else:
+        if export_layout == ExportSoftwareInformationLayout.CONCISE:
+            writer = ExportSoftwareInfoExcelConciseWriter(user=current_user, smu_loader=smu_loader,
+                                                          smu_list=smu_list, sp_list=sp_list)
+        else:
+            writer = ExportSoftwareInfoExcelDefaultWriter(user=current_user, smu_loader=smu_loader,
+                                                          smu_list=smu_list, sp_list=sp_list)
+
+    return send_file(writer.write_report(), as_attachment=True)
+
+
 @app.route('/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def get_smu_list(platform, release):        
     system_option = SystemOption.get(DBSession())
     form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
-    
+    export_software_information_form = ExportSoftwareInformationForm(request.form)
+
     return render_template('csm_client/get_smu_list.html', form=form, platform=platform,
-                           release=release, system_option=system_option)
+                           release=release, system_option=system_option,
+                           export_software_information_form=export_software_information_form)
 
 
 @app.route('/api/get_smu_list/platform/<platform>/release/<release>')
@@ -3343,7 +3403,7 @@ def get_smu_ids(db_session, smu_name_list):
         if smu_info is not None:
             smu_ids.append(smu_info.id)
         else:
-            smu_ids.append('Unknown')
+            smu_ids.append(UNKNOWN)
                   
     return ','.join([id for id in smu_ids])
 
@@ -3353,7 +3413,7 @@ def get_smu_ids(db_session, smu_name_list):
 def api_get_smu_meta_retrieval_elapsed_time(platform, release):
     smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
     
-    retrieval_elapsed_time = 'Unknown'
+    retrieval_elapsed_time = UNKNOWN
     if smu_meta is not None:
         retrieval_elapsed_time = time_difference_UTC(smu_meta.retrieval_time)
 
@@ -3436,12 +3496,17 @@ def api_get_missing_files_on_server(server_id):
     if is_reachable:
         for smu_name, cco_filename in download_info_dict.items():
             if not is_smu_on_server_repository(server_file_dict, smu_name):
-                smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
-                description = '' if smu_info is None else smu_info.description
-                # If selected SMU on CCO
-                if cco_filename is not None:             
-                    rows.append({'smu_entry': smu_name, 'description': description,
-                                 'cco_filename': cco_filename, 'is_downloadable': True})
+                description = ''
+                if smu_loader.is_valid:
+                    smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
+                    description = '' if smu_info is None else smu_info.description
+                    # If selected package is on CCO
+                    if cco_filename is not None:
+                        rows.append({'smu_entry': smu_name, 'description': description,
+                                     'cco_filename': cco_filename, 'is_downloadable': True})
+                    else:
+                        rows.append({'smu_entry': smu_name, 'description': description,
+                                     'is_downloadable': False})
                 else:
                     rows.append({'smu_entry': smu_name, 'description': description,
                                  'is_downloadable': False})
@@ -3512,7 +3577,7 @@ def api_get_missing_prerequisite_list():
     smu_list = request.args.get('smu_list').split()
 
     rows = []
-    platform, release = get_platform_and_release(smu_list)
+    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
     if platform != UNKNOWN and release != UNKNOWN:
         smu_loader = SMUInfoLoader(platform, release)
 
@@ -3543,7 +3608,7 @@ def api_get_reload_list():
     rows = []    
     if not is_empty(package_list):
         # Identify the platform and release
-        platform, release = get_platform_and_release(package_list)
+        platform, release = SMUInfoLoader.get_platform_and_release(package_list)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
             if smu_loader.is_valid:
@@ -3614,30 +3679,6 @@ def download_system_logs():
     log_file.close()
 
     return send_file(os.path.join(log_file_path, 'system_logs'), as_attachment=True)
-
-
-@app.route('/api/plugins')
-@login_required
-def plugins():
-    pm = PluginManager()
-    pm.locate_plugins()
-    plugins = pm.load_plugins()
-    info = [plugin.to_dict() for plugin in plugins]
-    return jsonify(**{"data": info})
-
-@app.route('/api/plugins/<name>')
-@login_required
-def plugin_by_name(name):
-    pm = PluginManager()
-    pm.locate_plugins()
-    pm.load_plugins()
-    plugins = pm.get_plugins_by_name(name)
-    if not isinstance(plugins, list):
-        plugin = [plugins.to_dict()]
-    else:
-        plugin = [plugin.to_dict() for plugin in plugins]
-    return jsonify(**{"data": plugin})
-
 
 if __name__ == '__main__':
     initialize.init()  

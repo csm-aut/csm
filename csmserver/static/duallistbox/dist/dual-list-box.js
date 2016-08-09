@@ -74,7 +74,20 @@
             }
 
             $(this).data('options', plugin_options);
+            $(this).data('init_observers', []);
         }) 
+    };
+
+    $.fn.add_init_observer = function(observer) {
+        var observers = $(this).data('init_observers');
+        observers.push(observer);
+    };
+
+    $.fn.notify_init_observers = function(all_options) {
+        var observers = $(this).data('init_observers');
+        for (var i = 0; i < observers.length; i++) {
+            observers[i](all_options)
+        }
     };
     
     $.fn.get_selected_items = function() {                  
@@ -86,7 +99,7 @@
         });
               
         return selected_options;
-    }
+    };
     $.fn.get_unselected_items = function() {
         var options = $(this).data('options');
 
@@ -97,7 +110,7 @@
         });
 
         return selected_options;
-    }
+    };
 
     /** Retrieves all the option elements through a JSON request. */
     function addElementsViaJSON(options, selected) {
@@ -388,15 +401,16 @@
       
       // remove all selected highlights
       unselected.find('option').each(function() {
-        var found = false;
-        
-        for (i = 0; i < data_list.length; i++) {
-          if ($(this).text().indexOf(data_list[i]) > -1) {
-            found = true;
-            break;
+          var found = false;
+
+          for (i = 0; i < data_list.length; i++) {
+              if ($(this).text().match(data_list[i])) {
+                  found = true;
+                  break;
+              }
           }
-        }       
-        $(this).prop("selected", found);       
+          
+        $(this).prop("selected", found);
       });
       
       $( ".str" ).click();
@@ -444,6 +458,8 @@
         init(plugin_options, selected.empty(), '.filter-selected', selected_data);
 
         countElements(plugin_options.parentElement);
+
+        $(this).notify_init_observers(unselected_data);
     }
      
     function init(plugin_options, select, id, data) {

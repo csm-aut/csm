@@ -183,9 +183,9 @@
                 }
             }, {
                 "targets": 1,
-                "data": 'platform',
+                "data": 'software_platform',
                 "render": function(data, type, row) {
-                    return data + ' ' + row['software'];
+                    return data + ' (' + row['software_version'] + ')';
                 }
             }, {
                 "targets": 2,
@@ -229,6 +229,8 @@
                 "render": function(data, type, row) {
                     return '<button type="button" style="line-height: 10px;" class="btn btn-default make-conform-button" ' +
                         'data-hostname="' + row['hostname'] + '"' +
+                        'data-software-platform="' + row['software_platform'] + '"' +
+                        'data-software-version="' + row['software_version'] + '"' +
                         'data-missing-packages="' + row['missing_packages'] + '"' +
                         '>Make Conform</button>';
                 }
@@ -392,8 +394,10 @@
 
         conformance_report_table.on("click", ".make-conform-button", function() {
             var hostname = $(this).attr('data-hostname');
+            var software_platform = $(this).attr('data-software-platform');
+            var software_version = $(this).attr('data-software-version');
             var missing_packages = $(this).attr('data-missing-packages');
-            display_make_conform_dialog(hostname, missing_packages);
+            display_make_conform_dialog(hostname, software_platform, software_version, missing_packages);
         });
 
         $('#export-sw-profiles-button').on("click", function(){

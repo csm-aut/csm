@@ -28,9 +28,14 @@ from csm_exceptions.exceptions import UnknownSoftwarePlatform
 
 
 def get_package_parser_class(software_platform):
-    if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
+    if software_platform in [PlatformFamily.ASR9K,
+                             PlatformFamily.CRS]:
         return import_class('parsers.platforms.IOS-XR.CLIPackageParser')
-    elif software_platform in [PlatformFamily.NCS6K, PlatformFamily.ASR9K_X64]:
+    elif software_platform in [PlatformFamily.ASR9K_64,
+                               PlatformFamily.NCS1K,
+                               PlatformFamily.NCS5K,
+                               PlatformFamily.NCS6K,
+                               PlatformFamily.NCS5500]:
         return import_class('parsers.platforms.eXR.CLIPackageParser')
     elif software_platform in [PlatformFamily.ASR900]:
         return import_class('parsers.platforms.IOS-XE.CLIPackageParser')

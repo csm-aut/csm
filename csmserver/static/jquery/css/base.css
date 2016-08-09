@@ -149,3 +149,64 @@ ul.nav li.dropdown:hover > ul.dropdown-menu {
 .popover {
     max-width: 100% !important;
 }
+
+.div_column{
+    width:100%;
+}
+
+.boxcontainer{
+    float:left;
+    width:50%;
+    padding:10px;
+    box-sizing: border-box;
+}
+
+.boxcontainer span{
+    display:block;
+}
+
+.boxcontainer div.scroll{
+    box-sizing: border-box;
+    width:90%;
+    resize: none;
+    height:400px;
+    border-style:groove;
+    border-width:3px;
+    overflow:auto;
+    text-align: left;
+}
+
+code {
+    font-family: monospace;
+    background-color: white !important;
+}
+
+.unprocessed {
+    color: grey;
+    margin-top: -15px;
+}
+
+.supported {
+    color: green;
+    margin-top: -15px;
+}
+
+.unsupported {
+    color: red;
+    margin-top: -15px;
+}
+
+.unrecognized {
+    color: mediumvioletred;
+    margin-top: -15px;
+}
+
+.unimplemented {
+    color: orange;
+    margin-top: -15px;
+}
+
+.syntaxerrors {
+    color: brown;
+    margin-top: -15px;
+}

@@ -33,24 +33,27 @@ CLI package parser for NX-OS.
 """
 class CLIPackageParser(BasePackageParser):
 
-    def get_packages_from_cli(self, host, install_inactive_cli=None, install_active_cli=None, install_committed_cli=None):
+    def get_packages_from_cli(self, ctx):
         host_packages = []
 
-        if install_committed_cli is not None:
+        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
+        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
+
+        if isinstance(cli_show_install_committed, list):
             # Should have only one committed package
-            committed_packages = self.get_committed_packages(install_committed_cli, PackageState.ACTIVE_COMMITTED)
+            committed_packages = self.get_committed_packages(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
             if committed_packages:
                 for package in committed_packages:
                     host_packages.append(package)
 
-        if install_inactive_cli is not None:
-            inactive_packages = self.get_inactive_packages(install_inactive_cli, PackageState.INACTIVE)
+        if isinstance(cli_show_install_inactive, list):
+            inactive_packages = self.get_inactive_packages(cli_show_install_inactive[0], PackageState.INACTIVE)
             if inactive_packages:
                 for package in inactive_packages:
                     host_packages.append(package)
 
         if len(host_packages) > 0:
-            host.packages = host_packages
+            ctx.host.packages = host_packages
             return True
 
         return False

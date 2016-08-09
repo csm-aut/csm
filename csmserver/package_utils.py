@@ -22,74 +22,105 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+
+import re
+
 from constants import PlatformFamily
-
-# The key has "-p" so it can also match 'asr9k-p/hfr-p' platforms
-
-CRS_PACKAGES = {
-    'hfr-asr9000v-nV-p': 'hfr-asr9000v-nV-px.pie',
-    'hfr-diags-p': 'hfr-diags-px.pie',
-    'hfr-doc-p': 'hfr-doc-px.pie',
-    'hfr-fit-p': 'hfr-fit-px.pie',
-    'hfr-fpd-p': 'hfr-fpd-px.pie',
-    'hfr-infra-test-p': 'hfr-infra-test-px.pie',
-    'hfr-k9sec-p': 'hfr-k9sec-px.pie',
-    'hfr-li-p': 'hfr-li-px.pie',
-    'hfr-mcast-p': 'hfr-mcast-px.pie',
-    'hfr-mgbl-p': 'hfr-mgbl-px.pie',
-    'hfr-mini-p': 'hfr-mini-px.pie',
-    'hfr-mpls-p': 'hfr-mpls-px.pie',
-    'hfr-pagent-p': 'hfr-pagent-px.pie',
-    'hfr-services-p': 'hfr-services-px.pie',
-    'hfr-upgrade-p': 'hfr-upgrade-px.pie',
-    'hfr-video-p': 'hfr-video-px.pie'
-}
-
-       
-ASR9K_PACKAGES = {
-    'asr9k-9000v-nV-p': 'asr9k-asr9000v-nV-px.pie',
-    'asr9k-asr901-nV-p': 'asr9k-asr901-nV-px.pie',
-    'asr9k-asr903-nV-p': 'asr9k-asr903-nV-px.pie',
-    'asr9k-bng-p': 'asr9k-bng-px.pie',
-    'asr9k-doc-p': 'asr9k-doc-px.pie',
-    'asr9k-fpd-p': 'asr9k-fpd-px.pie',
-    'asr9k-infra-test-p': 'asr9k-infra-test-px.pie',
-    'asr9k-k9sec-p': 'asr9k-k9sec-px.pie',
-    'asr9k-li-p': 'asr9k-li-px.pie',
-    'asr9k-mcast-p': 'asr9k-mcast-px.pie',
-    'asr9k-mgbl-p': 'asr9k-mgbl-px.pie',
-    'asr9k-mini-p': 'asr9k-mini-px.pie',
-    'asr9k-mpls-p': 'asr9k-mpls-px.pie',
-    'asr9k-optic-p': 'asr9k-optic-px.pie',
-    'asr9k-services-infra': 'asr9k-services-infra-px.pie',
-    'asr9k-services-p': 'asr9k-services-px.pie',
-    'asr9k-video-p': 'asr9k-video-px.pie',
-}
+from utils import get_software_platform
 
 
-def get_target_software_package_list(family, host_packages, target_version, match_internal_name=False):
+def get_target_software_package_list(family, os_type, host_packages, target_version, match_internal_name=False):
     """
-    If match_internal_name is true, it matches the host_packages instead of the physical name
-    on the server repository.
+    :param family: The device family
+    :param os_type: The device os_type
+    :param host_packages: The packages on the device to match with
+    :param target_version: The target version
+    :param match_internal_name: True or False.  If False, it will match the package external name
+    :return: The proposed package list for the targeted software version
     """
+
     target_list = []
-    platform_package_list = {}
-    
-    if family == PlatformFamily.ASR9K:
-        platform_package_list = ASR9K_PACKAGES
-    elif family == PlatformFamily.CRS:
-        platform_package_list = CRS_PACKAGES
-        
-    for k, v in platform_package_list.items():
-        for package in host_packages:
-            if k in package:
-                if match_internal_name:
-                    # FIXME: Works for ASR9K/CRS
-                    if k.endswith('p'):
-                        k += 'x'
-                        
-                    target_list.append("{}-{}".format(k, target_version))
+    # ASR9K and ASR9K-64 belong to the same family, but are different software platforms
+    software_platform = get_software_platform(family, os_type)
+
+    for host_package in host_packages:
+        if '.CSC' in host_package or '.sp' in host_package or 'sysadmin' in host_package:
+            continue
+
+        if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
+            pos = host_package.find('-px')
+            if pos == -1:
+                continue
+
+            package_name = host_package[0:pos]
+            if match_internal_name:
+                # asr9k-mgbl-px-5.3.3, hfr-mgbl-px-5.3.3
+                target_list.append('{}-px-{}'.format(package_name, target_version))
+            else:
+                # Handles exceptional case
+                if 'asr9k-9000v-nV-px' in host_package:
+                    target_list.append('asr9k-asr9000v-nV-px.pie-{}'.format(target_version))
                 else:
-                    target_list.append("{}-{}".format(v, target_version))
-    
+                    # asr9k-mgbl-px.pie-5.3.3, hfr-mgbl-px.pie-5.3.3
+                    target_list.append('{}-px.pie-{}'.format(package_name, target_version))
+
+        elif software_platform in PlatformFamily.NCS6K:
+            match = re.search('-\d+\.\d+\.\d+', host_package)
+            if not match:
+                continue
+
+            package_name = host_package[0:match.start()]
+            if match_internal_name:
+                if '-xr-' in host_package:
+                    # ncs6k-mgbl-5.2.4
+                    target_list.append('{}-{}'.format(family.lower() + '-mini-x', target_version))
+                else:
+                    # ncs6k-mini-x-5.2.4
+                    target_list.append('{}-{}'.format(package_name, target_version))
+            else:
+                if '-xr-' in host_package:
+                    # ncs6k-mini-x.iso-5.2.4
+                    target_list.append('ncs6k-mini-x.iso-{}'.format(target_version))
+                else:
+                    # ncs6k-mgbl.pkg-5.2.4
+                    target_list.append('{}.pkg-{}'.format(package_name, target_version))
+
+        elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
+                                   PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
+            # asr9k-xr-6.1.1, ncs5500-xr-6.0.1
+            match = re.search('-\d\.\d\.\d.\d', host_package)
+            if match:
+                # Package other than '-xr-'
+                package_name = host_package[0:match.start()]
+
+            if match_internal_name:
+                if "-xr" in host_package:
+                    if software_platform in [PlatformFamily.NCS1K,
+                                             PlatformFamily.NCS5K,
+                                             PlatformFamily.NCS5500]:
+                        # ncs5k-mini-x-6.1.1
+                        target_list.append("{}-{}-{}".format(family.lower(), 'mini-x', target_version))
+                    elif software_platform in [PlatformFamily.ASR9K_64]:
+                        # asr9k-mini-x64-6.1.1
+                        target_list.append("{}-{}-{}".format(family.lower(), 'mini-x64', target_version))
+                else:
+                    # asr9k-mgbl-x64-3.0.0.0-r601, ncs5k-mgbl-3.0.0.0-r601,
+                    target_list.append('{}-{}-{}'.format(package_name, '\d\.\d\.\d.\d',
+                                                         'r' + target_version.replace('.', '')))
+            else:
+                if '-xr-' in host_package:
+                    if software_platform in [PlatformFamily.NCS1K,
+                                             PlatformFamily.NCS5K,
+                                             PlatformFamily.NCS5500]:
+                        # ncs5k-mini-x.iso-6.1.1
+                        target_list.append("{}-{}-{}".format(family.lower(), 'mini-x.iso', target_version))
+                    elif software_platform in [PlatformFamily.ASR9K_64]:
+                        # asr9k-mini-x64.iso-6.1.1
+                        target_list.append("{}-{}-{}".format(family.lower(), 'mini-x64.iso', target_version))
+                else:
+                    # asr9k-mgbl-x64-3.0.0.0-r601.x86_64.rpm-6.0.1, ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
+                    target_list.append("{}-{}-{}.{}-{}".format(package_name, '\d\.\d\.\d.\d',
+                                                               'r' + target_version.replace('.', ''),
+                                                               'x86_64.rpm', target_version))
+
     return target_list

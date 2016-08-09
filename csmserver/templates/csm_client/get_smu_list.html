@@ -15,7 +15,10 @@
         var ddts_spinner = $('#ddts-spinner');
         ddts_spinner.hide();
 
-        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}" == 'True'
+        var platform = "{{ platform }}";
+        var release = "{{ release }}";
+
+        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}" == 'True';
         var filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
         $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
 
@@ -288,8 +291,8 @@
         }
 
         function refresh_tar_list_table() {
-          tar_table.api().ajax.url("{{ url_for('api_get_tar_list', platform=platform, release=release) }}" +
-            "?filter=" + filter_option).load();
+            tar_table.api().ajax.url("{{ url_for('api_get_tar_list', platform=platform, release=release) }}" +
+                "?filter=" + filter_option).load();
         }
 
         function open_ddts_url(url) {
@@ -420,8 +423,6 @@
                     } else {
                         var download_dashboard_url = "{{ url_for('download_dashboard') }}";
                         bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
-                        //+
-                        //    "To create a customize tar file, go to Tools - Create Tar File");
                     }
                     validate_object.spinner.hide();
                 },
@@ -485,6 +486,25 @@
             move_forward($('#smu-details-table'), $('#smu-name-title'));
         });
 
+        $('#export-software-information').click(function() {
+            $('#export-software-information-dialog').modal({
+                show: true
+            })
+        });
+
+        $('#on-export-software-submit').click(function(e) {
+            var export_format = $('#export_format').val();
+            var export_layout = $('#export_layout').val();
+
+            $('#export-software-information-form').attr('action',
+                "{{ url_for('export_software_information', platform=platform, release=release) }}" +
+                "?filter=" + filter_option + "&export_format=" + export_format +  "&export_layout=" + export_layout);
+            $('#export-software-information-form').submit();
+
+
+        });
+
+
         setInterval(function() {
             get_retrieval_elapsed_time();
         }, 10000);
@@ -506,6 +526,32 @@
 {% endblock extra_head %}
 
 {% block main %}
+<div id="export-software-information-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" id="export-software-information-form" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>
+                        <center>Export Software Information</center>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    {{ edit_field(export_software_information_form.export_format, field_width="col-sm-6", class="form-control") }}
+                    {{ edit_field(export_software_information_form.export_layout, field_width="col-sm-6", class="form-control") }}
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-export-software-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 <div id="display-smu-details-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" class="form-horizontal">
@@ -634,6 +680,8 @@
                     </button>
                     <ul class="dropdown-menu">
                         <li id="download-software"><a href="javascript://">Download to Server Repository</a></li>
+                        <li class="divider"></li>
+                        <li id="export-software-information"><a href="javascript://">Export Software Information</a></li>
                     </ul>
                 </div>
             </div>

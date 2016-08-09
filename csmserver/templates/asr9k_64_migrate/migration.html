@@ -1,0 +1,617 @@
+{% extends 'base.html' %}
+{% from 'host/common.html' import edit_field %}
+{% from 'host/common.html' import log_icon %}
+{% from 'host/common.html' import trace_icon %}
+{% from 'share/select_region_hosts.html' import select_region_hosts %}
+{% from 'asr9k_64_migrate/config_conversion.html' import config_conversion_gui, config_output_modal %}
+{% from 'asr9k_64_migrate/schedule_migration.html' import schedule_migration_gui %}
+{% from 'asr9k_64_migrate/schedule_migration.html' import schedule_migration_wizard %}
+
+
+
+
+
+{% block extra_head %}
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    <title>Bootstrap Wizard by Creative Tim</title>
+
+    <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport'/>
+    <meta name="viewport" content="width=device-width"/>
+
+    <link href="http://netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" rel="stylesheet">
+
+    <script src="/static/bootbox-4.2.0/js/bootbox.js"></script>
+    <script src="/static/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
+    <link rel="stylesheet" href="/static/datetimepicker/css/bootstrap-datetimepicker.min.css">
+    <script src="/static/duallistbox/dist/dual-list-box.js"></script>
+    <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+    <script src="/static/jquery/js/smu_info_dialog.js"></script>
+    <script src="/static/jquery-cookie-master/jquery.cookie.js"></script>
+
+    <script src="/static/jquery/js/select_region_hosts.js"></script>
+    <script src="/static/jquery/js/auto_select_migration_software.js"></script>
+    <script src="/static/jquery/js/server_software_dialog.js"></script>
+    <script src="/static/jquery/js/select_file_from_server.js"></script>
+    <script src="/static/jquery/js/handle_config_conversion.js"></script>
+
+    <script src="{{ url_for('static', filename='jquery/js/handle_config_conversion.js') }}"></script>
+
+
+
+    <style>
+        .modal-dialog {
+            width: 850px;
+        }
+
+        a:link, a:visited {
+            text-decoration: none;
+        }
+
+        .btn-file {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-file input[type=file] {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 100%;
+            min-height: 100%;
+            font-size: 100px;
+            text-align: right;
+            filter: alpha(opacity=0);
+            opacity: 0;
+            background: red;
+            cursor: inherit;
+            display: block;
+        }
+        input[readonly] {
+            background-color: white !important;
+            cursor: text !important;
+        }
+    </style>
+
+
+    <script type="text/javascript">
+
+
+        $(function () {
+            config_handler({{ input_filename|tojson }}, {{ err_msg|tojson }});
+
+            var selected_tab = $.cookie('migration-tab') == null ? '#schedule-migration' : $.cookie('migration-tab');
+            $('a[href=' + selected_tab + ']').tab('show');
+
+            $('#migration-tab').on('shown.bs.tab', function (e) {
+              $.cookie('migration-tab', $('.nav-tabs .active > a').attr('href'));
+            });
+
+            var submit_spinner = $('#submit-spinner');
+
+            submit_spinner.hide();
+
+            var MIGRATION_AUDIT = "{{ install_action.migrationaudit }}";
+            var PRE_MIGRATE = "{{ install_action.premigrate }}";
+            var MIGRATE_SYSTEM = "{{ install_action.migrate }}";
+            var POST_MIGRATE = "{{ install_action.postmigrate }}";
+            var ALL_FOR_MIGRATE = "{{ install_action.allformigrate }}";
+
+            $("#install_action").select2({placeholder: 'Select Desirable Action(s)'});
+            $("#install_action").val("{{ schedule_form.install_action.data }}").trigger("change");
+            $("#custom_command_profile").select2({
+                placeholder: 'Optional'
+            });
+
+            server_software_selector.add_init_observer(function(all_available_software){
+                var config_selector = $('#config_filename');
+
+                if (config_selector != null) {
+
+                    config_selector.html("");
+                    config_selector.append("<option value=\"\" disabled selected style=\"display: none;\">Optional</option>");
+                    config_selector.append("<option value=\"\"></option>");
+                    $(all_available_software).each(function (i) { //populate child options
+                        config_selector.append("<option value=\""+all_available_software[i].id +"\">"+all_available_software[i].name + "</option>");
+                    });
+                }
+
+                    // In edit mode.
+                if ($('#hidden_edit').val() == 'True' && $('#hidden_software_packages').val() != null) {
+                    var previously_selected_packages = $('#hidden_software_packages').val().split(',');
+                    //console.log("previously_selected_packages = " + String(previously_selected_packages));
+                    server_software_selector.select_regex_match(previously_selected_packages);
+                }
+
+                if ($('#hidden_edit').val() == 'True' && $('#hidden_config_filename').val() != null) {
+                    $('#config_filename').val($('#hidden_config_filename').val());
+                    //console.log("config_filename = " + $('#config_filename').val());
+                }
+            });
+
+            var datetimepicker = $(".form_datetime").datetimepicker({
+                format: "mm/dd/yyyy HH:ii P",
+                showMeridian: true,
+                autoclose: true,
+                todayBtn: true,
+                pickerPosition: "top-left",
+                todayHighlight: true
+            });
+
+            toggle_ui();
+
+            $('#install_action').on('change', function (e) {
+                var install_actions = $(this).val();
+                if (has_one_of_these(install_actions, [ALL_FOR_MIGRATE])) {
+                    $("#install_action").val([PRE_MIGRATE, MIGRATE_SYSTEM, POST_MIGRATE]).trigger('change');
+                } else if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) && install_actions.length > 1) {
+                    $("#install_action").val([MIGRATION_AUDIT]).trigger('change');
+                }
+                toggle_ui();
+            });
+
+            function toggle_ui() {
+                var install_actions = $('#install_action').val();
+
+            }
+
+            server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
+            // Convert the UTC time to Locale time
+            $('#scheduled-time-UTC').val(function (index, value) {
+                if (value == 'None' || value.length == 0) {
+                    $('#scheduled-time').val(server_time_as_locale_time);
+                } else {
+                    $('#scheduled-time').val(convertToLocaleString(value));
+                }
+            });
+
+            $('[data-toggle="popover_override_hw_req_below"]').popover({
+                trigger : 'click',
+                placement : 'bottom',
+                html : true,
+                content : function() {
+                    return $('#popover_hw_req').html()
+                }
+            });
+
+            $('[data-toggle="popover_override_hw_req_right"]').popover({
+                trigger : 'click',
+                placement : 'right',
+                html : true,
+                content : function() {
+                    return $('#popover_hw_req').html()
+                }
+            });
+
+            $('[data-toggle="popover_server_repo"]').popover({
+                trigger : 'click',
+                placement : 'right',
+                html : true,
+                content : function() {
+                    return $('#popover_packages').html()
+                }
+            });
+
+            $('[data-toggle="popover_config_filename"]').popover({
+                trigger : 'click',
+                placement : 'top',
+                html : true,
+                content : function() {
+                    return $('#popover_config').html()
+                }
+            });
+
+            $('#trigger-wizard').click(function (e) {
+
+                var install_actions = $('#install_action').val();
+
+                if ($('#hidden_edit').val() == 'True' && has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
+                    on_submit();
+
+                } else {
+
+                    if (install_actions == null) {
+                        bootbox.alert("Install Action has not been specified.");
+                        return false;
+                    }
+                    if (has_one_of_these(install_actions, [PRE_MIGRATE]) && has_one_of_these(install_actions, [POST_MIGRATE]) && has_one_of_these(install_actions, [MIGRATE_SYSTEM]) == false) {
+                        bootbox.alert("Migrate must be selected if both Pre-Migrate and Post-Migrate are selected.");
+                        return false;
+                    }
+
+                    $('#wizard-dialog').modal({show: true, backdrop: 'static'});
+
+                    if ($('#select-host').val() != null) {
+                        $('#wizard').bootstrapWizard('remove', $('#select-host').val(), true);
+                    }
+
+                    if ($('#hardware-audit').val() != null) {
+                        $('#wizard').bootstrapWizard('remove', $('#hardware-audit').val(), true);
+                    }
+
+                    if ($('#pre-migrate').val() != null) {
+                        $('#wizard').bootstrapWizard('remove', $('#pre-migrate').val(), true);
+                    }
+
+                    if ($('#post-migrate').val() != null) {
+                        $('#wizard').bootstrapWizard('remove', $('#post-migrate').val(), true);
+                    }
+
+                    if ($('#hidden_edit').val() != 'True') {
+                        add_new_tab('select-host', 'SELECT HOST')
+                    }
+
+                    if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
+                        add_new_tab("hardware-audit", "SELECT SOFTWARE VERSION");
+                        document.getElementById("wizard-header").innerHTML = "<h3>Migration Audit<br></h3>";
+                    } else {
+                        document.getElementById("wizard-header").innerHTML = "<h3>Migrate to ASR9K-64<br></h3>";
+                    }
+
+                    if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                        add_new_tab("pre-migrate", "PRE-MIGRATE");
+                    }
+
+                    if (has_one_of_these(install_actions, [POST_MIGRATE])) {
+                        add_new_tab("post-migrate", "POST-MIGRATE")
+                    }
+
+                    // make the first tab active
+                    //$('#tabs a:first').tab('show');
+
+                    $('#wizard').bootstrapWizard('resetWizard')
+                }
+
+            });
+
+            function add_new_tab(new_tab_id, new_tab_name) {
+                // create the tab
+                $('<li><a href="#' + new_tab_id + '" data-toggle="tab" >' + new_tab_name + '</a></li>').appendTo('#tabs');
+
+            }
+
+            $('#on-submit').click(function (e) {
+                //$('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').text());
+                //console.log('hardware_audit_version');
+                //console.log($('#hardware_audit_version option:selected').text());
+                //console.log($('#hidden_hardware_audit_version').val());
+                //return false;
+
+                if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT SOFTWARE VERSION" && validateHardwareAudit() == false) {
+                    return false;
+                }
+                if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT HOST" && validateSelectHost() == false) {
+                    return false;
+                }
+                if ($('#wizard-dialog .nav-tabs .active').text() == "PRE-MIGRATE" && validateSelectPackages() == false) {
+                    return false;
+                }
+
+                if (has_one_of_these($('#install_action').val(), [POST_MIGRATE])) {
+                    if (!$('[name="config-handling"]')[0].checked && !$('[name="config-handling"]')[1].checked) {
+                        bootbox.alert("Please select one option.");
+                        return false;
+                    }
+                }
+
+                on_submit();
+
+            });
+
+            function on_submit() {
+                $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+
+                $('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').val());
+
+                $('#hidden_region').val($('#region').val());
+                $('#hidden_hosts').val(String(host_selector.get_selected_items()));
+                $('#hidden_software_packages').val(String(server_software_selector.get_selected_items()));
+                // Record the newly selected server repository
+                $('#hidden_server').val($('#server_dialog_server').val());
+                $('#hidden_server_name').val($('#server_dialog_server option:selected').text());
+                $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
+                $('#hidden_config_filename').val($('#config_filename').val());
+
+                if ($('[name="config-handling"]')[0].checked) {
+                    $('#hidden_best_effort_config').val($('[name="config-handling"]')[0].value);
+                } else {
+                    $('#hidden_best_effort_config').val($('[name="config-handling"]')[1].value);
+                }
+
+                if ($('[name="override_hw_req"]')[0].checked) {
+                    $('#hidden_override_hw_req').val($('[name="override_hw_req"]')[0].value);
+                } else {
+                    $('#hidden_override_hw_req').val($('[name="override_hw_req"]')[1].value);
+                }
+
+                var install_actions = $('#install_action').val();
+
+                if ($('#hidden_edit').val() == 'False') {
+                    if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) || has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                      get_qualified_hosts_and_submit_form('');
+                    } else {
+                        if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
+                            get_qualified_hosts_and_submit_form(PRE_MIGRATE);
+
+                        } else {
+                            get_qualified_hosts_and_submit_form(MIGRATE_SYSTEM);
+                        }
+                    }
+                } else {
+                    submit_form_on_successfully_download_config_conversion_tool();
+                }
+
+
+
+            }
+
+            $('#form').submit(function () {
+
+                //$('#schedule_form').submit();
+                this.submit();
+                //on_final_submit(this, null);
+
+                // prevent the form from closing
+                return false;
+            });
+
+            function submit_form_on_successfully_download_config_conversion_tool() {
+
+                submit_spinner.show();
+
+                $.ajax({
+                    url: "/asr9k_64_migrate/api/get_latest_config_migration_tool/",
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.status == 'Failed') {
+                            bootbox.alert("Failed to download the latest configuration migration tool from CCO to CSM. Migration actions cannot be scheduled.");
+                        } else {
+                            $.each(response, function (index, element) {
+                                if (element[0].error == 'None') {
+                                    $('#form').submit();
+                                } else {
+                                    bootbox.alert("Error occurred when downloading the latest configuration migration tool. Error: " + element[0].error);
+                                }
+                            });
+
+
+                        }
+                        submit_spinner.hide();
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
+                        submit_spinner.hide();
+                    }
+                });
+            }
+
+            function get_qualified_hosts_and_submit_form(dependency) {
+
+                submit_spinner.show();
+
+                $.ajax({
+                    url: "/asr9k_64_migrate/api/get_dependencies/",
+                    dataType: 'json',
+                    data: {hosts : $('#hidden_hosts').val(), dependency : dependency},
+                    success: function (response) {
+
+                            $.each(response, function (index, element) {
+
+                                var hostnames = host_selector.get_selected_items();
+
+                                if (element[0].disqualified_count > 0) {
+
+                                    var qualified_hosts = "";
+                                    var new_dependency_list = "";
+                                    if (dependency == '') {
+                                         var html = '<p>In order to schedule migration actions, console connection ' +
+                                                    'must be provided for each host instead of management IP.</p>';
+                                         if (element[0].disqualified_count == hostnames.length) {
+                                             html += 'None of the selected hosts meet this requirement.'
+                                         } else {
+                                             html += 'These hosts below failed this requirement.'
+                                         }
+                                    } else {
+                                        var html = '<p>Requirements:</p>' +
+                                               '<p>1. Console connection must be provided for each host instead ' +
+                                               'of management IP.</p><p>2. Dependency for selected migration action ' +
+                                               'must be met. ';
+
+                                        if (dependency == PRE_MIGRATE) {
+                                            html += 'In this case, to schedule Migrate for a host, '
+                                        } else if (dependency == MIGRATE_SYSTEM) {
+                                            html += 'In this case, to schedule Post-Migrate for a host, '
+                                        }
+                                        html += dependency + " must either be scheduled" +
+                                                ' or already completed successfully for the host.</p>';
+                                        if (element[0].disqualified_count == hostnames.length) {
+                                            html += 'None of the selected hosts meet both of the above requirements.'
+                                        } else {
+                                            html += 'These hosts below failed at least one of the above requirements.'
+                                        }
+                                    }
+
+
+                                    html += '<h4>Dis-qualified Hosts</h4>' +
+                                           '<div style="overflow: auto;height: 200px;width: 100%;">' +
+                                           '<table class="table table-striped"><tbody>';
+
+                                    for (var i = 0, len = hostnames.length; i < len; ++i) {
+                                        if (element[0].dependency_list[i] != null) {
+                                            if (element[0].dependency_list[i] == '-2') {
+                                                html += '<tr><td>' + hostnames[i] + '</td></tr>';
+                                            } else if (element[0].disqualified_count < hostnames.length) {
+                                                qualified_hosts += hostnames[i] + ',';
+                                                new_dependency_list += element[0].dependency_list[i] + ',';
+                                            }
+                                        }
+
+
+                                    }
+                                    html += '</tbody></table></div>';
+
+                                    if (element[0].disqualified_count == hostnames.length) {
+                                        if (dependency == '') {
+                                            html += '<br>Please make sure to provide console connection for all hosts';
+                                        } else {
+                                            html += '<br><p>Please make sure to:</p><p>1. Provide console connection ' +
+                                                'for all hosts</p><p>2. Schedule ' + dependency + ' for all selected ' +
+                                                'hosts.</p>';
+                                        }
+                                        bootbox.alert({
+                                            message: html,
+                                            title: "No selected hosts qualify for scheduling"
+                                        });
+                                    } else {
+                                        qualified_hosts = qualified_hosts.slice(0, -1);
+                                        new_dependency_list = new_dependency_list.slice(0, -1);
+
+                                        html += '<br>You can choose to schedule for the qualified hosts only, or click cancel.';
+                                        bootbox.dialog({
+                                            message: html,
+                                            title: String(element[0].disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
+                                            onEscape: function() {},
+                                            show: true,
+                                            backdrop: true,
+                                            closeButton: true,
+                                            animate: true,
+                                            className: "my-modal",
+                                            callback: function(){ /* your callback code */ },
+                                            buttons: {
+                                                success: {
+                                                  label: "Only schedule for qualified hosts",
+                                                  className: "btn-primary",
+                                                  callback: function() {
+                                                      $('#hidden_hosts').val(qualified_hosts);
+                                                      $('#hidden_dependency').val(new_dependency_list);
+                                                      submit_form_on_successfully_download_config_conversion_tool();
+                                                  }
+
+                                                },
+                                                "Cancel": {
+                                                  className: "btn-default",
+                                                  callback: function() {}
+
+                                                }
+                                            }
+                                        });
+                                    }
+
+                                } else {
+                                    $('#hidden_dependency').val(element[0].dependency_list.join());
+                                    submit_form_on_successfully_download_config_conversion_tool();
+                                }
+                            });
+                        submit_spinner.hide();
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
+                        submit_spinner.hide();
+                    }
+                });
+            }
+
+
+            // In edit mode.
+            if ($('#hidden_edit').val() == 'True') {
+                $("#install_action").prop("disabled", true);
+
+                $('#region').val($('#hidden_region').val());
+                $('#hardware_audit_version').val($('#hidden_hardware_audit_version').val());
+
+                $('#server_dialog_server').val($('#hidden_server').val());
+
+                if (has_one_of_these($("#install_action").val(), [PRE_MIGRATE])) {
+                    // previously selected server, server directory, packages and config filename
+                    // will be loaded in this method
+                    server_software_retrieve_file_list(
+                            $('#server_dialog_server').val(),
+                            $('#server_dialog_server_directory'),
+                            $('#hidden_server_directory').val());
+                }
+
+                if ($('#hidden_best_effort_config').val() == '-1') {
+                    $('[name="config-handling"]')[0].checked = true;
+                } else if ($('#hidden_best_effort_config').val() == '1') {
+                    $('[name="config-handling"]')[1].checked = true;
+                }
+                if ($('#hidden_override_hw_req').val() == '1') {
+                    $('[name="override_hw_req"]')[0].checked = true;
+                } else if ($('#hidden_override_hw_req').val() == '0') {
+                    $('[name="override_hw_req"]')[1].checked = true;
+                }
+
+            } else {
+                $("#install_action").prop("disabled", false);
+            }
+        })
+
+    </script>
+
+  <!--   plugins 	 -->
+
+    <script src="/static/x-wizard-1.1/assets/js/wizard.js" type="text/javascript"></script>
+
+{% endblock extra_head %}
+
+
+{% block main %}
+    <div>
+        <form id="form" method="post" class="form-horizontal" enctype=multipart/form-data>
+            <div class="row">
+
+              {% if host == null %}
+                <div class="well col-sm-offset-2 col-sm-8">
+                    <legend>
+                        <ul class="nav nav-tabs" id="migration-tab">
+                          <li><a style="font-size:19px;font-family:Helvetica Neue" data-toggle="tab" href="#schedule-migration">Schedule Migration</a></li>
+                          <li><a style="font-size:19px;font-family:Helvetica Neue" data-toggle="tab" href="#configuration-conversion">Configuration Conversion</a></li>
+                        </ul>
+                    </legend>
+                    <div class="tab-content">
+                      <div id="schedule-migration" class="tab-pane fade in active">
+                        {{ schedule_migration_gui(schedule_form, install_action, install_job, edit_field) }}
+                      </div>
+                      <div id="configuration-conversion" class="tab-pane fade">
+                        {{ config_conversion_gui(config_form) }}
+                      </div>
+                    </div>
+                </div>
+
+              {% else %}
+                <div class="well col-sm-offset-2 col-sm-8">
+                    <legend>
+                          <h4>Schedule Migration > Region: <span style="color: Gray;">{{ host.region.name }}</span> >
+                              Host: <span
+                                      style="color: Gray;">{{ host.hostname }} ({{ host.software_platform | beautify_platform }}-{{ host.software_version }})</span>
+                          </h4>
+                    </legend>
+
+
+                  {% if install_job != null and install_job.status == 'failed' %}
+                      <div class="alert alert-danger">
+                          <strong>NOTE:&nbsp;</strong>
+                          This scheduled install failed on <span
+                              class="UTCDate">{{ install_job.status_time | datetime_string }}</span>
+
+                        {% if install_job.session_log %}
+                            <a href="{{ url_for('host_session_log', hostname=host.hostname, table='install_job', id=install_job.id) }}?file_path={{ install_job.session_log }}">{{ log_icon('Session Log') }}</a>
+                        {% endif %}
+                        {% if install_job.trace %}
+                            <a href="{{ url_for('host_trace', hostname=host.hostname, table='install_job', id=install_job.id) }}">{{ trace_icon() }}</a>
+                        {% endif %}
+                      </div>
+                  {% endif %}
+                  {{ schedule_migration_gui(schedule_form, install_action, install_job, edit_field) }}
+                </div>
+              {% endif %}
+
+            </div>
+
+          {{ schedule_migration_wizard(schedule_form, select_region_hosts, install_job, edit_field) }}
+          {% if config_form != null %}}
+            {{ config_output_modal(config_form, edit_field) }}
+          {% endif %}
+
+        </form>
+    </div>
+{% endblock main %}

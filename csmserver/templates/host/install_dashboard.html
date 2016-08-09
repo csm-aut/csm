@@ -182,8 +182,8 @@
                     "targets": 1,
                     "data": 'install_action',
                     "render": function ( data, type, row ) {
-                      if (data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
-                        return '<a href="/exr_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
+                      if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
+                        return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
                       } else {
                         return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
                       }
@@ -254,9 +254,9 @@
                 "data": 'install_action',
             }, {
                 "targets": 2,
-                "data": 'packages',
+                "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return display_packages(data);
+                    return convertToLocaleString(data);
                 }
             }, {
                 "targets": 3,
@@ -266,14 +266,20 @@
                 }
             }, {
                 "targets": 4,
-                "data": 'status'
+                "data": 'packages',
+                "render": function(data, type, row) {
+                    return display_packages(data);
+                }
             }, {
                 "targets": 5,
+                "data": 'status'
+            }, {
+                "targets": 6,
                 "render": function(data, type, row) {
                     return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
-                "targets": 6,
+                "targets": 7,
                 "data": 'created_by'
             }, ],
             "ajax": {
@@ -297,8 +303,8 @@
                 "targets": 1,
                 "data": 'install_action',
                 "render": function ( data, type, row ) {
-                  if (data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
-                    return '<a href="/exr_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
+                  if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
+                    return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
                   } else {
                     return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard">' + data + '</a>'
 
@@ -563,8 +569,9 @@
                             <tr>
                                 <th style="width:50px">Hostname</th>
                                 <th style="width:50px">Install Action</th>
-                                <th style="width:50px">Packages</th>
+                                <th style="width:50px">Scheduled Time</th>
                                 <th style="width:50px">Start Time</th>
+                                <th style="width:150px">Packages</th>
                                 <th style="width:300px">Status</th>
                                 <th style="width:50px">Log</th>
                                 <th style="width:50px">Created By</th>

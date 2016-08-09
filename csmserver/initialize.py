@@ -23,28 +23,17 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from models import initialize
-from models import SystemVersion 
-from sqlalchemy import inspect
-from database import DBSession, CURRENT_SCHEMA_VERSION, engine
+from models import SystemVersion
 
-from utils import create_directory, is_ldap_supported
+from database import DBSession
+from database import CURRENT_SCHEMA_VERSION
 
-from constants import get_log_directory, get_repository_directory, get_temp_directory, get_migration_directory
 from schema.loader import get_schema_migrate_class
 
 import traceback
 
-# Create the necessary supporting directories
-create_directory(get_log_directory())
-create_directory(get_repository_directory())
-create_directory(get_temp_directory())
-create_directory(get_migration_directory())
-
 
 def init():
-    if not is_ldap_supported():
-        print('LDAP authentication is not supported because it has not been installed.')
-
     db_session = DBSession()
     system_version = SystemVersion.get(db_session)
 
@@ -59,6 +48,7 @@ def init():
 
     # Initialize certain tables 
     initialize()
+
 
 if __name__ == '__main__':
     init()

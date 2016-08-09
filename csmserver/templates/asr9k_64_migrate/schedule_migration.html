@@ -1,0 +1,187 @@
+
+{% macro schedule_migration_gui(schedule_form, install_action, install_job, edit_field) %}
+    <div class="form-group ">
+        <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
+
+        <div class=col-sm-6>
+            <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
+                <optgroup label="Verification">
+                    <option value="{{ install_action.migrationaudit }}">{{ install_action.migrationaudit }}</option>
+                </optgroup>
+                <optgroup label="Migration">
+                    <option value="{{ install_action.premigrate }}">{{ install_action.premigrate }}</option>
+                    <option value="{{ install_action.migrate }}">{{ install_action.migrate }}</option>
+                    <option value="{{ install_action.postmigrate }}">{{ install_action.postmigrate }}</option>
+                    <option value="{{ install_action.allformigrate }}">ALL</option>
+                </optgroup>
+            </select>
+
+        </div>
+    </div>
+
+    <div class="form-group ">
+        <label class="col-sm-4 control-label"
+               for="{{ schedule_form.scheduled_time.name }}">{{ schedule_form.scheduled_time.label() }}</label>
+
+        <div class="col-sm-6">
+            <div class="input-group date form_datetime">
+                <input id="scheduled-time" name="{{ schedule_form.scheduled_time.name }}" class="form-control" size="16"
+                       type="text" readonly>
+                <input id="scheduled-time-UTC" name="{{ schedule_form.scheduled_time_UTC.name }}"
+                       value="{{ schedule_form.scheduled_time_UTC.data }}" class="form-control" type="hidden">
+                <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-command-profile-panel">
+        {{ edit_field(schedule_form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
+    </div>
+
+    <input id="hidden_region" name="{{ schedule_form.hidden_region.name }}" value="{{ schedule_form.hidden_region.data }}" type="hidden">
+    <input id="hidden_hosts" name="{{ schedule_form.hidden_hosts.name }}" value="{{ schedule_form.hidden_hosts.data }}" type="hidden">
+    <input id="hidden_dependency" name="{{ schedule_form.hidden_dependency.name }}" value="{{ schedule_form.hidden_dependency.data }}" type="hidden">
+    <input id="hidden_server" name="{{ schedule_form.hidden_server.name }}" value="{{ schedule_form.hidden_server.data }}" type="hidden">
+    <input id="hidden_server_name" name="{{ schedule_form.hidden_server_name.name }}" value="{{ schedule_form.hidden_server_name.data }}"
+           type="hidden">
+    <input id="hidden_server_directory" name="{{ schedule_form.hidden_server_directory.name }}"
+           value="{{ schedule_form.hidden_server_directory.data }}" type="hidden">
+    <input id="hidden_software_packages" name="{{ schedule_form.hidden_software_packages.name }}"
+           value="{{ schedule_form.hidden_software_packages.data }}" type="hidden">
+
+
+
+  <input id="hidden_edit" name="{{ schedule_form.hidden_edit.name }}" value="{{ schedule_form.hidden_edit.data }}"
+         class="form-control" type="hidden">
+  <input id="hidden_best_effort_config" name="{{ schedule_form.hidden_best_effort_config.name }}"
+         value="{{ schedule_form.hidden_best_effort_config.data }}" class="form-control" type="hidden">
+  <input id="hidden_override_hw_req" name="{{ schedule_form.hidden_override_hw_req.name }}"
+         value="{{ schedule_form.hidden_override_hw_req.data }}" class="form-control" type="hidden">
+  <input id="hidden_config_filename" name="{{ schedule_form.hidden_config_filename.name }}"
+         value="{{ schedule_form.hidden_config_filename.data }}" class="form-control" type="hidden">
+  <input id="hidden_hardware_audit_version" name="{{ schedule_form.hidden_hardware_audit_version.name }}"
+         value="{{ schedule_form.hidden_hardware_audit_version.data }}" class="form-control" type="hidden">
+
+
+  <div class="btn col-sm-offset-5">
+
+    {% if install_job != null and install_job.install_action == 'Migrate' %}
+        <button type="button" id="trigger-wizard" class="btn btn-primary">
+        Re-Submit
+    {% else %}
+        <button type="button" id="trigger-wizard" class="btn btn-primary" data-toggle="modal"
+                data-target="#wizard-dialog">
+        Continue
+    {% endif %}
+      </button>
+      <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
+  </div>
+
+{% endmacro %}
+
+{% macro schedule_migration_wizard(schedule_form, select_region_hosts, install_job, edit_field) %}
+
+            <div id="wizard-dialog" class="modal" role="dialog">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+
+                            <div class="modal-body">
+                                <!--      Wizard container        -->
+                                <button type="button" class="close" data-dismiss="modal">x</button>
+                                    <div class="card wizard-card csm-blue" id="wizard">
+                                        <form method="post" class="form-horizontal">
+                                        <div class="form-horizontal">
+                                        <!--        You can switch "ct-wizard-orange"  with one of the next bright colors: "ct-wizard-blue", "ct-wizard-green", "ct-wizard-orange", "ct-wizard-red"             -->
+
+                                        <div class="wizard-header" id="wizard-header">
+
+
+                                        </div>
+                                        <ul id="tabs" class="nav nav-tabs" role="tablist">
+
+                                        </ul>
+                                        <div class="tab-content">
+
+                                            <div class="tab-pane" id="select-host">
+                                                {{ select_region_hosts(schedule_form.region, schedule_form.role, schedule_form.software) }}
+                                            </div>
+
+                                            <div class="tab-pane" id="pre-migrate">
+                                                {% include("asr9k_64_migrate/select_server_repository.html") %}
+                                                {% include("asr9k_64_migrate/override_hardware_requirement.html") %}
+                                            </div>
+
+                                            <div class="tab-pane" id="hardware-audit">
+                                              <h4 class="info-text-left">Select the version of ASR9K-64 you plan to migrate to: <span id="server-dialog-title"></span>
+                                              &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_below"></span></a></h4>
+                                                {{ edit_field(schedule_form.hardware_audit_version, field_width="col-sm-7", class="form-control") }}
+                                            </div>
+
+                                            <div class="tab-pane" id="post-migrate">
+                                                <!--h4>On failure to load IOS-XR configuration on eXR successfully,
+                                                    would you like CSM to:</h4-->
+                                                <h4 class="info-text-left">When the IOS-XR configurations, either migrated by the CSM Server or provided by you during Pre-Migrate,
+                                                    cannot be applied on eXR directly, would you like the CSM Server to:</h4>
+                                                <div class="btn-group">
+                                                    <div>
+                                                        <input type="radio" id="config-handling" name="config-handling"
+                                                               class="toggle" value="-1"
+                                                               style="margin-right: 10px"><label for="config-handling">Abort
+                                                        the configuration commit</label>
+
+                                                    </div>
+
+                                                    <div>
+                                                        <input type="radio" id="config-handling" name="config-handling"
+                                                               class="toggle" value="1"
+                                                               style="margin-right: 10px"><label for="config-handling">Commit
+                                                        the configurations with best effort</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                        <div class="wizard-footer">
+                                            <div class="pull-right">
+
+                                                <input type='button' id="on-continue" class='btn btn-primary btn-next'
+                                                       name='next' value='Next'/>
+
+                                                <div class="form-actions">
+                                                    <button id="on-submit" type="button"
+                                                            class="btn btn-primary btn-finish" name='finish'
+                                                            value='Schedule'>
+                                                      {% if install_job != null and install_job.status == 'failed' %}
+                                                          Re-Submit
+                                                      {% else %}
+                                                          Schedule
+                                                      {% endif %}
+                                                    </button>
+                                                    <!--input type='submit' form="form" id="on-submit" class='btn btn-finish btn-fill btn-warning btn-wd btn-md' name='finish' value='Schedule' data-dismiss="modal" / -->
+                                                </div>
+                                            </div>
+                                            <div class="pull-left">
+                                                <input type='button' class='btn btn-default btn-previous'
+                                                       name='previous' value='Previous'/>
+                                                <!--input type='button' class='btn btn-default btn-cancel' name='cancel'
+                                                       value='Cancel' data-dismiss="modal"-->
+                                            </div>
+                                            <span class="submit-spinner">
+                                                <center><img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center>
+                                            </span>
+
+                                            <div class="clearfix"></div>
+                                        </div>
+                                        </div>
+                                        </form>
+                                    </div>
+                                    <!-- wizard container -->
+
+                            </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+{% endmacro %}

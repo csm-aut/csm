@@ -124,13 +124,17 @@ function display_host_software_dialog(region_id, hostname_list, filter, target_r
         $('#host-software-dialog-auto-select-software-panel').hide();
     }
       
-    $('#host-software-dialog').modal({show:true, backdrop:'static'})
-            
+    $('#host-software-dialog').modal({show:true, backdrop:'static'});
+
     if (hostname_list.length == 1) {
         var hostname = hostname_list[0];
         
-        $('<option>', {value: hostname, text: hostname, selected: true}).appendTo($('#host_software_dialog_host')); 
-        refresh_host_software(hostname)
+        $('<option>', {value: hostname, text: hostname, selected: true}).appendTo($('#host_software_dialog_host'));
+        if (filter == FILTER_REMOVE || filter == FILTER_DEACTIVATE) {
+            refresh_host_software(hostname)
+        } else {
+            refresh_host_software(hostname)
+        }
         
     } else {
         for (i = 0; i < hostname_list.length; i++) {
@@ -164,11 +168,12 @@ function refresh_host_software(hostname) {
         }
     });
        
-    var host_software = []
+    var host_software = [];
         
     $.ajax({
-        url: '/api/hosts/' + hostname + '/packages/' + host_software_package_filter,  
+        url: '/api/hosts/' + hostname + '/packages',
         dataType: 'json',
+        data: { package_state: host_software_package_filter} ,
         success: function(data) {
             $.each(data, function(index, element) {
                 for (i = 0; i < element.length; i++) {
@@ -179,7 +184,13 @@ function refresh_host_software(hostname) {
                     if (n > 0) {
                         software_package = software_package.substring(n + 1);
                     }
-              
+                    // filter out the xr and sysadmin packages
+                    if (software_package.indexOf("-xr-") > -1 || software_package.indexOf("-sysadmin-") > -1) {
+                        // If it's a SMU, we do display the package
+                        if (software_package.indexOf("CSC") == -1) {
+                            continue;
+                        }
+                    }
                     host_software.push({
                         'id': software_package,
                         'name': software_package

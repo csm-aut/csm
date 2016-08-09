@@ -1,0 +1,133 @@
+
+
+{% macro config_conversion_gui(config_form) %}
+    <!--label class="control-label">
+      Select an ASR9K admin or IOS-XR configuration file:
+    </label>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <label class="btn btn-default btn-file">
+      Browse <input id="input_file" type=file name=file style="display: none;">
+    </label>
+    &nbsp;&nbsp;<span id="selected_file_name"></span-->
+
+      <div class="col-sm-6" style="float:left;width:100%;font-size: 15px;padding-left: 10%">
+        Select an ASR9K admin or IOS-XR configuration file:
+      </div>
+  <p>&nbsp;&nbsp;</p>
+    <div style="float:left;padding-left: 30%">
+      <p>&nbsp;&nbsp;</p>
+    </div>
+    <div class="form-group ">
+        <div class="col-sm-6">
+            <div class="input-group">
+                <span class="input-group-btn">
+                    <span class="btn btn-primary btn-file">
+                        Choose File<input class="form-control" type=file name=file>
+                    </span>
+                </span>
+                <input id="selected_file_name" type="text" class="form-control" style="width:75%" readonly>
+            </div>
+        </div>
+    </div>
+    <div class="btn col-sm-offset-5">
+        <button id="convert" type="button" class="btn btn-primary">Convert</button>
+        <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
+        &nbsp;&nbsp;<img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+    </div>
+    <div id="progress" align="center" margin-top="3cm">
+
+        <span style="font-weight:700;"></span>
+    </div>
+
+  <input id="hidden_submit_config_form" name="{{ config_form.hidden_submit_config_form.name }}" value="{{ config_form.hidden_submit_config_form.data }}"
+         class="form-control" type="hidden">
+
+{% endmacro %}
+
+
+
+{% macro config_output_modal(config_form, edit_field) %}
+
+  <div id="config-output-dialog" class="modal" role="dialog">
+    <div class="modal-dialog" style="width:1200px;">
+      <form class="form-horizontal">
+      <div class="modal-content">
+        <div class="modal-header" style="border-bottom: none;">
+        <button type="button" class="close" data-dismiss="modal">x</button>
+        </div>
+        <div class="modal-body" style="overflow:auto;height:auto">
+
+          <div class="div_column" align="center">
+
+              <div class="boxcontainer">
+                  <span><h4>ASR9K Configuration</h4>
+                    <!--a id="input-config-upload">
+                      <img title="Upload to Server Repository" src="/static/download.png">
+                    </a-->
+                  </span>
+                  <div class="scroll" id="input_config" align="center"></div>
+                  <p><label class="checkbox-inline"><input type="checkbox" id="filter_supported" value="" checked><a href="#" data-toggle="tooltip" data-placement="bottom" title="configurations that are supported or enabled by default in ASR9K-64" style="color:green">Supported/Default</a></label>
+                  <label class="checkbox-inline"><input type="checkbox" id="filter_unsupported" value="" checked><a href="#" data-toggle="tooltip" data-placement="bottom" title="unsupported configurations in ASR9K-64" style="color:red">Unsupported</a></label>
+                  <label class="checkbox-inline"><input type="checkbox" id="filter_unprocessed" value="" checked><a href="#" data-toggle="tooltip" data-placement="bottom" title="not actual configurations" style="color:grey">Unprocessed</a></label>
+                  <label class="checkbox-inline"><input type="checkbox" id="filter_unrecognized" value="" checked><a href="#" data-toggle="tooltip" data-placement="bottom" title="configurations that are unconverted because they are not recognized by the config conversion tool" style="color:mediumvioletred" >Unrecognized</a></label></p>
+                  <p><label class="checkbox-inline"><input type="checkbox" id="filter_unimplemented" value="" checked><a href="#" data-toggle="tooltip" data-placement="right" title="configurations that are unconverted because the implementation of the conversion is impossible or the work is in progress" style="color:orange">Unimplemented</a></label>
+                  <label class="checkbox-inline"><input type="checkbox" id="filter_syntaxerrors" value="" checked><a href="#" data-toggle="tooltip" data-placement="right" title="configurations that are unconverted because they contain syntax errors" style="color:brown">Syntax Errors</a></label>
+              </div>
+
+
+              <div class="boxcontainer">
+                  <span><h4>Converted ASR9K-64 Configuration</h4></span>
+                  <div class="scroll" id="output_config" align="center"></div>
+              </div>
+            <br>
+            <div id="upload-panel" class="row">
+
+              <div class="row">
+                <hr style="margin-top:30px;margin-bottom:20px;width:100%;float:left">
+                <h4 style="color:Gray;width:100%;float:left;margin-bottom:30px">Select Server Repository to Upload Converted Configuration File(s):
+                  &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_upload"></span></a>
+                </h4>
+                <div id="popover_upload_config" style="display: none">
+                  <pre>This is optional. Note:
+1. If your input config is an ASR9K admin config with filename "admin.cfg", two
+   converted configuration files will be uploaded to the selected repository:
+   a) "admin.cal" will be the ASR9K-64 Calvados config.
+   b) "admin.iox" will be the ASR9K-64 IOS-XR config.
+2. Same goes for ASR9K IOS-XR config, except that the ".cal" file in this case
+   should contain no valid configuration and will not be used.</pre>
+                </div>
+                <div class="row">
+                  {{ edit_field(config_form.select_server, label_field_width="col-sm-4", field_width="col-sm-5", class="form-control") }}
+                </div>
+                {% macro extra_field_for_directory() %}
+                <a href="javascript://">
+                <img id="select-server-move-up" src="/static/up_arrow.png" title="Go to Parent Folder">
+                <img id="select-server-reset-server-directory" src="/static/remove.png" title="Reset Server Directory">
+                <span class="select-server-spinner"><img id="select-server-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></span>
+                </a>
+                {% endmacro %}
+                <div class="row">
+                  {{ edit_field(config_form.select_server_directory, label_field_width="col-sm-4", field_width="col-sm-5", class="form-control", extra_field=extra_field_for_directory()) }}
+                </div>
+                <div class="row">
+                  <button id="upload_config" type="button" class="btn btn-primary">Upload</button>
+
+                &nbsp;&nbsp;&nbsp;&nbsp;
+                  <img id="progress_upload" src="{{ url_for('static', filename='spinner.gif') }}">
+                  <span id="upload_success" class="glyphicon glyphicon-ok" style="color:green;font-size: 1.8em;vertical-align: text-bottom;" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+
+        </div>
+
+      </div>
+        </form>
+    </div>
+  </div>
+
+
+{% endmacro %}

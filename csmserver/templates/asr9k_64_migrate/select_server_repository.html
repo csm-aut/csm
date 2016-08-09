@@ -1,0 +1,68 @@
+{% from 'host/common.html' import edit_field %}
+
+<h4 class="info-text-left">Select Software Packages: <span id="server-dialog-title"></span>
+
+&nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_server_repo"></span></a>
+</h4>
+<div id="popover_packages" style="display: none">
+  <pre>Note:
+1. Only FTP, TFTP and SFTP server repositories are supported for migration.
+2. Two packages can be selected:
+   a. A tar file containing ASR9K-64 image and boot files with filename matching wildcard
+      expression 'asr9k*.tar*' must be selected. The filename must also contain the software
+      version of ASR9K-64, i.e., "6.1.1".
+   b. The ASR9K unified FPD SMU required for running ASR9K-64 image. Your device must already
+      have FPD package installed on ASR9K image. On top of that, an unified FPD SMU is mandatory
+      if the current software version on device(s) is below 6.1.1. The filename must match
+      wildcard expression 'asr9k*.pie*'</pre>
+</div>
+
+{{ edit_field(schedule_form.server_dialog_server, field_width="col-sm-7", class="form-control") }}
+          
+{% set extra_field =
+'<a href="javascript://">
+<img id="server-dialog-move-up" src="/static/up_arrow.png" title="Go to Parent Folder">
+<img id="server-dialog-reset-server-directory" src="/static/remove.png" title="Reset Server Directory">
+</a>'
+%}
+
+{{ edit_field(schedule_form.server_dialog_server_directory, field_width="col-sm-7", class="form-control", extra_field=extra_field) }}
+<legend></legend>
+
+
+<div id="server-dialog-auto-select-software-panel">
+  <button id="server-dialog-auto-select-software" class="btn btn-primary center-block">Auto Select</button>
+</div>
+
+
+<div class="form-group">
+<select id="server-software-selector" name="server-software-selector" multiple="multiple" data-title="Packages" data-json=false></select>
+</div>
+
+
+<span class="browse-spinner">
+  <center><img id="server-software-dialog-browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center>
+</span>
+<legend></legend>
+
+<h4 class="info-text-left">Select a custom ASR9K-64 config file to be loaded after migration:
+  &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_config_filename"></span></a>
+</h4>
+<div id="popover_config" style="display: none">
+  <pre>Note:
+If no file is provided here, CSM Server will migrate the existing admin and IOS-XR config
+files on device using the NoX tool. Then, during Post-Migrate, CSM Server will attempt to load
+the migrated config files.
+
+Alternatively, you can supply the IOS-XR config for the ASR9K IOS-XR 64 Bit image.
+Once the new 64 bit image boots up, during Post-Migrate, CSM Server will attempt to load the
+migrated admin config and then this customized config file.</pre>
+</div>
+<div align="center">
+  <select class="form-control" id="config_filename" style="width: 50%" placeholder="Optional">
+    <option value="" disabled selected style="display: none;">Optional</option>
+    <option value=""></option>
+  </select>
+</div>
+<br>
+<legend></legend>

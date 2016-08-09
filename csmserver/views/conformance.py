@@ -55,15 +55,14 @@ from common import fill_custom_command_profiles
 
 from database import DBSession
 
+from constants import UNKNOWN
 from constants import InstallAction
 from constants import JobStatus
 from constants import get_temp_directory
 
-from conformance_report import XLSWriter
+from conformance_report import ConformanceReportWriter
 from filters import get_datetime_string
 
-from smu_utils import get_platform_and_release
-from platform_matcher import UNKNOWN
 from smu_info_loader import SMUInfoLoader
 
 from forms import ServerDialogForm
@@ -385,8 +384,8 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
 
                 conformance_report_entry = ConformanceReportEntry(
                     hostname=hostname,
-                    platform='Unknown' if host.software_platform is None else host.software_platform,
-                    software='Unknown' if host.software_version is None else host.software_version,
+                    platform=UNKNOWN if host.software_platform is None else host.software_platform,
+                    software=UNKNOWN if host.software_version is None else host.software_version,
                     conformed='Yes' if conformed else 'No',
                     comments=comments,
                     host_packages=','.join(sorted(match_packages(host_packages, packages_to_match))),
@@ -400,8 +399,6 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
                     hostname=hostname,
                     platform='MISSING',
                     software='MISSING',
-                    inventory_status='MISSING',
-                    last_successful_retrieval='MISSING',
                     host_packages='MISSING',
                     missing_packages='MISSING')
 
@@ -472,15 +469,16 @@ def api_export_conformance_report(id):
     include_host_packages = request.args.get('include_host_packages')
     db_session = DBSession()
 
-    filename = get_temp_directory() + current_user.username + '_report.xls'
-
     conformance_report = get_conformance_report_by_id(db_session, id)
+    file_path = None
     if conformance_report is not None:
-        xls_writer = XLSWriter(conformance_report, filename,
-                               locale_datetime=locale_datetime, include_host_packages=bool(int(include_host_packages)))
-        xls_writer.write_report()
+        writer = ConformanceReportWriter(user=current_user,
+                                         conformance_report=conformance_report,
+                                         locale_datetime=locale_datetime,
+                                         include_host_packages=bool(int(include_host_packages)))
+        file_path = writer.write_report()
 
-    return send_file(filename, as_attachment=True)
+    return send_file(file_path, as_attachment=True)
 
 
 @conformance.route('/api/get_conformance_report_summary/report/<int:id>')
@@ -525,8 +523,8 @@ def api_get_conformance_report(id):
         entries = conformance_report.entries
         for entry in entries:
             row = {'hostname': entry.hostname,
-                   'platform': entry.platform,
-                   'software': entry.software,
+                   'software_platform': entry.platform,
+                   'software_version': entry.software,
                    'missing_packages': entry.missing_packages,
                    'host_packages': entry.host_packages,
                    'conformed': entry.conformed,
@@ -548,7 +546,7 @@ def api_get_conformance_report_software_profile_packages(id):
         software_profile_packages = conformance_report.software_profile_packages.split(',')
 
         smu_loader = None
-        platform, release = get_platform_and_release(software_profile_packages)
+        platform, release = SMUInfoLoader.get_platform_and_release(software_profile_packages)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
 
@@ -637,8 +635,9 @@ def api_create_install_jobs():
             dependency = new_install_job.id
 
         return jsonify({'status': 'OK'})
-    except Exception:
-        return jsonify({'status': 'Failed'})
+    except Exception as e:
+        logger.exception('api_create_install_job hit exception')
+        return jsonify({'status': 'Failed Reason: ' + e.message})
 
 
 @conformance.route('/export_software_profiles', methods=['POST'])

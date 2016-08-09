@@ -137,19 +137,9 @@ class ConnectionContext(Context):
         return urls
 
 
-class SoftwareContext(ConnectionContext):
-    def __init__(self, db_session, host):
-        ConnectionContext.__init__(self, db_session, host)
-        self.host = host
-
-        self.committed_cli = None
-        self.active_cli = None
-        self.inactive_cli = None
-
-
-class InventoryContext(SoftwareContext):
+class InventoryContext(ConnectionContext):
     def __init__(self, db_session, host, inventory_job):
-        SoftwareContext.__init__(self, db_session, host)
+        ConnectionContext.__init__(self, db_session, host)
         self.inventory_job = inventory_job
 
     @property
@@ -169,9 +159,9 @@ class InventoryContext(SoftwareContext):
                 self.db_session.rollback()
             
                
-class InstallContext(SoftwareContext):
+class InstallContext(ConnectionContext):
     def __init__(self, db_session, host, install_job):
-        SoftwareContext.__init__(self, db_session, host)
+        ConnectionContext.__init__(self, db_session, host)
         self.install_job = install_job
         self._operation_id = -1
 
@@ -288,14 +278,6 @@ class InstallContext(SoftwareContext):
                 return server.server_url
         
         return None
-
-    @property
-    def post_migrate_config_handling_option(self):
-        return self.load_data('best_effort_config_applying')
-
-    @property
-    def pre_migrate_config_filename(self):
-        return self.load_data('config_filename')
     
     def post_status(self, message):
         if self.db_session is not None and self.install_job is not None:
