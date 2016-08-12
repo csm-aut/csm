@@ -76,22 +76,12 @@ class CLIPackageParser(BasePackageParser):
 
     def get_committed_packages(self, lines, package_state):
         """
-        lines contains the CLI outputs for 'show version'
+        lines contains the CLI outputs for 'show version running'
         """
         packages = []
         lines = lines.splitlines()
         for line in lines:
-            if 'System image file' in line:
-                match = re.search(r'"\S*"', line)
-                if match:
-                    package_name = match.group().replace('"', '')
-                    if ':' in package_name:
-                        location, name = package_name.split(':')
-                    else:
-                        name = package_name
-
-                    # ignore the location since it is always from bootflash
-                    packages.append(Package(location=None, name=name, state=package_state))
-                    break # There is only one committed package
+            line = line.replace("File: ", '')
+            packages.append(Package(location=None, name=line, state=package_state))
 
         return packages
