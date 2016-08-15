@@ -85,6 +85,8 @@
             });
 
             if(file_list == ''){
+                console.log("file_list is empty");
+                bootbox.alert("No files were selected.");
                 return false;
             }
             $('#download-session-logs-form').attr('action', "{{ url_for('api_download_session_logs') }}?file_list[]=" + file_list);

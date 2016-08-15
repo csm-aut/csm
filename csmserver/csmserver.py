@@ -131,6 +131,7 @@ from common import delete_host
 from common import delete_install_job_dependencies
 from common import get_last_install_action
 from common import get_last_completed_install_job_for_install_action
+from common import download_session_logs
 
 from filters import get_datetime_string
 from filters import time_difference_UTC 
