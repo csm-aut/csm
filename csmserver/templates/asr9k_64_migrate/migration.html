@@ -495,13 +495,13 @@
                                             }
                                         });
                                     }
+                                 submit_spinner.hide();
 
                                 } else {
                                     $('#hidden_dependency').val(element[0].dependency_list.join());
                                     submit_form_on_successfully_download_config_conversion_tool();
                                 }
                             });
-                        submit_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
                         bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
