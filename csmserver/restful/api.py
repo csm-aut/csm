@@ -27,15 +27,19 @@ from flask import jsonify
 from flask import g
 from flask import request
 from flask.ext.httpauth import HTTPBasicAuth
+from flask.ext.login import current_user
 
 from database import DBSession
 from models import User
 from api_utils import ENVELOPE
 from common import can_create
 from common import can_delete
+from common import can_delete_install
+from common import can_install
 
 import api_host
 import api_cco
+import api_install
 
 restful_api = Blueprint('restful', __name__, url_prefix='/api')
 auth = HTTPBasicAuth()
@@ -52,7 +56,7 @@ HTTP Return Codes:
 @restful_api.route('/v1/token')
 @auth.login_required
 def get_auth_token():
-    token = g.user.generate_auth_token(600)
+    token = g.api_user.generate_auth_token(600)
     return jsonify({'token': token.decode('ascii')})
 
 
@@ -71,7 +75,7 @@ def verify_password(username_or_token, password):
         if not user or not authenticated:
             return False
 
-    g.user = user
+    g.api_user = user
     return True
 
 
@@ -79,7 +83,7 @@ def verify_password(username_or_token, password):
 @auth.login_required
 def api_hosts():
     if request.method == 'POST':
-        if not can_create(g.user):
+        if not can_create(g.api_user):
             return jsonify(**{ENVELOPE: 'Not Authorized'}), 401
         return api_host.api_create_hosts(request)
     elif request.method == 'GET':
@@ -93,7 +97,7 @@ def api_hosts():
 @restful_api.route('/v1/hosts/<hostname>/delete', methods=['DELETE'])
 @auth.login_required
 def host_delete(hostname):
-    if not can_delete(g.user):
+    if not can_delete(g.api_user):
         return jsonify(**{ENVELOPE: 'Not Authorized'}), 401
     return api_host.api_delete_host(hostname)
 
@@ -116,3 +120,33 @@ def get_cco_software_entry(name_or_id):
     return api_cco.api_get_cco_software_entry(request, name_or_id)
 
 # --------------------------------------------------------------------------------------------------------------
+
+
+@restful_api.route('/v1/install', methods=['POST', 'GET'])
+@auth.login_required
+def create_install_job():
+    if request.method == 'POST':
+        if not can_install(g.api_user):
+            return jsonify(**{ENVELOPE: 'Not Authorized'}), 401
+        return api_install.api_create_install_request(request)
+    elif request.method == 'GET':
+        return api_install.api_get_install_request(request)
+    else:
+        return jsonify(**{ENVELOPE: 'Bad request'}), 400
+
+
+@restful_api.route('/v1/install/delete', methods=['DELETE'])
+@auth.login_required
+def install_job_delete():
+    if not can_delete_install(g.api_user):
+        return jsonify(**{ENVELOPE: 'Not Authorized'}), 401
+    return api_install.api_delete_install_job(request)
+
+
+@restful_api.route('/v1/install/logs/<int:id>')
+@auth.login_required
+def get_session_log(id):
+    # TODO: what permissions are needed? A: if can't install can't get session log
+    if not can_install(g.api_user):
+        return jsonify(**{ENVELOPE: 'Not Authorized'}), 401
+    return api_install.api_get_session_log(id)

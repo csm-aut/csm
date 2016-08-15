@@ -221,6 +221,10 @@ def get_command_profile(db_session, profile_name):
     return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.profile_name == profile_name).first()
 
 
+def get_command_profile_by_id(db_session, profile_id):
+    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == profile_id).first()
+
+
 @custom_command.route('/export_command_profiles', methods=['POST'])
 @login_required
 def export_command_profiles():

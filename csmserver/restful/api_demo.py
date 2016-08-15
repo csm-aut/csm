@@ -55,7 +55,7 @@ def get_token():
 
 def print_response(response):
     try:
-        outputs = json.dumps(response.json())
+        outputs = json.dumps(response.json(), indent=2)
     except ValueError:
         outputs = response.text
 

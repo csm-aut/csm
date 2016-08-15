@@ -176,6 +176,7 @@ def api_get_hosts(request):
         row['hardware'] = host.platform
         row['software_platform'] = host.software_platform
         row['software_version'] = host.software_version
+        row['os_type'] = host.os_type
 
         if connection_param:
             row['ts_or_ip'] = connection_param.host_or_ip
