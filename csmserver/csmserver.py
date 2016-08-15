@@ -128,6 +128,7 @@ from common import create_download_jobs
 from common import get_download_job_key
 from common import create_or_update_host
 from common import delete_host
+from common import delete_install_job_dependencies
 from common import get_last_install_action
 from common import get_last_completed_install_job_for_install_action
 
