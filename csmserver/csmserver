@@ -30,11 +30,13 @@ PYTHON="python"
 # for gunicorn
 WORKERS=4
 TIMEOUT=60
-PORT=5000
 DEBUG=true
 
 SSLKEY="ssl.key"
 SSLCERT="ssl.cert"
+
+LISTENING_IP=0.0.0.0
+PORT=5000
 
 function start_csmserver()
 {
@@ -50,7 +52,7 @@ function start_csmserver()
         exec >/dev/null
     fi
 
-    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- csmserver:app &
+    gunicorn -w $WORKERS -b $LISTENING_IP:$PORT --timeout $TIMEOUT --log-file=- csmserver:app &
     $PYTHON csmdispatcher.py &
 }
 
@@ -79,7 +81,7 @@ function start_secure_csmserver
         exec >/dev/null
     fi
 
-    gunicorn -w $WORKERS -b 0.0.0.0:$PORT --timeout $TIMEOUT --log-file=- --keyfile=$SSLKEY --certfile=$SSLCERT  csmserver:app &
+    gunicorn -w $WORKERS -b $LISTENING_IP:$PORT --timeout $TIMEOUT --log-file=- --keyfile=$SSLKEY --certfile=$SSLCERT  csmserver:app &
     $PYTHON csmdispatcher.py &
 }
 
