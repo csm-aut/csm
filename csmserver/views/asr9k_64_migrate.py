@@ -367,10 +367,6 @@ def migration():
                         host.context[0].data['config_filename'] = schedule_form.hidden_config_filename.data
                         host.context[0].data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
 
-                    if InstallAction.POST_MIGRATE in install_action:
-                        host.context[0].data['best_effort_config_applying'] = \
-                            schedule_form.hidden_best_effort_config.data
-
                     # If the dependency is a previous job id, it's non-negative int string.
                     if int(dependency_list[index]) >= 0:
                         dependency = dependency_list[index]
@@ -431,7 +427,6 @@ def init_schedule_form(db_session, http_request, get=False):
         schedule_form.hidden_hosts.data = ''
         schedule_form.hidden_software_packages.data = ''
         schedule_form.hidden_edit.data = 'False'
-        schedule_form.hidden_best_effort_config.data = '0'
         schedule_form.hidden_config_filename.data = ''
         schedule_form.hidden_override_hw_req.data = '0'
         schedule_form.hidden_dependency.data = ''
@@ -504,10 +499,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             host.context[0].data['config_filename'] = schedule_form.hidden_config_filename.data
             host.context[0].data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
 
-        if InstallAction.POST_MIGRATE in install_action:
-            host.context[0].data['best_effort_config_applying'] = \
-                schedule_form.hidden_best_effort_config.data
-
         # install_action is a list object which can only contain one install action
         # at this editing time, accept the selected dependency if any
 
@@ -541,7 +532,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
                 schedule_form.custom_command_profile.data = ids
 
-            schedule_form.hidden_best_effort_config.data = host.context[0].data.get('best_effort_config_applying')
             schedule_form.hidden_override_hw_req.data = host.context[0].data.get('override_hw_req')
             schedule_form.hidden_config_filename.data = host.context[0].data.get('config_filename')
             schedule_form.hidden_hardware_audit_version.data = host.context[0].data.get('hardware_audit_version')
@@ -758,7 +748,6 @@ class ScheduleMigrationForm(Form):
     hidden_pending_downloads = HiddenField('Pending Downloads')
     hidden_software_packages = HiddenField('')
 
-    hidden_best_effort_config = HiddenField('')
     hidden_override_hw_req = HiddenField('')
     hidden_config_filename = HiddenField('')
 

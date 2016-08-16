@@ -204,7 +204,7 @@
 
                 var install_actions = $('#install_action').val();
 
-                if ($('#hidden_edit').val() == 'True' && has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
+                if ($('#hidden_edit').val() == 'True' && has_one_of_these(install_actions, [MIGRATE_SYSTEM, POST_MIGRATE])) {
                     on_submit();
 
                 } else {
@@ -232,10 +232,6 @@
                         $('#wizard').bootstrapWizard('remove', $('#pre-migrate').val(), true);
                     }
 
-                    if ($('#post-migrate').val() != null) {
-                        $('#wizard').bootstrapWizard('remove', $('#post-migrate').val(), true);
-                    }
-
                     if ($('#hidden_edit').val() != 'True') {
                         add_new_tab('select-host', 'SELECT HOST')
                     }
@@ -249,10 +245,6 @@
 
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                         add_new_tab("pre-migrate", "PRE-MIGRATE");
-                    }
-
-                    if (has_one_of_these(install_actions, [POST_MIGRATE])) {
-                        add_new_tab("post-migrate", "POST-MIGRATE")
                     }
 
                     // make the first tab active
@@ -286,13 +278,6 @@
                     return false;
                 }
 
-                if (has_one_of_these($('#install_action').val(), [POST_MIGRATE])) {
-                    if (!$('[name="config-handling"]')[0].checked && !$('[name="config-handling"]')[1].checked) {
-                        bootbox.alert("Please select one option.");
-                        return false;
-                    }
-                }
-
                 on_submit();
 
             });
@@ -310,12 +295,6 @@
                 $('#hidden_server_name').val($('#server_dialog_server option:selected').text());
                 $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
                 $('#hidden_config_filename').val($('#config_filename').val());
-
-                if ($('[name="config-handling"]')[0].checked) {
-                    $('#hidden_best_effort_config').val($('[name="config-handling"]')[0].value);
-                } else {
-                    $('#hidden_best_effort_config').val($('[name="config-handling"]')[1].value);
-                }
 
                 if ($('[name="override_hw_req"]')[0].checked) {
                     $('#hidden_override_hw_req').val($('[name="override_hw_req"]')[0].value);
@@ -529,11 +508,6 @@
                             $('#hidden_server_directory').val());
                 }
 
-                if ($('#hidden_best_effort_config').val() == '-1') {
-                    $('[name="config-handling"]')[0].checked = true;
-                } else if ($('#hidden_best_effort_config').val() == '1') {
-                    $('[name="config-handling"]')[1].checked = true;
-                }
                 if ($('#hidden_override_hw_req').val() == '1') {
                     $('[name="override_hw_req"]')[0].checked = true;
                 } else if ($('#hidden_override_hw_req').val() == '0') {
