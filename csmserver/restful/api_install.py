@@ -376,24 +376,17 @@ def api_get_install_request(request):
                 row['start_time'] = get_local_time(install_job.start_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
             if install_job.status_time:
                 row['status_time'] = get_local_time(install_job.status_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
-            if install_job.created_time:
-                row['created_time'] = get_local_time(install_job.created_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
-            if install_job.modified_time:
-                row['modified_time'] = get_local_time(install_job.modified_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
 
         else:
             row['scheduled_time'] = install_job.scheduled_time
             row['start_time'] = install_job.start_time
             row['status_time'] = install_job.status_time
-            row['created_time'] = install_job.created_time
-            row['modified_time'] = install_job.modified_time
 
         row['server_directory'] = install_job.server_directory
         row['packages'] = install_job.packages
         row['pending_downloads'] = install_job.pending_downloads
         row['status'] = install_job.status
         row['trace'] = install_job.trace
-        row['session_log'] = install_job.session_log
         row['created_by'] = install_job.created_by
         row['hostname'] = get_host_by_id(db_session, install_job.host_id).hostname
 
