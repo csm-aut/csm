@@ -19,7 +19,8 @@ from common import get_host_list
 from common import get_return_url
 from common import get_server_by_id
 from common import get_server_list
-from common import get_install_job_dependency_completed
+from common import get_last_unfinished_install_action
+from common import get_last_completed_or_failed_install_action
 
 from database import DBSession
 import datetime
@@ -32,7 +33,7 @@ from flask import flash
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
 
-from models import InstallJob, SystemOption, ConvertConfigJob
+from models import InstallJob, SystemOption, ConvertConfigJob, JobStatus
 from models import logger
 
 from wtforms import Form
@@ -590,19 +591,26 @@ def get_dependencies():
             continue
 
         if dependency:
-            prerequisite_install_job = get_last_install_action(db_session, dependency, get_host(db_session, hostname).id)
-            if prerequisite_install_job is not None:
-                dependency_list.append(prerequisite_install_job.id)
+            # Firstly, check if dependency action is scheduled or in progress, if so, add dependency
+            last_unfinished_dependency_job = get_last_unfinished_install_action(db_session, dependency,
+                                                                                get_host(db_session, hostname).id)
+            if last_unfinished_dependency_job:
+                dependency_list.append(last_unfinished_dependency_job.id)
             else:
-                num_completed_jobs = get_install_job_dependency_completed(db_session, dependency, host.id)
-                if len(num_completed_jobs) > 0:
-                    dependency_list.append('-1')
+                # Secondly, check if dependency action most recently completed or failed
+                last_completed_or_failed_dependency_job = get_last_completed_or_failed_install_action(db_session,
+                                                                                                      dependency,
+                                                                                                      host.id)
+                if last_completed_or_failed_dependency_job:
+                    if last_completed_or_failed_dependency_job.status == JobStatus.COMPLETED:
+                        dependency_list.append('-1')
+                    else:
+                        dependency_list.append(last_completed_or_failed_dependency_job.install_job_id)
                 else:
                     disqualified_count += 1
                     dependency_list.append('-2')
         else:
             dependency_list.append('-1')
-
     return jsonify(**{'data': [{'dependency_list': dependency_list, 'disqualified_count':  disqualified_count}]})
 
 

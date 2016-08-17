@@ -24,7 +24,7 @@
 # =============================================================================
 from flask.ext.login import current_user
 from flask import g, send_file
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, not_
 
 from csm_exceptions.exceptions import HostNotFound
 
@@ -364,6 +364,22 @@ def get_last_install_action(db_session, install_action, host_id):
     return db_session.query(InstallJob).filter(and_(InstallJob.install_action == install_action,
                                                InstallJob.host_id == host_id)). \
         order_by(InstallJob.scheduled_time.desc()).first()
+
+
+def get_last_unfinished_install_action(db_session, install_action, host_id):
+    return db_session.query(InstallJob).filter(and_(InstallJob.install_action == install_action,
+                                                    InstallJob.host_id == host_id,
+                                                    or_(InstallJob.status == None,
+                                                        not_(InstallJob.status == JobStatus.FAILED)))). \
+        order_by(InstallJob.scheduled_time.desc()).first()
+
+
+def get_last_completed_or_failed_install_action(db_session, install_action, host_id):
+    return db_session.query(InstallJobHistory).filter(and_(InstallJobHistory.install_action == install_action,
+                                                           InstallJobHistory.host_id == host_id,
+                                                           or_(InstallJobHistory.status == JobStatus.COMPLETED,
+                                                               InstallJobHistory.status == JobStatus.FAILED))). \
+        order_by(InstallJobHistory.status_time.desc()).first()
 
 
 def get_install_job_dependency_completed(db_session, install_action, host_id):
