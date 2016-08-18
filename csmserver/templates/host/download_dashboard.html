@@ -399,6 +399,10 @@
 </script>
 
 <style>
+    .customized-badge-height {
+       display:inline;
+       padding: 1.5px 7px;
+    }
     .btn-select {
         line-height: 10px;
     }
@@ -432,10 +436,10 @@
         <div class="col-sm-12">
             <hr>
             <ul class="nav nav-tabs" id="download-dashboard-tab">
-                <li><a data-toggle="tab" href="#download-scheduled">Scheduled &nbsp;<span id="badge-scheduled" class="badge alert-default">0</span></a></li>
-                <li><a data-toggle="tab" href="#download-in-progress">In Progress &nbsp;<span id="badge-in-progress" class="badge alert-info">0</span></a></li>
-                <li><a data-toggle="tab" href="#install-failed">Failed &nbsp;<span id="badge-failed" class="badge alert-danger">0</span></a></li>
-                <li><a data-toggle="tab" href="#install-completed">Completed &nbsp;(showing <span id="badge-completed" class="badge alert-success">0</span>&nbsp;of <span id="badge-completed-total" class="badge alert-success"></span>)</a></li>
+                <li><a data-toggle="tab" href="#download-scheduled">Scheduled &nbsp;<span id="badge-scheduled" class="customized-badge-height badge alert-default">0</span></a></li>
+                <li><a data-toggle="tab" href="#download-in-progress">In Progress &nbsp;<span id="badge-in-progress" class="customized-badge-height badge alert-info">0</span></a></li>
+                <li><a data-toggle="tab" href="#install-failed">Failed &nbsp;<span id="badge-failed" class="customized-badge-height badge alert-danger">0</span></a></li>
+                <li><a data-toggle="tab" href="#install-completed">Completed &nbsp;(showing <span id="badge-completed" class="customized-badge-height badge alert-success">0</span>&nbsp;of <span id="badge-completed-total" class="customized-badge-height badge alert-success"></span>)</a></li>
             </ul>
             <div class="tab-content" style="margin-top:20px;">
                 <div id="download-scheduled" class="tab-pane fade in active">
