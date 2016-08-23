@@ -118,9 +118,9 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                         # asr9k-mini-x64.iso-6.1.1
                         target_list.append("{}-{}-{}".format(family.lower(), 'mini-x64.iso', target_version))
                 else:
-                    # asr9k-mgbl-x64-3.0.0.0-r601.x86_64.rpm-6.0.1, ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
-                    target_list.append("{}-{}-{}.{}-{}".format(package_name, '\d\.\d\.\d.\d',
+                    # asr9k-mgbl-x64-3.0.0.0-r601.x86_64.rpm, ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
+                    target_list.append("{}-{}-{}.{}".format(package_name, '\d\.\d\.\d.\d',
                                                                'r' + target_version.replace('.', ''),
-                                                               'x86_64.rpm', target_version))
+                                                               'x86_64.rpm'))
 
     return target_list
