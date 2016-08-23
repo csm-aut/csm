@@ -413,7 +413,6 @@ $(function() {
 
     function on_finish_validate(validate_object) {
         $('#software_packages').val(validate_object.software_packages);
-        $('#hidden_selected_hosts').val(host_selector.get_selected_items());
         $('#hidden_pending_downloads').val(validate_object.pending_downloads);
         validate_object.form.submit();
     }
