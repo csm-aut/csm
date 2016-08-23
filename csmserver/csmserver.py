@@ -1965,6 +1965,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     elif request.method == 'GET':
         # Initialize the hidden fields
         form.hidden_server.data = -1
+        form.hidden_select_hosts.data = ''
         form.hidden_server_name.data = ''
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''
