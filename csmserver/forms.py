@@ -113,7 +113,8 @@ class HostScheduleInstallForm(ServerDialogForm):
     cisco_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
     cisco_dialog_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
     server_modal_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
-    
+
+    hidden_selected_hosts = HiddenField('')
     hidden_server = HiddenField('')   
     hidden_server_name = HiddenField('')   
     hidden_server_directory = HiddenField('')

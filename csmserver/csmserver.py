@@ -1772,10 +1772,8 @@ def schedule_install():
             for value in f.getlist(key):
                print(key,":",value)
         """
-
         # Retrieves from the multi-select box
-        hostnames = request.form.getlist('host-selector')
-
+        hostnames = form.hidden_selected_hosts.data.split(',')
         install_action = form.install_action.data
 
         if hostnames is not None:
