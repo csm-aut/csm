@@ -27,9 +27,10 @@ from utils import get_software_platform
 from utils import get_software_version
 from constants import UNKNOWN
 import condoor
+import logging
 
 def discover_platform_info(ctx):
-    conn = condoor.Connection(ctx.hostname, ctx.host_urls)
+    conn = condoor.Connection(name=ctx.hostname, urls=ctx.host_urls, log_level=logging.CRITICAL)
 
     try:
         conn.discovery()
