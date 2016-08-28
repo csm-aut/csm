@@ -1772,10 +1772,8 @@ def schedule_install():
             for value in f.getlist(key):
                print(key,":",value)
         """
-
         # Retrieves from the multi-select box
-        hostnames = request.form.getlist('host-selector')
-
+        hostnames = form.hidden_selected_hosts.data.split(',')
         install_action = form.install_action.data
 
         if hostnames is not None:
@@ -1967,6 +1965,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     elif request.method == 'GET':
         # Initialize the hidden fields
         form.hidden_server.data = -1
+        form.hidden_selected_hosts.data = ''
         form.hidden_server_name.data = ''
         form.hidden_server_directory.data = '' 
         form.hidden_pending_downloads.data = ''

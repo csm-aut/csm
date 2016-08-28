@@ -50,32 +50,29 @@
            value="{{ schedule_form.hidden_software_packages.data }}" type="hidden">
 
 
-
-  <input id="hidden_edit" name="{{ schedule_form.hidden_edit.name }}" value="{{ schedule_form.hidden_edit.data }}"
-         class="form-control" type="hidden">
-  <input id="hidden_best_effort_config" name="{{ schedule_form.hidden_best_effort_config.name }}"
-         value="{{ schedule_form.hidden_best_effort_config.data }}" class="form-control" type="hidden">
-  <input id="hidden_override_hw_req" name="{{ schedule_form.hidden_override_hw_req.name }}"
-         value="{{ schedule_form.hidden_override_hw_req.data }}" class="form-control" type="hidden">
-  <input id="hidden_config_filename" name="{{ schedule_form.hidden_config_filename.name }}"
-         value="{{ schedule_form.hidden_config_filename.data }}" class="form-control" type="hidden">
-  <input id="hidden_hardware_audit_version" name="{{ schedule_form.hidden_hardware_audit_version.name }}"
-         value="{{ schedule_form.hidden_hardware_audit_version.data }}" class="form-control" type="hidden">
+    <input id="hidden_edit" name="{{ schedule_form.hidden_edit.name }}" value="{{ schedule_form.hidden_edit.data }}"
+           class="form-control" type="hidden">
+    <input id="hidden_override_hw_req" name="{{ schedule_form.hidden_override_hw_req.name }}"
+           value="{{ schedule_form.hidden_override_hw_req.data }}" class="form-control" type="hidden">
+    <input id="hidden_config_filename" name="{{ schedule_form.hidden_config_filename.name }}"
+           value="{{ schedule_form.hidden_config_filename.data }}" class="form-control" type="hidden">
+    <input id="hidden_hardware_audit_version" name="{{ schedule_form.hidden_hardware_audit_version.name }}"
+           value="{{ schedule_form.hidden_hardware_audit_version.data }}" class="form-control" type="hidden">
 
 
-  <div class="btn col-sm-offset-5">
+    <div class="btn col-sm-offset-5">
 
-    {% if install_job != null and install_job.install_action == 'Migrate' %}
-        <button type="button" id="trigger-wizard" class="btn btn-primary">
-        Re-Submit
-    {% else %}
-        <button type="button" id="trigger-wizard" class="btn btn-primary" data-toggle="modal"
-                data-target="#wizard-dialog">
-        Continue
-    {% endif %}
-      </button>
-      <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
-  </div>
+      {% if install_job != null and (install_job.install_action == 'Migrate' or install_job.install_action == 'Post-Migrate') %}
+          <button type="button" id="trigger-wizard" class="btn btn-primary">
+          Re-Submit
+      {% else %}
+          <button type="button" id="trigger-wizard" class="btn btn-primary" data-toggle="modal"
+                  data-target="#wizard-dialog">
+          Continue
+      {% endif %}
+        </button>
+        <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
+    </div>
 
 {% endmacro %}
 
@@ -115,29 +112,6 @@
                                               <h4 class="info-text-left">Select the version of ASR9K-64 you plan to migrate to: <span id="server-dialog-title"></span>
                                               &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_below"></span></a></h4>
                                                 {{ edit_field(schedule_form.hardware_audit_version, field_width="col-sm-7", class="form-control") }}
-                                            </div>
-
-                                            <div class="tab-pane" id="post-migrate">
-                                                <!--h4>On failure to load IOS-XR configuration on eXR successfully,
-                                                    would you like CSM to:</h4-->
-                                                <h4 class="info-text-left">When the IOS-XR configurations, either migrated by the CSM Server or provided by you during Pre-Migrate,
-                                                    cannot be applied on eXR directly, would you like the CSM Server to:</h4>
-                                                <div class="btn-group">
-                                                    <div>
-                                                        <input type="radio" id="config-handling" name="config-handling"
-                                                               class="toggle" value="-1"
-                                                               style="margin-right: 10px"><label for="config-handling">Abort
-                                                        the configuration commit</label>
-
-                                                    </div>
-
-                                                    <div>
-                                                        <input type="radio" id="config-handling" name="config-handling"
-                                                               class="toggle" value="1"
-                                                               style="margin-right: 10px"><label for="config-handling">Commit
-                                                        the configurations with best effort</label>
-                                                    </div>
-                                                </div>
                                             </div>
 
                                         </div>

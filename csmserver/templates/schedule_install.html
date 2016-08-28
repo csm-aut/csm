@@ -15,6 +15,7 @@ $('#form').submit(function() {
             bootbox.alert("Host has not been specified.");
             return false;
         }
+        $('#hidden_selected_hosts').val(host_selector.get_selected_items());
         on_final_submit(this, null);
     }
 
