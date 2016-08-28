@@ -24,6 +24,7 @@
 # =============================================================================
 from flask import jsonify
 from flask import g
+from flask.ext.login import current_user
 
 from sqlalchemy import and_
 from database import DBSession
@@ -73,7 +74,12 @@ def api_create_hosts(request):
     """
     rows = []
     db_session = DBSession()
-    current_user = g.user.username
+    #current_user = g.user.username
+
+    if hasattr(current_user, 'username'):
+        user = current_user.username
+    else:
+        user = g.api_user.username
 
     # Host information is expected to be an array of dictionaries
     json_data = request.json
@@ -113,7 +119,7 @@ def api_create_hosts(request):
                                               roles=roles, connection_type=connection_type,
                                               host_or_ip=host_or_ip, username=username,
                                               password=password, enable_password=enable_password, port_number=port_number,
-                                              jump_host_id=jump_host_id, created_by=current_user, host=host)
+                                              jump_host_id=jump_host_id, created_by=user, host=host)
 
         except Exception as e:
             status_message = e.message

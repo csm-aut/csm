@@ -117,28 +117,35 @@ def api_create_install_request(request):
     valid_request = True
     for r in json_data:
         row = {}
-
-        if 'scheduled_time' not in r.keys():
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = 'Missing scheduled_time.'
-            valid_request = False
-        elif 'utc_offset' not in r.keys():
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = 'Missing utc_offset.'
-            valid_request = False
-        elif not verify_utc_offset(r['utc_offset']):
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = "Invalid utc_offset: Must be in '<+|->dd:dd' format and be between -12:00 and +14:00."
-            valid_request = False
-        else:
-            try:
-                r['scheduled_time'] = datetime.strptime(r['scheduled_time'], "%m-%d-%Y %I:%M %p")
-                r['utc_scheduled_time'] = get_utc_time(r['scheduled_time'], r['utc_offset'])
-            except ValueError:
+        try:
+            if 'scheduled_time' not in r.keys():
                 row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = "Invalid scheduled_time: %s must be in 'mm-dd-yyyy hh:mm AM|PM' format." % r[
-                    'scheduled_time']
+                row[STATUS_MESSAGE] = 'Missing scheduled_time.'
                 valid_request = False
+            elif 'utc_offset' not in r.keys():
+                row[STATUS] = APIStatus.FAILED
+                row[STATUS_MESSAGE] = 'Missing utc_offset.'
+                valid_request = False
+            elif not verify_utc_offset(r['utc_offset']):
+                row[STATUS] = APIStatus.FAILED
+                row[STATUS_MESSAGE] = "Invalid utc_offset: Must be in '<+|->dd:dd' format and be between -12:00 and +14:00."
+                valid_request = False
+            else:
+                try:
+                    r['scheduled_time'] = datetime.strptime(r['scheduled_time'], "%m-%d-%Y %I:%M %p")
+                    r['utc_scheduled_time'] = get_utc_time(r['scheduled_time'], r['utc_offset'])
+                except ValueError:
+                    row[STATUS] = APIStatus.FAILED
+                    row[STATUS_MESSAGE] = "Invalid scheduled_time: %s must be in 'mm-dd-yyyy hh:mm AM|PM' format." % r[
+                        'scheduled_time']
+                    valid_request = False
+
+        except Exception as e:
+            row[STATUS] = APIStatus.FAILED
+            row[STATUS_MESSAGE] = e.message
+            rows = [row]
+            db_session.rollback()
+            return jsonify(**{ENVELOPE: {'install_request_list': rows}}), 400
 
         if STATUS not in row.keys():
             if 'hostname' not in r.keys():
@@ -173,7 +180,7 @@ def api_create_install_request(request):
                 r[STATUS_MESSAGE] = 'Not submitted. Check other jobs for error message.'
             if 'utc_scheduled_time' in r.keys():
                 r.pop('utc_scheduled_time')
-        return jsonify(**{ENVELOPE: {'install_request_list': rows}})
+        return jsonify(**{ENVELOPE: {'install_request_list': rows}}), 400
 
 
     # Sort on install_action, then hostname, then scheduled_time
@@ -317,7 +324,11 @@ def api_get_install_request(request):
     else:
         hostname = request.args.get('hostname')
         if hostname:
-            host_id = get_host(db_session, hostname).id
+            host = get_host(db_session, hostname)
+            if host:
+                host_id = host.id
+            else:
+                return jsonify(**{ENVELOPE: 'Invalid hostname: %s.' % hostname}), 400
             clauses.append(InstallJob.host_id == host_id)
 
         install_action = request.args.get('install_action')
@@ -403,7 +414,6 @@ def api_get_install_request(request):
     return jsonify(**{ENVELOPE: {'install_job_list': rows}, 'current_page': page, 'total_pages': total_pages})
 
 
-# TODO: check that a job isn't in progress before deleting?
 def api_delete_install_job(request):
     rows = []
     db_session = DBSession
@@ -573,9 +583,9 @@ def getKey(dict1, dict2):
 
 
 def verify_utc_offset(utc_offset):
-    '''
+    """
     check to see that the utc_offset input is in the form '<+|->dd:dd'
-    '''
+    """
     r = re.compile('[+-]{1}\d{2}:\d{2}')
     if not r.match(utc_offset):
         return False
@@ -588,11 +598,11 @@ def verify_utc_offset(utc_offset):
 
 
 def get_utc_time(time, utc_offset):
-    '''
+    """
     utc_offset should be in the form '<+|->dd:dd'
 
     use verify_utc_offset to confirm before using this function
-    '''
+    """
     hours = int(utc_offset[0:3])
     minutes = int(utc_offset[4:])
 
@@ -601,11 +611,11 @@ def get_utc_time(time, utc_offset):
 
 
 def get_local_time(utc_time, utc_offset):
-    '''
+    """
     utc_offset should be in the form '<+|->dd:dd'
 
     use verify_utc_offset to confirm before using this function
-    '''
+    """
     hours = int(utc_offset[0:3])
     minutes = int(utc_offset[4:])
 
