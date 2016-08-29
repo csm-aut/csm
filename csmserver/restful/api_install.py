@@ -119,9 +119,10 @@ def api_create_install_request(request):
         row = {}
         try:
             if 'scheduled_time' not in r.keys():
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Missing scheduled_time.'
-                valid_request = False
+                #row[STATUS] = APIStatus.FAILED
+                #row[STATUS_MESSAGE] = 'Missing scheduled_time.'
+                #valid_request = False
+                row['utc_scheduled_time'] = datetime.utcnow() #TODO: convert to UTC time....
             elif 'utc_offset' not in r.keys():
                 row[STATUS] = APIStatus.FAILED
                 row[STATUS_MESSAGE] = 'Missing utc_offset.'
@@ -132,8 +133,8 @@ def api_create_install_request(request):
                 valid_request = False
             else:
                 try:
-                    r['scheduled_time'] = datetime.strptime(r['scheduled_time'], "%m-%d-%Y %I:%M %p")
-                    r['utc_scheduled_time'] = get_utc_time(r['scheduled_time'], r['utc_offset'])
+                    time = datetime.strptime(r['scheduled_time'], "%m-%d-%Y %I:%M %p")
+                    r['utc_scheduled_time'] = get_utc_time(time, r['utc_offset'])
                 except ValueError:
                     row[STATUS] = APIStatus.FAILED
                     row[STATUS_MESSAGE] = "Invalid scheduled_time: %s must be in 'mm-dd-yyyy hh:mm AM|PM' format." % r[
@@ -185,7 +186,9 @@ def api_create_install_request(request):
 
     # Sort on install_action, then hostname, then scheduled_time
     json_data = sorted(rows, cmp=getKey)
-    json_data = sorted(json_data, key=itemgetter('scheduled_time', 'hostname'))
+    json_data = sorted(json_data, key=itemgetter('utc_scheduled_time', 'hostname'))
+
+    print json_data
 
     # Remove duplicates (defined as having the same hostname and install_action)
     install_requests = []
@@ -554,13 +557,13 @@ def get_dependency(db_session, install_request, host_id):
 
 # returns (bool valid, str msg)
 def validate_install_request(db_session, install_request):
-    requirements = {'Pre-Upgrade': ['hostname', 'scheduled_time'],
-                    'Add': ['hostname', 'server_repository', 'software_packages', 'scheduled_time'],
-                    'Activate': ['hostname', 'software_packages', 'scheduled_time'],
-                    'Post-Upgrade': ['hostname', 'scheduled_time'],
-                    'Commit': ['hostname', 'scheduled_time'],
-                    'Remove': ['hostname', 'software_packages', 'scheduled_time'],
-                    'Deactivate': ['hostname', 'software_packages', 'scheduled_time']}
+    requirements = {'Pre-Upgrade': ['hostname'],
+                    'Add': ['hostname', 'server_repository', 'software_packages'],
+                    'Activate': ['hostname', 'software_packages'],
+                    'Post-Upgrade': ['hostname'],
+                    'Commit': ['hostname'],
+                    'Remove': ['hostname', 'software_packages'],
+                    'Deactivate': ['hostname', 'software_packages']}
 
     for required in requirements[install_request['install_action']]:
         if required not in install_request.keys():
