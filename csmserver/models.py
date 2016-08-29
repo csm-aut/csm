@@ -952,10 +952,10 @@ class LogHandler(logging.Handler):
 
         args = record.__dict__['args']
         msg = record.__dict__['msg']
-    
+
         if len(args) >= 1:
             msg = msg % args
-            
+
         log = Log(
             level=record.__dict__['levelname'],
             trace=trace,
@@ -976,8 +976,11 @@ def get_db_session_logger(db_session):
     if the db_session is from a different process address space.
     """
     session_logger = logging.getLogger('session_logger_%s' % db_session.hash_key)
-    session_logger.setLevel(logging.DEBUG)
-    session_logger.addHandler(LogHandler(db_session))
+    if not hasattr(session_logger, 'initialized'):
+        session_logger.setLevel(logging.DEBUG)
+        session_logger.addHandler(LogHandler(db_session))
+        session_logger.initialized = True
+
     return session_logger
 
        

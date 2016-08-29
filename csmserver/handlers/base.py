@@ -58,7 +58,7 @@ class BaseHandler(object):
             # If there is no db_session, it is not important to log the exception
             if isinstance(ctx, ConnectionContext):
                 logger = get_db_session_logger(ctx.db_session)
-                logger.exception('execute() hit exception.')
+                logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
