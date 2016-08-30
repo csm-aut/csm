@@ -11,10 +11,9 @@
    a. A tar file containing ASR9K-64 image and boot files with filename matching wildcard
       expression 'asr9k*.tar*' must be selected. The filename must also contain the software
       version of ASR9K-64, i.e., "6.1.1".
-   b. The ASR9K unified FPD SMU required for running ASR9K-64 image. Your device must already
-      have FPD package installed on ASR9K image. On top of that, an unified FPD SMU is mandatory
-      if the current software version on device(s) is below 6.1.1. The filename must match
-      wildcard expression 'asr9k*.pie*'</pre>
+   b. The ASR9K unified FPD SMU. Your device must already have FPD package installed on ASR9K
+      image. On top of that, the unified FPD SMU is mandatory if the current software version
+      on device(s) is below 6.1.1. The filename must match wildcard expression 'asr9k*.pie*'</pre>
 </div>
 
 {{ edit_field(schedule_form.server_dialog_server, field_width="col-sm-7", class="form-control") }}
@@ -51,12 +50,13 @@
 <div id="popover_config" style="display: none">
   <pre>Note:
 If no file is provided here, CSM Server will migrate the existing admin and IOS-XR config
-files on device using the NoX tool. Then, during Post-Migrate, CSM Server will attempt to load
-the migrated config files.
+files on device using the NoX tool. Then, during Migrate, when ASR9K-64 boots, the device
+will load the converted IOS-XR config file automatically. During Post-Migrate, CSM Server
+will attempt to load the migrated admin config file.
 
-Alternatively, you can supply the IOS-XR config for the ASR9K IOS-XR 64 Bit image.
-Once the new 64 bit image boots up, during Post-Migrate, CSM Server will attempt to load the
-migrated admin config and then this customized config file.</pre>
+Alternatively, you can supply an IOS-XR config for the ASR9K-64 image. Once the new 64 bit
+image boots, during Migrate, the device will load this customized IOS-XR config file. Then,
+during Post-Migrate, CSM Server will attempt to load the migrated admin config.</pre>
 </div>
 <div align="center">
   <select class="form-control" id="config_filename" style="width: 50%" placeholder="Optional">
