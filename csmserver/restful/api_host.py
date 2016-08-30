@@ -74,64 +74,71 @@ def api_create_hosts(request):
     """
     rows = []
     db_session = DBSession()
-    #current_user = g.user.username
 
     if hasattr(current_user, 'username'):
         user = current_user.username
     else:
         user = g.api_user.username
 
-    # Host information is expected to be an array of dictionaries
     json_data = request.json
-    for data in json_data:
-        row = {}
-        status_message = None
-        try:
-            hostname = get_acceptable_string(data.get('hostname'))
-            row['hostname'] = hostname
+    # Host information is expected to be an array of dictionaries
+    if type(json_data) is not list:
+        json_data = [json_data]
 
-            host = get_host(db_session, hostname)
+    try:
+        for data in json_data:
+            row = {}
+            status_message = None
+            try:
+                hostname = get_acceptable_string(data.get('hostname'))
+                row['hostname'] = hostname
 
-            region = get_region(db_session, data.get('region'))
-            if region is None:
-                status_message = 'Region %s does not exist' % data.get('region')
-            else:
-                connection_type = data.get('connection_type')
-                if connection_type not in [ConnectionType.SSH, ConnectionType.TELNET]:
-                    status_message = 'Connection Type must be either telnet or ssh'
+                host = get_host(db_session, hostname)
+
+                region = get_region(db_session, data.get('region'))
+                if region is None:
+                    status_message = 'Region %s does not exist' % data.get('region')
                 else:
-                    roles = data.get('roles')
-                    host_or_ip = data.get('ts_or_ip')
-                    username = data.get('username')
-                    password = data.get('password')
-                    enable_password = data.get('enable_password')
-                    port_number = data.get('port_number')
+                    connection_type = data.get('connection_type')
+                    if connection_type not in [ConnectionType.SSH, ConnectionType.TELNET]:
+                        status_message = 'Connection Type must be either telnet or ssh'
+                    else:
+                        roles = data.get('roles')
+                        host_or_ip = data.get('ts_or_ip')
+                        username = data.get('username')
+                        password = data.get('password')
+                        enable_password = data.get('enable_password')
+                        port_number = data.get('port_number')
 
-                    jump_host_id = -1
-                    if data.get('jump_host') is not None:
-                        jump_host = get_jump_host(db_session, data.get('jump_host'))
-                        if jump_host is None:
-                            status_message = 'Jump Host %s does not exist' % data.get('jump_host')
-                        jump_host_id = jump_host.id
+                        jump_host_id = -1
+                        if data.get('jump_host') is not None:
+                            jump_host = get_jump_host(db_session, data.get('jump_host'))
+                            if jump_host is None:
+                                status_message = 'Jump Host %s does not exist' % data.get('jump_host')
+                            jump_host_id = jump_host.id
 
-                    if status_message is None:
-                        create_or_update_host(db_session=db_session, hostname=hostname, region_id=region.id,
-                                              roles=roles, connection_type=connection_type,
-                                              host_or_ip=host_or_ip, username=username,
-                                              password=password, enable_password=enable_password, port_number=port_number,
-                                              jump_host_id=jump_host_id, created_by=user, host=host)
+                        if status_message is None:
+                            create_or_update_host(db_session=db_session, hostname=hostname, region_id=region.id,
+                                                  roles=roles, connection_type=connection_type,
+                                                  host_or_ip=host_or_ip, username=username,
+                                                  password=password, enable_password=enable_password, port_number=port_number,
+                                                  jump_host_id=jump_host_id, created_by=user, host=host)
 
-        except Exception as e:
-            status_message = e.message
-            db_session.rollback()
+            except Exception as e:
+                status_message = e.message
+                db_session.rollback()
 
-        if status_message is None:
-            row[STATUS] = APIStatus.SUCCESS
-        else:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = status_message
+            if status_message is None:
+                row[STATUS] = APIStatus.SUCCESS
+            else:
+                row[STATUS] = APIStatus.FAILED
+                row[STATUS_MESSAGE] = status_message
 
-        rows.append(row)
+            rows.append(row)
+
+    except Exception as e:
+        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED,
+                                     STATUS_MESSAGE: 'Bad input parameters. ' + e.message}}), 400
 
     return jsonify(**{ENVELOPE: {'host_list': rows}})
 

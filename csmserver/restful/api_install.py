@@ -115,6 +115,9 @@ def api_create_install_request(request):
     # job. The invalid job will have a status message relevant to the error seen.
 
     valid_request = True
+    if type(json_data) is not list:
+        json_data = [json_data]
+
     for r in json_data:
         row = {}
         try:
