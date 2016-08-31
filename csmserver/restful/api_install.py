@@ -188,8 +188,6 @@ def api_create_install_request(request):
     json_data = sorted(rows, cmp=getKey)
     json_data = sorted(json_data, key=itemgetter('utc_scheduled_time', 'hostname'))
 
-    print json_data
-
     # Remove duplicates (defined as having the same hostname and install_action)
     install_requests = []
     entries =[]
@@ -324,6 +322,7 @@ def api_get_install_request(request):
     if id:
         install_jobs = db_session.query(InstallJob).filter(
             (InstallJob.id==id))
+        page = 1
     else:
         hostname = request.args.get('hostname')
         if hostname:
@@ -336,7 +335,10 @@ def api_get_install_request(request):
 
         install_action = request.args.get('install_action')
         if install_action:
-            clauses.append(InstallJob.install_action == install_action)
+            if install_action in ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']:
+                clauses.append(InstallJob.install_action == install_action)
+            else:
+                return jsonify(**{ENVELOPE: 'Invalid install_action: %s.' % install_action}), 400
 
         status = request.args.get('status')
         if status:
@@ -346,8 +348,10 @@ def api_get_install_request(request):
                 clauses.append(InstallJob.status != None)
                 clauses.append(InstallJob.status != 'failed')
                 clauses.append(InstallJob.status != 'completed')
-            else:
+            elif status in ['failed', 'completed']:
                 clauses.append(InstallJob.status == status)
+            else:
+                return jsonify(**{ENVELOPE: 'Invalid status: %s.' % status}), 400
 
 
         scheduled_time = request.args.get('scheduled_time')
@@ -358,7 +362,7 @@ def api_get_install_request(request):
                 return jsonify(**{
                     ENVELOPE: "Invalid utc_offset: Must be in '<+|->dd:dd' format and be between -12:00 and +14:00."})
             try:
-                time = datetime.strptime(scheduled_time, "%m-%d-%Y-%I:%M-%p")
+                time = datetime.strptime(scheduled_time, "%m-%d-%Y %I:%M %p")
                 time_utc = get_utc_time(time, utc_offset)
                 clauses.append(InstallJob.scheduled_time >= time_utc)
             except ValueError:
@@ -448,7 +452,6 @@ def api_delete_install_job(request):
 
         install_jobs = get_install_jobs_by_page(db_session, clauses, 1)
 
-    print install_jobs
     if is_empty(install_jobs):
         return jsonify(**{ENVELOPE: "No install job matches the given criteria."}), 400
 
