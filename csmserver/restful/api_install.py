@@ -122,10 +122,7 @@ def api_create_install_request(request):
         row = {}
         try:
             if 'scheduled_time' not in r.keys():
-                #row[STATUS] = APIStatus.FAILED
-                #row[STATUS_MESSAGE] = 'Missing scheduled_time.'
-                #valid_request = False
-                row['utc_scheduled_time'] = datetime.utcnow() #TODO: convert to UTC time....
+                row['utc_scheduled_time'] = datetime.utcnow()
             elif 'utc_offset' not in r.keys():
                 row[STATUS] = APIStatus.FAILED
                 row[STATUS_MESSAGE] = 'Missing utc_offset.'
@@ -438,7 +435,7 @@ def api_delete_install_job(request):
         status = request.args.get('status')
         if status:
             if status not in ['failed', 'scheduled']:
-                return jsonify(**{ENVELOPE: "Invalid value for status: must be 'failed' or 'scheduled'."})
+                return jsonify(**{ENVELOPE: "Invalid value for status: must be 'failed' or 'scheduled'."}), 400
             else:
                 if status == "scheduled":
                     db_status = None
@@ -492,13 +489,13 @@ def api_get_session_log(id):
     db_session = DBSession
 
     if not id:
-        return jsonify(**{ENVELOPE: "ID must be specified."})
+        return jsonify(**{ENVELOPE: "ID must be specified."}), 400
 
     install_job = db_session.query(InstallJob).filter((InstallJob.id == id)).first()
     if install_job is None:
         install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.id == id)).first()
     if install_job is None:
-        return jsonify(**{ENVELOPE: "Invalid id."})
+        return jsonify(**{ENVELOPE: "Invalid ID."}), 400
 
     if install_job.session_log is not None:
         log_dir = os.path.join(get_log_directory(), install_job.session_log)
