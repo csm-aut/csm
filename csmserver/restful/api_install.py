@@ -448,6 +448,7 @@ def api_delete_install_job(request):
 
         install_jobs = get_install_jobs_by_page(db_session, clauses, 1)
 
+    print install_jobs
     if is_empty(install_jobs):
         return jsonify(**{ENVELOPE: "No install job matches the given criteria."}), 400
 
@@ -514,10 +515,10 @@ def api_get_session_log(id):
 def get_install_jobs_by_page(db_session, clauses, page):
     if not is_empty(clauses):
         return db_session.query(InstallJob).filter(and_(*clauses)).\
-            order_by(InstallJob.id.asc()).slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE)
+            order_by(InstallJob.id.asc()).slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE).all()
     else:
         return db_session.query(InstallJob).order_by(InstallJob.id.asc()) \
-            .slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE)
+            .slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE).all()
 
 
 # returns (int dependency, str msg)
