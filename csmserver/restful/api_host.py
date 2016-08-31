@@ -167,7 +167,7 @@ def api_get_hosts(request):
         if region:
             clauses.append(Host.region_id == region.id)
         else:
-            return jsonify(**{ENVELOPE: 'Unknown region'}), 400
+            return jsonify(**{ENVELOPE: 'Unknown region %s' % region}), 400
 
     family = request.args.get('family')
     if family:

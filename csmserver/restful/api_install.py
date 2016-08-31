@@ -425,7 +425,7 @@ def api_delete_install_job(request):
     id = request.args.get('id')
     if id:
         install_jobs = db_session.query(InstallJob).filter(
-            (InstallJob.id == id))
+            (InstallJob.id == id)).all()
     else:
         hostname = request.args.get('hostname')
         if hostname:
@@ -433,7 +433,7 @@ def api_delete_install_job(request):
             if host:
                 clauses.append(InstallJob.host_id == host.id)
             else:
-                return jsonify(**{ENVELOPE: "Invalid hostname: %s" % hostname}), 400
+                return jsonify(**{ENVELOPE: "Unable to locate host %s" % hostname}), 400
 
         status = request.args.get('status')
         if status:
@@ -447,6 +447,9 @@ def api_delete_install_job(request):
                 clauses.append(InstallJob.status == db_status)
 
         install_jobs = get_install_jobs_by_page(db_session, clauses, 1)
+
+    if is_empty(install_jobs):
+        return jsonify(**{ENVELOPE: "No install job matches the given criteria."}), 400
 
     ids = set()
     for install_job in install_jobs:
