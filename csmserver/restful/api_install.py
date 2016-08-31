@@ -317,7 +317,11 @@ def api_get_install_request(request):
 
     clauses = []
 
-    utc_offset = request.args.get('utc_offset')
+    utc_offset = request.args.get('utc_offset').strip()
+    if '-' not in utc_offset and '+' not in utc_offset:
+        utc_offset = "+" + utc_offset
+    print utc_offset
+
     id = request.args.get('id')
     if id:
         install_jobs = db_session.query(InstallJob).filter(
@@ -365,7 +369,7 @@ def api_get_install_request(request):
                 time = datetime.strptime(scheduled_time, "%m-%d-%Y %I:%M %p")
                 time_utc = get_utc_time(time, utc_offset)
                 clauses.append(InstallJob.scheduled_time >= time_utc)
-            except ValueError:
+            except:
                 return jsonify(**{
                     ENVELOPE: "Invalid scheduled_time: %s must be in 'mm-dd-yyyy hh:mm AM|PM' format." % time})
 
