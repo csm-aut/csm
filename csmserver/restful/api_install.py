@@ -429,8 +429,11 @@ def api_delete_install_job(request):
     else:
         hostname = request.args.get('hostname')
         if hostname:
-            host_id = get_host(db_session, hostname).id
-            clauses.append(InstallJob.host_id == host_id)
+            host = get_host(db_session, hostname)
+            if host:
+                clauses.append(InstallJob.host_id == host.id)
+            else:
+                return jsonify(**{ENVELOPE: "Invalid hostname: %s" % hostname}), 400
 
         status = request.args.get('status')
         if status:
