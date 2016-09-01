@@ -266,7 +266,7 @@ class InstallContext(ConnectionContext):
                 protocol = 'ftp' if server_type == ServerType.FTP_SERVER else 'sftp'
                 url = protocol + "://{}:{}@{}".format(server.username, server.password, server.server_url) 
                 
-                if not is_empty(server.vrf):
+                if server_type == ServerType.FTP_SERVER and not is_empty(server.vrf):
                     url = url + ";{}".format(server.vrf)
 
                 remote_directory = concatenate_dirs(server.server_directory, self.install_job.server_directory)              

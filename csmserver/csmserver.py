@@ -869,14 +869,14 @@ def server_create():
         server = get_server(db_session, form.hostname.data)
         if server is not None:
             return render_template('server/edit.html', form=form, duplicate_error=True) 
-        
         server = Server(
             hostname=form.hostname.data,
             server_type=form.server_type.data,
             server_url=trim_last_slash(form.server_url.data), 
             username=form.username.data,
             password=form.password.data,
-            vrf=form.vrf.data,
+            vrf=form.vrf.data if server.server_type == ServerType.TFTP_SERVER or
+            server.server_type == ServerType.FTP_SERVER else '',
             server_directory=trim_last_slash(form.server_directory.data),
             created_by=current_user.username)
             
@@ -909,7 +909,8 @@ def server_edit(hostname):
         server.hostname = form.hostname.data
         server.server_type = form.server_type.data
         server.server_url = trim_last_slash(form.server_url.data)
-        server.vrf = form.vrf.data
+        server.vrf = form.vrf.data if server.server_type == \
+            ServerType.TFTP_SERVER or server.server_type == ServerType.FTP_SERVER else ''
         server.username = form.username.data
         if len(form.password.data) > 0:
             server.password = form.password.data
