@@ -309,13 +309,9 @@ def api_get_install_request(request):
     """
     rows = []
     db_session = DBSession
-    try:
-        page = int(request.args.get('page')) if request.args.get('page') else 1
-        if page <= 0: page = 1
-    except ValueError:
-        return jsonify(**{ENVELOPE: 'Unknown page number'}), 400
+    install_job_clauses = []
+    install_job_history_clauses = [InstallJobHistory.status == 'completed']
 
-    clauses = []
 
     utc_offset = request.args.get('utc_offset')
     if utc_offset and '-' not in utc_offset and '+' not in utc_offset:
@@ -325,7 +321,8 @@ def api_get_install_request(request):
     if id:
         install_jobs = db_session.query(InstallJob).filter(
             (InstallJob.id==id))
-        page = 1
+        if is_empty(install_jobs):
+            install_history_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id==id)
     else:
         hostname = request.args.get('hostname')
         if hostname:
@@ -334,28 +331,34 @@ def api_get_install_request(request):
                 host_id = host.id
             else:
                 return jsonify(**{ENVELOPE: 'Invalid hostname: %s.' % hostname}), 400
-            clauses.append(InstallJob.host_id == host_id)
+            install_job_clauses.append(InstallJob.host_id == host_id)
+            install_job_history_clauses.append(InstallJobHistory.host_id == host_id)
 
         install_action = request.args.get('install_action')
         if install_action:
             if install_action in ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']:
-                clauses.append(InstallJob.install_action == install_action)
+                install_job_clauses.append(InstallJob.install_action == install_action)
+                install_job_history_clauses.append(InstallJobHistory.install_action == install_action)
             else:
                 return jsonify(**{ENVELOPE: 'Invalid install_action: %s.' % install_action}), 400
 
         status = request.args.get('status')
         if status:
             if status == 'scheduled':
-                clauses.append(InstallJob.status.is_(None))
+                install_job_clauses.append(InstallJob.status.is_(None))
+                install_job_history_clauses.append(False)
             elif status == 'in-progress': # get all the jobs, then code filter for status (Test first)
-                clauses.append(InstallJob.status != None)
-                clauses.append(InstallJob.status != 'failed')
-                clauses.append(InstallJob.status != 'completed')
-            elif status in ['failed', 'completed']:
-                clauses.append(InstallJob.status == status)
+                install_job_clauses.append(InstallJob.status != None)
+                install_job_clauses.append(InstallJob.status != 'failed')
+                install_job_clauses.append(InstallJob.status != 'completed')
+                install_job_history_clauses.append(False)
+            elif status == 'failed':
+                install_job_clauses.append(InstallJob.status == status)
+                install_job_history_clauses.append(False)
+            elif status == 'completed':
+                install_job_clauses.append(InstallJob.status == status)
             else:
                 return jsonify(**{ENVELOPE: 'Invalid status: %s.' % status}), 400
-
 
         scheduled_time = request.args.get('scheduled_time')
         if scheduled_time:
@@ -367,16 +370,21 @@ def api_get_install_request(request):
             try:
                 time = datetime.strptime(scheduled_time, "%m-%d-%Y %I:%M %p")
                 time_utc = get_utc_time(time, utc_offset)
-                clauses.append(InstallJob.scheduled_time >= time_utc)
+                install_job_clauses.append(InstallJob.scheduled_time >= time_utc)
+                install_job_history_clauses.append(InstallJobHistory.scheduled_time >= time_utc)
             except:
                 return jsonify(**{
                     ENVELOPE: "Invalid scheduled_time: %s must be in 'mm-dd-yyyy hh:mm AM|PM' format." % time})
 
-        install_jobs = get_install_jobs_by_page(db_session, clauses, page)
+        install_jobs = get_install_jobs_by_page(db_session, install_job_clauses)
+        install_history_jobs = get_install_history_jobs_by_page(db_session, install_job_history_clauses)
 
-    if is_empty(install_jobs):
-        return jsonify(**{
-            ENVELOPE: "No install jobs fit the given criteria."})
+    if is_empty(install_jobs) and is_empty(install_history_jobs):
+        return jsonify(**{ENVELOPE: "No install jobs fit the given criteria."})
+    if type(install_jobs) is str:
+        return jsonify(**{ENVELOPE: install_jobs}), 400
+    elif type(install_history_jobs) is str:
+        return jsonify(**{ENVELOPE: install_history_jobs}), 400
 
     for install_job in install_jobs:
         row = {}
@@ -411,7 +419,6 @@ def api_get_install_request(request):
 
         row['server_directory'] = install_job.server_directory if install_job.server_directory else ""
         row['packages'] = install_job.packages if install_job.packages else ""
-        row['pending_downloads'] = install_job.pending_downloads if install_job.pending_downloads else ""
         row['status'] = install_job.status if install_job.status else "scheduled"
         row['trace'] = install_job.trace if install_job.trace else ""
         row['created_by'] = install_job.created_by if install_job.created_by else ""
@@ -425,9 +432,43 @@ def api_get_install_request(request):
 
         rows.append(row)
 
-    total_pages = get_total_pages(db_session, InstallJob, clauses)
+    for install_history_job in install_history_jobs:
+        row = {}
+        row['id'] = install_history_job.install_job_id if install_history_job.install_job_id else ""
+        row['install_action'] = install_history_job.install_action if install_history_job.install_action else ""
+        row['dependency'] = install_history_job.dependency if install_history_job.dependency else ""
 
-    return jsonify(**{ENVELOPE: {'install_job_list': rows}, 'current_page': page, 'total_pages': total_pages})
+        if utc_offset and verify_utc_offset(utc_offset):
+            if install_history_job.scheduled_time:
+                row['scheduled_time'] = get_local_time(install_history_job.scheduled_time, utc_offset).strftime(
+                    "%m-%d-%Y %I:%M %p")
+            else:
+                row['scheduled_time'] = ""
+            if install_history_job.start_time:
+                row['start_time'] = get_local_time(install_history_job.start_time, utc_offset).strftime(
+                    "%m-%d-%Y %I:%M %p")
+            else:
+                row['start_time'] = ""
+            if install_history_job.status_time:
+                row['status_time'] = get_local_time(install_history_job.status_time, utc_offset).strftime(
+                    "%m-%d-%Y %I:%M %p")
+            else:
+                row['status_time'] = ""
+
+        else:
+            row['scheduled_time'] = install_history_job.scheduled_time if install_history_job.scheduled_time else ""
+            row['start_time'] = install_history_job.start_time if install_history_job.start_time else ""
+            row['status_time'] = install_history_job.status_time if install_history_job.status_time else ""
+
+        row['packages'] = install_history_job.packages if install_history_job.packages else ""
+        row['status'] = install_history_job.status if install_history_job.status else "scheduled"
+        row['trace'] = install_history_job.trace if install_history_job.trace else ""
+        row['created_by'] = install_history_job.created_by if install_history_job.created_by else ""
+        row['hostname'] = get_host_by_id(db_session, install_history_job.host_id).hostname if install_history_job.host_id else ""
+
+        rows.append(row)
+
+    return jsonify(**{ENVELOPE: {'install_job_list': rows}})
 
 
 def api_delete_install_job(request):
@@ -459,10 +500,12 @@ def api_delete_install_job(request):
                     db_status = status
                 clauses.append(InstallJob.status == db_status)
 
-        install_jobs = get_install_jobs_by_page(db_session, clauses, 1)
+        install_jobs = get_install_jobs_by_page(db_session, clauses)
 
     if is_empty(install_jobs):
         return jsonify(**{ENVELOPE: "No install job matches the given criteria."}), 400
+    if type(install_jobs) is str:
+        return jsonify(**{ENVELOPE: install_jobs}), 400
 
     ids = set()
     for install_job in install_jobs:
@@ -512,7 +555,7 @@ def api_get_session_log(id):
 
     install_job = db_session.query(InstallJob).filter((InstallJob.id == id)).first()
     if install_job is None:
-        install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.id == id)).first()
+        install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.install_job_id == id)).first()
     if install_job is None:
         return jsonify(**{ENVELOPE: "Invalid ID."}), 400
 
@@ -524,13 +567,31 @@ def api_get_session_log(id):
         return jsonify(**{ENVELOPE: "No log files."})
 
 
-def get_install_jobs_by_page(db_session, clauses, page):
+def get_install_jobs_by_page(db_session, clauses):
     if not is_empty(clauses):
-        return db_session.query(InstallJob).filter(and_(*clauses)).\
-            order_by(InstallJob.id.asc()).slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE).all()
+        if db_session.query(InstallJob.id).filter(and_(*clauses)).count() > 5000:
+            return "Too many results; please refine your request."
+        else:
+            return db_session.query(InstallJob).filter(and_(*clauses)).\
+                order_by(InstallJob.id.asc()).all()
     else:
-        return db_session.query(InstallJob).order_by(InstallJob.id.asc()) \
-            .slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE).all()
+        if db_session.query(InstallJob.id).count() > 5000:
+            return "Too many results; please refine your request."
+        else:
+            return db_session.query(InstallJob).order_by(InstallJob.id.asc()).all()
+
+def get_install_history_jobs_by_page(db_session, clauses):
+        if not is_empty(clauses):
+            if db_session.query(InstallJobHistory.id).filter(and_(*clauses)).count() > 5000:
+                return "Too many results; please refine your request."
+            else:
+                return db_session.query(InstallJobHistory).filter(and_(*clauses)). \
+                    order_by(InstallJobHistory.id.asc()).all()
+        else:
+            if db_session.query(InstallJobHistory.id).filter(InstallJobHistory.status =='completed').count() > 5000:
+                return "Too many results; please refine your request."
+            else:
+                return db_session.query(InstallJobHistory).order_by(InstallJobHistory.install_job_id.asc()).all()
 
 
 # returns (int dependency, str msg)
@@ -549,7 +610,7 @@ def get_dependency(db_session, install_request, host_id):
                     if install_job.host_id != host_id:
                         return 0, 'Prerequisite job hostname does not match %s.' % install_request['hostname']
                     elif install_job.scheduled_time > install_request['utc_scheduled_time']:
-                        return 0, 'Prerequisite job scheduled time is later than %s.' % install_request['scheduled_time']
+                        return 0, 'Prerequisite job scheduled time is later than %s.' % install_request['utc_scheduled_time']
                     else:
                         return int(dependency), APIStatus.SUCCESS
                 else:
