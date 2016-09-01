@@ -48,6 +48,7 @@
         function toggle_server(server_type) {
             $('#authentiation-panel').hide();
             $('#directory-panel').show();
+            $('#vrf-panel').show();
             $('#verify-reachability').show();
 
             if (server_type == "TFTP") {
@@ -61,6 +62,10 @@
                 $('#label_server_url').text('Device Path (disk0:, harddisk:)');
                 $('#verify-reachability').hide();
                 $('#directory-panel').hide();
+            }
+
+            if (server_type == "LOCAL" || server_type == "SFTP") {
+                $('#vrf-panel').hide();
             }
         }
 
@@ -169,7 +174,10 @@
                 placeholder="Unique Name on CSM Server") }}
             {{ edit_field(form.server_type, field_width="col-sm-2", class="form-control") }}
             {{ edit_field(form.server_url, maxlength=100, class="form-control") }}
-            {{ edit_field(form.vrf, maxlength=100, class="form-control") }}
+
+            <div id="vrf-panel">
+                {{ edit_field(form.vrf, maxlength=100, class="form-control", placeholder="Optional") }}
+            </div>
 
             <div id="directory-panel">
                 {% set extra_field ='<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue"
