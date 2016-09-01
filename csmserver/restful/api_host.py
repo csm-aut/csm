@@ -243,4 +243,4 @@ def api_delete_host(hostname):
 
 def get_hosts_by_page(db_session, clauses, page):
     return db_session.query(Host).filter(and_(*clauses)).\
-        order_by(Host.hostname.asc()).slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE)
+        order_by(Host.hostname.asc()).slice((page - 1) * RECORDS_PER_PAGE, page * RECORDS_PER_PAGE).all()

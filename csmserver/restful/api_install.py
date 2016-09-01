@@ -317,10 +317,9 @@ def api_get_install_request(request):
 
     clauses = []
 
-    utc_offset = request.args.get('utc_offset').strip()
-    if '-' not in utc_offset and '+' not in utc_offset:
-        utc_offset = "+" + utc_offset
-    print utc_offset
+    utc_offset = request.args.get('utc_offset')
+    if utc_offset and '-' not in utc_offset and '+' not in utc_offset:
+        utc_offset = "+" + utc_offset.strip()
 
     id = request.args.get('id')
     if id:
@@ -381,42 +380,48 @@ def api_get_install_request(request):
 
     for install_job in install_jobs:
         row = {}
-        row['id'] = install_job.id
-        row['install_action'] = install_job.install_action
-        row['dependency'] = install_job.dependency
+        row['id'] = install_job.id if install_job.id else ""
+        row['install_action'] = install_job.install_action if install_job.install_action else ""
+        row['dependency'] = install_job.dependency if install_job.dependency else ""
 
         if install_job.server_id:
             server = get_server_by_id(db_session, install_job.server_id)
             row['server_repository'] = server.hostname
         else:
-            row['server_repository'] = None
+            row['server_repository'] = ""
 
         if utc_offset and verify_utc_offset(utc_offset):
             if install_job.scheduled_time:
                 row['scheduled_time'] = get_local_time(install_job.scheduled_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
+            else:
+                row['scheduled_time'] = ""
             if install_job.start_time:
                 row['start_time'] = get_local_time(install_job.start_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
+            else:
+                row['start_time'] = ""
             if install_job.status_time:
                 row['status_time'] = get_local_time(install_job.status_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
+            else:
+                row['status_time'] = ""
 
         else:
-            row['scheduled_time'] = install_job.scheduled_time
-            row['start_time'] = install_job.start_time
-            row['status_time'] = install_job.status_time
+            row['scheduled_time'] = install_job.scheduled_time if install_job.scheduled_time else ""
+            row['start_time'] = install_job.start_time if install_job.start_time else ""
+            row['status_time'] = install_job.status_time if install_job.status_time else ""
 
-        row['server_directory'] = install_job.server_directory
-        row['packages'] = install_job.packages
-        row['pending_downloads'] = install_job.pending_downloads
-        row['status'] = install_job.status
-        row['trace'] = install_job.trace
-        row['created_by'] = install_job.created_by
+        row['server_directory'] = install_job.server_directory if install_job.server_directory else ""
+        row['packages'] = install_job.packages if install_job.packages else ""
+        row['pending_downloads'] = install_job.pending_downloads if install_job.pending_downloads else ""
+        row['status'] = install_job.status if install_job.status else "scheduled"
+        row['trace'] = install_job.trace if install_job.trace else ""
+        row['created_by'] = install_job.created_by if install_job.created_by else ""
         row['hostname'] = get_host_by_id(db_session, install_job.host_id).hostname
 
         if not is_empty(install_job.custom_command_profile_id) and int(install_job.custom_command_profile_id) > 0:
             row['custom_command_profile'] = get_command_profile_by_id(db_session,
                                                                   install_job.custom_command_profile_id).profile_name
         else:
-            row['custom_command_profile'] = 'None'
+            row['custom_command_profile'] = ""
 
         rows.append(row)
 
