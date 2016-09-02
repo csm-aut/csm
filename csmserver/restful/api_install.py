@@ -125,7 +125,7 @@ def api_create_install_request(request):
                 row['utc_scheduled_time'] = datetime.utcnow()
             elif 'utc_offset' not in r.keys():
                 row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Missing utc_offset.'
+                row[STATUS_MESSAGE] = 'Missing utc_offset. If scheduled_time is submitted, utc_offset is also required.'
                 valid_request = False
             elif not verify_utc_offset(r['utc_offset']):
                 row[STATUS] = APIStatus.FAILED
@@ -381,7 +381,7 @@ def api_get_install_request(request):
         install_history_jobs = get_install_history_jobs_by_page(db_session, install_job_history_clauses)
 
     if is_empty(install_jobs) and is_empty(install_history_jobs):
-        return jsonify(**{ENVELOPE: "No install jobs fit the given criteria."})
+        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: "No install job fits the given criteria"}}), 400
 
     # If the get_..._by_page methods return an error string (more than 5000 results for one or both)
     if type(install_jobs) is str:
@@ -515,7 +515,7 @@ def api_delete_install_job(request):
         install_jobs = get_install_jobs_by_page(db_session, clauses)
 
     if is_empty(install_jobs):
-        return jsonify(**{ENVELOPE: "No install job matches the given criteria."}), 400
+        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: "No install job fits the given criteria"}}), 400
     if type(install_jobs) is str:
         return jsonify(**{ENVELOPE: install_jobs}), 400
 
@@ -668,6 +668,10 @@ def validate_install_request(db_session, install_request):
     if 'command_profile' in install_request.keys():
         if not get_command_profile(db_session, install_request['command_profile']):
             return False, "Invalid value for command_profile; profile must exist."
+
+    if 'software_packages' in requirements[install_request['install_action']] and \
+        is_empty(install_request['software_packages']):
+        return False, "software_packages cannot be empty"
 
     return True, "valid"
 
