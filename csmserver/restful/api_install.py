@@ -321,7 +321,6 @@ def api_get_install_request(request):
     if id:
         install_jobs = db_session.query(InstallJob).filter((InstallJob.id==id)).all()
         if not install_jobs:
-            print "yay"
             install_history_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id==id).all()
         else:
             install_history_jobs = []
@@ -383,7 +382,7 @@ def api_get_install_request(request):
 
     if is_empty(install_jobs) and is_empty(install_history_jobs):
         return jsonify(**{ENVELOPE: "No install jobs fit the given criteria."})
-    
+
     # If the get_..._by_page methods return an error string (more than 5000 results for one or both)
     if type(install_jobs) is str:
         return jsonify(**{ENVELOPE: install_jobs}), 400
@@ -423,7 +422,16 @@ def api_get_install_request(request):
 
         row['server_directory'] = install_job.server_directory if install_job.server_directory else ""
         row['packages'] = install_job.packages if install_job.packages else ""
-        row['status'] = install_job.status if install_job.status else "scheduled"
+
+        #row['status'] = install_job.status if install_job.status else "scheduled"
+        if install_job.status:
+            if install_job.status not in ['failed', 'completed']:
+                row['status'] = "in-progress - %s" % install_job.status
+            else:
+                row['status'] = install_job.status
+        else:
+            row['status'] = "scheduled"
+
         row['trace'] = install_job.trace if install_job.trace else ""
         row['created_by'] = install_job.created_by if install_job.created_by else ""
         row['hostname'] = get_host_by_id(db_session, install_job.host_id).hostname
