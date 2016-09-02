@@ -394,15 +394,28 @@ $(function() {
         $('#server-repository-panel').html(html_code);
     }
 
-    // Use delegate pattern for event
-    $('#server-repository-panel').on('click', '#server-edit', function(e) {
-
+    function get_server_id_server_directory(region_id) {
         var server_id = get_server_cookie(region_id);
         var server_directory = get_server_directory_cookie(region_id);
 
-        if (server_id && server_id != -1) {
-            $('#server_modal_dialog_server').val(server_id);
-            server_software_retrieve_file_list(server_id, $('#dialog_server_directory'), server_directory);
+        if ($('#hidden_server').val() != -1) {
+          server_id = $('#hidden_server').val();
+          if ($('#hidden_server_directory').val().length > 0) {
+            server_directory = $('#hidden_server_directory').val()
+            }
+        }
+
+      return [server_id, server_directory]
+    }
+
+    // Use delegate pattern for event
+    $('#server-repository-panel').on('click', '#server-edit', function(e) {
+
+        var server_values = get_server_id_server_directory(region_id);
+
+        if (server_values[0] && server_values[1] != -1) {
+            $('#server_modal_dialog_server').val(server_values[0]);
+            server_software_retrieve_file_list(server_values[0], $('#dialog_server_directory'), server_values[1]);
         }
 
         $('#select-server-dialog').modal({
@@ -435,12 +448,13 @@ $(function() {
     });
 
     //----------------------------------------------------------------------------------------//
- 
+
     function on_display_server_software_dialog(region_id, hostname_list) {
-        var server_id = get_server_cookie(region_id);
-        var server_directory = get_server_directory_cookie(region_id);
+
+        var server_values = get_server_id_server_directory(region_id);
+
         var target_release = get_target_release_cookie(region_id);
-        display_server_software_dialog(hostname_list, server_id, server_directory, target_release);
+        display_server_software_dialog(hostname_list, server_values[0], server_values[1], target_release);
     }
 
     $('#on-server-software-dialog-submit').click(function(e) {
@@ -500,14 +514,14 @@ $(function() {
     //----------------------------------------------------------------------------------------//
 
     function on_display_cisco_software_dialog(region_id, hostname_list) {
-        var server_id = get_server_cookie(region_id);
-        var server_directory = get_server_directory_cookie(region_id)
+
+        var server_values = get_server_id_server_directory(region_id);
 
         if (host_software_platform != null && host_software_version != null) {
             init_cisco_software_dialog(host_software_platform, host_software_version);
         }
 
-        display_cisco_software_dialog(hostname_list, server_id, server_directory)
+        display_cisco_software_dialog(hostname_list, server_values[0], server_values[1])
 
     }
 
