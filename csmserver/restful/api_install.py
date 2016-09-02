@@ -319,10 +319,12 @@ def api_get_install_request(request):
 
     id = request.args.get('id')
     if id:
-        install_jobs = db_session.query(InstallJob).filter(
-            (InstallJob.id==id))
-        if is_empty(install_jobs):
-            install_history_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id==id)
+        install_jobs = db_session.query(InstallJob).filter((InstallJob.id==id)).all()
+        if not install_jobs:
+            print "yay"
+            install_history_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id==id).all()
+        else:
+            install_history_jobs = []
     else:
         hostname = request.args.get('hostname')
         if hostname:
@@ -381,6 +383,8 @@ def api_get_install_request(request):
 
     if is_empty(install_jobs) and is_empty(install_history_jobs):
         return jsonify(**{ENVELOPE: "No install jobs fit the given criteria."})
+    
+    # If the get_..._by_page methods return an error string (more than 5000 results for one or both)
     if type(install_jobs) is str:
         return jsonify(**{ENVELOPE: install_jobs}), 400
     elif type(install_history_jobs) is str:
