@@ -50,5 +50,5 @@ def check_parameters(args, allowed_list):
     return True, ''
 
 
-def bad_request_response(message):
-    return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: message}}), 400
+def failed_response(message, return_code=400):
+    return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: message}}), return_code
