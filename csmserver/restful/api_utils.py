@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from sqlalchemy import and_
+from flask import jsonify
 import math
 
 RECORDS_PER_PAGE = 1000
@@ -38,3 +39,12 @@ class APIStatus:
 def get_total_pages(db_session, table, clauses):
     total_records = db_session.query(table).filter(and_(*clauses)).count()
     return int(math.ceil(float(total_records) / RECORDS_PER_PAGE))
+
+
+def check_parameters(args, allowed_list):
+    invalid_params = [arg for arg in args if arg not in allowed_list]
+
+    if invalid_params:
+        return False, jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED,
+                                            STATUS_MESSAGE: 'Unrecognized parameter(s): {}'.format(','.join(invalid_params))}})
+    return True, ''

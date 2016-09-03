@@ -50,6 +50,7 @@ from api_utils import ENVELOPE
 from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
 from api_utils import APIStatus
+from api_utils import check_parameters
 
 
 def api_create_hosts(request):
@@ -151,6 +152,10 @@ def api_get_hosts(request):
     http://localhost:5000/api/v1/hosts?region=SJ Labs&page=2
     http://localhost:5000/api/v1/hosts?region=SJ%20Labs&family=ASR9K
     """
+    result, message = check_parameters(request.args.keys(), ['region', 'family', 'page'])
+    if not result:
+        return message, 400
+
     rows = []
     db_session = DBSession
     try:
