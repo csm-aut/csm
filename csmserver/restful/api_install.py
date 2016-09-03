@@ -31,6 +31,7 @@ from api_utils import STATUS_MESSAGE
 from api_utils import APIStatus
 from api_utils import RECORDS_PER_PAGE
 from api_utils import get_total_pages
+from api_utils import check_parameters
 
 from utils import is_empty
 
@@ -307,6 +308,12 @@ def api_get_install_request(request):
     http://localhost:5000/api/v1/install?hostname=r1&install_action=Add
     http://localhost:5000/api/v1/install?hostname=R1&status="failed"
     """
+
+    result, message = check_parameters(request.args.keys(), ['id', 'hostname', 'install_action', 'status', \
+                                                             'scheduled_time', 'utc_offset'])
+    if not result:
+        return message, 400
+
     rows = []
     db_session = DBSession
     install_job_clauses = []
