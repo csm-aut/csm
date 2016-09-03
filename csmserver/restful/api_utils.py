@@ -48,3 +48,7 @@ def check_parameters(args, allowed_list):
         return False, jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED,
                                             STATUS_MESSAGE: 'Unrecognized parameter(s): {}'.format(','.join(invalid_params))}})
     return True, ''
+
+
+def bad_request_response(message):
+    return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: message}}), 400
