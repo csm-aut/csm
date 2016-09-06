@@ -868,15 +868,16 @@ def server_create():
         db_session = DBSession()        
         server = get_server(db_session, form.hostname.data)
         if server is not None:
-            return render_template('server/edit.html', form=form, duplicate_error=True) 
+            return render_template('server/edit.html', form=form, duplicate_error=True)
+
         server = Server(
             hostname=form.hostname.data,
             server_type=form.server_type.data,
             server_url=trim_last_slash(form.server_url.data), 
             username=form.username.data,
             password=form.password.data,
-            vrf=form.vrf.data if server.server_type == ServerType.TFTP_SERVER or
-            server.server_type == ServerType.FTP_SERVER else '',
+            vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
+            form.server_type.data == ServerType.FTP_SERVER else '',
             server_directory=trim_last_slash(form.server_directory.data),
             created_by=current_user.username)
             
@@ -3368,7 +3369,6 @@ def api_get_ddts_details(ddts_id):
 def api_get_smu_details(smu_id):
     rows = []
     db_session = DBSession()
-    
     smu_info = db_session.query(SMUInfo).filter(SMUInfo.id == smu_id).first()
     if smu_info is not None:
         row = {}
