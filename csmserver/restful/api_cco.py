@@ -26,9 +26,8 @@ from smu_info_loader import SMUInfoLoader
 from flask import jsonify
 
 from api_utils import ENVELOPE
-from api_utils import STATUS
-from api_utils import STATUS_MESSAGE
-from api_utils import APIStatus
+from api_utils import check_parameters
+from api_utils import failed_response
 
 import datetime
 
@@ -44,6 +43,10 @@ def api_get_cco_software(request):
     """
     http://localhost:5000/api/v1/cco/software?platform=asr9k_px&release=5.3.3
     """
+    ok, response = check_parameters(request.args.keys(), ['platform', 'release', 'date'])
+    if not ok:
+        return response, 400
+
     platform = request.args.get('platform')
     release = request.args.get('release')
     date = request.args.get('date')
@@ -76,12 +79,10 @@ def api_get_cco_software(request):
         if rows:
             return jsonify(**{ENVELOPE: {'software_list': rows}})
 
-        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED,
-                                     STATUS_MESSAGE: ('Unable to get software information for platform {} ' +
-                                                      'and release {}').format(platform, release)}}), 400
+        return failed_response(('Unable to get software information for platform {} ' +
+                                'and release {}').format(platform, release))
     except Exception as e:
-        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED,
-                                     STATUS_MESSAGE: e.message}}), 400
+        return failed_response(e.message)
 
 
 def api_get_cco_software_entry(request, name_or_id):
@@ -89,6 +90,10 @@ def api_get_cco_software_entry(request, name_or_id):
     http://localhost:5000/api/v1/cco/software/AA09694?platform=asr9k_px&release=5.3.3
     name_or_id can be the PIMS ID (e.g., AA09694) or the software name (asr9k-p-4.2.3.CSCut30136)
     """
+    ok, response = check_parameters(request.args.keys(), ['platform', 'release'])
+    if not ok:
+        return response, 400
+
     platform = request.args.get('platform')
     release = request.args.get('release')
 
@@ -103,7 +108,7 @@ def api_get_cco_software_entry(request, name_or_id):
             if smu_info:
                 return jsonify(**{ENVELOPE: get_smu_info(smu_info)})
 
-    return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: 'Unable to locate %s' % name_or_id}}), 404
+    return failed_response('Unable to locate %s' % name_or_id, return_code=404)
 
 
 def get_smu_info(smu_info):

@@ -51,7 +51,7 @@ from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
 from api_utils import APIStatus
 from api_utils import check_parameters
-
+from api_utils import failed_response
 
 def api_create_hosts(request):
     """
@@ -126,6 +126,8 @@ def api_create_hosts(request):
                                                   jump_host_id=jump_host_id, created_by=user, host=host)
 
             except Exception as e:
+                import traceback
+                print(traceback.format_exc())
                 status_message = e.message
                 db_session.rollback()
 
@@ -138,8 +140,7 @@ def api_create_hosts(request):
             rows.append(row)
 
     except Exception as e:
-        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED,
-                                     STATUS_MESSAGE: 'Bad input parameters. ' + e.message}}), 400
+        return failed_response('Bad input parameters. ' + e.message)
 
     return jsonify(**{ENVELOPE: {'host_list': rows}})
 
@@ -152,27 +153,27 @@ def api_get_hosts(request):
     http://localhost:5000/api/v1/hosts?region=SJ Labs&page=2
     http://localhost:5000/api/v1/hosts?region=SJ%20Labs&family=ASR9K
     """
-    result, message = check_parameters(request.args.keys(), ['region', 'family', 'page'])
-    if not result:
-        return message, 400
+    ok, response = check_parameters(request.args.keys(), ['region', 'family', 'page'])
+    if not ok:
+        return response, 400
 
     rows = []
     db_session = DBSession
     try:
         page = int(request.args.get('page')) if request.args.get('page') else 1
         if page <= 0: page = 1
-    except ValueError:
-        return jsonify(**{ENVELOPE: 'Unknown page number'}), 400
+    except Exception:
+        return failed_response('page must be an numeric value')
 
     clauses = []
 
-    region = request.args.get('region')
-    if region:
-        region = get_region(db_session, region)
+    region_name = request.args.get('region')
+    if region_name:
+        region = get_region(db_session, region_name)
         if region:
             clauses.append(Host.region_id == region.id)
         else:
-            return jsonify(**{ENVELOPE: 'Unknown region %s' % region}), 400
+            return failed_response('Unknown region %s' % region_name)
 
     family = request.args.get('family')
     if family:
@@ -239,9 +240,7 @@ def api_delete_host(hostname):
         delete_host(db_session, hostname)
         row[STATUS] = APIStatus.SUCCESS
     except Exception as e:
-        row[STATUS] = APIStatus.FAILED
-        row[STATUS_MESSAGE] = e.message
-        return jsonify(**{ENVELOPE: row}), 400
+        return failed_response(e.message)
 
     return jsonify(**{ENVELOPE: row})
 
