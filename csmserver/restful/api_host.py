@@ -86,6 +86,8 @@ def api_create_hosts(request):
     if type(json_data) is not list:
         json_data = [json_data]
 
+    return_code = 200
+    error_found = False
     try:
         for data in json_data:
             row = {}
@@ -126,14 +128,13 @@ def api_create_hosts(request):
                                                   jump_host_id=jump_host_id, created_by=user, host=host)
 
             except Exception as e:
-                import traceback
-                print(traceback.format_exc())
                 status_message = e.message
                 db_session.rollback()
 
             if status_message is None:
                 row[STATUS] = APIStatus.SUCCESS
             else:
+                error_found = True
                 row[STATUS] = APIStatus.FAILED
                 row[STATUS_MESSAGE] = status_message
 
@@ -142,7 +143,10 @@ def api_create_hosts(request):
     except Exception as e:
         return failed_response('Bad input parameters. ' + e.message)
 
-    return jsonify(**{ENVELOPE: {'host_list': rows}})
+    if error_found:
+        return_code = 207
+
+    return jsonify(**{ENVELOPE: {'host_list': rows}}), return_code
 
 
 def api_get_hosts(request):
