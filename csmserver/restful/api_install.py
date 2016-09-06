@@ -309,10 +309,10 @@ def api_get_install_request(request):
     http://localhost:5000/api/v1/install?hostname=R1&status="failed"
     """
 
-    result, message = check_parameters(request.args.keys(), ['id', 'hostname', 'install_action', 'status', \
+    ok, response = check_parameters(request.args.keys(), ['id', 'hostname', 'install_action', 'status', \
                                                              'scheduled_time', 'utc_offset'])
-    if not result:
-        return message, 400
+    if not ok:
+        return response, 400
 
     rows = []
     db_session = DBSession
