@@ -157,7 +157,7 @@ def api_create_install_request(request):
                 valid_request = False
             elif not get_host(db_session, r['hostname']):
                 row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Invalid hostname.'
+                row[STATUS_MESSAGE] = 'Invalid hostname: %s.' % r['hostname']
                 valid_request = False
             elif 'install_action' not in r.keys() or \
                             r['install_action'] not in install_actions:
@@ -529,7 +529,7 @@ def api_delete_install_job(request):
         status = request.args.get('status')
         if status:
             if status not in ['failed', 'scheduled']:
-                return jsonify(**{ENVELOPE: "Invalid value for status: must be 'failed' or 'scheduled'."}), 400
+                #return jsonify(**{ENVELOPE: "Invalid value for status: must be 'failed' or 'scheduled'."}), 400
                 return failed_response("Invalid value for status: must be 'failed' or 'scheduled'.")
             else:
                 if status == "scheduled":
@@ -599,7 +599,7 @@ def api_get_session_log(id):
         install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.install_job_id == id)).first()
     if install_job is None:
         #return jsonify(**{ENVELOPE: "Invalid ID."}), 400
-        return failed_response("Invalid ID.")
+        return failed_response("Invalid ID: %d." % id)
 
     if install_job.session_log is not None:
         log_dir = os.path.join(get_log_directory(), install_job.session_log)
