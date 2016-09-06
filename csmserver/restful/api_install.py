@@ -32,6 +32,7 @@ from api_utils import APIStatus
 from api_utils import RECORDS_PER_PAGE
 from api_utils import get_total_pages
 from api_utils import check_parameters
+from api_utils import failed_response
 
 from utils import is_empty
 
@@ -173,6 +174,7 @@ def api_create_install_request(request):
         for key in r.keys():
             row[key] = r[key]
 
+
         rows.append(row)
 
     if not valid_request:
@@ -213,7 +215,7 @@ def api_create_install_request(request):
             for key in r.keys():
                 row[key] = r[key]
             rows.append(row)
-        return jsonify(**{ENVELOPE: {'install_request_list': rows}})
+        return jsonify(**{ENVELOPE: {'install_request_list': rows}}), 400
 
 
     # For implicit dependencies
@@ -221,6 +223,8 @@ def api_create_install_request(request):
     order = ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']
 
     rows = []
+    error_found = False
+    return_code = 200
     for install_request in install_requests:
         row = {}
         msg = ''
@@ -294,9 +298,15 @@ def api_create_install_request(request):
                 row[STATUS_MESSAGE] = e.message
                 row['install_action'] = install_request['install_action']
                 row['hostname'] = install_request['hostname']
+                db_session.rollback()
+                error_found = True
 
         rows.append(row)
-    return jsonify(**{ENVELOPE: {'install_request_list': rows}})
+
+    if error_found:
+        return_code = 207
+
+    return jsonify(**{ENVELOPE: {'install_request_list': rows}}), return_code
 
 
 def api_get_install_request(request):
@@ -338,7 +348,9 @@ def api_get_install_request(request):
             if host:
                 host_id = host.id
             else:
-                return jsonify(**{ENVELOPE: 'Invalid hostname: %s.' % hostname}), 400
+                #return jsonify(**{ENVELOPE: 'Invalid hostname: %s.' % hostname}), 400
+                return failed_response('Invalid hostname: %s.' % hostname)
+
             install_job_clauses.append(InstallJob.host_id == host_id)
             install_job_history_clauses.append(InstallJobHistory.host_id == host_id)
 
@@ -348,7 +360,8 @@ def api_get_install_request(request):
                 install_job_clauses.append(InstallJob.install_action == install_action)
                 install_job_history_clauses.append(InstallJobHistory.install_action == install_action)
             else:
-                return jsonify(**{ENVELOPE: 'Invalid install_action: %s.' % install_action}), 400
+                #return jsonify(**{ENVELOPE: 'Invalid install_action: %s.' % install_action}), 400
+                return failed_response('Invalid install_action: %s.' % install_action)
 
         status = request.args.get('status')
         if status:
@@ -366,7 +379,8 @@ def api_get_install_request(request):
             elif status == 'completed':
                 install_job_clauses.append(InstallJob.status == status)
             else:
-                return jsonify(**{ENVELOPE: 'Invalid status: %s.' % status}), 400
+                #return jsonify(**{ENVELOPE: 'Invalid status: %s.' % status}), 400
+                return failed_response('Invalid status: %s.' % status)
 
         scheduled_time = request.args.get('scheduled_time')
         if scheduled_time:
@@ -388,13 +402,16 @@ def api_get_install_request(request):
         install_history_jobs = get_install_history_jobs_by_page(db_session, install_job_history_clauses)
 
     if is_empty(install_jobs) and is_empty(install_history_jobs):
-        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: "No install job fits the given criteria"}}), 400
+        #return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: "No install job fits the given criteria"}}), 400
+        return failed_response("No install job fits the given criteria")
 
     # If the get_..._by_page methods return an error string (more than 5000 results for one or both)
     if type(install_jobs) is str:
-        return jsonify(**{ENVELOPE: install_jobs}), 400
+        #return jsonify(**{ENVELOPE: install_jobs}), 400
+        return failed_response(install_jobs)
     elif type(install_history_jobs) is str:
-        return jsonify(**{ENVELOPE: install_history_jobs}), 400
+        #return jsonify(**{ENVELOPE: install_history_jobs}), 400
+        return failed_response(install_history_jobs)
 
     for install_job in install_jobs:
         row = {}
@@ -506,12 +523,14 @@ def api_delete_install_job(request):
             if host:
                 clauses.append(InstallJob.host_id == host.id)
             else:
-                return jsonify(**{ENVELOPE: "Unable to locate host %s" % hostname}), 400
+                #return jsonify(**{ENVELOPE: "Unable to locate host %s" % hostname}), 400
+                return failed_response('Unable to locate host %s' % hostname)
 
         status = request.args.get('status')
         if status:
             if status not in ['failed', 'scheduled']:
                 return jsonify(**{ENVELOPE: "Invalid value for status: must be 'failed' or 'scheduled'."}), 400
+                return failed_response("Invalid value for status: must be 'failed' or 'scheduled'.")
             else:
                 if status == "scheduled":
                     db_status = None
@@ -522,9 +541,11 @@ def api_delete_install_job(request):
         install_jobs = get_install_jobs_by_page(db_session, clauses)
 
     if is_empty(install_jobs):
-        return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: "No install job fits the given criteria"}}), 400
+        #return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: "No install job fits the given criteria"}}), 400
+        return failed_response("Invalid value for status: must be 'failed' or 'scheduled'.")
     if type(install_jobs) is str:
-        return jsonify(**{ENVELOPE: install_jobs}), 400
+        #return jsonify(**{ENVELOPE: install_jobs}), 400
+        return failed_response(install_jobs)
 
     ids = set()
     for install_job in install_jobs:
@@ -570,13 +591,15 @@ def api_get_session_log(id):
     db_session = DBSession
 
     if not id:
-        return jsonify(**{ENVELOPE: "ID must be specified."}), 400
+        #return jsonify(**{ENVELOPE: "ID must be specified."}), 400
+        return failed_response("ID must be specified.")
 
     install_job = db_session.query(InstallJob).filter((InstallJob.id == id)).first()
     if install_job is None:
         install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.install_job_id == id)).first()
     if install_job is None:
-        return jsonify(**{ENVELOPE: "Invalid ID."}), 400
+        #return jsonify(**{ENVELOPE: "Invalid ID."}), 400
+        return failed_response("Invalid ID.")
 
     if install_job.session_log is not None:
         log_dir = os.path.join(get_log_directory(), install_job.session_log)
