@@ -118,7 +118,8 @@ def api_create_hosts(request):
                             jump_host = get_jump_host(db_session, data.get('jump_host'))
                             if jump_host is None:
                                 status_message = 'Jump Host %s does not exist' % data.get('jump_host')
-                            jump_host_id = jump_host.id
+                            else:
+                                jump_host_id = jump_host.id
 
                         if status_message is None:
                             create_or_update_host(db_session=db_session, hostname=hostname, region_id=region.id,
