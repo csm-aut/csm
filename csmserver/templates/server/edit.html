@@ -118,6 +118,16 @@
         });
 
         $('#form').submit(function() {
+            var server_type = $('#server_type').val();
+            var server_directory = $('#server_directory').val();
+
+            if (server_type == "TFTP" && server_directory.length == 0) {
+                bootbox.alert("File Directory has not been specified.");
+                return false;
+            } else if ((server_type == "FTP" || server_type == "SFTP") && server_directory.length == 0) {
+                bootbox.alert("Home Directory has not been specified.");
+                return false;
+            }
 
             var hostname = $('#hostname').val();
             var acceptable_string = get_acceptable_string(hostname);
