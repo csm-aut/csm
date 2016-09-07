@@ -35,7 +35,7 @@ If you are using a virtual environment, make sure you are inside the virtual env
 The following modules need to be installed for CSM Server built prior to 12/23/2015.
 
 ```shell
-$ sudo pip install condoor
+$ sudo pip install csmpe==0.1.3
 $ sudo pip install xlutils==1.7.1
 ```
 
