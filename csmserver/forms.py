@@ -139,7 +139,7 @@ class ServerForm(Form):
     server_url = StringField('Server URL (for device)', [required()])
     username = StringField('Username')
     password = PasswordField('Password')
-    server_directory = StringField('Home Directory', [required()])
+    server_directory = StringField('Home Directory')
     vrf = StringField('VRF')
 
 
