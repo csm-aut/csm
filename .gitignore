@@ -1,3 +1,8 @@
 *.pyc
+*~
+.*~
 .idea/
-database.ini
+csmserver/database.ini
+csmserver/requirements.txt
+csmserver/env/
+
