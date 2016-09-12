@@ -1867,31 +1867,28 @@ def download_dashboard():
     return render_template('host/download_dashboard.html')
 
 
-@app.route('/api/create_download_jobs')
+@app.route('/api/create_download_jobs', methods=['POST'])
 @login_required
 def api_create_download_jobs():
     try:
-        server_id = request.args.get("server_id")
-        server_directory = request.args.get("server_directory")
-        smu_list = request.args.get("smu_list").split()
-        pending_downloads = request.args.get("pending_downloads").split()
+        server_id = request.form.get("server_id")
+        server_directory = request.form.get("server_directory")
+        smu_list = request.form.get("smu_list").split()
+        pending_downloads = request.form.get("pending_downloads").split()
     
         # Derives the platform and release using the first SMU name.
         if len(smu_list) > 0 and len(pending_downloads) > 0:
             platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
 
             create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
+        return jsonify({'status': 'OK'})
     except:
         try:
             logger.exception('api_create_download_jobs() hit exception')
         except:
             import traceback
             print traceback.format_exc()
-
         return jsonify({'status': 'Failed'})
-    finally:
-        return jsonify({'status': 'OK'})
-
 
 
 def handle_schedule_install_form(request, db_session, hostname, install_job=None):

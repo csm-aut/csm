@@ -408,29 +408,27 @@
                 return;
             }
 
-            $.ajax({
-                url: "/api/create_download_jobs",
-                dataType: 'json',
-                data: {
+            $.post("/api/create_download_jobs",
+                {
                     server_id: validate_object.server_id,
                     server_directory: validate_object.server_directory,
                     smu_list: validate_object.software_packages,
                     pending_downloads: validate_object.pending_downloads
                 },
-                success: function(response) {
-                    if (response.status == 'Failed') {
-                        bootbox.alert("Unable to create download jobs.");
+                function(response, status, xhr) {
+                    if (status == "success") {
+                        if (response.status == 'Failed') {
+                            bootbox.alert("Unable to create download jobs.");
+                        } else {
+                            var download_dashboard_url = "{{ url_for('download_dashboard') }}";
+                            bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
+                        }
+                        validate_object.spinner.hide();
                     } else {
-                        var download_dashboard_url = "{{ url_for('download_dashboard') }}";
-                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
+                        bootbox.alert("on_finish_validate() Error=" + xhr.statusText);
+                        validate_object.spinner.hide();
                     }
-                    validate_object.spinner.hide();
-                },
-                error: function(XMLHttpRequest, textStatus, errorThrown) {
-                    bootbox.alert("on_finish_validate() Error=" + errorThrown);
-                    validate_object.spinner.hide();
-                }
-            });
+                });
         }
 
         // Use delegate pattern for event
