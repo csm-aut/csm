@@ -28,7 +28,7 @@ from constants import PackageState
 from parsers.base import BasePackageParser
 
 import re
-import logging
+# import logging
 
 """
 CLI package parser for IOS-XE.
@@ -47,7 +47,7 @@ class CLIPackageParser(BasePackageParser):
             committed_packages = self.get_committed_packages(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
             if committed_packages:
                 for package in committed_packages.values():
-                    logging.warning('package = %s', package)
+                    # logging.warning('package = %s', package)
                     host_packages.append(package)
 
         if isinstance(cli_show_install_inactive, list):
@@ -151,6 +151,6 @@ class CLIPackageParser(BasePackageParser):
                 pkg.append(trunk)
                 trunks[module] = pkg
 
-                logging.warning('module = %s, pkg = %s', module, pkg)
+                # logging.warning('module = %s, pkg = %s', module, pkg)
 
         return trunks
