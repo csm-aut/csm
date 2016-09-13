@@ -1883,11 +1883,7 @@ def api_create_download_jobs():
             create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
         return jsonify({'status': 'OK'})
     except:
-        try:
-            logger.exception('api_create_download_jobs() hit exception')
-        except:
-            import traceback
-            print traceback.format_exc()
+        logger.exception('api_create_download_jobs() hit exception')
         return jsonify({'status': 'Failed'})
 
 

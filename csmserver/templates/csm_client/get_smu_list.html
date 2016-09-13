@@ -409,26 +409,25 @@
             }
 
             $.post("/api/create_download_jobs",
-                {
-                    server_id: validate_object.server_id,
-                    server_directory: validate_object.server_directory,
-                    smu_list: validate_object.software_packages,
-                    pending_downloads: validate_object.pending_downloads
-                },
-                function(response, status, xhr) {
-                    if (status == "success") {
-                        if (response.status == 'Failed') {
-                            bootbox.alert("Unable to create download jobs.");
-                        } else {
-                            var download_dashboard_url = "{{ url_for('download_dashboard') }}";
-                            bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
-                        }
-                        validate_object.spinner.hide();
+            {
+                server_id: validate_object.server_id,
+                server_directory: validate_object.server_directory,
+                smu_list: validate_object.software_packages,
+                pending_downloads: validate_object.pending_downloads
+            },
+            function(response, status, xhr) {
+                validate_object.spinner.hide();
+                if (status == "success") {
+                    if (response.status == 'Failed') {
+                        bootbox.alert("Unable to create download jobs.");
                     } else {
-                        bootbox.alert("on_finish_validate() Error=" + xhr.statusText);
-                        validate_object.spinner.hide();
+                        var download_dashboard_url = "{{ url_for('download_dashboard') }}";
+                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
                     }
-                });
+                } else {
+                    bootbox.alert("on_finish_validate() Error=" + xhr.statusText);
+                }
+            });
         }
 
         // Use delegate pattern for event
