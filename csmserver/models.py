@@ -259,6 +259,7 @@ class Host(Base):
     software_platform = Column(String(20), default=UNKNOWN)
     software_version = Column(String(20), default=UNKNOWN)
     os_type = Column(String(20), default=UNKNOWN)
+    location = Column(String(100))
     roles = Column(String(100))
     region_id = Column(Integer, ForeignKey('region.id'))
     proxy_agent = Column(String(30), default=ProxyAgent.CSM_SERVER)

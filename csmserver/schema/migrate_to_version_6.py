@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2016, Cisco Systems, Inc
+# Copyright (c) 2015, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,23 +22,24 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import SystemVersion
+from schema.base import BaseMigrate
 from database import DBSession
+from models import InventoryJob
 
 
-class BaseMigrate(object):
+sql_statements = [
+    'alter table host add location VARCHAR(100)'
+    ]
+
+
+class SchemaMigrate(BaseMigrate):
     def __init__(self, version):
-        self.version = version
+        BaseMigrate.__init__(self, version)
 
-    def update_schema_version(self):
+    def start(self):
         db_session = DBSession()
-        system_version = SystemVersion.get(db_session)
-        # system_version.schema_version = self.version
-        db_session.commit()
-
-    def execute(self):
-        self.start()
-        self.update_schema_version()
-
-    def start(self):       
-        raise NotImplementedError("Children must override start")
+        for sql in sql_statements:
+            try:
+                db_session.execute(sql)
+            except Exception as e:
+                pass

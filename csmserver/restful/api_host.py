@@ -106,6 +106,7 @@ def api_create_hosts(request):
                     if connection_type not in [ConnectionType.SSH, ConnectionType.TELNET]:
                         status_message = 'Connection Type must be either telnet or ssh'
                     else:
+                        location = data.get('location')
                         roles = data.get('roles')
                         host_or_ip = data.get('ts_or_ip')
                         username = data.get('username')
@@ -123,7 +124,7 @@ def api_create_hosts(request):
 
                         if status_message is None:
                             create_or_update_host(db_session=db_session, hostname=hostname, region_id=region.id,
-                                                  roles=roles, connection_type=connection_type,
+                                                  location=location, roles=roles, connection_type=connection_type,
                                                   host_or_ip=host_or_ip, username=username,
                                                   password=password, enable_password=enable_password, port_number=port_number,
                                                   jump_host_id=jump_host_id, created_by=user, host=host)

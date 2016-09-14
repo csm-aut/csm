@@ -388,8 +388,8 @@ def get_install_job_dependency_completed(db_session, install_action, host_id):
                                                            InstallJobHistory.status == JobStatus.COMPLETED)).all()
 
 
-def create_or_update_host(db_session, hostname, region_id, roles, connection_type, host_or_ip,
-                username, password, enable_password, port_number, jump_host_id, created_by, host=None):
+def create_or_update_host(db_session, hostname, region_id, location, roles, connection_type, host_or_ip,
+                          username, password, enable_password, port_number, jump_host_id, created_by, host=None):
     """ Create a new host in the Database """
     if host is None:
         host = Host(hostname=hostname, created_by=created_by)
@@ -398,6 +398,7 @@ def create_or_update_host(db_session, hostname, region_id, roles, connection_typ
         db_session.add(host)
 
     host.region_id = region_id if region_id > 0 else None
+    host.location = '' if location is None else remove_extra_spaces(location)
     host.roles = '' if roles is None else remove_extra_spaces(roles)
     host.connection_param = [ConnectionParam(
         # could have multiple IPs, separated by comma

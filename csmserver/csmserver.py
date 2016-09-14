@@ -654,7 +654,8 @@ def host_create():
                 return render_template('host/edit.html', form=form, duplicate_error=True)
 
             host = create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
-                                         roles=form.roles.data, connection_type=form.connection_type.data,
+                                         location=form.location.data, roles=form.roles.data,
+                                         connection_type=form.connection_type.data,
                                          host_or_ip=form.host_or_ip.data, username=form.username.data,
                                          password=form.password.data, enable_password=form.enable_password.data,
                                          port_number=form.port_number.data, jump_host_id=form.jump_host.data,
