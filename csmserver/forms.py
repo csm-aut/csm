@@ -65,6 +65,7 @@ class UserForm(Form):
 class HostForm(Form):
     hostname = StringField('Hostname', [required(), Length(max=30)])
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
+    location = StringField('Location', [Length(max=100)])
     roles = StringField('Roles')
     host_or_ip = StringField('Terminal Server or Mgmt. IP', [required(), Length(max=30)])
     username = StringField('Username')

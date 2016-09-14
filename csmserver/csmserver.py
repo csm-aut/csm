@@ -691,7 +691,8 @@ def host_edit(hostname):
         
         host.hostname = form.hostname.data
         host.region_id = form.region.data if form.region.data > 0 else None
-        host.roles = remove_extra_spaces(form.roles.data) 
+        host.location = remove_extra_spaces(form.location.data)
+        host.roles = remove_extra_spaces(form.roles.data)
         
         connection_param = host.connection_param[0]
         # could have multiple IPs, separated by comma
@@ -718,6 +719,7 @@ def host_edit(hostname):
         # Assign the values to form fields
         form.hostname.data = host.hostname
         form.region.data = host.region_id
+        form.location.data = host.location
         form.roles.data = host.roles
         form.host_or_ip.data = host.connection_param[0].host_or_ip
         form.username.data = host.connection_param[0].username
