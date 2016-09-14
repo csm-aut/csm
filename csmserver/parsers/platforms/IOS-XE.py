@@ -23,10 +23,12 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from models import Package
+from models import ModulePackageState
 from constants import PackageState
 from parsers.base import BasePackageParser
 
 import re
+# import logging
 
 """
 CLI package parser for IOS-XE.
@@ -35,6 +37,7 @@ class CLIPackageParser(BasePackageParser):
         
     def get_packages_from_cli(self, ctx):
         host_packages = []
+        committed_packages = {}
 
         cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
         cli_show_install_committed = ctx.load_data('cli_show_install_committed')
@@ -43,7 +46,8 @@ class CLIPackageParser(BasePackageParser):
             # Should have only one committed package
             committed_packages = self.get_committed_packages(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
             if committed_packages:
-                for package in committed_packages:
+                for package in committed_packages.values():
+                    # logging.warning('package = %s', package)
                     host_packages.append(package)
 
         if isinstance(cli_show_install_inactive, list):
@@ -76,22 +80,77 @@ class CLIPackageParser(BasePackageParser):
 
     def get_committed_packages(self, lines, package_state):
         """
-        lines contains the CLI outputs for 'show version'
+        lines contains the CLI outputs for 'show version running'
         """
-        packages = []
-        lines = lines.splitlines()
+        package_dict = {}
+
+        if lines:
+            trunks = self.get_trunks(lines.splitlines())
+            if len(trunks) > 0:
+                # Collect all the packages
+                package_list = []
+                for module in trunks:
+                    for package in trunks[module]:
+                        package_list.append(package)
+
+                for package_name in package_list:
+                    package = Package(
+                        name=package_name,
+                        location=None,
+                        state=package_state)
+
+                    # Check which module has this package
+                    for module in trunks:
+                        for line in trunks[module]:
+                            if line == package_name:
+                                package.modules_package_state.append(ModulePackageState(
+                                    module_name=module,
+                                    package_state=package_state))
+
+                    package_dict[package_name] = package
+
+        return package_dict
+
+
+    def get_trunks(self, lines):
+        """
+        Return the CLI outputs in trunks.  Each Trunk is a section of module and its packages.
+        Below is an example of two trunks.
+
+          File: consolidated:packages.conf, on: RP0
+          File: consolidated:asr920-rpbase.03.16.00.S.155-3.S-ext.pkg, on: RP0
+          File: consolidated:asr920-rpcontrol.03.16.00.S.155-3.S-ext.pkg, on: RP0/0
+          File: consolidated:asr920-rpios-universalk9_npe.03.16.00.S.155-3.S-ext.pkg, on: RP0/0
+          File: consolidated:asr920-rpaccess.03.16.00.S.155-3.S-ext.pkg, on: RP0/0
+
+        RP0
+            packages.conf
+            asr920-rpbase.03.16.00.S.155-3.S-ext.pkg
+        RP0/0
+            asr920-rpcontrol.03.16.00.S.155-3.S-ext.pkg
+            asr920-rpios-universalk9_npe.03.16.00.S.155-3.S-ext.pkg
+            asr920-rpaccess.03.16.00.S.155-3.S-ext.pkg
+
+        """
+        trunks = {}
+        module = None
+
         for line in lines:
-            if 'System image file' in line:
-                match = re.search(r'"\S*"', line)
-                if match:
-                    package_name = match.group().replace('"', '')
-                    if ':' in package_name:
-                        location, name = package_name.split(':')
-                    else:
-                        name = package_name
+            line = line.strip()
+            if len(line) == 0: continue
 
-                    # ignore the location since it is always from bootflash
-                    packages.append(Package(location=None, name=name, state=package_state))
-                    break # There is only one committed package
+            m = re.search(r'.*(packages.conf).*on: (.*)', line) or re.search(r'.*(asr9.*pkg).*on: (.*)', line)
+            if m:
+                module = m.group(2)
+                trunk = m.group(1)
+                if module not in trunks.keys():
+                    pkg = []
+                else:
+                    pkg = trunks[module]
 
-        return packages
+                pkg.append(trunk)
+                trunks[module] = pkg
+
+                # logging.warning('module = %s, pkg = %s', module, pkg)
+
+        return trunks
