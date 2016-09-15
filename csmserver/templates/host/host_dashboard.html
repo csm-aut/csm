@@ -249,35 +249,29 @@
 
         var inventory_job_history_table = $("#inventory-job-history-datatable").dataTable({
             "order": [
-                [2, "desc"]
+                [1, "desc"]
             ],
             "columnDefs": [{
                 "targets": 0,
                 "data": 'status',
                 "render": function(data, type, row) {
-                    return (data == 'completed' ? 'Software retrieved successfully' : 'Failed retrieving software');
-                }
-            }, {
-                "targets": 1,
-                "data": 'status',
-                "render": function(data, type, row) {
                     if (row['status'] == 'failed') {
-                        return '<span style="color:red">' + data + '</span>';
+                        return "&nbsp;<img src='/static/error.png' title='Failed'>";
                     } else {
-                        return data;
+                        return "&nbsp;<img src='/static/green_check.png' title='Successful'>";
                     }
                 }
             }, {
-                "targets": 2,
+                "targets": 1,
                 "data": 'status_time',
                 "render": function(data, type, row) {
                     return convertToLocaleString(data);
                 }
             }, {
-                "targets": 3,
+                "targets": 2,
                 "data": 'elapsed_time'
             }, {
-                "targets": 4,
+                "targets": 3,
                 "render": function(data, type, row) {
                     return get_log_icon(row['hostname'], 'inventory_job_history', row['inventory_job_id'], row['session_log'], row['trace']);
                 }
@@ -540,7 +534,7 @@
             <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-briefcase"></i> Last Successful Retrieval: <span id="last_successful_inventory_elapsed_time"></span></strong></span>
             <div class="btn-group pull-right">
                 <button id="install-history-button" type="button" class="btn btn-default">Install History</button>
-                <button id="inventory-history-button" type="button" class="btn btn-default">Software Inventory History</button>
+                <button id="inventory-history-button" type="button" class="btn btn-default">Inventory History</button>
                 <div class="btn-group">
                     <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
                     Action
@@ -636,7 +630,7 @@
         <div class="row">
             <ul class="nav nav-tabs" id="host-dashboard-tab">
                 <li><a data-toggle="tab" href="#install-job-history">Install History</a></li>
-                <li><a data-toggle="tab" href="#software-inventory-history">Software Inventory History</a></li>
+                <li><a data-toggle="tab" href="#software-inventory-history">Inventory History</a></li>
             </ul>
             <div class="tab-content">
                 <div id="install-job-history" class="tab-pane fade in active">
@@ -663,7 +657,6 @@
                         <table cellspacing="0" class="display table" id="inventory-job-history-datatable">
                             <thead>
                                 <tr>
-                                    <th>Description</th>
                                     <th>Status</th>
                                     <th>Status Time</th>
                                     <th>Elapsed Time</th>
