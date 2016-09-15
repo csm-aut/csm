@@ -212,9 +212,9 @@
                 "data": 'status',
                 "render": function(data, type, row) {
                     if (row['status'] == 'failed') {
-                        return '<span style="color:red">' + data + '</span>';
+                        return "&nbsp;<img src='/static/error.png' title='Failed'>";
                     } else {
-                        return data;
+                        return "&nbsp;<img src='/static/green_check.png' title='Successful'>";
                     }
                 }
             }, {
