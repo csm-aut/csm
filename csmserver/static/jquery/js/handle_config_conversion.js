@@ -164,7 +164,7 @@ function config_handler(input_filename, err_msg) {
                       browse_spinner.hide();
                       progressSpan.html('');
                       $(window).unbind('beforeunload');
-                      bootbox.alert("Configuration conversion has encountered an error and failed!");
+                      bootbox.alert("Configuration conversion has encountered an error and failed! Please check Tools > System Logs for more details.");
                 } else {
                       progressSpan.html('Conversion completed. Loading the files.');
                       $(window).unbind('beforeunload');

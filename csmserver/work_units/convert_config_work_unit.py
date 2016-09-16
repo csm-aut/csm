@@ -3,6 +3,8 @@ import subprocess
 from constants import get_migration_directory, JobStatus
 from models import ConvertConfigJob
 from multi_process import WorkUnit
+import os
+import re
 
 NOX_64_BINARY = "nox-linux-64.bin"
 NOX_64_MAC = "nox-mac64.bin"
@@ -45,13 +47,34 @@ class ConvertConfigWorkUnit(WorkUnit):
                 logger.exception("OSError occurred while running the configuration migration tool " +
                                  "{} on config file {}.".format(nox_to_use, file_path))
 
+            conversion_successful = False
+
             if nox_error:
                 self.convert_config_job.set_status(JobStatus.FAILED)
                 self.db_session.commit()
-                logger.exception("Error running the configuration migration tool on {}".format(nox_error))
-            else:
-                self.convert_config_job.set_status(JobStatus.COMPLETED)
+                logger.exception("Error running the configuration migration tool {} ".format(nox_to_use) +
+                                 "on config file {}:\n {}".format(file_path, nox_error))
+
+            if re.search("Done \[.*\]", nox_output):
+                path = ""
+                filename = file_path
+                if file_path.count("/") > 0:
+                    path_filename = file_path.rsplit("/", 1)
+                    path = path_filename[0]
+                    filename = path_filename[1]
+
+                converted_filename = filename.rsplit('.', 1)[0] + ".csv"
+
+                if os.path.isfile(os.path.join(path, converted_filename)):
+                    self.convert_config_job.set_status(JobStatus.COMPLETED)
+                    self.db_session.commit()
+                    conversion_successful = True
+
+            if not conversion_successful:
+                self.convert_config_job.set_status(JobStatus.FAILED)
                 self.db_session.commit()
+                logger.exception("Configuration migration tool failed to convert {}".format(file_path) +
+                                 " - {}".format(nox_output))
 
         finally:
             self.db_session.close()
