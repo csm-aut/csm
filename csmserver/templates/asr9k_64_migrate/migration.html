@@ -245,6 +245,12 @@
 
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                         add_new_tab("pre-migrate", "PRE-MIGRATE");
+                        if ($('#hidden_edit').val() == 'True') {
+                          get_server_list();
+                          server_software_retrieve_file_list($('#hidden_server').val(),
+                                  $('#server_dialog_server_directory'),
+                                  $('#hidden_server_directory').val());
+                        }
                     }
 
                     // make the first tab active
@@ -496,17 +502,6 @@
 
                 $('#region').val($('#hidden_region').val());
                 $('#hardware_audit_version').val($('#hidden_hardware_audit_version').val());
-
-                $('#server_dialog_server').val($('#hidden_server').val());
-
-                if (has_one_of_these($("#install_action").val(), [PRE_MIGRATE])) {
-                    // previously selected server, server directory, packages and config filename
-                    // will be loaded in this method
-                    server_software_retrieve_file_list(
-                            $('#server_dialog_server').val(),
-                            $('#server_dialog_server_directory'),
-                            $('#hidden_server_directory').val());
-                }
 
                 if ($('#hidden_override_hw_req').val() == '1') {
                     $('[name="override_hw_req"]')[0].checked = true;
