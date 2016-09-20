@@ -46,6 +46,8 @@ from parsers.loader import get_package_parser_class
 from csmpe import CSMPluginManager
 
 import os
+import re
+import shutil
 import condoor
 
 
@@ -71,6 +73,11 @@ class BaseHandler(object):
             self.get_software(ctx)
 
         if isinstance(ctx, InstallContext):
+            if ctx.requested_action == InstallAction.INSTALL_ADD:
+                server_repository_url = ctx.server_repository_url
+                if 'ftp' in server_repository_url or 'sftp' in server_repository_url:
+                    self.remove_server_repository_password_from_session_log(ctx)
+
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
@@ -85,6 +92,30 @@ class BaseHandler(object):
                 else:
                     msg = 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
+
+
+    def remove_server_repository_password_from_session_log(self, ctx):
+        in_file = os.path.join(ctx.log_directory, 'session.log')
+        out_file = os.path.join(in_file + '.bak')
+
+        try:
+            password_pattern = re.compile("(?P<PASSWORD>:\w+@)")
+            with open(in_file) as infile, open(out_file, 'w') as outfile:
+                for line in infile:
+                    if 'ftp' in line or 'sftp' in line:
+                        result = re.search(password_pattern, line)
+                        if result:
+                            password = result.group("PASSWORD")
+                            mangled_password = ':' + ('*' * (len(password) - 2)) + '@'
+                            line = line.replace(password, mangled_password)
+
+                    outfile.write(line)
+
+            shutil.move(out_file, in_file)
+        except Exception:
+            logger = get_db_session_logger(ctx.db_session)
+            logger.exception('remove_server_repository_password hit exception.')
+
 
     def update_device_info(self, ctx):
         device_info_dict = ctx.load_data('device_info')
