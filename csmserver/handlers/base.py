@@ -65,7 +65,12 @@ class BaseHandler(object):
             # Remove the server repository password regardless whether the install job is successful or not
             if isinstance(ctx, InstallContext) and ctx.requested_action == InstallAction.INSTALL_ADD:
                 server_repository_url = ctx.server_repository_url
-                if 'ftp' in server_repository_url or 'sftp' in server_repository_url:
+                if server_repository_url and (server_repository_url.startswith("ftp://") or
+                                              server_repository_url.startswith("sftp://")):
+                    self.remove_server_repository_password_from_session_log(ctx)
+            if isinstance(ctx, InstallContext) and ctx.requested_action == InstallAction.PRE_MIGRATE:
+                server_repository_url = ctx.server_repository_url
+                if server_repository_url and server_repository_url.startswith("ftp://"):
                     self.remove_server_repository_password_from_session_log(ctx)
 
     def start(self, ctx):
@@ -94,7 +99,6 @@ class BaseHandler(object):
                     msg = 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
 
-
     def remove_server_repository_password_from_session_log(self, ctx):
         in_file = os.path.join(ctx.log_directory, 'session.log')
         out_file = in_file + '.bak'
@@ -103,7 +107,7 @@ class BaseHandler(object):
             password_pattern = re.compile("(?P<PASSWORD>:\w+@)")
             with open(in_file) as infile, open(out_file, 'w') as outfile:
                 for line in infile:
-                    if 'ftp' in line or 'sftp' in line:
+                    if 'ftp' in line:
                         result = re.search(password_pattern, line)
                         if result:
                             password = result.group("PASSWORD")
@@ -115,8 +119,7 @@ class BaseHandler(object):
             shutil.move(out_file, in_file)
         except Exception:
             logger = get_db_session_logger(ctx.db_session)
-            logger.exception('remove_server_repository_password hit exception.')
-
+            logger.exception('remove_server_repository_password_from_session_log hit exception.')
 
     def update_device_info(self, ctx):
         device_info_dict = ctx.load_data('device_info')
