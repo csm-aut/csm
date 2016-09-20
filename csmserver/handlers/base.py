@@ -63,15 +63,15 @@ class BaseHandler(object):
                 logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
         finally:
             # Remove the server repository password regardless whether the install job is successful or not
-            if isinstance(ctx, InstallContext) and ctx.requested_action == InstallAction.INSTALL_ADD:
+            if isinstance(ctx, InstallContext) and (ctx.requested_action == InstallAction.INSTALL_ADD or
+                                                    ctx.requested_action == InstallAction.PRE_MIGRATE):
                 server_repository_url = ctx.server_repository_url
-                if server_repository_url and (server_repository_url.startswith("ftp://") or
-                                              server_repository_url.startswith("sftp://")):
-                    self.remove_server_repository_password_from_session_log(ctx)
-            if isinstance(ctx, InstallContext) and ctx.requested_action == InstallAction.PRE_MIGRATE:
-                server_repository_url = ctx.server_repository_url
-                if server_repository_url and server_repository_url.startswith("ftp://"):
-                    self.remove_server_repository_password_from_session_log(ctx)
+                if server_repository_url:
+                    if server_repository_url.startswith("ftp://"):
+                        self.remove_server_repository_password_from_session_log(ctx)
+                    # For Pre-Migrate, sftp upload is done differently, no password mangling needed
+                    elif server_repository_url.startswith("sftp://") and ctx.requested_action == InstallAction.INSTALL_ADD:
+                        self.remove_server_repository_password_from_session_log(ctx)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
