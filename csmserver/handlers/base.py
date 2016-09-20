@@ -68,10 +68,10 @@ class BaseHandler(object):
                 server_repository_url = ctx.server_repository_url
                 if server_repository_url:
                     if server_repository_url.startswith("ftp://"):
-                        self.remove_server_repository_password_from_session_log(ctx)
+                        self.remove_server_repository_password_from_log_files(ctx)
                     # For Pre-Migrate, sftp upload is done differently, no password mangling needed
                     elif server_repository_url.startswith("sftp://") and ctx.requested_action == InstallAction.INSTALL_ADD:
-                        self.remove_server_repository_password_from_session_log(ctx)
+                        self.remove_server_repository_password_from_log_files(ctx)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
@@ -99,8 +99,12 @@ class BaseHandler(object):
                     msg = 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
 
-    def remove_server_repository_password_from_session_log(self, ctx):
-        in_file = os.path.join(ctx.log_directory, 'session.log')
+    def remove_server_repository_password_from_log_files(self, ctx):
+        self.remove_server_repository_password_from_log_file(ctx, filename='condoor.log')
+        self.remove_server_repository_password_from_log_file(ctx, filename='session.log')
+
+    def remove_server_repository_password_from_log_file(self, ctx, filename):
+        in_file = os.path.join(ctx.log_directory, filename)
         out_file = in_file + '.bak'
 
         try:
