@@ -61,6 +61,12 @@ class BaseHandler(object):
             if isinstance(ctx, ConnectionContext):
                 logger = get_db_session_logger(ctx.db_session)
                 logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
+        finally:
+            # Remove the server repository password regardless whether the install job is successful or not
+            if isinstance(ctx, InstallContext) and ctx.requested_action == InstallAction.INSTALL_ADD:
+                server_repository_url = ctx.server_repository_url
+                if 'ftp' in server_repository_url or 'sftp' in server_repository_url:
+                    self.remove_server_repository_password_from_session_log(ctx)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
@@ -73,11 +79,6 @@ class BaseHandler(object):
             self.get_software(ctx)
 
         if isinstance(ctx, InstallContext):
-            if ctx.requested_action == InstallAction.INSTALL_ADD:
-                server_repository_url = ctx.server_repository_url
-                if 'ftp' in server_repository_url or 'sftp' in server_repository_url:
-                    self.remove_server_repository_password_from_session_log(ctx)
-
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
@@ -96,7 +97,7 @@ class BaseHandler(object):
 
     def remove_server_repository_password_from_session_log(self, ctx):
         in_file = os.path.join(ctx.log_directory, 'session.log')
-        out_file = os.path.join(in_file + '.bak')
+        out_file = in_file + '.bak'
 
         try:
             password_pattern = re.compile("(?P<PASSWORD>:\w+@)")
