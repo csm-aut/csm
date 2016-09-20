@@ -104,14 +104,14 @@ class BaseHandler(object):
         out_file = in_file + '.bak'
 
         try:
-            password_pattern = re.compile("(?P<PASSWORD>:\w+@)")
+            password_pattern = re.compile("ftp://(.*):(?P<PASSWORD>(.*))@")
             with open(in_file) as infile, open(out_file, 'w') as outfile:
                 for line in infile:
                     if 'ftp' in line:
                         result = re.search(password_pattern, line)
                         if result:
                             password = result.group("PASSWORD")
-                            mangled_password = ':' + ('*' * (len(password) - 2)) + '@'
+                            mangled_password = ('*' * (len(password)))
                             line = line.replace(password, mangled_password)
 
                     outfile.write(line)
