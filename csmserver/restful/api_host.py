@@ -63,7 +63,10 @@ def api_create_hosts(request):
            'connection_type': 'telnet',
            'host_or_ip': '172.28.98.2',
            'username': 'cisco',
-           'password': 'cisco'} ]
+           'password': 'cisco',
+           'enable_password': 'cisco',
+           'location': 'building 20'
+           } ]
 
     RETURN:
         {"api_response": {
@@ -202,6 +205,7 @@ def api_get_hosts(request):
         row['software_platform'] = host.software_platform
         row['software_version'] = host.software_version
         row['os_type'] = host.os_type
+        row['location'] = host.location
 
         if connection_param:
             row['ts_or_ip'] = connection_param.host_or_ip
