@@ -501,12 +501,10 @@ def get_managed_hosts(region_id):
 
             if len(host.connection_param) > 0:
                 row['host_or_ip'] = host.connection_param[0].host_or_ip
-                row['platform'] = host.platform
+                row['chassis'] = host.platform
 
-                if host.software_version is not None:
-                    row['software'] = host.software_platform + ' (' + host.software_version + ')'
-                else:
-                    row['software'] = UNKNOWN
+                row['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
+                row['software'] = UNKNOWN if host.software_version is None else host.software_version
 
                 inventory_job = host.inventory_job[0]
                 if inventory_job is not None and inventory_job.last_successful_time is not None:
@@ -538,9 +536,9 @@ def get_managed_host_details(region_id):
         for host in hosts:
             row = {} 
             row['hostname'] = host.hostname
-            row['platform'] = host.platform
-            row['software'] = (host.software_platform if host.software_platform is not None else UNKNOWN) + ' (' + \
-                              (host.software_version if host.software_version is not None else UNKNOWN) + ')'
+            row['chassis'] = host.platform
+            row['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
+            row['software'] = UNKNOWN if host.software_version is None else host.software_version
 
             if len(host.connection_param) > 0:
                 connection_param = host.connection_param[0]

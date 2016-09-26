@@ -123,12 +123,15 @@
                 }
             }, {
                 "targets": 3,
-                "data": 'platform'
+                "data": 'chassis'
             }, {
                 "targets": 4,
+                "data": 'platform'
+            },{
+                "targets": 5,
                 "data": 'software'
             }, {
-                "targets": 5,
+                "targets": 6,
                 "data": 'last_successful_retrieval',
                 "render": function(data, type, row) {
                     if (row['inventory_status'] == 'failed') {
@@ -138,7 +141,7 @@
                     }
                 }
             }, {
-                "targets": 6,
+                "targets": 7,
                 "data": 'hostname',
                 "render": function(data, type, row) {
                     return '<a href="/hosts/' + data + '/schedule_install/">Install</a>';
@@ -449,8 +452,9 @@
                                 <th>Hostname</th>
                                 <th>Region</th>
                                 <th>TS or IP</th>
-                                <th>Hardware</th>
-                                <th>Platform<br>Software</th>
+                                <th>Chassis</th>
+                                <th>Platform</th>
+                                <th>Software</th>
                                 <th>Last<br> Successful<br> Retrieval</th>
                                 <th>Action</th>
                             </tr>
