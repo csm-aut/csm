@@ -106,6 +106,7 @@ class InstallAction:
     UNKNOWN = 'Unknown'
     PRE_UPGRADE = 'Pre-Upgrade'
     INSTALL_ADD = 'Add'
+    INSTALL_PREPARE = 'Prepare'
     INSTALL_ACTIVATE = 'Activate'
     POST_UPGRADE = 'Post-Upgrade'
     INSTALL_COMMIT = 'Commit'
@@ -118,6 +119,7 @@ class InstallAction:
     MIGRATE_SYSTEM = 'Migrate'
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
+    FPD_UPGRADE = 'FPD Upgrade'
 
 
 class PackageType:

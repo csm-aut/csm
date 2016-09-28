@@ -1831,8 +1831,7 @@ def schedule_install():
         form.hidden_pending_downloads.data = ''
             
         return render_template('schedule_install.html', form=form, system_option=SystemOption.get(db_session),
-                               server_time=datetime.datetime.utcnow(), return_url=return_url,
-                               install_action=get_install_actions_dict())
+                               server_time=datetime.datetime.utcnow(), return_url=return_url)
 
                                                        
 @app.route('/hosts/<hostname>/schedule_install/', methods=['GET', 'POST'])
@@ -1858,6 +1857,31 @@ def host_schedule_install_edit(hostname, id):
     
     return handle_schedule_install_form(request=request, db_session=db_session,
                                         hostname=hostname, install_job=install_job)
+
+
+@app.route('/api/hosts/<hostname>/supported_install_actions')
+@login_required
+def api_get_supported_install_actions(hostname):
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if host is None:
+        abort(404)
+
+    rows = []
+
+    if host.family == PlatformFamily.ASR900:
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+                                         InstallAction.ALL]})
+    else:
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+                                         InstallAction.INSTALL_COMMIT, InstallAction.ALL]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE, InstallAction.INSTALL_DEACTIVATE]})
+        rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
+
+    return jsonify(**{'data': rows})
 
 
 @app.route('/hosts/download_dashboard/', methods=['GET', 'POST'])
@@ -1999,7 +2023,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
-                           return_url=return_url, install_action=get_install_actions_dict())
+                           return_url=return_url)
 
 
 def get_host_schedule_install_form(request, host):
@@ -2969,22 +2993,6 @@ def get_host_json(hosts, request):
         hosts_list.append(host.get_json())
     
     return jsonify(**{'host': hosts_list})
-
-
-def get_install_actions_dict():
-    return {
-        "pre_upgrade": InstallAction.PRE_UPGRADE, 
-        "add": InstallAction.INSTALL_ADD,
-        "activate": InstallAction.INSTALL_ACTIVATE,
-        "post_upgrade": InstallAction.POST_UPGRADE,
-        "commit": InstallAction.INSTALL_COMMIT,
-        "remove": InstallAction.INSTALL_REMOVE,
-        "deactivate": InstallAction.INSTALL_DEACTIVATE,
-        "rollback": InstallAction.INSTALL_ROLLBACK,
-        "all": InstallAction.ALL,
-    }
-
-
 
 def get_return_url(request, default_url=None):
     """

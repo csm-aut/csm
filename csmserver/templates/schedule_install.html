@@ -1,23 +1,69 @@
 {% extends 'base_schedule_install.html' %}
 
-{% from 'share/select_region_hosts.html' import select_region_hosts %}
+{% from 'share/select_hosts_by_platform.html' import select_hosts_by_platform %}
 
-{% block extra_child_head %} 
-<script src="/static/jquery/js/select_region_hosts.js"></script>
+{% block extra_child_head %}
+<script src="/static/jquery/js/select_hosts_by_platform.js"></script>
 {% endblock extra_child_head %}
 
 {% block head_schedule_install %}
 
-$('#form').submit(function() {
+$('.wizard-card').bootstrapWizard({
+    'tabClass': 'nav nav-pills',
+    'nextSelector': '.btn-next',
+    'previousSelector': '.btn-previous',
 
-    if (validate_region()) {       
-        if (host_selector.get_selected_items().length == 0) {
-            bootbox.alert("Host has not been specified.");
-            return false;
+     onInit : function(tab, navigation, index) {
+
+       //check number of tabs and fill the entire row
+       var $total = navigation.find('li').length;
+       $width = 100/$total;
+
+       $display_width = $(document).width();
+
+       if ($display_width < 600 && $total > 3) {
+           $width = 50;
+       }
+       navigation.find('li').css('width',$width + '%');
+    },
+    onNext: function(tab, navigation, index) {
+        if (index == 1) {
+            selected_hosts = host_selector.get_selected_items();
+            if (selected_hosts.length == 0) {
+                bootbox.alert("Host has not been specified.");
+                return false;
+            }
+            $('#hidden_selected_hosts').val(selected_hosts);
+            get_supported_install_actions(selected_hosts[0]);
+        } //etc.
+    },
+    onTabClick : function(tab, navigation, index) {
+        // Disable the possibility to click on tabs
+        return false;
+    },
+    onTabShow: function(tab, navigation, index) {
+        var $total = navigation.find('li').length;
+        var $current = index+1;
+
+        var wizard = navigation.closest('.wizard-card');
+
+        // If it's the last tab then hide the last button and show the finish instead
+        if ($current >= $total) {
+            $(wizard).find('.btn-next').hide();
+            $(wizard).find('.btn-finish').show();
+        } else {
+            $(wizard).find('.btn-next').show();
+            $(wizard).find('.btn-finish').hide();
         }
-        $('#hidden_selected_hosts').val(host_selector.get_selected_items());
-        on_final_submit(this, null);
     }
+});
+
+$('#on-finish-submit').click(function(e) {
+    if (!validate()) {
+        return false;
+    }
+
+    on_final_submit($('#form'), null);
 
     // prevent the form from closing 
     return false;
@@ -49,35 +95,23 @@ function invoke_host_software_dialog(title) {
     if (selected_hosts.length == 0) {
         bootbox.alert("Host has not been specified.");
     } else {
-        on_display_host_software_dialog($('#region option:selected').val(), selected_hosts, title);
+        on_display_host_software_dialog($('#region').val(), selected_hosts, title);
     }
 }
 
 $('#browse-server-button').on('click', function(e) {
-    if (validate_region()) {       
-        var selected_hosts = host_selector.get_selected_items();
-        if (selected_hosts.length == 0) {
-            bootbox.alert("Host has not been specified.");
-        } else {
-            on_display_server_software_dialog($('#region option:selected').val(), selected_hosts);
-        }
+    var selected_hosts = host_selector.get_selected_items();
+    if (selected_hosts.length == 0) {
+        bootbox.alert("Host has not been specified.");
+    } else {
+        on_display_server_software_dialog($('#region').val(), selected_hosts);
     }
 });
 
 $('#browse-cisco-button').on('click', function(e) {
-    if (validate_region()) {
-        var selected_hosts = host_selector.get_selected_items();
-        on_display_cisco_software_dialog($('#region option:selected').val(), selected_hosts);
-    }
+    var selected_hosts = host_selector.get_selected_items();
+    on_display_cisco_software_dialog($('#region').val(), selected_hosts);
 });
-
-function validate_region() {
-    if ($('#region option:selected').val() == -1) {
-        bootbox.alert("Region has not been specified.");
-        return false;
-    }
-    return true;
-}
 
 // Catch this event so the server repositories can be populated
 // to different server repository selectors.
@@ -118,28 +152,44 @@ $('#region').on('change', function(e) {
 {% block main_schedule_install %}
 
 <div class="row">
-    <div class="well col-sm-offset-2 col-sm-8">
-        <form id="form" method="post"  class="form-horizontal">
-            <legend>
-                <h4>Select Hosts</h4>
-            </legend>
-            {{ select_region_hosts(form.region, form.role, form.software) }}
-            <legend>
-                <h4>Schedule Batch Installs</h4>
-            </legend>
-            
-            {{ common_schedule_install_gui() }}
-            
-            <div class="form-actions">
-                <div class="btn col-sm-offset-5">
-                    <button id="on-submit" type="submit" class="btn btn-primary">          
-                    Schedule          
-                    </button>
-                    <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
-                    <img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
-                </div>
+    <div class="col-sm-8 col-sm-offset-2">
+        <!--      Wizard container        -->
+        <div id="wizard-dialog" class="wizard-container">
+            <div class="card wizard-card wizard-border csm-blue" id="wizard">
+                <form id="form" class="form-horizontal" method="post">
+                    <div class="wizard-header">
+                        <h3>
+                            Schedule Batch Installation <br>
+                        </h3>
+                    </div>
+                    <ul>
+                        <li><a href="#select_hosts" data-toggle="tab">SELECT HOSTS</a></li>
+                        <li><a href="#select_install_action" data-toggle="tab">SELECT INSTALL ACTION</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane" id="select_hosts">
+                            <div class="row">
+                                {{ select_hosts_by_platform(form.platform, form.software, form.region, form.role) }}
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="select_install_action">
+                            {{ common_schedule_install_gui() }}
+                        </div>
+                    </div>
+                    <div class="wizard-footer">
+                        <div class="pull-right">
+                            <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                            <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                        </div>
+                        <div class="pull-left">
+                            <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
+        <!-- wizard container -->
     </div>
 </div>
 
