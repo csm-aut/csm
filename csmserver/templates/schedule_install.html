@@ -28,6 +28,8 @@ $('.wizard-card').bootstrapWizard({
     },
     onNext: function(tab, navigation, index) {
         if (index == 1) {
+            populate_region_server();
+
             selected_hosts = host_selector.get_selected_items();
             if (selected_hosts.length == 0) {
                 bootbox.alert("Host has not been specified.");
@@ -95,8 +97,43 @@ function invoke_host_software_dialog(title) {
     if (selected_hosts.length == 0) {
         bootbox.alert("Host has not been specified.");
     } else {
-        on_display_host_software_dialog($('#region').val(), selected_hosts, title);
+        on_display_host_software_dialog(get_region_id(), selected_hosts, title);
     }
+}
+
+function get_region_id() {
+    if ($('#region').val() != null) {
+        return $('#region').val();
+    }
+    return 0;
+}
+
+function populate_region_server() {
+    region_id = get_region_id();
+
+    // Now, gets the servers for the selected region
+    $('#server_dialog_server').empty().append('<option value=-1></option>');
+    $('#cisco_dialog_server').empty().append('<option value=-1></option>');
+
+    $.ajax({
+        url: "/api/get_servers/region/" + region_id,
+        dataType: 'json',
+        success: function(data) {
+            $.each(data, function(index, element) {
+                for (i = 0; i < element.length; i++) {
+                    var server_id = element[i].server_id;
+                    var hostname = element[i].hostname;
+
+                    $('#server_dialog_server').append('<option value="' + server_id + '">' + hostname + '</option>');
+                    $('#cisco_dialog_server').append('<option value="' + server_id + '">' + hostname + '</option>');
+                }
+            });
+
+        },
+        error: function(xhr, status, errorThrown) {
+            bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
+        }
+    });
 }
 
 $('#browse-server-button').on('click', function(e) {
@@ -104,48 +141,15 @@ $('#browse-server-button').on('click', function(e) {
     if (selected_hosts.length == 0) {
         bootbox.alert("Host has not been specified.");
     } else {
-        on_display_server_software_dialog($('#region').val(), selected_hosts);
+        on_display_server_software_dialog(get_region_id(), selected_hosts);
     }
 });
 
 $('#browse-cisco-button').on('click', function(e) {
     var selected_hosts = host_selector.get_selected_items();
-    on_display_cisco_software_dialog($('#region').val(), selected_hosts);
+    on_display_cisco_software_dialog(get_region_id(), selected_hosts);
 });
 
-// Catch this event so the server repositories can be populated
-// to different server repository selectors.
-$('#region').on('change', function(e) {
-    region_id = $('#region option:selected').val();
-    
-    if (region_id != -1) {
-
-        // Now, gets the servers for the selected region
-        $('#server_dialog_server').empty().append('<option value=-1></option>');
-        $('#cisco_dialog_server').empty().append('<option value=-1></option>');
-
-        $.ajax({
-            url: "/api/get_servers/region/" + region_id,
-            dataType: 'json',
-            success: function(data) {
-                $.each(data, function(index, element) {
-                    for (i = 0; i < element.length; i++) {
-                        var server_id = element[i].server_id;
-                        var hostname = element[i].hostname;
-
-                        $('#server_dialog_server').append('<option value="' + server_id + '">' + hostname + '</option>');
-                        $('#cisco_dialog_server').append('<option value="' + server_id + '">' + hostname + '</option>');
-                    }
-                });
-
-            },
-            error: function(xhr, status, errorThrown) {
-                bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
-            }
-        });
-    }
-
-});
 
 {% endblock head_schedule_install %}
 
