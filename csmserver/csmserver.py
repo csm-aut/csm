@@ -1874,6 +1874,7 @@ def api_get_supported_install_actions(hostname):
         rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                                          InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
                                          InstallAction.ALL]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE]})
     else:
         rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                                          InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
