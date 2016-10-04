@@ -174,6 +174,7 @@ class SMUInfoLoader(object):
                 else:
                     # Delete the existing smu_meta and smu_info for this platform and release
                     db_session.delete(db_smu_meta)
+                    db_session.commit()
 
             if not same_as_db:
                 db_session.add(self.smu_meta)
