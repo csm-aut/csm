@@ -182,7 +182,7 @@
         var last_install_job_history_count = 0;
         var new_last_install_job_history_count = 0;
 
-        var install_job_history_table = $("#install-job-history-datatable").dataTable({
+        var install_job_history_table = $("#installation-history-datatable").dataTable({
             "order": [
                 [5, "desc"]
             ],
@@ -212,7 +212,7 @@
                 "data": 'status',
                 "render": function(data, type, row) {
                     if (row['status'] == 'failed') {
-                        return "&nbsp;<img src='/static/error.png' title='Failed'>";
+                        return "&nbsp;<img src='/static/failed.png' title='Failed'>";
                     } else {
                         return "&nbsp;<img src='/static/green_check.png' title='Successful'>";
                     }
@@ -247,7 +247,7 @@
             inventory_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}").load();
         }
 
-        var inventory_job_history_table = $("#inventory-job-history-datatable").dataTable({
+        var inventory_job_history_table = $("#retrieval-history-datatable").dataTable({
             "order": [
                 [1, "desc"]
             ],
@@ -256,7 +256,7 @@
                 "data": 'status',
                 "render": function(data, type, row) {
                     if (row['status'] == 'failed') {
-                        return "&nbsp;<img src='/static/error.png' title='Failed'>";
+                        return "&nbsp;<img src='/static/failed.png' title='Failed'>";
                     } else {
                         return "&nbsp;<img src='/static/green_check.png' title='Successful'>";
                     }
@@ -385,13 +385,13 @@
         <!-- hide the table header to preserve space -->
         $(".hide-header").hide();
 
-        $('#install-history-button').on("click", function() {
-            $('a[href="#install-job-history"]').tab('show');
+        $('#installation-history-button').on("click", function() {
+            $('a[href="#installation-history"]').tab('show');
             window.location.href = "#host-tabs";
         });
 
-        $('#inventory-history-button').on("click", function() {
-            $('a[href="#software-inventory-history"]').tab('show');
+        $('#retreival-history-button').on("click", function() {
+            $('a[href="#retrieval-history"]').tab('show');
             window.location.href = "#host-tabs";
         });
 
@@ -417,7 +417,7 @@
                         html += create_html_table_row('Region', element[0].region);
                         html += create_html_table_row('Location', element[0].location);
                         html += create_html_table_row('Roles', element[0].roles);
-                        html += create_html_table_row('Hardware', element[0].platform);
+                        html += create_html_table_row('Chassis', element[0].platform);
                         html += create_html_table_row('Platform', element[0].software_platform);
                         html += create_html_table_row('Software', element[0].software_version);
                         html += create_html_table_row('Host or IP', element[0].host_or_ip);
@@ -533,8 +533,8 @@
         <div class="col-sm-9">
             <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-briefcase"></i> Last Successful Retrieval: <span id="last_successful_inventory_elapsed_time"></span></strong></span>
             <div class="btn-group pull-right">
-                <button id="install-history-button" type="button" class="btn btn-default">Install History</button>
-                <button id="inventory-history-button" type="button" class="btn btn-default">Inventory History</button>
+                <button id="installation-history-button" type="button" class="btn btn-default">Installation History</button>
+                <button id="retreival-history-button" type="button" class="btn btn-default">Retrieval History</button>
                 <div class="btn-group">
                     <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
                     Action
@@ -629,13 +629,19 @@
     <div class="container">
         <div class="row">
             <ul class="nav nav-tabs" id="host-dashboard-tab">
-                <li><a data-toggle="tab" href="#install-job-history">Install History</a></li>
-                <li><a data-toggle="tab" href="#software-inventory-history">Inventory History</a></li>
+                <li><a data-toggle="tab" href="#inventory">Inventory</a></li>
+                <li><a data-toggle="tab" href="#installation-history">Installation History</a></li>
+                <li><a data-toggle="tab" href="#retrieval-history">Retrieval History</a></li>
             </ul>
             <div class="tab-content">
-                <div id="install-job-history" class="tab-pane fade in active">
+                <div id="inventory" class="tab-pane fade in active">
                     <div class="container col-sm-12" style="margin-top: 10px">
-                        <table cellspacing="0" class="display table" id="install-job-history-datatable">
+                         TO BE IMPLEMENTED
+                    </div>
+                </div>
+                <div id="installation-history" class="tab-pane fade">
+                    <div class="container col-sm-12" style="margin-top: 10px">
+                        <table cellspacing="0" class="display table" id="installation-history-datatable">
                             <thead>
                                 <tr>
                                     <th>Install Action</th>
@@ -651,10 +657,10 @@
                         </table>
                     </div>
                 </div>
-                <div id="software-inventory-history" class="tab-pane fade">
+                <div id="retrieval-history" class="tab-pane fade">
                     <div class="col-sm-12" style="margin-top: 10px">
                         <!-- Inventory Job History Table -->
-                        <table cellspacing="0" class="display table" id="inventory-job-history-datatable">
+                        <table cellspacing="0" class="display table" id="retrieval-history-datatable">
                             <thead>
                                 <tr>
                                     <th>Status</th>

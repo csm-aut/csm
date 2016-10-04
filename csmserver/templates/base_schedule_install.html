@@ -12,18 +12,6 @@
     <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
     <div class=col-sm-6>
         <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
-            <optgroup label="Install">
-                <option value="{{ install_action.pre_upgrade }}">{{ install_action.pre_upgrade }}</option>
-                <option value="{{ install_action.add }}">{{ install_action.add }}</option>
-                <option value="{{ install_action.activate}}">{{ install_action.activate }}</option>
-                <option value="{{ install_action.post_upgrade }}">{{ install_action.post_upgrade }}</option>
-                <option value="{{ install_action.commit }}">{{ install_action.commit }}</option>
-                <option value="{{ install_action.all }}">{{ install_action.all }}</option>
-            </optgroup>
-            <optgroup label="Clean Up">
-                <option value="{{ install_action.remove }}">{{ install_action.remove}}</option>
-                <option value="{{ install_action.deactivate }}">{{ install_action.deactivate }}</option>
-            </optgroup>
         </select>
     </div>
 </div>
@@ -70,7 +58,7 @@
 </div>
 
 <div class="form-group ">
-    <label class="col-sm-4 control-label" for="{{ form.scheduled_time.name }}">{{ form.scheduled_time.label() }}</label>
+    <label class="col-sm-4 control-label">{{ form.scheduled_time.label() }}</label>
     <div class="col-sm-6">
         <div  class="input-group date form_datetime">
             <input id="scheduled-time" name="{{ form.scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
@@ -81,7 +69,7 @@
 </div>
 
 <div id="custom-command-profile-panel">
-    {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control") }}
+    {{ edit_field(form.custom_command_profile, field_width="col-sm-6", class="form-control", style="width: 100%") }}
 </div>
 
 <div id="dependency-panel">
@@ -125,15 +113,15 @@ var host_software_platform = null;
 var host_software_version = null;
 
 $(function() {
-
-    var PRE_UPGRADE = "{{ install_action.pre_upgrade }}";
-    var INSTALL_ADD = "{{ install_action.add }}";
-    var INSTALL_ACTIVATE = "{{ install_action.activate }}";
-    var POST_UPGRADE = "{{ install_action.post_upgrade }}";
-    var INSTALL_COMMIT = "{{ install_action.commit }}";
-    var ALL = "{{ install_action.all }}";
-    var INSTALL_REMOVE = "{{ install_action.remove }}";
-    var INSTALL_DEACTIVATE = "{{ install_action.deactivate }}";
+    // These constant values must match the CSM definitions
+    var PRE_UPGRADE = "Pre-Upgrade";
+    var INSTALL_ADD = "Add";
+    var INSTALL_ACTIVATE = "Activate";
+    var POST_UPGRADE = "Post-Upgrade";
+    var INSTALL_COMMIT = "Commit";
+    var ALL = "ALL";
+    var INSTALL_REMOVE = "Remove";
+    var INSTALL_DEACTIVATE = "Deactivate";
 
     var region_id = -1;
 
@@ -172,6 +160,38 @@ $(function() {
         }
         toggle_ui();
     });
+
+    function add_optgroup(control, opt_group_name, class_name, options) {
+        if (options != undefined) {
+            for (var i = 0; i < options.length; i++) {
+                control.append('<option class="' + class_name + '" value="' + options[i] + '">' + options[i]+ '</option>');
+            }
+            $('.' + class_name).wrapAll('<optgroup label="' + opt_group_name + '" />')
+        }
+    }
+
+    function get_supported_install_actions(hostname) {
+        $.ajax({
+            url: "/api/hosts/" + hostname + "/supported_install_actions",
+            dataType: 'json',
+            success: function(data) {
+                $.each(data, function(index, element) {
+                    $('#install_action').find('optgroup').remove();
+                    $('#install_action').find('option').remove();
+
+                    for (var i = 0; i < element.length; i++) {
+                        add_optgroup($('#install_action'), 'Install', 'install', element[i].install_options);
+                        add_optgroup($('#install_action'), 'Clean Up', 'clean_up', element[i].cleanup_options);
+                        add_optgroup($('#install_action'), 'Others', 'others', element[i].other_options);
+                    }
+                });
+            },
+            error: function(xhr, status, errorThrown) {
+                bootbox.alert("Unable to retrieve install actions. Error=" + errorThrown);
+            }
+        });
+    }
+
 
     function toggle_ui() {
         var install_actions = $('#install_action').val();
@@ -299,7 +319,10 @@ $(function() {
     // Called when the Schedule (i.e. submit) button is clicked but before the
     // form actually being submitted.  Returning false will stop the submission.
     $('#on-submit').click(function(e) {
+        return validate();
+    });
 
+    function validate() {
         var install_actions = $('#install_action').val();
         if (install_actions == null) {
             bootbox.alert("Install Action has not been specified.");
@@ -331,7 +354,7 @@ $(function() {
         $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
 
         return true;
-    });
+    }
 
 
     // Convert the UTC time to Locale time
@@ -376,7 +399,6 @@ $(function() {
             on_finish_validate(validate_object);
         }
     }
-
 
     function display_selected_server_info() {
         var html_code = '';

@@ -125,9 +125,10 @@ class HostScheduleInstallForm(ServerDialogForm):
 
 
 class ScheduleInstallForm(HostScheduleInstallForm):
-    region = SelectField('Region', coerce=int, choices=[(-1, '')])
-    role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
+    platform = SelectField('Platform', coerce=str, choices=[('', '')])
     software = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
+    region = SelectField('Region', coerce=int, choices=[(-1, 'ALL')])
+    role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
 
 
 class ServerForm(Form):

@@ -41,33 +41,36 @@
                 }
             }, {
                 "targets": 1,
+                "data": 'chassis'
+            },{
+                "targets": 2,
                 "data": 'platform'
             }, {
-                "targets": 2,
+                "targets": 3,
                 "data": 'software'
             }, {
-                "targets": 3,
+                "targets": 4,
                 "data": 'connection'
             }, {
-                "targets": 4,
+                "targets": 5,
                 "data": 'host_or_ip',
                 "render": function(data, type, row) {
                     return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
                 }
             }, {
-                "targets": 5,
+                "targets": 6,
                 "data": 'port_number',
                 "render": function(data, type, row) {
                     return comma2br(data);
                 }
             }, {
-                "targets": 6,
-                "data": 'jump_host'
-            }, {
                 "targets": 7,
                 "data": 'username',
             }, {
                 "targets": 8,
+                "data": 'jump_host'
+            }, {
+                "targets": 9,
                 "data": 'hostname',
                 "render": function(data, type, row) {
                     return '<a class="host-delete-link" href="javascript://"  \
@@ -167,13 +170,14 @@
             <thead>
                 <tr>
                     <th>Hostname</th>
-                    <th>Hardware</th>
-                    <th>Platform<br>Software</th>
+                    <th>Chassis</th>
+                    <th>Platform</th>
+                    <th>Software</th>
                     <th>Connection</th>
                     <th>TS or IP</th>
                     <th>Port</th>
-                    <th>Jump Server</th>
                     <th>Username</th>
+                    <th>Jump Server</th>
                     <th>Action</th>
                 </tr>
             </thead>
