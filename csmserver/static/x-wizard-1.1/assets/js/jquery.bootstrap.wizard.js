@@ -320,16 +320,22 @@ $.fn.bootstrapWizard.defaults = {
 
 function get_server_list() {
 
+	$('#server_dialog_server').empty().append('<option value=-1></option>');
+
+	// Now, gets the servers for the selected region
 	if ($('#region').val() == null || $('#region option:selected').val() == -1) {
-		var region_id = $('#hidden_region').val();
+		var region_name = $('#hidden_region').val();
+		populate_server("/api/get_nonlocal_servers_by_region_name/region/" + region_name);
 	} else {
 		var region_id = $('#region option:selected').val();
+		populate_server("/api/get_nonlocal_servers/region/" + region_id);
 	}
-	  // Now, gets the servers for the selected region
-  $('#server_dialog_server').empty().append('<option value=-1></option>');
 
-  $.ajax({
-	url: "/api/get_nonlocal_servers/region/" + region_id,
+}
+
+function populate_server(url_for_get_server) {
+	$.ajax({
+	url: url_for_get_server,
 	dataType: 'json',
 	success: function(data) {
 	  $.each(data, function(index, element) {

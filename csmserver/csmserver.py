@@ -2576,7 +2576,28 @@ def api_get_nonlocal_servers_by_region(region_id):
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
             if server.server_type != ServerType.LOCAL_SERVER:
-                result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
+                result_list.append({'server_id': server.id, 'hostname': server.hostname})
+    else:
+        servers = get_server_list(db_session)
+        if servers is not None:
+            for server in servers:
+                if server.server_type != ServerType.LOCAL_SERVER:
+                    result_list.append({'server_id': server.id, 'hostname': server.hostname})
+
+    return jsonify(**{'data': result_list})
+
+
+@app.route('/api/get_nonlocal_servers_by_region_name/region/<region_name>')
+@login_required
+def api_get_nonlocal_servers_by_region_name(region_name):
+    result_list = []
+    db_session = DBSession()
+
+    region = get_region(db_session, region_name)
+    if region is not None and len(region.servers) > 0:
+        for server in region.servers:
+            if server.server_type != ServerType.LOCAL_SERVER:
+                result_list.append({'server_id': server.id, 'hostname': server.hostname})
     else:
         servers = get_server_list(db_session)
         if servers is not None:
