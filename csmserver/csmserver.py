@@ -217,6 +217,11 @@ def load_user(user_id):
     return db_session.query(User).get(user_id)
 
 
+@app.route('/inventory_home')
+@login_required
+def inventory_home():
+    return render_template('inventory/home.html')
+
 @app.route('/')
 @login_required
 def home():
