@@ -1,5 +1,4 @@
-
-{% extends 'base.html' %}
+{% extends 'base_software.html' %}
 {% from 'host/common.html' import edit_field %}
 {% from 'share/cisco_software_dialog.html' import cisco_software_dialog %}
 {% from 'share/server_software_dialog.html' import server_software_dialog %}
@@ -84,7 +83,7 @@
 
 {% endmacro %}
 
-{% block extra_head %}
+{% block head %}
 
 <script src="/static/jquery/js/smu_info_dialog.js"></script>
 <script src="/static/jquery/js/auto_select_software.js"></script>
@@ -656,7 +655,7 @@ $(function() {
 
 {% block extra_child_head %} {% endblock extra_child_head %}
 
-{% endblock extra_head %}
+{% endblock %}
 
 {% block main %}
 
@@ -707,5 +706,4 @@ $(function() {
     </div>
 </div>
 
-
-{% endblock main %}
+{% endblock %}

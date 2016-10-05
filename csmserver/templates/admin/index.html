@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'base_software.html' %}
 
 {% from 'host/common.html' import edit_field %}
 
-{% block extra_head %}
+{% block head %}
 <script charset="utf-8">
     $(function() {
 
@@ -159,7 +159,7 @@
         });
     });
 </script>
-{% endblock extra_head %}
+{% endblock %}
 
 {% block main %}
 <div class="container">
@@ -463,4 +463,4 @@
         <!-- /upper section -->
 </form>
 </div> <!--/Main -->
-{% endblock main %}
+{% endblock %}

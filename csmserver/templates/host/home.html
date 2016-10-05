@@ -1,8 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'base_software.html' %}
 
 {% from 'host/common.html' import edit_field %}
 
-{% block extra_head %}
+{% block head %}
+
 <script src="/static/jquery/js/browse_server_dialog.js"></script>
 <script charset="utf-8">
     $(function() {
@@ -186,7 +187,6 @@
             host_table.api().ajax.url("/api/get_managed_hosts/region/" + region_id).load();
             update_host_platform_table(region_id);
             update_region_name(region_id);
-
         }
 
         function update_host_platform_table(region_id) {
@@ -289,25 +289,14 @@
 <style>
     .modal-dialog {
         /* new custom width */
-
         width: 700px;
     }
     .btn-select {
         line-height: 10px;
     }
-    /*
-    .input-group > .input-group-btn:last-child > .select-picker {
-        border-top-right-radius: 5px;
-        border-bottom-right-radius: 5px;
-    }
-
-    .input-group > .input-group-btn:first-child > .select-picker {
-        border-top-left-radius: 5px;
-        border-bottom-left-radius: 5px;
-    }
-    */
 </style>
-{% endblock extra_head %}
+
+{% endblock %}
 
 {% block main %}
 <div id="select-server-dialog" class="modal" role="dialog">
@@ -585,4 +574,4 @@
     <!-- /upper section -->
 </div>
 <!-- Main -->
-{% endblock main %}
+{% endblock %}

@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base_software.html' %}
 
 {% from 'host/common.html' import edit_field %}
 {% from 'host/common.html' import alert_duplicate %}
@@ -9,7 +9,7 @@
     {% set isEdit = False %}
 {% endif %}
 
-{% block extra_head %}  
+{% block head %}
 
 <script>
     $(function() {
@@ -53,7 +53,7 @@
     }
 </style>
   
-{% endblock extra_head %}
+{% endblock %}
 
 {% block main %}
 
@@ -77,4 +77,4 @@
     </div>
 </div>
 
-{% endblock main %}
+{% endblock %}

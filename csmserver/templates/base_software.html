@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% macro help_menu() %}
+    <li><a href="{{ url_for('static', filename='documents/overview.pdf') }}">Overview</a></li>
+    <li><a href="{{ url_for('static', filename='documents/home.pdf') }}">Home</a></li>
+    <li><a href="{{ url_for('static', filename='documents/cco.pdf') }}">CCO</a></li>
+    <li><a href="{{ url_for('static', filename='documents/host_dashboard.pdf') }}">Host Dashboard</a></li>
+    <li><a href="{{ url_for('static', filename='documents/schedule_install.pdf') }}">Schedule Installation</a></li>
+    <li><a href="{{ url_for('static', filename='documents/dashboards.pdf') }}">Dashboards</a></li>
+    <li><a href="{{ url_for('static', filename='documents/conformance.pdf') }}">Conformance</a></li>
+    {% if current_user.privilege == 'Admin' %}
+    <li><a href="{{ url_for('static', filename='documents/admin_tools.pdf') }}">Admin Tools</a></li>
+    {% endif %}
+    <li><a href="{{ url_for('static', filename='documents/tools.pdf') }}">Tools</a></li>
+    <li><a href="{{ url_for('static', filename='documents/migrate_to_asr9k_64.pdf') }}">ASR9K to ASR9K-64 Migration</a></li>
+    <li><a href="{{ url_for('static', filename='documents/additional_topics.pdf') }}">Additional Topics</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('static', filename='documents/api_guide.pdf') }}">API Guide</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('about') }}">About CSM Server</a></li>
+{% endmacro %}
+
+{% macro non_admin_tools_menu() %}
+    <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('current_user_edit') }}">Edit User</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('validate_software') }}">Validate Software</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('tools.create_tar_file') }}">Create Tar File</a></li>
+    {% if current_user.privilege == 'Admin' or current_user.privilege == 'Network Admin' %}
+    <li class="divider"></li>
+    <li><a href="{{ url_for('custom_command.home') }}">Custom Command Profile</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('asr9k_64_migrate.migration') }}">ASR9K to ASR9K-64 Migration</a></li>
+    {% endif %}
+{% endmacro %}
+
+{% macro admin_tools_menu() %}
+    <li><a href="{{ url_for('admin_console') }}">Admin Console</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('host_import.import_hosts') }}">Import Hosts</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('user_create') }}">Create User</a></li>
+    <li class="divider"></li>
+    <li><a href="{{ url_for('user_list') }}">List All Users</a></li>
+    <li class="divider"></li>
+    <!-- <li><a href="{{ url_for('failed_software_inventory_list') }}">Failed Last Software Inventory</a></li> -->
+    <!-- <li class="divider"></li>  -->
+    <li><a href="{{ url_for('logs') }}">System Logs</a></li>
+{% endmacro %}
+
+{% block base_head %}
+
+<script charset="utf-8">
+    $(function() {
+        $('#search-host-selector').select2({
+            placeholder: "Search a host",
+            allowClear: true,
+            ajax: {
+                url: "/api/get_hostnames/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                },
+            },
+        });
+
+        $('#search-host-selector').on('change', function(e) {
+            var host = $(this).val();
+            window.location = "/hosts/" + host + "/host_dashboard/"
+        })
+
+        function create_menu() {
+            $.ajax({
+                url: "{{ url_for('api_get_catalog') }}",
+                dataType: 'json',
+                success: function(data) {
+                    var html = '';
+
+                    $.each(data, function(index, element) {
+                        for (i = 0; i < element.length; i++) {
+
+                            var beautified_platform = element[i].beautified_platform
+                            var platform = element[i].platform;
+                            var releases = element[i].releases;
+
+                            html += '<li class="dropdown-submenu">' +
+                                '<a href="javascript://">' + beautified_platform + '</a>' +
+                                '<ul class="dropdown-menu">';
+
+                            for (var j = 0; j < releases.length; j++) {
+                                html += '<li><a href="/get_smu_list/platform/' + platform + '/release/' + releases[j] + '">' + releases[j] + '</a></li>'
+                            }
+
+                            html += '</ul>' + '</li>'
+                        }
+                    });
+
+                    $('#dropdown-menu').html(html);
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    //bootbox.alert("Unable to retrieve catalog data");
+                }
+            });
+        }
+
+        create_menu();
+    });
+</script>
+
+{% endblock %}
+
+{% block menu_bar %}
+
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="offcanvas" data-target=".navmenu" data-canvas="body">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <a class="navbar-brand" style="padding:10px" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
+            <a class="navbar-brand" href="#">CSM Server</a>
+        </div>
+
+        <div class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                {% if current_user.is_authenticated() %}
+                <li class="active"><a href="{{ url_for('home') }}">Home</a></li>
+                <ul class="nav navbar-nav">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO<b class="caret"></b></a>
+                        <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
+                    </li>
+                </ul>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Dashboards<b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('install_dashboard') }}">Install Dashboard</a></li>
+                        <li class="divider"></li>
+                        <li><a href="{{ url_for('download_dashboard') }}">Download Dashboard</a></li>
+                    </ul>
+                </li>
+                <li><a href="{{ url_for('conformance.home') }}">Conformance</a></li>
+                {% endif %}
+            </ul>
+            {% if current_user.is_authenticated() %}
+            <ul class="nav navbar-nav navbar-right">
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Help<b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        {{ help_menu() }}
+                    </ul>
+                </li>
+                <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
+                    {% if current_user.privilege == 'Admin' %}
+                    <ul class="dropdown-menu multi-column columns-2">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <ul class="multi-column-dropdown">
+                                    {{ non_admin_tools_menu() }}
+                                </ul>
+                            </div>
+                            <div class="col-sm-6">
+                                <ul class="multi-column-dropdown">
+                                    {{ admin_tools_menu() }}
+                                </ul>
+                            </div>
+                        </div>
+                    </ul>
+                    {% else %}
+                    <ul class="dropdown-menu">
+                        {{ non_admin_tools_menu() }}
+                    </ul>
+                    {% endif %}
+                </li>
+            </ul>
+            <form class="navbar-form navbar-left pull-right" role="search">
+                <div class="form-group" style="padding:5px">
+                    <input type="hidden" class="select2" id="search-host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
+                    </select>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+        <!--/.nav-collapse -->
+    </div>
+{% endblock %}
