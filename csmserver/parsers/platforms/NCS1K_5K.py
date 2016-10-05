@@ -1,5 +1,5 @@
 # =============================================================================
-# Copyright (c) 2016, Cisco Systems, Inc
+# Copyright (c) 2015, Cisco Systems, Inc
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,7 +22,31 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-class BasePackageParser(object):
-    def get_packages_from_cli(self, host, install_inactive_cli=None,
-                              install_active_cli=None, install_committed_cli=None):
-        raise NotImplementedError("Children must override get_packages_from_cli")
+from eXR import EXRInventoryParser
+from models import get_db_session_logger
+
+
+class NCS1K5KInventoryParser(EXRInventoryParser):
+
+    def process_inventory(self, ctx):
+        """
+        For NCS1K and NCS5K.
+        There is only one chassis in this case. It most likely shows up first in the
+        output of "admin show inventory".
+        Example for NCS1K:
+        Name: Rack 0                Descr: Network Convergence System 1000 Controller
+        PID: NCS1002                VID: V01                   SN: CHANGE-ME-
+
+        Example for NCS5K:
+        Name: Rack 0                Descr:
+        PID: NCS-5002               VID: V01                   SN: FOC1946R0DH
+        """
+        inventory_output = ctx.load_data('inventory')[0]
+        inventory_data = self.parse_inventory_output(inventory_output)
+        for i in xrange(0, len(inventory_data)):
+            if "Rack 0" in inventory_data[i]['name']:
+                return self.store_inventory(ctx, inventory_data, i)
+
+        logger = get_db_session_logger(ctx.db_session)
+        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
+        return

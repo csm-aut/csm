@@ -22,27 +22,34 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from constants import PlatformFamily
-from csm_exceptions.exceptions import UnknownSoftwarePlatform
-from parser_factory import ASR9KParserFactory, CRSParserFactory, NCS1K5KParserFactory, \
-    EXRParserFactory, IOSXEParserFactory, NXOSParserFactory
+from base import BaseInventoryParser
+from models import get_db_session_logger
 
 
-def get_parser_factory(software_platform):
-    if software_platform == PlatformFamily.ASR9K:
-        return ASR9KParserFactory()
-    elif software_platform == PlatformFamily.CRS:
-        return CRSParserFactory()
-    elif software_platform in [PlatformFamily.NCS1K,
-                               PlatformFamily.NCS5K]:
-        return NCS1K5KParserFactory()
-    elif software_platform in [PlatformFamily.ASR9K_64,
-                               PlatformFamily.NCS6K,
-                               PlatformFamily.NCS5500]:
-        return EXRParserFactory()
-    elif software_platform == PlatformFamily.ASR900:
-        return IOSXEParserFactory()
-    elif software_platform == PlatformFamily.N9K:
-        return NXOSParserFactory()
-    else:
-        raise UnknownSoftwarePlatform('%s' % software_platform)
+class CRSInventoryParser(BaseInventoryParser):
+
+    def process_inventory(self, ctx):
+        """
+        For CRS.
+        There can be more than one chassis in this case.
+        Example for CRS:
+        NAME: "Rack 0 - Chassis", DESCR: "CRS 16 Slots Line Card Chassis for CRS-16/S-B"
+        PID: CRS-16-LCC-B, VID: V03, SN: FXS1804Q576
+        """
+        inventory_output = ctx.load_data('inventory')[0]
+        inventory_data = self.parse_inventory_output(inventory_output)
+        chassis_indices = []
+        for i in xrange(0, len(inventory_data)):
+            if "Chassis" in inventory_data[i]['name']:
+                chassis_indices.append(i)
+        if len(chassis_indices) > 0:
+            return self.store_inventory(ctx, inventory_data, chassis_indices)
+        else:
+            logger = get_db_session_logger(ctx.db_session)
+            logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
+            return
+
+    def store_inventory(self, ctx, inventory_data, chassis_indices):
+        if len(chassis_indices) == 1:
+            super(CRSInventoryParser, self).store_inventory(ctx, inventory_data, chassis_indices[0])
+        return

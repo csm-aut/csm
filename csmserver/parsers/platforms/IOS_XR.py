@@ -22,16 +22,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+import abc
+
 from models import Package
 from constants import PackageState
-from parsers.base import BasePackageParser
+from base import BaseSoftwarePackageParser, BaseInventoryParser
 
-"""
-The default CLI package parser for IOS-XR.
-"""
-class CLIPackageParser(BasePackageParser):
-        
-    def get_packages_from_cli(self, ctx):
+
+class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
+
+    def set_host_packages_from_cli(self, ctx):
         inactive_packages = {}
         active_packages = {}
         committed_packages = {}
@@ -102,3 +102,4 @@ class CLIPackageParser(BasePackageParser):
                 found = True
 
         return package_dict
+

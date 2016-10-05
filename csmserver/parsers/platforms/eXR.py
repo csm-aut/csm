@@ -22,16 +22,18 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+import re
+
 from models import Package
 from models import ModulePackageState
 from constants import PackageState
-from parsers.base import BasePackageParser
+from base import BaseSoftwarePackageParser, BaseInventoryParser
+from models import get_db_session_logger
 
-import re
 
+class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
 
-class CLIPackageParser(BasePackageParser):
-    def get_packages_from_cli(self, ctx):
+    def set_host_packages_from_cli(self, ctx):
         admin_inactive_packages = {}
         admin_active_packages = {}
         admin_committed_packages = {}
@@ -75,10 +77,12 @@ class CLIPackageParser(BasePackageParser):
 
         # Handles Committed Packages
         if isinstance(cli_admin_show_install_committed, list):
-            admin_committed_packages = self.parse_packages_by_node(cli_admin_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
+            admin_committed_packages = self.parse_packages_by_node(cli_admin_show_install_committed[0],
+                                                                   PackageState.ACTIVE_COMMITTED)
 
         if isinstance(cli_show_install_committed, list):
-            non_admin_committed_packages = self.parse_packages_by_node(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
+            non_admin_committed_packages = self.parse_packages_by_node(cli_show_install_committed[0],
+                                                                       PackageState.ACTIVE_COMMITTED)
 
         committed_packages.update(admin_committed_packages)
         committed_packages.update(non_admin_committed_packages)
@@ -306,3 +310,35 @@ class CLIPackageParser(BasePackageParser):
             trunks[module] = trunk
 
         return trunks
+
+
+class EXRInventoryParser(BaseInventoryParser):
+
+    def process_inventory(self, ctx):
+        """
+        For ASR9K-64, NCS6K and NCS5500
+        There is only one chassis in this case. It most likely shows up first in the
+        output of "admin show inventory".
+        Example for ASR9K-64:
+        Name: Rack 0                Descr: ASR-9904 AC Chassis
+        PID: ASR-9904-AC            VID: V01                   SN: FOX1746GHJ9
+
+        Example for NCS6K:
+        Name: Rack 0                Descr: NCS 6008 - 8-Slot Chassis
+        PID: NCS-6008               VID: V01                   SN: FLM17476JWA
+
+        Example for NCS5500:
+        Name: Rack 0                Descr: NCS5500 8 Slot Single Chassis
+        PID: NCS-5508               VID: V01                   SN: FGE194714QX
+
+        """
+        inventory_output = ctx.load_data('inventory')[0]
+        inventory_data = self.parse_inventory_output(inventory_output)
+        for i in xrange(0, len(inventory_data)):
+            if "Chassis" in inventory_data[i]['description']:
+                return self.store_inventory(ctx, inventory_data, i)
+
+        logger = get_db_session_logger(ctx.db_session)
+        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
+        return
+

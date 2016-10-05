@@ -42,7 +42,7 @@ from utils import get_software_platform
 from utils import get_software_version
 from filters import get_datetime_string
 
-from parsers.loader import get_package_parser_class
+from parsers import get_parser_factory
 from csmpe import CSMPluginManager
 
 import os
@@ -81,7 +81,7 @@ class BaseHandler(object):
             self.update_device_info(ctx)
 
         if isinstance(ctx, InventoryContext) or isinstance(ctx, InstallContext):
-            self.get_software(ctx)
+            self.get_inventory(ctx)
 
         if isinstance(ctx, InstallContext):
             try:
@@ -141,11 +141,14 @@ class BaseHandler(object):
                       pid=udi_dict['pid'], vid=udi_dict['vid'], sn=udi_dict['sn'])
             ctx.host.UDIs = [udi]
 
-    def get_software(self, ctx):
-        package_parser_class = get_package_parser_class(ctx.host.software_platform)
-        package_parser = package_parser_class()
+    def get_inventory(self, ctx):
+        parser_factory = get_parser_factory(ctx.host.software_platform)
 
-        return package_parser.get_packages_from_cli(ctx)
+        software_package_parser = parser_factory.create_software_package_parser()
+        software_package_parser.set_host_packages_from_cli(ctx)
+
+        inventory_parser = parser_factory.create_inventory_parser()
+        inventory_parser.process_inventory(ctx)
 
     def generate_post_upgrade_file_diff(self, ctx):
         install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_UPGRADE)
