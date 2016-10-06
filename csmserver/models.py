@@ -438,11 +438,11 @@ class HostInventory(Base):
     # Entity to parent : many to one
     parent_id = Column(Integer, ForeignKey(id), index=True)
 
-    cli_order = Column(Integer)
+    position = Column(Integer)
 
-    location = Column(String(50), nullable=False)
+    location = Column(String(50))
     model_name = Column(String(50))
-    name = Column(String(100), nullable=False)
+    name = Column(String(100))
     description = Column(String(200))
     serial_number = Column(String(50), index=True)
     hardware_revision = Column(String(50))
@@ -455,11 +455,11 @@ class HostInventory(Base):
                             backref=backref("parent", remote_side=id),
 
                             # cascade deletions
-                            cascade="all, delete-orphan"
+                            cascade="all, delete, delete-orphan"
                             )
 
     def __init__(self, host_id=None, location="", model_name="", hardware_revision="", name="",
-                 parent=None, serial_number="", description="", cli_order=-1):
+                 parent=None, serial_number="", description="", position=-1):
         self.host_id = host_id
         self.location = location
         self.model_name = model_name
@@ -468,7 +468,7 @@ class HostInventory(Base):
         self.parent = parent
         self.serial_number = serial_number
         self.description = description
-        self.cli_order = cli_order
+        self.position = position
 
     def update(self, **data):
         for key, value in data.iteritems():
@@ -481,16 +481,16 @@ class HostInventory(Base):
 class Inventory(Base):
     __tablename__ = 'inventory'
 
-    serial_number = Column(Integer, primary_key=True, index=True)
+    serial_number = Column(Integer, primary_key=True)
 
     host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
-    model_name = Column(String(50), nullable=False)
+    model_name = Column(String(50))
     description = Column(String(200))
     hardware_revision = Column(String(50))
 
     annotation = Column(String(500))
-    created_datetime = Column(DateTime, default=datetime.datetime.utcnow)
+    created_time = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 class HostInventoryHistory(Base):
@@ -500,7 +500,7 @@ class HostInventoryHistory(Base):
     host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
     notes = Column(String(500))
-    created_datetime = Column(DateTime, default=datetime.datetime.utcnow)
+    changed_time = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 class InventoryJob(Base):

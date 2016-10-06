@@ -24,12 +24,9 @@
 # =============================================================================
 import abc
 
-from platforms.ASR9K import ASR9KInventoryParser
-from platforms.CRS import CRSInventoryParser
-from platforms.eXR import EXRSoftwarePackageParser, EXRInventoryParser
+from platforms.eXR import EXRSoftwarePackageParser, EXRInventoryParser, NCS1K5KInventoryParser
 from platforms.IOS_XE import IOSXESoftwarePackageParser, IOSXEInventoryParser
-from platforms.IOS_XR import IOSXRSoftwarePackageParser
-from platforms.NCS1K_5K import NCS1K5KInventoryParser
+from platforms.IOS_XR import IOSXRSoftwarePackageParser, ASR9KInventoryParser, CRSInventoryParser
 from platforms.NX_OS import NXOSSoftwarePackageParser, NXOSInventoryParser
 
 

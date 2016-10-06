@@ -102,11 +102,11 @@ class BaseInventoryParser(object):
             logger.exception('chassis index in inventory output is out of range for host {}.'.format(ctx.host.hostname))
             return
 
-        inventory_data[chassis_ind]['cli_order'] = 0
+        inventory_data[chassis_ind]['position'] = 0
         for i in xrange(0, chassis_ind):
-            inventory_data[i]['cli_order'] = i + 1
+            inventory_data[i]['position'] = i + 1
         for i in xrange(chassis_ind + 1, len(inventory_data)):
-            inventory_data[i]['cli_order'] = i
+            inventory_data[i]['position'] = i
 
         db_session = DBSession()
         # del ctx.host.inventory[:]
