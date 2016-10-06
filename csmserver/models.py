@@ -445,7 +445,7 @@ class HostInventory(Base):
     name = Column(String(100))
     description = Column(String(200))
     serial_number = Column(String(50), index=True)
-    hardware_revision = Column(String(50))
+    hardware_revision = Column(String(10))
     # type = Column(String(50))
     # level = Column(Integer)  - for join operations
 
@@ -487,9 +487,9 @@ class Inventory(Base):
 
     model_name = Column(String(50))
     description = Column(String(200))
-    hardware_revision = Column(String(50))
+    hardware_revision = Column(String(10))
 
-    annotation = Column(String(500))
+    annotation = Column(Text)
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
 
 
@@ -499,7 +499,7 @@ class HostInventoryHistory(Base):
 
     host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
-    notes = Column(String(500))
+    notes = Column(Text)
     changed_time = Column(DateTime, default=datetime.datetime.utcnow)
 
 
