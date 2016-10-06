@@ -1235,6 +1235,27 @@ def api_get_host_dashboard_cookie(hostname):
     return jsonify(**{'data': rows})
 
 
+@app.route('/api/hosts/<hostname>/inventory', methods=['GET'])
+@login_required
+def api_get_inventory(hostname):
+    rows = []
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if host is not None:
+        for inventory in host.inventory:
+            row = {}
+            row['location'] = inventory.location
+            row['model_name'] = inventory.model_name
+            row['name'] = inventory.name
+            row['description'] = inventory.description
+            row['serial_number'] = inventory.serial_number
+            row['vid'] = inventory.hardware_revision
+            rows.append(row)
+
+    return jsonify(**{'data': rows})
+
+
 @app.route('/api/hosts/<hostname>/install_job_history', methods=['GET'])
 @login_required
 def api_get_host_dashboard_install_job_history(hostname):
@@ -2793,9 +2814,9 @@ def api_get_hosts_by_region(region_id, role, software):
     return jsonify(**{'data': rows})
 
 
-@app.route('/api/get_software/<hostname>')
+@app.route('/api/get_inventory/<hostname>')
 @login_required
-def get_software(hostname):
+def get_inventory(hostname):
     if not can_retrieve_software(current_user):
         abort(401)
     

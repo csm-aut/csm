@@ -239,6 +239,38 @@
             last_install_job_history_count = new_last_install_job_history_count;
         });
 
+        var inventory_table = $("#inventory-datatable").dataTable({
+            "order": [
+                0, ["asc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'location'
+            }, {
+                "targets": 1,
+                "data": 'model_name'
+            }, {
+                "targets": 2,
+                "data": 'name'
+            }, {
+                "targets": 3,
+                "data": 'description'
+            }, {
+                "targets": 4,
+                "data": 'serial_number'
+            }, {
+                "targets": 5,
+                "data": 'vid'
+            }, ],
+            "ajax": {
+                "url": "{{ url_for('api_get_inventory', hostname=host.hostname) }}",
+            }
+        });
+
+        function refresh_inventory_table() {
+            inventory_table.api().ajax.url("{{ url_for('api_get_inventory', hostname=host.hostname) }}").load();
+        }
+
         function refresh_install_job_history_table() {
             install_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}").load();
         }
@@ -359,13 +391,13 @@
             }
         }
 
-        $("#retrieve-software").on("click", function() {
-            var retrieve_software_url = $(this).attr('retrieve-software-url');
+        $("#retrieve-inventory").on("click", function() {
+            var retrieve_software_url = $(this).attr('retrieve-inventory-url');
             var return_url = $(this).attr('return-url');
 
-            bootbox.confirm("If the host is reachable and CSM Server is not busy retrieving software for other hosts, " +
-                "the Software Packages on this page should be refreshed within 30 seconds." +
-                "The Last Software Retrieval timestamp will be updated accordingly.  OK to proceed?",
+            bootbox.confirm("If the host is reachable and CSM Server is not busy retrieving inventory for other hosts, " +
+                "the inventory information (Software Packages and Hardware Inventory) should be refreshed within 30 seconds." +
+                "The Last Successful Retrieval timestamp will be updated accordingly.  OK to proceed?",
                 function(result) {
                     if (result) {
                         $.ajax({
@@ -446,6 +478,7 @@
                         new_last_successful_inventory_time = element[0].last_successful_inventory_time;
                         if (new_last_successful_inventory_time != last_successful_inventory_time) {
                             refresh_packages_tables();
+                            refresh_inventory_table();
                             last_successful_inventory_time = new_last_successful_inventory_time
                         }
 
@@ -547,7 +580,7 @@
                         <li><a href="javascript://" class="install-delete-all" status="" install-delete-url="{{ url_for('delete_all_scheduled_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Scheduled Installs</a></li>
                         <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('delete_all_failed_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Failed Installs</a></li>
                         <li class="divider"></li>
-                        <li><a href="javascript://" id="retrieve-software" retrieve-software-url="{{ url_for('get_software', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Retrieve Latest Software</a></li>
+                        <li><a href="javascript://" id="retrieve-inventory" retrieve-inventory-url="{{ url_for('get_inventory', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Retrieve Latest Inventory</a></li>
                         <li class="divider"></li>
                         <li><a href="{{ url_for('host_edit', hostname = host.hostname) }}?return_url=host_dashboard">Edit Host</a></li>
                     </ul>
@@ -636,7 +669,18 @@
             <div class="tab-content">
                 <div id="inventory" class="tab-pane fade in active">
                     <div class="container col-sm-12" style="margin-top: 10px">
-                         TO BE IMPLEMENTED
+                         <table cellspacing="0" class="display table" id="inventory-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Model Name</th>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Serial Number</th>
+                                    <th>VID</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 </div>
                 <div id="installation-history" class="tab-pane fade">
