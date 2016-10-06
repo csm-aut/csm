@@ -9,7 +9,10 @@ region_id = "{{ host.region.id }}";
 host_software_platform = "{{ host.software_platform }}";
 host_software_version = "{{ host.software_version }}";
 
-get_supported_install_actions("{{ host.hostname }}");
+populate_supported_install_actions("{{ host.hostname }}");
+
+// Display the selected install action (in Edit mode)
+$("#install_action").val("{{ form.install_action.data }}").trigger("change");
 
 $('#form').submit(function() {
     on_final_submit(this, "{{ host.hostname }}");
