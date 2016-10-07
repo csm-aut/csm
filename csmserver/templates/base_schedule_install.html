@@ -10,8 +10,9 @@
 <!--
 All supported install actions must be defined here even though this Select is populated
 later based on platform type.  For unknown reason, the selected install action won't
-be shown in Edit mode if they are not defined first.
+be shown in Edit mode if they are not defined first (strange behavior in Select2).
 -->
+
 <div class="form-group ">
     <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
     <div class=col-sm-6>
@@ -124,6 +125,7 @@ be shown in Edit mode if they are not defined first.
 
 <script type="text/javascript">
 
+var install_actions = null;
 var host_software_platform = null;
 var host_software_version = null;
 
@@ -165,7 +167,9 @@ $(function() {
     toggle_ui();
 
     $('#install_action').on('change', function(e) {
-        var install_actions = $(this).val();
+        // Remember the selected install actions.
+        install_actions = $(this).val();
+
         if (has_one_of_these(install_actions, [ALL])) {
             $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_REMOVE]) && install_actions.length > 1) {
@@ -209,8 +213,6 @@ $(function() {
 
 
     function toggle_ui() {
-        var install_actions = $('#install_action').val();
-
         should_enable_widget_panel(install_actions);
 
         $('#add-widget-panel').hide();
@@ -338,7 +340,6 @@ $(function() {
     });
 
     function validate() {
-        var install_actions = $('#install_action').val();
         if (install_actions == null) {
             bootbox.alert("Install Action has not been specified.");
             return false;
@@ -348,8 +349,6 @@ $(function() {
         var software_packages = $('#software_packages').val().trim();
 
         if (has_one_of_these(install_actions, [INSTALL_ADD]) && server_id == -1) {
-            //bootbox.alert("Server repository has not been specified.");
-
             $('#select-server-dialog').modal({
                 show: true,
                 backdrop: 'static'
