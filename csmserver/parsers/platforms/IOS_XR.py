@@ -130,8 +130,12 @@ class ASR9KInventoryParser(BaseInventoryParser):
         NAME: "chassis ASR-9006-AC", DESCR: "ASR 9006 4 Line Card Slot Chassis with V1 AC PEM"
         PID: ASR-9006-AC, VID: V01, SN: FOX1523H7HA
         """
-        inventory_output = ctx.load_data('inventory')[0]
+        if not ctx.load_data('cli_show_inventory'):
+            return
+        inventory_output = ctx.load_data('cli_show_inventory')[0]
+
         inventory_data = self.parse_inventory_output(inventory_output)
+
         for i in xrange(len(inventory_data)-1, -1, -1):
             if "chassis" in inventory_data[i]['name']:
                 return self.store_inventory(ctx, inventory_data, i)
@@ -151,8 +155,12 @@ class CRSInventoryParser(BaseInventoryParser):
         NAME: "Rack 0 - Chassis", DESCR: "CRS 16 Slots Line Card Chassis for CRS-16/S-B"
         PID: CRS-16-LCC-B, VID: V03, SN: FXS1804Q576
         """
-        inventory_output = ctx.load_data('inventory')[0]
+        if not ctx.load_data('cli_show_inventory'):
+            return
+        inventory_output = ctx.load_data('cli_show_inventory')[0]
+
         inventory_data = self.parse_inventory_output(inventory_output)
+
         chassis_indices = []
         for i in xrange(0, len(inventory_data)):
             if "Chassis" in inventory_data[i]['name']:

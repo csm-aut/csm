@@ -96,4 +96,5 @@ class NXOSSoftwarePackageParser(BaseSoftwarePackageParser):
 class NXOSInventoryParser(BaseInventoryParser):
 
     def process_inventory(self, ctx):
-        raise NotImplementedError("inventory processing not implemented for NX-OS platform.")
+        # raise NotImplementedError("inventory processing not implemented for NX-OS platform.")
+        return

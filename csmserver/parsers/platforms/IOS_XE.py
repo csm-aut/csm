@@ -171,8 +171,12 @@ class IOSXEInventoryParser(BaseInventoryParser):
         PID: ASR-903           , VID: V01, SN: FOX1717P569
 
         """
-        inventory_output = ctx.load_data('inventory')[0]
+        if not ctx.load_data('cli_show_inventory'):
+            return
+        inventory_output = ctx.load_data('cli_show_inventory')[0]
+
         inventory_data = self.parse_inventory_output(inventory_output)
+
         for i in xrange(0, len(inventory_data)):
             if "Chassis" in inventory_data[i]['name']:
                 return self.store_inventory(ctx, inventory_data, i)

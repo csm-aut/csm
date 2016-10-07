@@ -332,8 +332,12 @@ class EXRInventoryParser(BaseInventoryParser):
         PID: NCS-5508               VID: V01                   SN: FGE194714QX
 
         """
-        inventory_output = ctx.load_data('inventory')[0]
+        if not ctx.load_data('cli_show_inventory'):
+            return
+        inventory_output = ctx.load_data('cli_show_inventory')[0]
+
         inventory_data = self.parse_inventory_output(inventory_output)
+
         for i in xrange(0, len(inventory_data)):
             if "Chassis" in inventory_data[i]['description']:
                 return self.store_inventory(ctx, inventory_data, i)
@@ -358,8 +362,12 @@ class NCS1K5KInventoryParser(EXRInventoryParser):
         Name: Rack 0                Descr:
         PID: NCS-5002               VID: V01                   SN: FOC1946R0DH
         """
-        inventory_output = ctx.load_data('inventory')[0]
+        if not ctx.load_data('cli_show_inventory'):
+            return
+        inventory_output = ctx.load_data('cli_show_inventory')[0]
+
         inventory_data = self.parse_inventory_output(inventory_output)
+
         for i in xrange(0, len(inventory_data)):
             if "Rack 0" in inventory_data[i]['name']:
                 return self.store_inventory(ctx, inventory_data, i)

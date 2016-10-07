@@ -111,8 +111,11 @@ class InstallWorkUnit(WorkUnit):
             handler.execute(ctx)
 
             if ctx.success:
-                # Update the software
-                self.get_inventory(ctx, logger)
+                try:
+                    # Update the software
+                    self.get_inventory(ctx, logger)
+                except Exception:
+                    pass
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.COMPLETED, process_name)
             else:
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
