@@ -229,6 +229,8 @@ def api_create_install_request(request):
         row = {}
         msg = ''
         # If dependency was not specified, there may be an implicit dependency
+        if install_request['install_action'] in ['Deactivate', 'Remove']:
+            install_request['dependency'] = 0
         if 'dependency' not in install_request.keys():
             install_request['dependency'] = 0
             if install_request['hostname'] in dependency_list.keys():
