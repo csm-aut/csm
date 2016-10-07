@@ -22,8 +22,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from sqlalchemy import and_
-
 from handlers.loader import get_inventory_handler_class
 from handlers.loader import get_install_handler_class
 from context import InstallContext
@@ -66,13 +64,13 @@ class InstallWorkUnit(WorkUnit):
     def get_unique_key(self):
         return self.host_id
 
-    def get_software(self, ctx, logger):
+    def get_inventory(self, ctx, logger):
         handler_class = get_inventory_handler_class(ctx)
         if handler_class is None:
             logger.error('SoftwareManager: Unable to get handler for %s', ctx.host.software_platform)
 
         handler = handler_class()
-        if handler.get_software(ctx):
+        if handler.get_inventory(ctx):
             # Update the time stamp
             ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
 
@@ -114,7 +112,7 @@ class InstallWorkUnit(WorkUnit):
 
             if ctx.success:
                 # Update the software
-                self.get_software(ctx, logger)
+                self.get_inventory(ctx, logger)
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.COMPLETED, process_name)
             else:
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
@@ -219,7 +217,6 @@ class InstallWorkUnit(WorkUnit):
 
         except Exception:
             logger.exception('create_email_notification() hit exception')
-
 
     def check_command_file_diff(self, install_job, message):
         file_suffix = '.diff.html'

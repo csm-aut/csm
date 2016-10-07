@@ -1,6 +1,6 @@
-{% extends 'base.html' %}
+{% extends 'base_software.html' %}
 
-{% block extra_head %}
+{% block head %}
 <style type="text/css">
     h2 {
         margin: 0;
@@ -21,7 +21,7 @@
         margin: 20px;
     }
 </style>
-{% endblock extra_head %}
+{% endblock %}
 
 {% block main %}
 <div id="myCarousel" class="carousel slide" data-ride="carousel">
@@ -66,4 +66,4 @@
     <center>Build Date: {{ build_date }}</center>
 {% endif %}
 
-{% endblock main %}
+{% endblock %}

@@ -217,6 +217,11 @@ def load_user(user_id):
     return db_session.query(User).get(user_id)
 
 
+@app.route('/inventory_home')
+@login_required
+def inventory_home():
+    return render_template('inventory/home.html')
+
 @app.route('/')
 @login_required
 def home():
@@ -1227,6 +1232,27 @@ def api_get_host_dashboard_cookie(hostname):
         row['can_schedule'] = system_option.can_schedule
         rows.append(row)
     
+    return jsonify(**{'data': rows})
+
+
+@app.route('/api/hosts/<hostname>/inventory', methods=['GET'])
+@login_required
+def api_get_inventory(hostname):
+    rows = []
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if host is not None:
+        for inventory in host.inventory:
+            row = {}
+            row['location'] = inventory.location
+            row['model_name'] = inventory.model_name
+            row['name'] = inventory.name
+            row['description'] = inventory.description
+            row['serial_number'] = inventory.serial_number
+            row['vid'] = inventory.hardware_revision
+            rows.append(row)
+
     return jsonify(**{'data': rows})
 
 
@@ -2592,21 +2618,36 @@ def api_get_servers_by_region(region_id):
 @app.route('/api/get_nonlocal_servers/region/<int:region_id>')
 @login_required
 def api_get_nonlocal_servers_by_region(region_id):
-    result_list = []
-    db_session = DBSession()
 
+    db_session = DBSession()
     region = get_region_by_id(db_session, region_id)
+
+    return get_nonlocal_servers(db_session, region)
+
+
+@app.route('/api/get_nonlocal_servers_by_region_name/region/<region_name>')
+@login_required
+def api_get_nonlocal_servers_by_region_name(region_name):
+
+    db_session = DBSession()
+    region = get_region(db_session, region_name)
+
+    return get_nonlocal_servers(db_session, region)
+
+
+def get_nonlocal_servers(db_session, region):
+    result_list = []
+
     if region is not None and len(region.servers) > 0:
         for server in region.servers:
             if server.server_type != ServerType.LOCAL_SERVER:
-                result_list.append({ 'server_id': server.id, 'hostname': server.hostname })
+                result_list.append({'server_id': server.id, 'hostname': server.hostname})
     else:
         servers = get_server_list(db_session)
         if servers is not None:
             for server in servers:
                 if server.server_type != ServerType.LOCAL_SERVER:
                     result_list.append({'server_id': server.id, 'hostname': server.hostname})
-
     return jsonify(**{'data': result_list})
 
 
@@ -2773,9 +2814,9 @@ def api_get_hosts_by_region(region_id, role, software):
     return jsonify(**{'data': rows})
 
 
-@app.route('/api/get_software/<hostname>')
+@app.route('/api/get_inventory/<hostname>')
 @login_required
-def get_software(hostname):
+def get_inventory(hostname):
     if not can_retrieve_software(current_user):
         abort(401)
     

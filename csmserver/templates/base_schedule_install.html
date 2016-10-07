@@ -1,5 +1,4 @@
-
-{% extends 'base.html' %}
+{% extends 'base_software.html' %}
 {% from 'host/common.html' import edit_field %}
 {% from 'share/cisco_software_dialog.html' import cisco_software_dialog %}
 {% from 'share/server_software_dialog.html' import server_software_dialog %}
@@ -8,13 +7,29 @@
 
 {% macro common_schedule_install_gui() %}
 
+<!--
+All supported install actions must be defined here even though this Select is populated
+later based on platform type.  For unknown reason, the selected install action won't
+be shown in Edit mode if they are not defined first.
+-->
 <div class="form-group ">
     <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
     <div class=col-sm-6>
         <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
+            <option value="Pre-Upgrade">Pre-Upgrade</option>
+            <option value="Add">Add</option>
+            <option value="Prepare">Prepare</option>
+            <option value="Activate">Activate</option>
+            <option value="Post-Upgrade">Post-Upgrade</option>
+            <option value="Commit">Commit</option>
+            <option value="ALL">ALL</option>
+            <option value="Remove">Remove</option>
+            <option value="Deactivate">Deactivate</option>
+            <option value="FPD-Upgrade">FPD-Upgrade</option>
         </select>
     </div>
 </div>
+
 
 <div id="widget-panel" class="form-group ">
     <label class="col-sm-4 control-label">Select From</label>  
@@ -84,7 +99,7 @@
 
 {% endmacro %}
 
-{% block extra_head %}
+{% block head %}
 
 <script src="/static/jquery/js/smu_info_dialog.js"></script>
 <script src="/static/jquery/js/auto_select_software.js"></script>
@@ -116,12 +131,14 @@ $(function() {
     // These constant values must match the CSM definitions
     var PRE_UPGRADE = "Pre-Upgrade";
     var INSTALL_ADD = "Add";
+    var INSTALL_PREPARE = "Prepare";
     var INSTALL_ACTIVATE = "Activate";
     var POST_UPGRADE = "Post-Upgrade";
     var INSTALL_COMMIT = "Commit";
     var ALL = "ALL";
     var INSTALL_REMOVE = "Remove";
     var INSTALL_DEACTIVATE = "Deactivate";
+    var FPD_UPGRADE = "FPD-Upgrade";
 
     var region_id = -1;
 
@@ -135,8 +152,6 @@ $(function() {
     $("#custom_command_profile").select2({
         placeholder: 'Optional'
     });
-    
-    $("#install_action").val("{{ form.install_action.data }}").trigger("change");
 
     var datetimepicker = $(".form_datetime").datetimepicker({
         format: "mm/dd/yyyy HH:ii P",
@@ -170,7 +185,7 @@ $(function() {
         }
     }
 
-    function get_supported_install_actions(hostname) {
+    function populate_supported_install_actions(hostname) {
         $.ajax({
             url: "/api/hosts/" + hostname + "/supported_install_actions",
             dataType: 'json',
@@ -648,15 +663,15 @@ $(function() {
 
     }
 
-    {% block head_schedule_install %} {% endblock head_schedule_install %}
+    {% block head_schedule_install %} {% endblock %}
 
 });
 
 </script>
 
-{% block extra_child_head %} {% endblock extra_child_head %}
+{% block child_head %} {% endblock %}
 
-{% endblock extra_head %}
+{% endblock %}
 
 {% block main %}
 
@@ -665,7 +680,7 @@ $(function() {
 {{ server_software_dialog(form.server_dialog_server, form.server_dialog_server_directory, form.server_dialog_target_software) }}
 {{ host_software_dialog(form.host_software_dialog_host, form.host_software_dialog_last_successful_inventory_elapsed_time, form.host_software_dialog_target_software) }}
 
-{% block main_schedule_install %} {% endblock main_schedule_install %}
+{% block main_schedule_install %} {% endblock %}
 
 <div id="select-server-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -707,5 +722,4 @@ $(function() {
     </div>
 </div>
 
-
-{% endblock main %}
+{% endblock %}

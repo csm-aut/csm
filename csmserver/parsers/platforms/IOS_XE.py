@@ -22,20 +22,19 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+import re
+
 from models import Package
 from models import ModulePackageState
 from constants import PackageState
-from parsers.base import BasePackageParser
-
-import re
+from base import BaseSoftwarePackageParser, BaseInventoryParser
+from models import get_db_session_logger
 # import logging
 
-"""
-CLI package parser for IOS-XE.
-"""
-class CLIPackageParser(BasePackageParser):
-        
-    def get_packages_from_cli(self, ctx):
+
+class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
+
+    def set_host_packages_from_cli(self, ctx):
         host_packages = []
         committed_packages = {}
 
@@ -154,3 +153,31 @@ class CLIPackageParser(BasePackageParser):
                 # logging.warning('module = %s, pkg = %s', module, pkg)
 
         return trunks
+
+
+class IOSXEInventoryParser(BaseInventoryParser):
+
+    def process_inventory(self, ctx):
+        """
+        For IOS-XE.
+        There is only one chassis in this case. It most likely shows up
+        first in the output of "show inventory".
+        Example for CRS:
+        NAME: "Rack 0 - Chassis", DESCR: "CRS 16 Slots Line Card Chassis for CRS-16/S-B"
+        PID: CRS-16-LCC-B, VID: V03, SN: FXS1804Q576
+
+        Example for IOS-XE:
+        NAME: "Chassis", DESCR: "ASR 903 Series Router Chassis"
+        PID: ASR-903           , VID: V01, SN: FOX1717P569
+
+        """
+        inventory_output = ctx.load_data('inventory')[0]
+        inventory_data = self.parse_inventory_output(inventory_output)
+        for i in xrange(0, len(inventory_data)):
+            if "Chassis" in inventory_data[i]['name']:
+                return self.store_inventory(ctx, inventory_data, i)
+
+        logger = get_db_session_logger(ctx.db_session)
+        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
+        return
+

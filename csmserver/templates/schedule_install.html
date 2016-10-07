@@ -2,9 +2,9 @@
 
 {% from 'share/select_hosts_by_platform.html' import select_hosts_by_platform %}
 
-{% block extra_child_head %}
+{% block child_head %}
 <script src="/static/jquery/js/select_hosts_by_platform.js"></script>
-{% endblock extra_child_head %}
+{% endblock %}
 
 {% block head_schedule_install %}
 
@@ -151,7 +151,7 @@ $('#browse-cisco-button').on('click', function(e) {
 });
 
 
-{% endblock head_schedule_install %}
+{% endblock %}
 
 {% block main_schedule_install %}
 
@@ -197,4 +197,4 @@ $('#browse-cisco-button').on('click', function(e) {
     </div>
 </div>
 
-{% endblock main_schedule_install %}
+{% endblock %}

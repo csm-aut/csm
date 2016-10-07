@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'base_software.html' %}
 
 {% from 'host/common.html' import edit_field %}
 
-{% block extra_head %}
+{% block head %}
 <script>
     $(function() {
         var current_form = null;
@@ -76,7 +76,7 @@
 
     });
 </script>
-{% endblock extra_head %}
+{% endblock %}
 
 {% block main %}
 <div id="csm-message-dialog" class="modal" role="dialog">
@@ -128,4 +128,4 @@
         </form>
     </div>
 </div>
-{% endblock main %}
+{% endblock %}

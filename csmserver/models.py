@@ -27,7 +27,7 @@ from sqlalchemy import String, Integer, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import mutable
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship, synonym
+from sqlalchemy.orm import backref, relationship, synonym
 
 from utils import is_empty
 from salts import encode, decode
@@ -277,7 +277,11 @@ class Host(Base):
                                     order_by="ConnectionParam.id",
                                     backref="host",
                                     cascade="all, delete, delete-orphan")
-    
+
+    inventory = relationship("HostInventory",
+                             order_by="HostInventory.id",
+                             cascade="all, delete, delete-orphan")
+
     inventory_job = relationship("InventoryJob",
                                  cascade="all, delete, delete-orphan")
     
@@ -423,6 +427,80 @@ class JumpHost(Base):
     def password(self, value):
         global encrypt_dict
         self._password = encode(encrypt_dict, value)
+
+
+class HostInventory(Base):
+    __tablename__ = 'host_inventory'
+    id = Column(Integer, primary_key=True)
+
+    host_id = Column(Integer, ForeignKey('host.id'), index=True)
+
+    # Entity to parent : many to one
+    parent_id = Column(Integer, ForeignKey(id), index=True)
+
+    position = Column(Integer)
+
+    location = Column(String(50))
+    model_name = Column(String(50))
+    name = Column(String(100))
+    description = Column(String(200))
+    serial_number = Column(String(50), index=True)
+    hardware_revision = Column(String(10))
+    # type = Column(String(50))
+    # level = Column(Integer)  - for join operations
+
+    children = relationship("HostInventory",
+
+                            # many to one based on parent_id
+                            backref=backref("parent", remote_side=id),
+
+                            # cascade deletions
+                            cascade="all, delete, delete-orphan"
+                            )
+
+    def __init__(self, host_id=None, location="", model_name="", hardware_revision="", name="",
+                 parent=None, serial_number="", description="", position=-1):
+        self.host_id = host_id
+        self.location = location
+        self.model_name = model_name
+        self.hardware_revision = hardware_revision
+        self.name = name
+        self.parent = parent
+        self.serial_number = serial_number
+        self.description = description
+        self.position = position
+
+    def update(self, **data):
+        for key, value in data.iteritems():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                continue
+
+
+class Inventory(Base):
+    __tablename__ = 'inventory'
+
+    serial_number = Column(Integer, primary_key=True)
+
+    host_id = Column(Integer, ForeignKey('host.id'), index=True)
+
+    model_name = Column(String(50))
+    description = Column(String(200))
+    hardware_revision = Column(String(10))
+
+    annotation = Column(Text)
+    created_time = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class HostInventoryHistory(Base):
+    __tablename__ = 'host_inventory_history'
+    id = Column(Integer, primary_key=True)
+
+    host_id = Column(Integer, ForeignKey('host.id'), index=True)
+
+    notes = Column(Text)
+    changed_time = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 class InventoryJob(Base):

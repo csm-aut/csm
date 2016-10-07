@@ -22,18 +22,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from models import Package
-from constants import PackageState
-from parsers.base import BasePackageParser
-
 import re
 
-"""
-CLI package parser for NX-OS.
-"""
-class CLIPackageParser(BasePackageParser):
+from models import Package
+from constants import PackageState
+from base import BaseSoftwarePackageParser, BaseInventoryParser
 
-    def get_packages_from_cli(self, ctx):
+
+class NXOSSoftwarePackageParser(BaseSoftwarePackageParser):
+
+    def set_host_packages_from_cli(self, ctx):
         host_packages = []
 
         cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
@@ -93,3 +91,9 @@ class CLIPackageParser(BasePackageParser):
                     packages.append(Package(location=None, name=package_name, state=package_state))
 
         return packages
+
+
+class NXOSInventoryParser(BaseInventoryParser):
+
+    def process_inventory(self, ctx):
+        raise NotImplementedError("inventory processing not implemented for NX-OS platform.")
