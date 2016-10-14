@@ -26,7 +26,9 @@ $(function() {
                 $.each(data, function(index, element) {
                     for (i = 0; i < element.length; i++) {
                         var platform = element[i].platform;
-                        $('#platform').append('<option value="' + platform + '">' + platform + '</option>');;
+                        if (platform != 'Unknown') {
+                            $('#platform').append('<option value="' + platform + '">' + platform + '</option>');
+                        }
                     }
                 });
             }
