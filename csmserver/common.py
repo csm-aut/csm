@@ -421,28 +421,8 @@ def delete_host(db_session, hostname):
     if host is None:
         raise HostNotFound('Unable to locate host %s' % hostname)
 
-    delete_host_inventory_job_session_logs(db_session, host)
-    delete_host_install_job_session_logs(db_session, host)
-    db_session.delete(host)
+    host.delete(db_session)
     db_session.commit()
-
-
-def delete_host_inventory_job_session_logs(db_session, host):
-    inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id)
-    for inventory_job in inventory_jobs:
-        try:
-            shutil.rmtree(os.path.join(get_log_directory(), inventory_job.session_log))
-        except:
-            logger.exception('delete_host_inventory_job_session_logs() hit exception')
-
-
-def delete_host_install_job_session_logs(db_session, host):
-    install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id)
-    for install_job in install_jobs:
-        try:
-            shutil.rmtree(os.path.join(get_log_directory(), install_job.session_log))
-        except:
-            logger.exception('delete_host_install_job_session_logs() hit exception')
 
 
 def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=None,

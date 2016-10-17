@@ -24,6 +24,7 @@
 # =============================================================================
 from sqlalchemy import Column, Table, Boolean
 from sqlalchemy import String, Integer, DateTime, Text
+from sqlalchemy import and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import mutable
 from sqlalchemy import ForeignKey
@@ -41,10 +42,13 @@ from constants import UNKNOWN
 from constants import JobStatus
 from constants import UserPrivilege
 from constants import ProxyAgent
+from constants import get_log_directory
 
 import datetime
 import logging
 import traceback
+import shutil
+import os
 
 from werkzeug import check_password_hash
 from werkzeug import generate_password_hash 
@@ -107,28 +111,28 @@ class User(Base):
     preferences = relationship("Preferences",
                                order_by="Preferences.id",
                                backref="user",
-                               cascade="all, delete, delete-orphan")
+                               cascade="all, delete-orphan")
     
     install_job = relationship("InstallJob",
                                order_by="InstallJob.id",
                                backref="user",
-                               cascade="all, delete, delete-orphan")
+                               cascade="all, delete-orphan")
     
     download_job = relationship("DownloadJob",
                                 order_by="DownloadJob.id",
                                 backref="user",
-                                cascade="all, delete, delete-orphan")
+                                cascade="all, delete-orphan")
     
     download_job_history = relationship("DownloadJobHistory",
                                         order_by="desc(DownloadJobHistory.created_time)",
                                         backref="host",
-                                        cascade="all, delete, delete-orphan")
+                                        cascade="all, delete-orphan")
     
     csm_message = relationship("CSMMessage",
-                               cascade="all, delete, delete-orphan")
+                               cascade="all, delete-orphan")
 
     conformance_report = relationship("ConformanceReport",
-                                      cascade="all, delete, delete-orphan")
+                                      cascade="all, delete-orphan")
     
     def _get_password(self):
         return self._password
@@ -271,44 +275,70 @@ class Host(Base):
     region = relationship('Region', foreign_keys='Host.region_id') 
 
     context = relationship("HostContext",
-                           cascade="all, delete, delete-orphan")
+                           cascade="all, delete-orphan")
 
     connection_param = relationship("ConnectionParam",
                                     order_by="ConnectionParam.id",
                                     backref="host",
-                                    cascade="all, delete, delete-orphan")
+                                    cascade="all, delete-orphan")
 
-    inventory = relationship("HostInventory",
-                             order_by="HostInventory.id",
-                             cascade="all, delete, delete-orphan")
+    host_inventory = relationship("HostInventory",
+                                  order_by="HostInventory.id",
+                                  cascade="all, delete-orphan")
+
+    inventory = relationship("Inventory")
 
     inventory_job = relationship("InventoryJob",
-                                 cascade="all, delete, delete-orphan")
+                                 cascade="all, delete-orphan")
     
     inventory_job_history = relationship("InventoryJobHistory",
                                          order_by="desc(InventoryJobHistory.created_time)",
                                          backref="host",
-                                         cascade="all, delete, delete-orphan")
+                                         cascade="all, delete-orphan")
     
     packages = relationship("Package",
                             order_by="Package.id",
                             backref="host",
-                            cascade="all, delete, delete-orphan")
+                            cascade="all, delete-orphan")
     
     install_job = relationship("InstallJob",
                                order_by="asc(InstallJob.scheduled_time)",
                                backref="host",
-                               cascade="all, delete, delete-orphan")
+                               cascade="all, delete-orphan")
     
     install_job_history = relationship("InstallJobHistory",
                                        order_by="desc(InstallJobHistory.created_time)",
                                        backref="host",
-                                       cascade="all, delete, delete-orphan")
+                                       cascade="all, delete-orphan")
 
     UDIs = relationship("UDI",
                         order_by="asc(UDI.name)",
                         backref="host",
-                        cascade="all, delete, delete-orphan")
+                        cascade="all, delete-orphan")
+
+    def delete(self, db_session):
+        """
+        Delete host inventory job session logs
+        Delete host install job session logs
+        Update Inventory table accordingly
+        Delete this host
+        """
+        for inventory_job in self.inventory_job_history:
+            try:
+                shutil.rmtree(os.path.join(get_log_directory(), inventory_job.session_log))
+            except:
+                logger.exception('hit exception when deleting host inventory job session logs')
+
+        for install_job in self.install_job_history:
+            try:
+                shutil.rmtree(os.path.join(get_log_directory(), install_job.session_log))
+            except:
+                logger.exception('hit exception when deleting host install job session logs')
+
+        for inventory in self.inventory:
+            inventory.update(db_session, host_id=None, changed_time=datetime.datetime.utcnow())
+
+        db_session.delete(self)
 
     def get_json(self):
         result = {}
@@ -429,7 +459,20 @@ class JumpHost(Base):
         self._password = encode(encrypt_dict, value)
 
 
-class HostInventory(Base):
+class BaseModel(Base):
+    __abstract__ = True
+
+    # db_session needed for child class update method.
+    # signature conformance here
+    def update(self, db_session, **data):
+        for key, value in data.iteritems():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                continue
+
+
+class HostInventory(BaseModel):
     __tablename__ = 'host_inventory'
     id = Column(Integer, primary_key=True)
 
@@ -455,11 +498,11 @@ class HostInventory(Base):
                             backref=backref("parent", remote_side=id),
 
                             # cascade deletions
-                            cascade="all, delete, delete-orphan"
+                            cascade="all, delete-orphan"
                             )
 
-    def __init__(self, host_id=None, location="", model_name="", hardware_revision="", name="",
-                 parent=None, serial_number="", description="", position=-1):
+    def __init__(self, db_session, host_id=None, location="", model_name="", hardware_revision="",
+                 name="", parent=None, serial_number="", description="", position=-1):
         self.host_id = host_id
         self.location = location
         self.model_name = model_name
@@ -469,19 +512,43 @@ class HostInventory(Base):
         self.serial_number = serial_number
         self.description = description
         self.position = position
+        self.update_inventory(db_session)
 
-    def update(self, **data):
-        for key, value in data.iteritems():
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                continue
+    def update(self, db_session, **data):
+        super(HostInventory, self).update(db_session, **data)
+        self.update_inventory(db_session)
+
+    def delete(self, db_session):
+        """ Update Inventory table accordingly when deleting this HostInventory"""
+        inventory = db_session.query(Inventory).filter(and_(Inventory.serial_number == self.serial_number,
+                                                            Inventory.host_id == self.host_id)).first()
+        if inventory:
+            inventory.update(db_session, host_id=None, changed_time=datetime.datetime.utcnow())
+        db_session.delete(self)
+
+    def update_inventory(self, db_session):
+        """ Update Inventory table accordingly when updating/creating this HostInventory"""
+        inventory = db_session.query(Inventory).filter(Inventory.serial_number == self.serial_number).first()
+        if inventory:
+            # update only when there is actual update! - If there is a discrepancy with existing inventory data
+            if not inventory.attributes_equal_to(host_id=self.host_id,
+                                                 model_name=self.model_name,
+                                                 description=self.description,
+                                                 hardware_revision=self.hardware_revision):
+                inventory.update(db_session, host_id=self.host_id, model_name=self.model_name,
+                                 description=self.description, hardware_revision=self.hardware_revision,
+                                 changed_time=datetime.datetime.utcnow())
+        # check that serial_number is not None or "" just to be explicit here
+        elif self.serial_number:
+            inv = Inventory(serial_number=self.serial_number, host_id=self.host_id, model_name=self.model_name,
+                            description=self.description, hardware_revision=self.hardware_revision)
+            db_session.add(inv)
 
 
-class Inventory(Base):
+class Inventory(BaseModel):
     __tablename__ = 'inventory'
 
-    serial_number = Column(Integer, primary_key=True)
+    serial_number = Column(String(50), primary_key=True)
 
     host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
@@ -489,11 +556,31 @@ class Inventory(Base):
     description = Column(String(200))
     hardware_revision = Column(String(10))
 
-    annotation = Column(Text)
-    created_time = Column(DateTime, default=datetime.datetime.utcnow)
+    notes = Column(Text)
+    changed_time = Column(DateTime, default=datetime.datetime.utcnow)
+
+    def __init__(self, serial_number="", host_id=None, model_name="", description="",
+                 hardware_revision="", notes=""):
+        if not serial_number:
+            return
+        self.serial_number = serial_number
+        self.host_id = host_id
+        self.model_name = model_name
+        self.description = description
+        self.hardware_revision = hardware_revision
+        self.notes = notes
+
+    def attributes_equal_to(self, **data):
+        for key, value in data.iteritems():
+            if hasattr(self, key):
+                if getattr(self, key) != value:
+                    return False
+            else:
+                continue
+        return True
 
 
-class HostInventoryHistory(Base):
+class HostInventoryHistory(BaseModel):
     __tablename__ = 'host_inventory_history'
     id = Column(Integer, primary_key=True)
 
@@ -553,7 +640,7 @@ class Package(Base):
     modules_package_state = relationship("ModulePackageState",
                                          order_by="ModulePackageState.module_name",
                                          backref="package",
-                                         cascade="all, delete, delete-orphan")
+                                         cascade="all, delete-orphan")
 
 
 class ModulePackageState(Base):
@@ -782,7 +869,7 @@ class SMUMeta(Base):
 
     smu_info = relationship("SMUInfo",
                             backref="smu_meta",
-                            cascade="all, delete, delete-orphan")
+                            cascade="all, delete-orphan")
 
 
 class SMUInfo(Base):
@@ -935,7 +1022,7 @@ class ConformanceReport(Base):
     entries = relationship("ConformanceReportEntry",
                            order_by="ConformanceReportEntry.hostname",
                            backref="conformance_report",
-                           cascade="all, delete, delete-orphan")
+                           cascade="all, delete-orphan")
 
 
 class ConformanceReportEntry(Base):

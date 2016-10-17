@@ -151,7 +151,6 @@ from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
 from utils import datetime_from_utc_to_local
-from utils import get_software_platform
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -186,7 +185,6 @@ import datetime
 import filters
 import collections
 import initialize
-import zipfile
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -1243,7 +1241,7 @@ def api_get_inventory(hostname):
 
     host = get_host(db_session, hostname)
     if host is not None:
-        for inventory in host.inventory:
+        for inventory in host.host_inventory:
             row = {}
             row['location'] = inventory.location
             row['model_name'] = inventory.model_name

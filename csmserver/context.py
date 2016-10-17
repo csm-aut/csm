@@ -148,7 +148,7 @@ class InventoryContext(ConnectionContext):
 
     @property
     def requested_action(self):
-        return 'Get-Software-Packages'
+        return 'Get-Inventory'
 
     def post_status(self, message):
         if self.db_session is not None and self.inventory_job is not None:
@@ -259,7 +259,7 @@ class InstallContext(ConnectionContext):
                 
                 if not is_empty(server_sub_directory):
                     url += '/' + server_sub_directory  
-                
+
                 return url
             
             elif server_type == ServerType.FTP_SERVER or server_type == ServerType.SFTP_SERVER:                              

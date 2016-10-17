@@ -26,7 +26,7 @@ import abc
 from database import DBSession
 import re
 
-from models import get_db_session_logger, HostInventory
+from models import get_db_session_logger, HostInventory, Inventory
 
 inventory_pattern = r'NAME:\s*"?(?P<name>.*?)"?,?\s*DESCR:\s*"?(?P<description>.*?)"?\W*PID:\s*(?P<model_name>.*?)\s*,?\s*VID:\s*(?P<hardware_revision>.*?)\s*,?\s*SN:\s*(?!NAME)(?P<serial_number>\S*)\s*'
 inventory_location_regex = '\d(?:/[*a-zA-Z0-9]+)+'
@@ -89,52 +89,55 @@ class BaseInventoryParser(object):
         """
         return
 
-    def store_inventory(self, ctx, inventory_data, chassis_ind):
+    def store_inventory(self, ctx, inventory_data, chassis_idx):
         """
         Store/update the processed inventory data in database
         :param ctx: context object
         :param inventory_data: parsed inventory data as a list of dictionaries
-        :param chassis_ind: the index of chassis inventory dictionary in inventory_data
+        :param chassis_idx: the index of chassis inventory dictionary in inventory_data
         :return: None
         """
-        if chassis_ind > len(inventory_data) or chassis_ind < 0:
+        if chassis_idx > len(inventory_data) or chassis_idx < 0:
             logger = get_db_session_logger(ctx.db_session)
             logger.exception('chassis index in inventory output is out of range for host {}.'.format(ctx.host.hostname))
             return
 
-        inventory_data[chassis_ind]['position'] = 0
-        for i in xrange(0, chassis_ind):
+        inventory_data[chassis_idx]['position'] = 0
+        for i in xrange(0, chassis_idx):
             inventory_data[i]['position'] = i + 1
-        for i in xrange(chassis_ind + 1, len(inventory_data)):
+        for i in xrange(chassis_idx + 1, len(inventory_data)):
             inventory_data[i]['position'] = i
 
         db_session = DBSession()
-        # del ctx.host.inventory[:]
-        # db_session.commit()
-        if len(ctx.host.inventory) > 0:
-            self.compare_and_update(ctx, db_session, inventory_data, chassis_ind)
+
+        if len(ctx.host.host_inventory) > 0:
+            self.compare_and_update(ctx, db_session, inventory_data, chassis_idx)
         else:
-            self.store_new_inventory(db_session, inventory_data, ctx.host.id, chassis_ind)
+            self.store_new_inventory(db_session, inventory_data, ctx.host.id, chassis_idx)
         db_session.commit()
 
-    def compare_and_update(self, ctx, db_session, inventory_data, chassis_ind):
+    def compare_and_update(self, ctx, db_session, inventory_data, chassis_idx):
         """
         Update the processed inventory data in database
         :param ctx: context object
         :param db_session: database connection session
         :param inventory_data: parsed inventory data as a list of dictionaries
-        :param chassis_ind: the index of chassis inventory dictionary in inventory_data
+        :param chassis_idx: the index of chassis inventory dictionary in inventory_data
         :return: None
         """
-        all_host_inventory = db_session.query(HostInventory).filter(HostInventory.host_id == ctx.host.id)
+        existing_host_inventory = db_session.query(HostInventory).filter(HostInventory.host_id == ctx.host.id)
         updated_inventory_ids = set()
 
-        new_chassis_inventory = inventory_data[chassis_ind]
-        chassis_inventory = all_host_inventory.filter(HostInventory.parent_id == None).first()
+        # First, update chassis inventory in db
+        new_chassis_inventory = inventory_data[chassis_idx]
+        chassis_inventory = existing_host_inventory.filter(HostInventory.parent_id == None).first()
         if not chassis_inventory:
-            del ctx.host.inventory[:]
+            # if no existing chassis inventory found, something must have gone terribly
+            # wrong. Start anew by deleting all old host inventories and store all newly
+            # retrieved inventory data
+            [inv.delete(db_session) for inv in existing_host_inventory.all()]
             db_session.flush()
-            self.store_new_inventory(db_session, inventory_data, ctx.host.id, chassis_ind)
+            self.store_new_inventory(db_session, inventory_data, ctx.host.id, chassis_idx)
             db_session.commit()
             logger = get_db_session_logger(ctx.db_session)
             logger.exception(
@@ -142,68 +145,76 @@ class BaseInventoryParser(object):
             return
         else:
             self.set_extra_params_for_chassis(new_chassis_inventory, ctx.host.id)
-            chassis_inventory.update(**new_chassis_inventory)
+            chassis_inventory.update(db_session, **new_chassis_inventory)
             updated_inventory_ids.add(chassis_inventory.id)
 
         duplicate_serial_numbers = set()
+        # update existing host inventory based on the newly retrieved inventory data
         for i in xrange(0, len(inventory_data)):
-            if i != chassis_ind:
-                new_inventory = inventory_data[i]
+            if i != chassis_idx:
+                retrieved_inventory = inventory_data[i]
 
-                if new_inventory['serial_number'] in duplicate_serial_numbers:
+                if retrieved_inventory['serial_number'] in duplicate_serial_numbers:
+                    # if so, any existing inventory that has serial_number == retrieved_inventory['serial_number']
+                    # would have already been deleted by processing below
                     existing_inventory = None
                 else:
-                    existing_inventory = all_host_inventory.filter(HostInventory.serial_number ==
-                                                                   new_inventory['serial_number']).all()
+                    existing_inventory = existing_host_inventory.filter(HostInventory.serial_number ==
+                                                                        retrieved_inventory['serial_number']).all()
 
-                self.set_extra_params(new_inventory, ctx.host.id, chassis_inventory)
+                self.set_extra_params(retrieved_inventory, ctx.host.id, chassis_inventory)
 
-                #  None or empty
+                #  None or empty - no serial number match found in db, create new record
+                #  for this one!
                 if not existing_inventory:
-                    create_newinv = HostInventory(**new_inventory)
+                    new_inventory = HostInventory(db_session, **retrieved_inventory)
                     db_session.flush()
-                    updated_inventory_ids.add(create_newinv.id)
+                    updated_inventory_ids.add(new_inventory.id)
+                # Duplicate serial number found in db - delete duplicates and create new
+                # record for this one first!
                 elif len(existing_inventory) > 1:
-                    duplicate_serial_numbers.add(new_inventory['serial_number'])
+                    duplicate_serial_numbers.add(retrieved_inventory['serial_number'])
 
-                    [db_session.delete(inv) for inv in existing_inventory if inv.id != chassis_inventory.id]
+                    [inv.delete(db_session) for inv in existing_inventory if inv.id != chassis_inventory.id]
                     db_session.flush()
 
-                    create_newinv = HostInventory(**new_inventory)
+                    new_inventory = HostInventory(db_session, **retrieved_inventory)
                     db_session.flush()
-                    updated_inventory_ids.add(create_newinv.id)
+                    updated_inventory_ids.add(new_inventory.id)
+                # Single match in serial number found - update it!
                 else:
-                    existing_inventory[0].update(**new_inventory)
+                    existing_inventory[0].update(db_session, **retrieved_inventory)
                     updated_inventory_ids.add(existing_inventory[0].id)
 
-        for inventory in all_host_inventory.all():
+        # delete all inventories that are no longer found for this host in this retrieval
+        for inventory in existing_host_inventory.all():
             if inventory.id not in updated_inventory_ids:
-                db_session.delete(inventory)
+                inventory.delete(db_session)
         db_session.flush()
 
-    def store_new_inventory(self, db_session, inventory_data, host_id, chassis_ind):
+    def store_new_inventory(self, db_session, inventory_data, host_id, chassis_idx):
         """
-        Store new inventory info in database
+        Store all new inventory in the retrieved inventory data into database
         :param db_session: database connection session
         :param inventory_data: parsed inventory data as a list of dictionaries
         :param host_id: id of the host in database to which the inventory info belongs to
-        :param chassis_ind: the index of chassis inventory dictionary in inventory_data
+        :param chassis_idx: the index of chassis inventory dictionary in inventory_data
         :return: None
         """
-        new_chassis_inventory = inventory_data[chassis_ind]
+        new_chassis_inventory = inventory_data[chassis_idx]
         self.set_extra_params_for_chassis(new_chassis_inventory, host_id)
-        chassis_inventory = HostInventory(**new_chassis_inventory)
+        chassis_inventory = HostInventory(db_session, **new_chassis_inventory)
 
         for i in xrange(0, len(inventory_data)):
-            if i != chassis_ind:
+            if i != chassis_idx:
                 self.set_extra_params(inventory_data[i], host_id, chassis_inventory)
-                HostInventory(**inventory_data[i])
+                HostInventory(db_session, **inventory_data[i])
 
         db_session.add(chassis_inventory)
 
     def set_extra_params(self, inventory_dict, host_id, chassis_inventory):
         """
-        Set the additional parameters for initiating a non-chassis HostInventory row in database.
+        Set the additional parameters for initializing a non-chassis HostInventory row in database.
         :param inventory_dict: the inventory dictionary that's going to be used for
                                initiating a HostInventory object.
         :param host_id: id of the host in database to which the inventory info belongs to.
@@ -223,7 +234,7 @@ class BaseInventoryParser(object):
 
     def set_extra_params_for_chassis(self, chassis_inventory, host_id):
         """
-         Set the additional parameters for initiating a chassis HostInventory row in database.
+        Set the additional parameters for initializing a chassis HostInventory row in database.
         :param chassis_inventory: the chassis inventory dictionary that's going to be used for
                                initiating the HostInventory object.
         :param host_id: id of the host in database to which the inventory info belongs to.
