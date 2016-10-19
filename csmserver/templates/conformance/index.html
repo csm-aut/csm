@@ -13,7 +13,7 @@
   
 <script charset="utf-8">
 
-        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
+    var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
     $(function() {
         if (use_utc_timezone) {
             $('#label_scheduled_time').text('Scheduled Time (UTC)');
@@ -21,20 +21,14 @@
             $('#label_scheduled_time').text('Scheduled Time');
         }
 
-        var server_time_as_UTC_time = "{{ server_time | datetime_string }}";
-        var server_time_as_locale_time = convertToLocaleString(server_time_as_UTC_time);
+        // server_time is always in UTC format.
+        var current_time = "{{ server_time | datetime_string }}";
+        if (!use_utc_timezone) {
+            current_time = convertToLocaleString(current_time);
+        }
 
         $('#scheduled-time-UTC').val(function(index, value) {
-            if (use_utc_timezone) {
-                $('#scheduled-time').val(server_time_as_UTC_time);
-            } else {
-                // Convert the UTC time to Locale time
-                if (value == 'None' || value.length == 0) {
-                    $('#scheduled-time').val(server_time_as_locale_time);
-                } else {
-                    $('#scheduled-time').val(convertToLocaleString(value));
-                }
-            }
+            $('#scheduled-time').val(current_time);
         });
 
         $('#imp-exp-btn-gr').hide();
