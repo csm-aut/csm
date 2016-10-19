@@ -6,6 +6,7 @@
 <script charset="utf-8">
     $(function() {
 
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
         $('a[href="#general-settings"]').tab('show');
 
         var browse_spinner = $('.browse-spinner');
@@ -29,7 +30,7 @@
 
         function update_cco_panel_title(timestamp) {
             if (timestamp != "None") {
-                $('#cco-panel-title').html("Last Software Information Retrieval: " + convertToLocaleString(timestamp));
+                $('#cco-panel-title').html("Last CCO Software Information Retrieval: " + getDateStringfromUTCString(timestamp, use_utc_timezone));
             }
         }
 
@@ -96,6 +97,13 @@
                 $('#enable-cco-lookup-no-button'));
         });
 
+        $('#use_utc_timezone').val(function() {
+            render_switch(
+                $('#use_utc_timezone'),
+                $('#use-utc-timezone-yes-button'),
+                $('#use-utc-timezone-no-button'));
+        });
+
         function render_switch(control, yes_button, no_button) {
             if (control.val() == 'True') {
                 yes_button.addClass("btn-primary active");
@@ -156,6 +164,7 @@
             $('#enable_default_host_authentication').val($("#enable-default-host-authentication-yes-or-no .active").data("value"));
             $('#enable_user_credential_for_host').val($("#enable-user-credential-for-host-yes-or-no .active").data("value"));
             $('#enable_cco_lookup').val($("#enable-cco-lookup-yes-or-no .active").data("value"));
+            $('#use_utc_timezone').val($("#use-utc-timezone-yes-or-no .active").data("value"));
         });
     });
 </script>
@@ -190,6 +199,7 @@
                     <li><a data-toggle="tab" href="#general-settings">General</a></li>
                     <li><a data-toggle="tab" href="#authentication-settings">Authentication</a></li>
                     <li><a data-toggle="tab" href="#download-settings">CCO</a></li>
+                    <li><a data-toggle="tab" href="#timezone-settings">Time Zone</a></li>
                     <li><a data-toggle="tab" href="#notification-settings">Notifications</a></li>
                 </ul>
                 <br>
@@ -355,8 +365,6 @@
                                             </div>
                                             <input class="form-control" id="{{ admin_console_form.enable_user_credential_for_host.id }}" name="{{ admin_console_form.enable_user_credential_for_host.id }}" type="hidden" value="{{ admin_console_form.enable_user_credential_for_host.data }}">
                                         </div>
-
-
                                     </div>
                                 </div>
                             </div>
@@ -404,6 +412,33 @@
                             </div>
                         </div>
                         <!-- End Download Settings -->
+                        <div id="timezone-settings" class="tab-pane fade">
+                            <div class="container col-sm-2"></div>
+                            <div class="container col-sm-8">
+                                <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h4>Time Zone Setting (UTC vs Local Time Zone)</h4>
+                                </div>
+                                <div class="panel-body">
+                                    By default, local time zone is used on CSM Server UI.  If Coordinated Universal Time (UTC) is selected,
+                                    all time information will be displayed in UTC time zone.
+                                    <p></p>
+                                    <hr>
+                                    <div class="form-group ">
+                                        <label class="col-sm-6 control-label">{{ admin_console_form.use_utc_timezone.label.text }}</label>
+                                        <div class=col-sm-6>
+                                            <div class="btn-group btn-toggle" id="use-utc-timezone-yes-or-no">
+                                                <button type="button" id="use-utc-timezone-yes-button" class="btn" data-value=1>Yes</button>
+                                                <button type="button" id="use-utc-timezone-no-button" class="btn" data-value=0>No</button>
+                                            </div>
+                                        </div>
+                                        <input class="form-control" id="{{ admin_console_form.use_utc_timezone.id }}" name="{{ admin_console_form.use_utc_timezone.id }}" type="hidden" value="{{ admin_console_form.use_utc_timezone.data }}">
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        <!-- End Timezone Settings -->
                         <div id="notification-settings" class="tab-pane fade">
                             <div class="container col-sm-2"></div>
                             <div class="container col-sm-8">

@@ -46,10 +46,11 @@ Caller must provide the following WTForms elements with the following IDs
                                 {{ edit_field(software_packages, class="form-control", spellcheck="false", rows="10") }}
 
                                 <div class="form-group ">
-                                    <label class="col-sm-4 control-label">{{ scheduled_time.label() }}</label>
+                                    <label id="label_scheduled_time" class="col-sm-4 control-label">{{ scheduled_time.label() }}</label>
                                     <div class="col-sm-6">
                                         <div  class="input-group date form_datetime">
                                             <input id="scheduled-time" name="{{ scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
+                                            <input id="scheduled-time-UTC" name="{{ scheduled_time_UTC.name }}" value="{{ scheduled_time_UTC.data }}" class="form-control" type="hidden">
                                             <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
                                         </div>
                                     </div>

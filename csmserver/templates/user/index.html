@@ -6,6 +6,7 @@
 <script>
     $(function() {
         var current_user = "{{ current_user.username }}";
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
 
         $(".user-delete-link").on("click", function() {
             var delete_url = $(this).attr('data-delete-url');
@@ -36,7 +37,7 @@
         $('.UTCDate').val(function(index, currentValue) {
             // Invalid date would be less than 15 characters
             if ($(this).text().length > 15) {
-                $(this).html(convertToLocaleString($(this).text()));
+                $(this).html(getDateStringfromUTCString($(this).text(), use_utc_timezone));
             }
         });
 

@@ -150,7 +150,6 @@ from utils import get_json_value
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
-from utils import datetime_from_utc_to_local
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -237,7 +236,8 @@ def home():
 
     return render_template('host/home.html', form=form, total_host_count=total_host_count, 
                            total_region_count=total_region_count, jump_hosts=jump_hosts, regions=regions,
-                           servers=servers, build_date=get_build_date(), current_user=current_user)
+                           servers=servers, system_option=SystemOption.get(db_session),
+                           build_date=get_build_date(), current_user=current_user)
 
 
 @app.route('/api/get_host_platform_version/region/<int:region_id>')
@@ -284,7 +284,7 @@ def install_dashboard():
     if hosts is None:
         abort(404)
             
-    return render_template('host/install_dashboard.html', hosts=hosts) 
+    return render_template('host/install_dashboard.html', hosts=hosts, system_option=SystemOption.get(DBSession()))
 
 
 @app.route('/users/create', methods=['GET','POST'])
@@ -375,7 +375,7 @@ def user_list():
         abort(404)
      
     if current_user.privilege == UserPrivilege.ADMIN:    
-        return render_template('user/index.html', users=users)
+        return render_template('user/index.html', users=users, system_option=SystemOption.get(db_session))
     
     return render_template('user/not_authorized.html', user=current_user)
 
@@ -1914,8 +1914,8 @@ def api_get_supported_install_actions(hostname):
 def download_dashboard():
     if not can_install(current_user):
         abort(401)
-        
-    return render_template('host/download_dashboard.html')
+
+    return render_template('host/download_dashboard.html', system_option=SystemOption.get(DBSession()))
 
 
 @app.route('/api/create_download_jobs', methods=['POST'])
@@ -2108,6 +2108,7 @@ def admin_console():
         system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data
         system_option.default_host_authentication_choice = admin_console_form.default_host_authentication_choice.data
         system_option.enable_cco_lookup = admin_console_form.enable_cco_lookup.data
+        system_option.use_utc_timezone = admin_console_form.use_utc_timezone.data
         system_option.default_host_username = admin_console_form.default_host_username.data
         
         if len(admin_console_form.default_host_password.data) > 0: 
@@ -2138,6 +2139,7 @@ def admin_console():
         admin_console_form.default_host_authentication_choice.data = system_option.default_host_authentication_choice
         admin_console_form.default_host_username.data = system_option.default_host_username
         admin_console_form.enable_cco_lookup.data = system_option.enable_cco_lookup
+        admin_console_form.use_utc_timezone.data = system_option.use_utc_timezone
         admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
         admin_console_form.enable_user_credential_for_host.data = system_option.enable_user_credential_for_host
 
@@ -2158,10 +2160,10 @@ def admin_console():
             else:
                 smtp_form.password_placeholder = 'No Password Specified'
 
-
         return render_template('admin/index.html',
                                admin_console_form=admin_console_form,
                                smtp_form=smtp_form,
+                               system_option=SystemOption.get(db_session),
                                is_ldap_supported=is_ldap_supported())
 
 
@@ -2176,6 +2178,7 @@ def host_dashboard(hostname):
     
     return render_template('host/host_dashboard.html', host=host, 
                            form=get_host_schedule_install_form(request, host),
+                           system_option=SystemOption.get(db_session),
                            package_states=[PackageState.ACTIVE_COMMITTED,
                                            PackageState.ACTIVE,
                                            PackageState.INACTIVE_COMMITTED, PackageState.INACTIVE])
@@ -2416,7 +2419,7 @@ def host_trace(hostname, table, id):
 @app.route('/logs/')
 @login_required
 def logs():
-    return render_template('log.html')
+    return render_template('log.html', system_option=SystemOption.get(DBSession()))
 
 
 @app.route('/api/get_system_logs/')
@@ -3708,7 +3711,7 @@ def download_system_logs():
         
     contents = ''
     for log in logs:
-        contents += get_datetime_string(datetime_from_utc_to_local(log.created_time)) + '\n'
+        contents += get_datetime_string(log.created_time) + ' UTC\n'
         contents += log.level + ':' + log.msg + '\n'
         if log.trace is not None:
             contents += log.trace + '\n'

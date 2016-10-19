@@ -12,6 +12,7 @@
 {% block head %}
 <script>
     $(function() {
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
         $("#datatable").dataTable({
             "order": [
                 [2, "desc"]
@@ -26,7 +27,7 @@
                 "targets": 2,
                 "data": 'created_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 3,
@@ -53,7 +54,7 @@
                 success: function(response) {
                     $.each(response, function(index, element) {
                         $('#trace-dialog-title').html(element[0].severity + ': ' + element[0].message + ' - ' +
-                            convertToLocaleString(element[0].created_time));
+                            getDateStringfromUTCString(element[0].created_time, use_utc_timezone));
                         $('#trace-content').html(newline2linebreak(element[0].trace));
                     });
                 }

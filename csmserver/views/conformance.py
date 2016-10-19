@@ -168,6 +168,7 @@ def home():
                            make_conform_dialog_form=make_conform_dialog_form,
                            export_conformance_report_form=export_conformance_report_form,
                            select_server_form=select_server_form,
+                           server_time=datetime.datetime.utcnow(),
                            system_option=SystemOption.get(DBSession()))
 
 
@@ -704,5 +705,6 @@ class ExportConformanceReportForm(Form):
 class MakeConformDialogForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
     scheduled_time = StringField('Scheduled Time', [required()])
+    scheduled_time_UTC = HiddenField('Scheduled Time')
     software_packages = TextAreaField('Software Packages')
     custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[('', '')])

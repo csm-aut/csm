@@ -28,7 +28,6 @@ from context import InstallContext
 
 from utils import create_log_directory
 from utils import is_empty
-from utils import datetime_from_utc_to_local
 from utils import get_log_directory
 from utils import get_file_list
 
@@ -197,11 +196,11 @@ class InstallWorkUnit(WorkUnit):
                 message += 'The scheduled installation for host "' + host.hostname + '" has FAILED.<br><br>'
 
             message += 'Scheduled Time: ' + \
-                       get_datetime_string(datetime_from_utc_to_local(install_job.scheduled_time)) + \
-                       ' (CSM Server Time)<br>'
+                       get_datetime_string(install_job.scheduled_time) + \
+                       ' UTC<br>'
             message += 'Start Time: ' + \
-                       get_datetime_string(datetime_from_utc_to_local(install_job.start_time)) + \
-                       ' (CSM Server Time)<br>'
+                       get_datetime_string(install_job.start_time) + \
+                       ' UTC<br>'
             message += 'Install Action: ' + install_job.install_action + '<br><br>'
 
             message = self.check_command_file_diff(install_job, message)

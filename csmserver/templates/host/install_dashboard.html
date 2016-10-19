@@ -6,6 +6,7 @@
 <script>
     $(function() {
 
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
         var auto_refresh = false;
         var record_limit = $.cookie('install-dashboard-record-limit') == null ? '10' : $.cookie('install-dashboard-record-limit');
         $("#record-limit-selector option[value='" + record_limit + "']").attr('selected', 'selected');
@@ -208,7 +209,7 @@
                     "targets": 3,
                     "data": 'scheduled_time',
                     "render": function(data, type, row) {
-                        return convertToLocaleString(data);
+                        return getDateStringfromUTCString(data, use_utc_timezone);
                     }
                 }, {
                     "targets": 4,
@@ -256,13 +257,13 @@
                 "targets": 2,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 3,
                 "data": 'start_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 4,
@@ -314,13 +315,13 @@
                 "targets": 2,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 3,
                 "data": 'start_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 4,
@@ -332,7 +333,7 @@
                 "targets": 5,
                 "data": 'status_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 6,
@@ -400,13 +401,13 @@
                 "targets": 2,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 3,
                 "data": 'start_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 4,
@@ -418,7 +419,7 @@
                 "targets": 5,
                 "data": 'status_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 6,

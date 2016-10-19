@@ -6,6 +6,7 @@
 <script>
     $(function() {
 
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
         var record_limit = $.cookie('install-dashboard-record-limit') == null ? '10' : $.cookie('install-dashboard-record-limit');
         $("#record-limit-selector option[value='" + record_limit + "']").attr('selected', 'selected');
         update_record_limit_label(record_limit);
@@ -164,7 +165,7 @@
                 "targets": 1,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 2,
@@ -205,7 +206,7 @@
                 "targets": 3,
                 "data": 'status_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 4,
@@ -229,7 +230,7 @@
                 "targets": 1,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 2,
@@ -241,7 +242,7 @@
                 "targets": 4,
                 "data": 'status_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 5,
@@ -306,7 +307,7 @@
                 "targets": 1,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 2,
@@ -318,7 +319,7 @@
                 "targets": 4,
                 "data": 'status_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 5,
@@ -414,7 +415,7 @@
 <div class="container">
     <div class="row">
         <div class="col-sm-12">
-            <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Download Dashboard </strong></span>
+            <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> CCO Download Dashboard </strong></span>
             <div class="btn-group pull-right">
                 <button id="csm-server-repository-button" type="button" class="btn btn-default">CSM Server Repository</button>
                 <div class="btn-group">

@@ -26,6 +26,37 @@ function convertToUTCString(dateString)
 }
 
 /**
+ * Given a UTC date string, return either a pretty UTC string or
+ * convert the date string to locale date string
+ **/
+function getDateStringfromUTCString(dateString, use_utc_timezone)
+{
+    if (use_utc_timezone) {
+        return getPrettyUTCString(dateString);
+    } else {
+        return convertToLocaleString(dateString);
+    }
+}
+
+/**
+ * Given a UTC date string, return a prettier display.
+ **/
+function getPrettyUTCString(dateString)
+{
+    if (dateString == null) return dateString;
+
+    var utcDate = '';
+    // If the date suffix is not GMT, indicate it is a GMT (a.k.a UTC) time.
+    if (dateString.indexOf('GMT') == -1) {
+        utcDate = new Date(dateString + ' UTC');
+    } else {
+        utcDate = new Date(dateString);
+    }
+    return formatMMDDYYYY(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate()) + ' ' + formatAMPM(utcDate.getUTCHours(), utcDate.getUTCMinutes()) + ' UTC';
+}
+
+
+/**
  * Given a date string in UTC format (06/12/2014 8:37:48 PM) or (06/12/2014 8:37:48 PM GMT), 
  * return the Locale date string in the same format.
  **/

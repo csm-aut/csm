@@ -949,6 +949,7 @@ class SystemOption(Base):
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)
     enable_user_credential_for_host = Column(Boolean, default=False)
+    use_utc_timezone = Column(Boolean, default=False)
     
     @property
     def default_host_password(self):

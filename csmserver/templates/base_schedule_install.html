@@ -74,7 +74,7 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
 </div>
 
 <div class="form-group ">
-    <label class="col-sm-4 control-label">{{ form.scheduled_time.label() }}</label>
+    <label id="label_scheduled_time" class="col-sm-4 control-label">{{ form.scheduled_time.label() }}</label>
     <div class="col-sm-6">
         <div  class="input-group date form_datetime">
             <input id="scheduled-time" name="{{ form.scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
@@ -130,6 +130,13 @@ var host_software_platform = null;
 var host_software_version = null;
 
 $(function() {
+    var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
+    if (use_utc_timezone) {
+        $('#label_scheduled_time').text('Scheduled Time (UTC)');
+    } else {
+        $('#label_scheduled_time').text('Scheduled Time');
+    }
+
     // These constant values must match the CSM definitions
     var PRE_UPGRADE = "Pre-Upgrade";
     var INSTALL_ADD = "Add";
@@ -148,7 +155,7 @@ $(function() {
     submit_spinner.hide();
 
     $("#install_action").select2({
-        placeholder: 'Select Desirable Install Actions'
+        placeholder: 'Select Desirable Install Action(s)'
     });
 
     $("#custom_command_profile").select2({
@@ -331,7 +338,21 @@ $(function() {
         }
     }
 
-    var server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
+    var server_time_as_UTC_time = "{{ server_time | datetime_string }}";
+    var server_time_as_locale_time = convertToLocaleString(server_time_as_UTC_time);
+
+    $('#scheduled-time-UTC').val(function(index, value) {
+        if (use_utc_timezone) {
+            $('#scheduled-time').val(server_time_as_UTC_time);
+        } else {
+            // Convert the UTC time to Locale time
+            if (value == 'None' || value.length == 0) {
+                $('#scheduled-time').val(server_time_as_locale_time);
+            } else {
+                $('#scheduled-time').val(convertToLocaleString(value));
+            }
+        }
+    });
 
     // Called when the Schedule (i.e. submit) button is clicked but before the
     // form actually being submitted.  Returning false will stop the submission.
@@ -365,20 +386,14 @@ $(function() {
             return false;
         }
 
-        $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+        if (use_utc_timezone) {
+            $('#scheduled-time-UTC').val($('#scheduled-time').val());
+        } else {
+            $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+        }
 
         return true;
     }
-
-
-    // Convert the UTC time to Locale time
-    $('#scheduled-time-UTC').val(function(index, value) {
-        if (value == 'None' || value.length == 0) {
-            $('#scheduled-time').val(server_time_as_locale_time);
-        } else {
-            $('#scheduled-time').val(convertToLocaleString(value));
-        }
-    });
 
     // Called by the $('#form').submit() function.
     function on_final_submit(current_form, hostname) {

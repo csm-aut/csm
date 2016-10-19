@@ -401,6 +401,7 @@ def migration():
                                schedule_form=schedule_form,
                                install_action=get_install_migrations_dict(),
                                server_time=datetime.datetime.utcnow(),
+                               system_option=SystemOption.get(db_session),
                                config_form=config_form,
                                input_filename="",
                                err_msg="",

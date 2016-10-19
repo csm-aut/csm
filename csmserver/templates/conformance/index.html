@@ -13,7 +13,29 @@
   
 <script charset="utf-8">
 
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
     $(function() {
+        if (use_utc_timezone) {
+            $('#label_scheduled_time').text('Scheduled Time (UTC)');
+        } else {
+            $('#label_scheduled_time').text('Scheduled Time');
+        }
+
+        var server_time_as_UTC_time = "{{ server_time | datetime_string }}";
+        var server_time_as_locale_time = convertToLocaleString(server_time_as_UTC_time);
+
+        $('#scheduled-time-UTC').val(function(index, value) {
+            if (use_utc_timezone) {
+                $('#scheduled-time').val(server_time_as_UTC_time);
+            } else {
+                // Convert the UTC time to Locale time
+                if (value == 'None' || value.length == 0) {
+                    $('#scheduled-time').val(server_time_as_locale_time);
+                } else {
+                    $('#scheduled-time').val(convertToLocaleString(value));
+                }
+            }
+        });
 
         $('#imp-exp-btn-gr').hide();
 
@@ -83,7 +105,7 @@
                 success: function(response) {
                     $.each(response, function(index, element) {
                         window.location.href = '/conformance/api/export_conformance_report/report/' + id + '?locale_datetime=' +
-                            convertToLocaleString(element[0].conformance_report_datetime) +
+                            getDateStringfromUTCString(element[0].conformance_report_datetime, use_utc_timezone) +
                             '&include_host_packages=' + include_host_packages;
                     });
                 }
@@ -248,7 +270,7 @@
                     $.each(response, function(index, element) {
                         for (i = 0; i < element.length; i++) {
                              $('#conformance_reports').append('<option value="' + element[i].id + '">' + 
-                                 convertToLocaleString(element[i].created_time) + ' - ' + element[i].software_profile + '</option>');
+                                 getDateStringfromUTCString(element[i].created_time, use_utc_timezone) + ' - ' + element[i].software_profile + '</option>');
                         }
                     });
                     

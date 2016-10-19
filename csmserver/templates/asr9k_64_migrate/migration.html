@@ -71,7 +71,14 @@
 
 
         $(function () {
-            config_handler({{ input_filename|tojson }}, {{ err_msg|tojson }});
+            var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True'
+            if (use_utc_timezone) {
+                $('#label_scheduled_time').text('Scheduled Time (UTC)');
+            } else {
+                $('#label_scheduled_time').text('Scheduled Time');
+            }
+
+            config_handler({{ input_filename | tojson }}, {{ err_msg | tojson }});
 
             var selected_tab = $.cookie('migration-tab') == null ? '#schedule-migration' : $.cookie('migration-tab');
             $('a[href=' + selected_tab + ']').tab('show');
@@ -148,13 +155,19 @@
 
             }
 
-            server_time_as_locale_time = convertToLocaleString("{{ server_time | datetime_string }}");
-            // Convert the UTC time to Locale time
-            $('#scheduled-time-UTC').val(function (index, value) {
-                if (value == 'None' || value.length == 0) {
-                    $('#scheduled-time').val(server_time_as_locale_time);
+            var server_time_as_UTC_time = "{{ server_time | datetime_string }}";
+            var server_time_as_locale_time = convertToLocaleString(server_time_as_UTC_time);
+
+            $('#scheduled-time-UTC').val(function(index, value) {
+                if (use_utc_timezone) {
+                    $('#scheduled-time').val(server_time_as_UTC_time);
                 } else {
-                    $('#scheduled-time').val(convertToLocaleString(value));
+                    // Convert the UTC time to Locale time
+                    if (value == 'None' || value.length == 0) {
+                        $('#scheduled-time').val(server_time_as_locale_time);
+                    } else {
+                        $('#scheduled-time').val(convertToLocaleString(value));
+                    }
                 }
             });
 
@@ -283,7 +296,11 @@
             });
 
             function on_submit() {
-                $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+                if (use_utc_timezone) {
+                    $('#scheduled-time-UTC').val($('#scheduled-time').val());
+                } else {
+                    $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+                }
 
                 $('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').val());
 

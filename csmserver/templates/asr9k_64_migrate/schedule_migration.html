@@ -20,8 +20,7 @@
     </div>
 
     <div class="form-group ">
-        <label class="col-sm-4 control-label"
-               for="{{ schedule_form.scheduled_time.name }}">{{ schedule_form.scheduled_time.label() }}</label>
+        <label id="label_scheduled_time" class="col-sm-4 control-label">{{ schedule_form.scheduled_time.label() }}</label>
 
         <div class="col-sm-6">
             <div class="input-group date form_datetime">
@@ -62,15 +61,15 @@
 
     <div class="btn col-sm-offset-5">
 
-      {% if install_job != null and (install_job.install_action == 'Migrate' or install_job.install_action == 'Post-Migrate') %}
-          <button type="button" id="trigger-wizard" class="btn btn-primary">
-          Re-Submit
-      {% else %}
-          <button type="button" id="trigger-wizard" class="btn btn-primary" data-toggle="modal"
-                  data-target="#wizard-dialog">
-          Continue
-      {% endif %}
-        </button>
+        {% if install_job != null and (install_job.install_action == 'Migrate' or install_job.install_action == 'Post-Migrate') %}
+            <button type="button" id="trigger-wizard" class="btn btn-primary">
+            Re-Submit
+        {% else %}
+            <button type="button" id="trigger-wizard" class="btn btn-primary" data-toggle="modal"
+                    data-target="#wizard-dialog">
+            Continue
+        {% endif %}
+            </button>
         <button type="button" onClick="history.back(1);" class="btn btn-default">Cancel</button>
     </div>
 

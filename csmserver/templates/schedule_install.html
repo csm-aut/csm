@@ -36,7 +36,7 @@ $('.wizard-card').bootstrapWizard({
                 return false;
             }
             $('#hidden_selected_hosts').val(selected_hosts);
-            get_supported_install_actions(selected_hosts[0]);
+            populate_supported_install_actions(selected_hosts[0]);
         } //etc.
     },
     onTabClick : function(tab, navigation, index) {

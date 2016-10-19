@@ -183,6 +183,7 @@ class AdminConsoleForm(Form):
     enable_cco_lookup = HiddenField("Enable CCO Connection")
     cco_lookup_time = HiddenField("Last Retrieval")
     enable_user_credential_for_host = HiddenField("Use CSM Server User Credential")
+    use_utc_timezone = HiddenField("Use UTC Time Zone")
 
 
 class SMTPForm(Form):

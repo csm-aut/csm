@@ -7,6 +7,7 @@
     $(function() {
 
         var auto_refresh = false;
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
 
         function insert_slider(packages, id) {
             if (packages != null && packages.length > 0) {
@@ -162,7 +163,7 @@
                 "targets": 1,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 2,
@@ -193,13 +194,13 @@
                 "targets": 1,
                 "data": 'scheduled_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 2,
                 "data": 'start_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 3,
@@ -221,7 +222,7 @@
                 "targets": 5,
                 "data": 'status_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 6,
@@ -297,7 +298,7 @@
                 "targets": 1,
                 "data": 'status_time',
                 "render": function(data, type, row) {
-                    return convertToLocaleString(data);
+                    return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
                 "targets": 2,
@@ -430,7 +431,7 @@
         $('.UTCDate').val(function(index, currentValue) {
             // Invalid date would be less than 15 characters
             if ($(this).text().length > 15) {
-                $(this).html(convertToLocaleString($(this).text()));
+                $(this).html(getDateStringfromUTCString($(this).text()), use_utc_timezone);
             }
         });
 

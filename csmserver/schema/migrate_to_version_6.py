@@ -28,7 +28,8 @@ from models import InventoryJob
 
 
 sql_statements = [
-    'alter table host add location VARCHAR(100)'
+    'alter table host add location VARCHAR(100)',
+    'alter table system_option add use_utc_timezone BOOLEAN default 0'
     ]
 
 

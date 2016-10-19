@@ -13,6 +13,7 @@ var host_software_platform = null;
 var host_software_version = null;
 
 $(function() {
+
     make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
     make_conform_dialog_spinner.hide()
     $('#custom-command-profile-panel').hide();
@@ -143,6 +144,12 @@ $(function() {
     }
 
     function submit_install_jobs(validate_object) {
+        if (use_utc_timezone) {
+            $('#scheduled-time-UTC').val($('#scheduled-time').val());
+        } else {
+            $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+        }
+
         // Update the software packages textarea
         $('#software_packages').val(validate_object.software_packages);
 
@@ -162,7 +169,7 @@ $(function() {
             data: {
                 hostname: hostname,
                 install_action: install_action,
-                scheduled_time_UTC: convertToUTCString($('#scheduled-time').val()),
+                scheduled_time_UTC: $('#scheduled-time-UTC').val(),
                 software_packages: trim_lines($('#software_packages').val()),
                 server: $('#select_server').val(),
                 server_directory: $('#select_server_directory').val(),
@@ -186,18 +193,6 @@ $(function() {
 
 });
 
-function get_server_time() {
-    $.ajax({
-        url: "/api/get_server_time",
-        dataType: 'json',
-        success: function (data) {
-            $.each(data, function(index, element) {
-                $('#scheduled-time').val(convertToLocaleString(element.server_time));
-            });
-        }
-    });
-}
-
 function display_make_conform_dialog(hostname, software_platform, software_version, missing_packages) {
     host_software_platform  = software_platform;
     host_software_version = software_version;
@@ -216,9 +211,6 @@ function display_make_conform_dialog(hostname, software_platform, software_versi
 
     // Go to the first page especially when the dialog is re-used.
     $('a[href="#dialog_general"]').tab('show');
-
-    // Get the latest server time
-    get_server_time();
 
     $('#make-conform-dialog').modal({
         show: true,
