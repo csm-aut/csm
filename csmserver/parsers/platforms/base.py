@@ -23,9 +23,9 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 import abc
-from database import DBSession
 import re
 
+from database import DBSession
 from models import get_db_session_logger, HostInventory, Inventory
 
 
@@ -169,7 +169,7 @@ class BaseInventoryParser(object):
                         existing_inventory_match[0].update(db_session, **retrieved_inventory_data)
                         updated_inventory_ids.add(existing_inventory_match[0].id)
                     # Duplicate serial number matches found in db - delete all duplicates and create new
-                    # record for this retrieved_inventory_data!
+                    # record for this retrieved_inventory_data.
                     else:
                         duplicate_serial_numbers.add(retrieved_inventory_data.get('serial_number'))
 
@@ -242,7 +242,7 @@ class BaseInventoryParser(object):
 
     def update_chassis_inventory(self, db_session, host_id, existing_chassis_inventory, retrieved_chassis_data):
         """
-        Update the chassis inventory data in db
+        Update the chassis inventory in db with newly retrieved chassis inventory data
         :param db_session: database session
         :param host_id: the id of the host that this chassis belongs to
         :param existing_chassis_inventory: existing chassis inventory object found in database - the potential
