@@ -46,7 +46,6 @@ from models import Package
 from models import InstallJob
 from models import SMUMeta
 from models import DownloadJob
-from models import InventoryJobHistory
 from models import InstallJobHistory
 from models import CustomCommandProfile
 from models import get_download_job_key_dict
@@ -62,7 +61,6 @@ from filters import time_difference_UTC
 from smu_utils import SP_INDICATOR
 from smu_utils import TAR_INDICATOR
 
-from utils import get_log_directory
 from utils import is_empty
 from utils import get_datetime
 from utils import remove_extra_spaces
@@ -73,7 +71,6 @@ from utils import make_file_writable
 from smu_info_loader import SMUInfoLoader
 
 import os
-import shutil
 import zipfile
 
 

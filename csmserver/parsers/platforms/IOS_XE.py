@@ -177,9 +177,9 @@ class IOSXEInventoryParser(BaseInventoryParser):
 
         inventory_data = self.parse_inventory_output(inventory_output)
 
-        for i in xrange(0, len(inventory_data)):
-            if "Chassis" in inventory_data[i]['name']:
-                return self.store_inventory(ctx, inventory_data, i)
+        for idx in xrange(0, len(inventory_data)):
+            if "Chassis" in inventory_data[idx]['name']:
+                return self.store_inventory(ctx, inventory_data, idx)
 
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))

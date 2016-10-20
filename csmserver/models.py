@@ -481,7 +481,7 @@ class HostInventory(BaseModel):
     # Entity to parent : many to one
     parent_id = Column(Integer, ForeignKey(id), index=True)
 
-    position = Column(Integer)
+    position = Column(Integer, index=True)
 
     location = Column(String(50))
     model_name = Column(String(50))
