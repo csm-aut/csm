@@ -46,12 +46,13 @@ from common import get_last_successful_inventory_elapsed_time
 from common import get_host_active_packages
 from common import get_host_inactive_packages
 from common import fill_servers
-from common import fill_regions
 from common import get_server_list
 from common import get_host
-from common import can_create_user
 from common import create_or_update_install_job
 from common import fill_custom_command_profiles
+from common import can_delete
+from common import can_create
+from common import can_install
 
 from database import DBSession
 
@@ -83,6 +84,9 @@ conformance = Blueprint('conformance', __name__, url_prefix='/conformance')
 @conformance.route('/', methods=['GET', 'POST'])
 @login_required
 def home():
+    if not can_install(current_user):
+        abort(401)
+
     msg = ''
     # Software Profile import
     if request.method == 'POST':
@@ -175,8 +179,8 @@ def home():
 @conformance.route('/software_profile/create', methods=['GET', 'POST'])
 @login_required
 def software_profile_create():
-    # if not can_create_user(current_user):
-    #    abort(401)
+    if not can_create(current_user):
+        abort(401)
 
     db_session = DBSession()
 
@@ -266,6 +270,9 @@ def api_get_software_profiles():
 @conformance.route('/api/create_software_profile', methods=['POST'])
 @login_required
 def api_create_software_profile():
+    if not can_create(current_user):
+        abort(401)
+
     profile_name = request.form['profile_name']
     software_packages = request.form['software_packages']
 
@@ -291,8 +298,8 @@ def api_create_software_profile():
 @conformance.route('/software_profile/<profile_name>/delete', methods=['DELETE'])
 @login_required
 def software_profile_delete(profile_name):
-    # if not can_delete(current_user):
-    #    abort(401)
+    if not can_delete(current_user):
+        abort(401)
 
     db_session = DBSession()
 
