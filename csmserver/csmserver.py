@@ -150,6 +150,7 @@ from utils import get_json_value
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
+from utils import datetime_from_local_to_utc
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -1438,11 +1439,10 @@ def get_files_from_csm_repository():
             row = {}
             row['image_name'] = filename
             row['image_size'] = str(statinfo.st_size)
-            row['downloaded_time'] = datetime.datetime.fromtimestamp(statinfo.st_mtime).strftime("%m/%d/%Y %I:%M %p")
+            row['downloaded_time'] = datetime_from_local_to_utc(datetime.datetime.fromtimestamp(statinfo.st_mtime))
             rows.append(row)
-    
-    return jsonify(**{'data': rows})
 
+    return jsonify(**{'data': rows})
 
 @app.route('/api/image/<image_name>/delete/', methods=['DELETE'])
 @login_required  

@@ -347,7 +347,10 @@
                 "data": 'image_size'
             }, {
                 "targets": 2,
-                "data": 'downloaded_time'
+                "data": 'downloaded_time',
+                "render": function(data, type, row) {
+                    return getDateStringfromUTCString(data, use_utc_timezone);
+                }
             }, {
                 "targets": 3,
                 "data": 'image_name',
