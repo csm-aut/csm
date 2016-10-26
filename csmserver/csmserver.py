@@ -3555,7 +3555,7 @@ def api_get_missing_files_on_server(server_id):
                     smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
                     description = '' if smu_info is None else smu_info.description
                     # If selected package is on CCO
-                    if cco_filename is not None:
+                    if cco_filename is not None and smu_info.status == 'Posted':
                         rows.append({'smu_entry': smu_name, 'description': description,
                                      'cco_filename': cco_filename, 'is_downloadable': True})
                     else:
@@ -3583,7 +3583,7 @@ def check_is_tar_downloadable():
         smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
         description = '' if smu_info is None else smu_info.description
         # If selected TAR on CCO
-        if cco_filename is not None:
+        if cco_filename is not None and smu_info.status == 'Posted':
             rows.append({'smu_entry': smu_name, 'description': description,
                          'cco_filename': cco_filename, 'is_downloadable': True})
         else:
