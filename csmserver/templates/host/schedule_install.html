@@ -36,8 +36,11 @@ $("#dependency option").each(function() {
     var option = $(this).text();
     var n = option.indexOf(' - ');
     if (n > -1) {
-        // Information is rendered as, for example, Install Add - 07/08/2014 04:16 PM
-        $(this).html(option.substring(0, n) + ' - ' + convertToLocaleString(option.substring(n + 3)));
+        if (use_utc_timezone) {
+            $(this).html(option.substring(0, n) + ' - ' + option.substring(n + 3) + ' UTC');
+        } else {
+            $(this).html(option.substring(0, n) + ' - ' + convertToLocaleString(option.substring(n + 3)));
+        }
     }
 });
 

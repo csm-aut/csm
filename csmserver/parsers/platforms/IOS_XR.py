@@ -22,11 +22,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-import re
-
 from models import Package
 from constants import PackageState
-from base import inventory_pattern, BaseSoftwarePackageParser, BaseInventoryParser
+from base import BaseSoftwarePackageParser, BaseInventoryParser
 from models import get_db_session_logger
 
 
@@ -109,16 +107,9 @@ class ASR9KInventoryParser(BaseInventoryParser):
 
     def parse_inventory_output(self, output):
         """
-        lines = output.split('\n')
-        i = 0
-        while ("Name" not in lines[i] and "NAME:" not in lines[i]) and i < len(lines):
-            i += 1
-
-        while i < len(lines):
+        Get everything except for the Generic Fan inventories from the inventory data
         """
-        flags = re.MULTILINE
-        flags |= re.IGNORECASE
-        return [m.groupdict() for m in re.finditer(inventory_pattern, output, flags=flags)
+        return [m.groupdict() for m in self.REGEX_BASIC_PATTERN.finditer(output)
                 if 'Generic Fan' not in m.group('description')]
 
     def process_inventory(self, ctx):
@@ -136,9 +127,9 @@ class ASR9KInventoryParser(BaseInventoryParser):
 
         inventory_data = self.parse_inventory_output(inventory_output)
 
-        for i in xrange(len(inventory_data)-1, -1, -1):
-            if "chassis" in inventory_data[i]['name']:
-                return self.store_inventory(ctx, inventory_data, i)
+        for idx in xrange(len(inventory_data)-1, -1, -1):
+            if "chassis" in inventory_data[idx]['name']:
+                return self.store_inventory(ctx, inventory_data, idx)
 
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
@@ -162,9 +153,10 @@ class CRSInventoryParser(BaseInventoryParser):
         inventory_data = self.parse_inventory_output(inventory_output)
 
         chassis_indices = []
-        for i in xrange(0, len(inventory_data)):
-            if "Chassis" in inventory_data[i]['name']:
-                chassis_indices.append(i)
+        for idx in xrange(0, len(inventory_data)):
+            if "Chassis" in inventory_data[idx]['name']:
+                chassis_indices.append(idx)
+
         if len(chassis_indices) > 0:
             return self.store_inventory(ctx, inventory_data, chassis_indices)
         else:

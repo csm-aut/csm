@@ -156,6 +156,7 @@ from utils import get_json_value
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
+from utils import datetime_from_local_to_utc
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -182,6 +183,8 @@ from report_writer import ExportSoftwareInfoHTMLConciseWriter
 from report_writer import ExportSoftwareInfoHTMLDefaultWriter
 from report_writer import ExportSoftwareInfoExcelConciseWriter
 from report_writer import ExportSoftwareInfoExcelDefaultWriter
+
+from tarfile import ReadError
 
 import os
 import io
@@ -1415,11 +1418,10 @@ def get_files_from_csm_repository():
             row = {}
             row['image_name'] = filename
             row['image_size'] = str(statinfo.st_size)
-            row['downloaded_time'] = datetime.datetime.fromtimestamp(statinfo.st_mtime).strftime("%m/%d/%Y %I:%M %p")
+            row['downloaded_time'] = datetime_from_local_to_utc(datetime.datetime.fromtimestamp(statinfo.st_mtime))
             rows.append(row)
-    
-    return jsonify(**{'data': rows})
 
+    return jsonify(**{'data': rows})
 
 @app.route('/api/image/<image_name>/delete/', methods=['DELETE'])
 @login_required  
@@ -1428,12 +1430,16 @@ def api_delete_image_from_repository(image_name):
         abort(401)
     
     tar_image_path = get_repository_directory() + image_name
-    file_list = get_tarfile_file_list(tar_image_path)
-    for filename in file_list:
-        try:
-            os.remove(get_repository_directory() + filename) 
-        except:
-            pass
+    try:
+        file_list = get_tarfile_file_list(tar_image_path)
+        for filename in file_list:
+            try:
+                os.remove(get_repository_directory() + filename)
+            except:
+                pass
+    except ReadError:
+        # In case, it is a partial downloaded TAR.
+        pass
        
     try:
         os.remove(tar_image_path) 
@@ -3526,7 +3532,7 @@ def api_get_missing_files_on_server(server_id):
                     smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
                     description = '' if smu_info is None else smu_info.description
                     # If selected package is on CCO
-                    if cco_filename is not None:
+                    if cco_filename is not None and smu_info.status == 'Posted':
                         rows.append({'smu_entry': smu_name, 'description': description,
                                      'cco_filename': cco_filename, 'is_downloadable': True})
                     else:
@@ -3554,7 +3560,7 @@ def check_is_tar_downloadable():
         smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
         description = '' if smu_info is None else smu_info.description
         # If selected TAR on CCO
-        if cco_filename is not None:
+        if cco_filename is not None and smu_info.status == 'Posted':
             rows.append({'smu_entry': smu_name, 'description': description,
                          'cco_filename': cco_filename, 'is_downloadable': True})
         else:

@@ -78,6 +78,16 @@
                 $('#label_scheduled_time').text('Scheduled Time');
             }
 
+            // server_time is always in UTC format.
+            var current_time = "{{ server_time | datetime_string }}";
+            if (!use_utc_timezone) {
+                current_time = convertToLocaleString(current_time);
+            }
+
+            $('#scheduled-time-UTC').val(function(index, value) {
+                $('#scheduled-time').val(current_time);
+            });
+
             config_handler({{ input_filename | tojson }}, {{ err_msg | tojson }});
 
             var selected_tab = $.cookie('migration-tab') == null ? '#schedule-migration' : $.cookie('migration-tab');
@@ -154,22 +164,6 @@
                 var install_actions = $('#install_action').val();
 
             }
-
-            var server_time_as_UTC_time = "{{ server_time | datetime_string }}";
-            var server_time_as_locale_time = convertToLocaleString(server_time_as_UTC_time);
-
-            $('#scheduled-time-UTC').val(function(index, value) {
-                if (use_utc_timezone) {
-                    $('#scheduled-time').val(server_time_as_UTC_time);
-                } else {
-                    // Convert the UTC time to Locale time
-                    if (value == 'None' || value.length == 0) {
-                        $('#scheduled-time').val(server_time_as_locale_time);
-                    } else {
-                        $('#scheduled-time').val(convertToLocaleString(value));
-                    }
-                }
-            });
 
             $('[data-toggle="popover_override_hw_req_below"]').popover({
                 trigger : 'click',
