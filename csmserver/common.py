@@ -26,7 +26,9 @@ from flask.ext.login import current_user
 from flask import g, send_file
 from sqlalchemy import or_, and_, not_
 
-from csm_exceptions.exceptions import HostNotFound
+from csm_exceptions.exceptions import ValueNotFound
+from csm_exceptions.exceptions import RegionException
+from csm_exceptions.exceptions import ServerException
 
 from constants import ServerType
 from constants import UserPrivilege
@@ -419,9 +421,127 @@ def create_or_update_host(db_session, hostname, region_id, location, roles, conn
 def delete_host(db_session, hostname):
     host = get_host(db_session, hostname)
     if host is None:
-        raise HostNotFound('Unable to locate host %s' % hostname)
+        raise ValueNotFound("Unable to locate host '%s'" % hostname)
 
     host.delete(db_session)
+    db_session.commit()
+
+
+def create_or_update_region(db_session, name, server_repositories, region=None):
+    '''
+    :param db_session:
+    :param name:
+    :param server_repositories:
+        assumes server_repositories is a comma-delimited string of valid server names that exist in CSM
+    :param region:
+    :return:
+    '''
+    if region is None:
+        region = Region()
+        region.name = name
+        db_session.add(region)
+
+    if hasattr(current_user, 'username'):
+        region.created_by = current_user.username
+    else:
+        region.created_by = g.api_user.username
+
+    region.name = name
+    region.servers = []
+    for server in server_repositories.split(','):
+        valid_server = get_server(db_session, server.strip())
+        if valid_server is not None:
+            region.servers.append(valid_server)
+    db_session.commit()
+
+    return region
+
+
+def delete_region(db_session, name):
+    region = get_region(db_session, name)
+    if region is None:
+        raise ValueNotFound("Unable to locate region '%s'" % name)
+
+    count = db_session.query(Host).filter(
+        Host.region_id == region.id).count()
+
+    # Older version of db does not perform check on
+    # foreign key constrain, so do it programmatically here.
+    if count > 0:
+        raise RegionException("Unable to delete region '%s'. Verify that it is not used by other hosts." % name)
+
+    db_session.delete(region)
+    db_session.commit()
+
+
+def create_or_update_jump_host(db_session, hostname, connection_type, host_or_ip,
+                                port_number, username, password='', jumphost=None):
+    if jumphost == None:
+        jumphost = JumpHost()
+        #jumphost.hostname = hostname
+        db_session.add(jumphost)
+
+    if hasattr(current_user, 'username'):
+        jumphost.created_by = current_user.username
+    else:
+        jumphost.created_by = g.api_user.username
+
+    jumphost.hostname = hostname
+    jumphost.host_or_ip = host_or_ip
+    jumphost.username = username if username else ''
+    jumphost.password = password
+    jumphost.connection_type = connection_type
+    jumphost.port_number = port_number if port_number else ''
+
+    db_session.commit()
+
+    return jumphost
+
+
+def delete_jump_host(db_session, hostname):
+    jump_host = get_jump_host(db_session, hostname)
+    if jump_host is None:
+        raise ValueNotFound("Unable to locate Jump Host '%s'" % hostname)
+
+    db_session.delete(jump_host)
+    db_session.commit()
+
+
+def create_or_update_server_repository(db_session, hostname, server_type, server_url, username, vrf,
+                                       server_directory, password='', server=None):
+    if server is None:
+        server = Server()
+        server.hostname = hostname
+        db_session.add(server)
+
+    if hasattr(current_user, 'username'):
+        server.created_by = current_user.username
+    else:
+        server.created_by = g.api_user.username
+
+    server.hostname = hostname
+    server.server_type = server_type
+    server.server_url = server_url
+    server.username = username
+    server.password = password
+    server.vrf = vrf if (server_type == ServerType.TFTP_SERVER or
+                         server_type == ServerType.FTP_SERVER) else ''
+    server.server_directory = server_directory
+
+    db_session.commit()
+
+    return server
+
+
+def delete_server_repository(db_session, hostname):
+    server = get_server(db_session, hostname)
+    if server is None:
+        raise ValueNotFound("Unable to locate server repository '%s'" % hostname)
+
+    if len(server.regions) > 0:
+        raise ServerException("Unable to delete server repository '%s'. Verify that it is not used by other regions." % hostname)
+
+    db_session.delete(server)
     db_session.commit()
 
 

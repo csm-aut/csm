@@ -104,12 +104,17 @@ from common import get_host_list
 from common import get_jump_host_by_id
 from common import get_jump_host
 from common import get_jump_host_list
+from common import create_or_update_jump_host
+from common import delete_jump_host
 from common import get_server
 from common import get_server_by_id
 from common import get_server_list
+from common import create_or_update_server_repository
+from common import delete_server_repository
 from common import get_region
 from common import get_region_by_id
 from common import get_region_list
+from common import delete_region
 from common import get_user
 from common import get_user_by_id
 from common import get_user_list
@@ -124,6 +129,7 @@ from common import can_edit
 from common import can_delete
 from common import can_create
 from common import create_or_update_install_job
+from common import create_or_update_region
 from common import create_download_jobs
 from common import get_download_job_key
 from common import create_or_update_host
@@ -781,18 +787,14 @@ def jump_host_create():
         host = get_jump_host(db_session, form.hostname.data)
         if host is not None:
             return render_template('jump_host/edit.html', form=form, duplicate_error=True)
-        
-        host = JumpHost(
-            hostname=form.hostname.data,
-            host_or_ip=form.host_or_ip.data,
-            username=form.username.data,
-            password=form.password.data,
-            connection_type=form.connection_type.data,
-            port_number=form.port_number.data,
-            created_by=current_user.username)
-          
-        db_session.add(host)
-        db_session.commit() 
+
+        create_or_update_jump_host(db_session=db_session,
+                                   hostname=form.hostname.data,
+                                   host_or_ip=form.host_or_ip.data,
+                                   username=form.username.data,
+                                   password=form.password.data,
+                                   connection_type=form.connection_type.data,
+                                   port_number=form.port_number.data)
             
         return redirect(url_for('home'))
                 
@@ -816,15 +818,15 @@ def jump_host_edit(hostname):
         
         if hostname != form.hostname.data and get_jump_host(db_session, form.hostname.data) is not None:
             return render_template('jump_host/edit.html', form=form, duplicate_error=True)
-        
-        host.hostname = form.hostname.data
-        host.host_or_ip = form.host_or_ip.data
-        host.username = form.username.data
-        if len(form.password.data) > 0:
-            host.password = form.password.data
-        host.connection_type = form.connection_type.data
-        host.port_number = form.port_number.data
-        db_session.commit()
+
+        create_or_update_jump_host(db_session=db_session,
+                                   hostname=form.hostname.data,
+                                   host_or_ip=form.host_or_ip.data,
+                                   username=form.username.data,
+                                   password='' if len(form.password.data) <= 0 else form.password.data,
+                                   connection_type=form.connection_type.data,
+                                   port_number=form.port_number.data,
+                                   jumphost=get_jump_host(db_session, hostname))
         
         return redirect(url_for('home'))
     else:
@@ -849,15 +851,12 @@ def jump_host_delete(hostname):
         abort(401)
         
     db_session = DBSession()
-    
-    host = get_jump_host(db_session, hostname)
-    if host is None:
+
+    try:
+        delete_jump_host(db_session, hostname)
+        return jsonify({'status': 'OK'})
+    except:
         abort(404)
-        
-    db_session.delete(host)
-    db_session.commit()
-        
-    return jsonify({'status': 'OK'})
 
 
 @app.route('/servers/create/', methods=['GET', 'POST'])
@@ -874,19 +873,15 @@ def server_create():
         if server is not None:
             return render_template('server/edit.html', form=form, duplicate_error=True)
 
-        server = Server(
-            hostname=form.hostname.data,
-            server_type=form.server_type.data,
-            server_url=trim_last_slash(form.server_url.data), 
-            username=form.username.data,
-            password=form.password.data,
-            vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
-            form.server_type.data == ServerType.FTP_SERVER else '',
-            server_directory=trim_last_slash(form.server_directory.data),
-            created_by=current_user.username)
-            
-        db_session.add(server)
-        db_session.commit()
+        create_or_update_server_repository(db_session=db_session,
+                                           hostname=form.hostname.data,
+                                           server_type=form.server_type.data,
+                                           server_url=trim_last_slash(form.server_url.data),
+                                           username=form.username.data,
+                                           password=form.password.data,
+                                           vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
+                                                form.server_type.data == ServerType.FTP_SERVER else '',
+                                           server_directory=trim_last_slash(form.server_directory.data))
             
         return redirect(url_for('home'))
 
@@ -910,18 +905,18 @@ def server_edit(hostname):
         
         if hostname != form.hostname.data and get_server(db_session, form.hostname.data) is not None:
             return render_template('server/edit.html', form=form, duplicate_error=True)
-        
-        server.hostname = form.hostname.data
-        server.server_type = form.server_type.data
-        server.server_url = trim_last_slash(form.server_url.data)
-        server.vrf = form.vrf.data if server.server_type == \
-            ServerType.TFTP_SERVER or server.server_type == ServerType.FTP_SERVER else ''
-        server.username = form.username.data
-        if len(form.password.data) > 0:
-            server.password = form.password.data
-        server.server_directory = trim_last_slash(form.server_directory.data)
-        db_session.commit()
-        
+
+        create_or_update_server_repository(db_session=db_session,
+                                           hostname=form.hostname.data,
+                                           server_type=form.server_type.data,
+                                           server_url=trim_last_slash(form.server_url.data),
+                                           username=form.username.data,
+                                           password='' if len(form.password.data) <= 0 else form.password.data,
+                                           vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
+                                                                form.server_type.data == ServerType.FTP_SERVER else '',
+                                           server_directory=trim_last_slash(form.server_directory.data),
+                                           server=get_server(db_session, hostname))
+
         return redirect(url_for('home'))
     else:
         # Assign the values to form fields
@@ -943,17 +938,10 @@ def server_delete(hostname):
         abort(401)
         
     db_session = DBSession()
-
-    server = get_server(db_session, hostname)
-    if server is None:
-        abort(404)
-    
-    if len(server.regions) == 0:
-        db_session.delete(server)
-        db_session.commit()
-        
+    try:
+        delete_server_repository(db_session, hostname)
         return jsonify({'status': 'OK'})
-    else:
+    except:
         return jsonify({'status': 'Failed'})
 
 
@@ -971,20 +959,18 @@ def region_create():
         region = get_region(db_session, form.region_name.data)
                 
         if region is not None:
-            return render_template('region/edit.html', form=form, duplicate_error=True)   
-            
-        region = Region(
-            name=form.region_name.data,
-            created_by=current_user.username)
-        
-        server_id_list = request.form.getlist('selected-servers')
-        for server_id in server_id_list:
-            server = get_server_by_id(db_session, server_id)
-            if server is not None:
-                region.servers.append(server)
+            return render_template('region/edit.html', form=form, duplicate_error=True)
 
-        db_session.add(region)
-        db_session.commit()   
+        # Compose a list of server hostnames
+        server_names = [get_server_by_id(db_session, id).hostname for id in request.form.getlist('selected-servers')]
+
+        try:
+            create_or_update_region(db_session=db_session,
+                                    name=form.region_name.data,
+                                    server_repositories=",".join(server_names))
+        except Exception as e:
+            db_session.rollback()
+            logger.exception("region_create() encountered an exception: " + e.message)
                    
         return redirect(url_for('home'))
     
@@ -1008,16 +994,18 @@ def region_edit(region_name):
         
         if region_name != form.region_name.data and get_region(db_session, form.region_name.data) is not None:
             return render_template('region/edit.html', form=form, duplicate_error=True)
-        
-        region.name = form.region_name.data
-        region.servers = []
-        server_id_list = request.form.getlist('selected-servers')
-        for server_id in server_id_list:
-            server = get_server_by_id(db_session, server_id)
-            if server is not None:
-                region.servers.append(server)
-        
-        db_session.commit()
+
+        # Compose a list of server hostnames
+        server_names = [get_server_by_id(db_session, id).hostname for id in request.form.getlist('selected-servers')]
+
+        try:
+            create_or_update_region(db_session=db_session,
+                                    name= form.region_name.data,
+                                    server_repositories=",".join(server_names),
+                                    region=get_region(db_session, region_name))
+        except Exception as e:
+            db_session.rollback()
+            logger.exception("region_edit() encountered an exception: " + e.message)
         
         return redirect(url_for('home'))
     else:
@@ -1034,21 +1022,10 @@ def region_delete(region_name):
         
     db_session = DBSession()
 
-    region = get_region(db_session, region_name)
-    if region is None:
-        abort(404)
-     
-    # Older version of db does not perform check on
-    # foreign key constrain, so do it programmatically here.
-    count = db_session.query(Host).filter(
-        Host.region_id == region.id).count()
-
-    if count == 0:
-        db_session.delete(region)
-        db_session.commit()
-        
+    try:
+        delete_region(db_session, region_name)
         return jsonify({'status': 'OK'})
-    else:
+    except:
         return jsonify({'status': 'Failed'})
 
 

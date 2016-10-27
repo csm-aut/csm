@@ -41,6 +41,9 @@ from api_utils import failed_response
 import api_host
 import api_cco
 import api_install
+import api_region
+import api_jump_host
+import api_server_repository
 
 restful_api = Blueprint('restful', __name__, url_prefix='/api')
 auth = HTTPBasicAuth()
@@ -90,8 +93,6 @@ def api_hosts():
     elif request.method == 'GET':
         return api_host.api_get_hosts(request)
 
-# --------------------------------------------------------------------------------------------------------------
-
 
 @restful_api.route('/v1/hosts/<hostname>/delete', methods=['DELETE'])
 @auth.login_required
@@ -99,6 +100,74 @@ def host_delete(hostname):
     if not can_delete(g.api_user):
         return failed_response('Not Authorized', return_code=401)
     return api_host.api_delete_host(hostname)
+
+# --------------------------------------------------------------------------------------------------------------
+
+
+@restful_api.route('/v1/regions', methods=['GET', 'POST'])
+@auth.login_required
+def api_regions():
+    if request.method == 'POST':
+        if not can_create(g.api_user):
+            return failed_response('Not Authorized', return_code=401)
+        return api_region.api_create_regions(request)
+    elif request.method == 'GET':
+        return api_region.api_get_regions(request)
+
+
+@restful_api.route('/v1/regions/<name>/delete', methods=['DELETE'])
+@auth.login_required
+def region_delete(name):
+    if not can_delete(g.api_user):
+        return failed_response('Not Authorized', return_code=401)
+    else:
+        return api_region.api_delete_region(name)
+
+# --------------------------------------------------------------------------------------------------------------
+
+
+@restful_api.route('/v1/jump_hosts', methods=['GET', 'POST'])
+@auth.login_required
+def api_jump_hosts():
+    if request.method == 'POST':
+        if not can_create(g.api_user):
+            return failed_response('Not Authorized', return_code=401)
+        return api_jump_host.api_create_jump_hosts(request)
+    elif request.method == 'GET':
+        return api_jump_host.api_get_jump_hosts(request)
+
+
+@restful_api.route('/v1/jump_hosts/<hostname>/delete', methods=['DELETE'])
+@auth.login_required
+def jump_host_delete(hostname):
+    if not can_delete(g.api_user):
+        return failed_response('Not Authorized', return_code=401)
+    else:
+        return api_jump_host.api_delete_jump_host(hostname)
+
+# --------------------------------------------------------------------------------------------------------------
+
+
+@restful_api.route('/v1/server_repositories', methods=['GET', 'POST'])
+@auth.login_required
+def api_server_repositories():
+    if request.method == 'POST':
+        if not can_create(g.api_user):
+            return failed_response('Not Authorized', return_code=401)
+        return api_server_repository.api_create_server_repositories(request)
+    elif request.method == 'GET':
+        return api_server_repository.api_get_server_repositories(request)
+
+
+@restful_api.route('/v1/server_repositories/<hostname>/delete', methods=['DELETE'])
+@auth.login_required
+def server_repository_delete(hostname):
+    if not can_delete(g.api_user):
+        return failed_response('Not Authorized', return_code=401)
+    else:
+        return api_server_repository.api_delete_server_repositories(hostname)
+
+# --------------------------------------------------------------------------------------------------------------
 
 
 @restful_api.route('/v1/cco/catalog')

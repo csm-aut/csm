@@ -30,5 +30,13 @@ class UnknownSoftwarePlatform(Exception):
     pass
 
 
-class HostNotFound(Exception):
+class ValueNotFound(Exception):
+    pass
+
+
+class RegionException(Exception):
+    pass
+
+
+class ServerException(Exception):
     pass
