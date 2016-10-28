@@ -114,11 +114,12 @@ def get_datetime_string(datetime, format):
         return None    
 
 
-def datetime_from_utc_to_local(utc_datetime):
-    now_timestamp = time.time()
-    offset = datetime.datetime.fromtimestamp(now_timestamp) - datetime.datetime.utcfromtimestamp(now_timestamp)
-    return utc_datetime + offset
-
+def datetime_from_local_to_utc(local_datetime):
+    """
+    :param local_datetime: Python datetime object
+    :return: UTC datetime string
+    """
+    return time.strftime("%m/%d/%Y %I:%M %p", time.gmtime(time.mktime(local_datetime.timetuple())))
 
 def make_file_writable(file_path):
     if os.path.isfile(file_path):
