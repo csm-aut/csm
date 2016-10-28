@@ -50,6 +50,8 @@ from forms import ServerDialogForm
 from forms import BrowseServerDialogForm
 from forms import SoftwareProfileForm
 from forms import ExportSoftwareInformationForm
+from forms import QueryInventoryBySerialNumberForm
+from forms import UpdateInventoryForm
 
 from models import Host
 from models import JumpHost
@@ -72,6 +74,7 @@ from models import DownloadJob
 from models import DownloadJobHistory
 from models import CSMMessage
 from models import get_download_job_key_dict
+from models import HostInventory, Inventory
 
 from validate import is_connection_valid
 from validate import is_reachable
@@ -3727,6 +3730,175 @@ def download_system_logs():
     log_file.close()
 
     return send_file(os.path.join(log_file_path, 'system_logs'), as_attachment=True)
+
+
+@app.route('/query_add_inventory', methods=['GET', 'POST'])
+@login_required
+def query_add_inventory():
+    """
+    Provide service for user to:
+    1. Query an inventory based on serial number.
+    2. Add/Edit the inventory with input serial number, model name(optional), and notes(optional).
+    3. Delete the inventory with input serial number.
+    """
+    sn_form = QueryInventoryBySerialNumberForm(request.form)
+    update_inventory_form = UpdateInventoryForm(request.form)
+
+    inventory_data_fields = {'serial_number_submitted': None, 'inventory_name': None,
+                             'description': None, 'hardware_revision': None,
+                             'hostname': None, 'region_name': None, 'chassis': None,
+                             'platform': None, 'software': None,
+                             'last_successful_retrieval': None, 'inventory_retrieval_status': None}
+
+    error_msg = None
+    success_msg = None
+
+    if request.method == 'GET':
+        init_query_add_inventory_forms(sn_form, update_inventory_form)
+
+    elif request.method == 'POST':
+        db_session = DBSession()
+
+        # if user submitted the form with the serial number
+        # then we display back all the information for the inventory with this serial number
+        if sn_form.hidden_submit_sn.data == 'True':
+            get_inventory_data_by_serial_number(db_session, sn_form, update_inventory_form, inventory_data_fields)
+
+        # if user submitted the form with the updated inventory info
+        # we update/create or delete the inventory
+        else:
+            success_msg, error_msg = update_or_delete_inventory(db_session, sn_form, update_inventory_form,
+                                                                inventory_data_fields)
+        db_session.close()
+
+    return render_template('inventory/query_add_inventory.html', sn_form=sn_form,
+                           update_inventory_form=update_inventory_form, success_msg=success_msg,
+                           error_msg=error_msg, **inventory_data_fields)
+
+
+def init_query_add_inventory_forms(sn_form, update_inventory_form):
+    sn_form.serial_number.data = None
+    sn_form.hidden_submit_sn.data = ''
+
+    update_inventory_form.model_name.data = None
+    update_inventory_form.notes.data = None
+    update_inventory_form.hidden_serial_number.data = ''
+    update_inventory_form.hidden_action.data = ''
+    return
+
+
+def get_inventory_data_by_serial_number(db_session, sn_form, update_inventory_form, inventory_data_fields):
+    """
+    Get the data fields for the queried inventory for the purpose of displaying to user
+    :param db_session: session of database transactions
+    :param sn_form: the form with the serial number input and etc.
+    :param update_inventory_form: the form with model name, notes and etc.
+    :param inventory_data_fields: the extra data fields that will be displayed to the user
+    :return: None
+    """
+
+    inventory = db_session.query(Inventory).filter(
+        Inventory.serial_number == sn_form.serial_number.data).first()
+
+    inventory_data_fields['serial_number_submitted'] = sn_form.serial_number.data
+
+    if inventory:
+        update_inventory_form.model_name.data = inventory.model_name
+        update_inventory_form.notes.data = inventory.notes
+
+        inventory_data_fields['inventory_name'] = inventory.name
+        inventory_data_fields['description'] = inventory.description
+        inventory_data_fields['hardware_revision'] = inventory.hardware_revision
+
+        # if this inventory has been discovered in a host - host_id is not None
+        if isinstance(inventory.host_id, (int, long)):
+            host = db_session.query(Host).filter(Host.id == inventory.host_id).first()
+            if host:
+                inventory_data_fields['hostname'] = host.hostname
+                inventory_data_fields['region_name'] = host.region.name if host.region is not None else UNKNOWN
+                inventory_data_fields['chassis'] = UNKNOWN if host.platform is None else host.platform
+                inventory_data_fields['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
+                inventory_data_fields['software'] = UNKNOWN if host.software_version is None else host.software_version
+
+                inventory_job = host.inventory_job[0]
+                if inventory_job and inventory_job.last_successful_time:
+                    inventory_data_fields['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
+                    inventory_data_fields['inventory_retrieval_status'] = inventory_job.status
+
+    return
+
+
+def update_or_delete_inventory(db_session, sn_form, update_inventory_form, inventory_data_fields):
+    """
+    Depending on the action(Update or Delete), update/add the inventory with
+    input serial number, model name(optional), and notes(optional) or
+    delete the inventory with the input serial number from the inventory table
+    :param db_session: session of database transactions
+    :param sn_form: the form with the serial number input and etc., only here for clearing
+                    the fields in this form after a successful update or delete has been done
+    :param update_inventory_form: the form with model name, notes and etc.
+    :param inventory_data_fields: the data fields displayed back to user, in case of any error,
+                                  the data fields originally presented to the user must still be present
+                                  along with the error prompt.
+    :return: error message for displaying purposes if any.
+    """
+    success_msg = None
+    error_msg = None
+
+    # there is restriction on front end - serial_number submitted cannot be empty string, double check here
+    if update_inventory_form.hidden_serial_number.data:
+
+        inventory = db_session.query(Inventory).filter(
+            Inventory.serial_number == update_inventory_form.hidden_serial_number.data).first()
+
+        if update_inventory_form.hidden_action.data == "Update":
+
+            if inventory:
+                # if this inventory has been discovered in a host, model_name cannot be updated by user
+                # there is restriction on front end, but double ensure it here
+                if isinstance(inventory.host_id, (int, long)):
+                    inventory.update(db_session, notes=update_inventory_form.notes.data)
+
+                # if this inventory is not found in a host, user can define/update the model_name
+                else:
+                    inventory.update(db_session, model_name=update_inventory_form.model_name.data,
+                                     notes=update_inventory_form.notes.data)
+                db_session.commit()
+
+            else:
+                inv = Inventory(serial_number=update_inventory_form.hidden_serial_number.data,
+                                model_name=update_inventory_form.model_name.data,
+                                notes=update_inventory_form.notes.data)
+                db_session.add(inv)
+                db_session.commit()
+
+        elif update_inventory_form.hidden_action.data == "Delete":
+
+            if inventory:
+                if isinstance(inventory.host_id, (int, long)):
+                    error_msg = "Cannot delete this inventory because CSM inventory retrieval " + \
+                                "indicates that it is currently used by a device."
+                else:
+                    db_session.delete(inventory)
+                    db_session.commit()
+                    success_msg = "Inventory with serial number '{}' ".format(inventory.serial_number) + \
+                        "has been successfully deleted."
+            else:
+                error_msg = "Cannot delete this inventory because it is not " + \
+                            "saved in CSM inventory database yet."
+        else:
+            error_msg = "Unknown request is received."
+    else:
+        error_msg = "Failed to create inventory because serial number submitted is empty."
+
+    if not error_msg:
+        # clear the forms to indicate a successful inventory update/add action!
+        init_query_add_inventory_forms(sn_form, update_inventory_form)
+    else:
+        sn_form.serial_number.data = update_inventory_form.hidden_serial_number.data
+        get_inventory_data_by_serial_number(db_session, sn_form, update_inventory_form, inventory_data_fields)
+
+    return success_msg, error_msg
 
 if __name__ == '__main__':
     initialize.init()  

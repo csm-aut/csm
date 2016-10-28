@@ -26,6 +26,7 @@ from wtforms import Form, validators
 from wtforms import RadioField
 from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
 from wtforms.validators import Length, required
+from wtforms.widgets import TextArea
 from constants import ConnectionType
 from constants import ServerType
 from constants import UserPrivilege
@@ -173,11 +174,11 @@ class AdminConsoleForm(Form):
     enable_default_host_authentication = HiddenField("Use Default Host Authentication")
     default_host_username = StringField('Default Host Username')
     default_host_password = PasswordField('Default Host Password')
-    default_host_authentication_choice = RadioField('Apply To',
-                                 choices=[(DefaultHostAuthenticationChoice.ALL_HOSTS,
-                                           'All Hosts'),
-                                          (DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD,
-                                           'Hosts with no Specified Username and Password')])
+    default_host_authentication_choice = \
+        RadioField('Apply To',
+                   choices=[(DefaultHostAuthenticationChoice.ALL_HOSTS, 'All Hosts'),
+                            (DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD,
+                            'Hosts with no Specified Username and Password')])
     enable_ldap_auth = HiddenField("Enable LDAP")
     ldap_server_url = StringField('LDAP Server URL')
     enable_cco_lookup = HiddenField("Enable CCO Connection")
@@ -218,12 +219,28 @@ class SoftwareProfileForm(Form):
 
 class ExportSoftwareInformationForm(Form):
     export_format = SelectField('Export Format', coerce=str,
-                                 choices=[(ExportSoftwareInformationFormat.HTML, ExportSoftwareInformationFormat.HTML),
-                                          (ExportSoftwareInformationFormat.MICROSOFT_EXCEL, ExportSoftwareInformationFormat.MICROSOFT_EXCEL)])
+                                choices=[(ExportSoftwareInformationFormat.HTML,
+                                          ExportSoftwareInformationFormat.HTML),
+                                         (ExportSoftwareInformationFormat.MICROSOFT_EXCEL,
+                                          ExportSoftwareInformationFormat.MICROSOFT_EXCEL)])
 
     export_layout = SelectField('Layout', coerce=str,
-                                 choices=[(ExportSoftwareInformationLayout.CONCISE, ExportSoftwareInformationLayout.CONCISE),
-                                          (ExportSoftwareInformationLayout.DEFAULT, ExportSoftwareInformationLayout.DEFAULT)])
+                                choices=[(ExportSoftwareInformationLayout.CONCISE,
+                                          ExportSoftwareInformationLayout.CONCISE),
+                                         (ExportSoftwareInformationLayout.DEFAULT,
+                                          ExportSoftwareInformationLayout.DEFAULT)])
+
+
+class QueryInventoryBySerialNumberForm(Form):
+    serial_number = StringField('Serial Number', [required(), Length(max=50)])
+    hidden_submit_sn = HiddenField('')
+
+
+class UpdateInventoryForm(Form):
+    model_name = StringField('Model Number (PID)', [Length(max=50)])
+    notes = StringField('Notes', widget=TextArea())
+    hidden_serial_number = HiddenField('')
+    hidden_action = HiddenField('')
 
 if __name__ == '__main__':
     pass
