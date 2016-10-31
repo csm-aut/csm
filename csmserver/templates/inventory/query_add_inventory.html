@@ -1,0 +1,197 @@
+{% extends 'base_inventory.html' %}
+{% from 'host/common.html' import edit_field %}
+
+{% block head %}
+    <link rel="stylesheet" type="text/css" href="/static/jquery/css/inventory.css">
+    <script>
+    $(function() {
+        var error = "{{ error_msg }}";
+        var success = "{{ success_msg }}";
+
+        if (success != "None" && success != "") {
+            bootbox.alert(success);
+        }
+
+        if (error != "None" && error != "") {
+            bootbox.alert('<img src="/static/error.png">&nbsp;' + error);
+        }
+
+        $('[data-toggle="popover_model_name"]').popover({
+            trigger : 'click',
+            placement : 'right',
+            html : true,
+            content : function() {
+                return $('#popover_model_name').html()
+            }
+        });
+
+        $('#submit-sn').click(function (e) {
+            if ($('#serial_number').val() == "") {
+                bootbox.alert("Serial number must be specified.");
+                return false;
+            }
+            $('#hidden_submit_sn').val('True');
+            $('#sn_form').submit();
+        });
+
+        $('#cancel').click(function (e) {
+            $('#serial_number').val("");
+            $("#update_inventory_form").hide();
+        });
+
+        $('#submit-update-inventory').click(function (e) {
+            if ($('#serial_number').val() != "{{ serial_number_submitted }}") {
+                bootbox.alert("Cannot proceed to save this inventory information because the previously requested serial number has been modified from '{{ serial_number_submitted }}' to '" + $('#serial_number').val() + "'.");
+                return false;
+            }
+            $('#hidden_submit_sn').val('False');
+            $('#hidden_action').val('Update');
+            $('#hidden_serial_number').val("{{ serial_number_submitted }}");
+            $('#update_inventory_form').submit();
+        });
+
+        $('#submit-delete-inventory').click(function (e) {
+            if ($('#serial_number').val() != "{{ serial_number_submitted }}") {
+                bootbox.alert("Cannot proceed to delete this inventory because the previously requested serial number has been modified from '{{ serial_number_submitted }}' to '" + $('#serial_number').val() + "'.");
+                return false;
+            }
+            $('#hidden_submit_sn').val('False');
+            $('#hidden_action').val('Delete');
+            $('#hidden_serial_number').val("{{ serial_number_submitted }}");
+            $('#update_inventory_form').submit();
+        });
+    });
+    </script>
+{% endblock %}
+
+{% block main %}
+<div id="popover_model_name" style="display: none">
+  <pre>Model name can either be entered here or populated
+automatically during inventory retrieval. However,
+once inventory retrieval discovers this inventory
+on a device, the existing model name will be over-
+written with the retrieved PID. In that case, this
+input field is disabled.</pre>
+</div>
+<div class="row">
+    <div class="well col-sm-offset-2 col-sm-8">
+        <form id="sn_form" method="post" class="form-horizontal">
+            <legend>Query/Add Inventory:</legend>
+            <div class="form-group row">
+                {% set next_button ='<button id="submit-sn" class="btn btn-primary" type="submit">Search</button>' %}
+                {{ edit_field(sn_form.serial_number, maxlength=30, field_width="col-sm-4", class="form-control", extra_field=next_button) }}
+                <input id="hidden_submit_sn" name="{{ sn_form.hidden_submit_sn.name }}" value="{{ sn_form.hidden_submit_sn.data }}" type="hidden">
+
+            </div>
+        </form>
+
+        <form id="update_inventory_form" method="post" class="form-horizontal">
+            <input id="hidden_serial_number" name="{{ update_inventory_form.hidden_serial_number.name }}" value="{{ update_inventory_form.hidden_serial_number.data }}" type="hidden">
+            <input id="hidden_action" name="{{ update_inventory_form.hidden_action.name }}" value="{{ update_inventory_form.hidden_action.data }}" type="hidden">
+
+            {% if update_inventory_form.model_name.data != None %}
+                {% set info ='<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue"
+                           aria-hidden="true" data-toggle="popover_model_name"></span></a>' %}
+
+                {% if hostname != None %}
+                    <fieldset disabled>
+                {% endif %}
+                {% if hostname != None and update_inventory_form.model_name.data == "" %}
+                    {{ edit_field(update_inventory_form.model_name, maxlength=50, field_width="col-sm-4", class="form-control", extra_field=info) }}
+                {% else %}
+                    {{ edit_field(update_inventory_form.model_name, maxlength=50, field_width="col-sm-4", class="form-control",
+                        placeholder="Optional.", extra_field=info) }}
+                {% endif %}
+                {% if hostname != None %}
+                    </fieldset>
+                {% endif %}
+
+                {% if (description != None and description != "") or (hardware_revision != None and hardware_revision != "") %}
+                    {% if hostname != None %}
+                        <div class="form-group row">
+                            <label class="col-sm-4 control-label">Name</label>
+                            <div class="col-sm-4">
+                                <p class="form-control-static mb-0" style="min-width: 600px;">{{ inventory_name }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="form-group row">
+                        <label class="col-sm-4 control-label" style="padding-top: 0px;">Description</label>
+                        <div class="col-sm-4">
+                            <p class="form-control-static mb-0" style="min-width: 600px;padding-top: 0px;">{{ description }}</p>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-4 control-label" style="padding-top: 0px;">VID</label>
+                        <div class="col-sm-4">
+                            <p class="form-control-static mb-0" style="min-width: 600px;padding-top: 0px;">{{ hardware_revision }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="form-group row">
+                    <label class="col-sm-4 control-label" style="padding-top: 0px;">Status</label>
+                    <div class="col-sm-4">
+                        {% if hostname == None %}
+                            <p class="form-control-static mb-0" style="padding-top: 0px;">Available</p>
+                        {% else %}
+                            <p class="form-control-static mb-0" style="padding-top: 0px;">In Use</p>
+                            <div class="container" id="host_info">
+                                <div class="row">
+                                    <div class="col-sm-5">
+                                        <span style="color: Gray;"><b>Hostname:</b></span>&nbsp;&nbsp;{{ hostname }}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-2">
+                                        <span style="color: Gray;"><b>Chassis:</b></span>&nbsp;&nbsp;{{ chassis }}
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <span style="color: Gray;"><b>Region:</b></span>&nbsp;&nbsp;{{ region_name }}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-2">
+                                        <span style="color: Gray;"><b>Platform:</b></span>&nbsp;&nbsp;{{ platform }}
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <span style="color: Gray;"><b>Software:</b></span>&nbsp;&nbsp;{{ software }}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-5">
+                                        <span style="color: Gray;"><b>Last Successful Retrieval:</b></span>&nbsp;&nbsp;
+                                        {% if inventory_retrieval_status == "failed" %}
+                                            <span style="color:red">{{ last_successful_retrieval }}</span>
+                                        {% else %}
+                                            {{ last_successful_retrieval }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-4 control-label" id="label_{{ update_inventory_form.notes.id }}">{{ update_inventory_form.notes.label.text }}</label>
+
+                    <div class="col-sm-4">
+                        {{ update_inventory_form.notes(placeholder="Optional.") }}
+                    </div>
+
+                </div>
+                <p style="text-align: center;">
+                    <button id="submit-update-inventory" class="btn btn-primary" type="submit">Save</button>
+                    <button id="cancel" type="button" class="btn btn-default" type="submit">Cancel</button>
+                    {% if hostname == None %}
+                        <button id="submit-delete-inventory" type="button" class="btn btn-danger" title="Delete it from the managed inventories.">Delete</button>
+                    {% endif %}
+                </p>
+            {% endif %}
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

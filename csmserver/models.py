@@ -336,7 +336,7 @@ class Host(Base):
                 logger.exception('hit exception when deleting host install job session logs')
 
         for inventory in self.inventory:
-            inventory.update(db_session, host_id=None, changed_time=datetime.datetime.utcnow())
+            inventory.update(db_session, host_id=None)
 
         db_session.delete(self)
 
@@ -459,20 +459,21 @@ class JumpHost(Base):
         self._password = encode(encrypt_dict, value)
 
 
-class BaseModel(Base):
+class BaseInventoryModel(Base):
     __abstract__ = True
 
     # db_session needed for child class update method.
     # signature conformance here
-    def update(self, db_session, **data):
-        for key, value in data.iteritems():
+    def update(self, db_session, **new_data):
+        for key, value in new_data.iteritems():
             if hasattr(self, key):
                 setattr(self, key, value)
             else:
                 continue
+        return
 
 
-class HostInventory(BaseModel):
+class HostInventory(BaseInventoryModel):
     __tablename__ = 'host_inventory'
     id = Column(Integer, primary_key=True)
 
@@ -490,7 +491,6 @@ class HostInventory(BaseModel):
     serial_number = Column(String(50), index=True)
     hardware_revision = Column(String(10))
     # type = Column(String(50))
-    # level = Column(Integer)  - for join operations
 
     children = relationship("HostInventory",
 
@@ -512,46 +512,66 @@ class HostInventory(BaseModel):
         self.serial_number = serial_number
         self.description = description
         self.position = position
-        self.update_inventory(db_session)
 
-    def update(self, db_session, **data):
-        super(HostInventory, self).update(db_session, **data)
         self.update_inventory(db_session)
+        return
+
+    def update(self, db_session, **new_data):
+        """
+        Update the Inventory table accordingly when updating this HostInventory obj
+        :param db_session: session of database transactions
+        :param new_data: a dictionary of newly retrieved data fields to be assigned
+                         to the attributes of this obj.
+        :return: None
+        """
+        # if serial number of this host inventory changed, first check if we need to
+        # update the inventory with the current serial number in the "inventory" table
+        if "serial_number" in new_data and self.serial_number != new_data["serial_number"]:
+            inventory = db_session.query(Inventory).filter(and_(Inventory.serial_number == self.serial_number,
+                                                                Inventory.host_id == self.host_id)).first()
+            if inventory:
+                inventory.update(db_session, host_id=None)
+
+        super(HostInventory, self).update(db_session, **new_data)
+        self.update_inventory(db_session)
+        return
 
     def delete(self, db_session):
-        """ Update Inventory table accordingly when deleting this HostInventory"""
+        """ Update Inventory table accordingly when deleting this HostInventory obj"""
         inventory = db_session.query(Inventory).filter(and_(Inventory.serial_number == self.serial_number,
                                                             Inventory.host_id == self.host_id)).first()
         if inventory:
-            inventory.update(db_session, host_id=None, changed_time=datetime.datetime.utcnow())
+            inventory.update(db_session, host_id=None)
         db_session.delete(self)
+        return
 
     def update_inventory(self, db_session):
-        """ Update Inventory table accordingly when updating/creating this HostInventory"""
+        """ Update Inventory table accordingly when updating/creating this HostInventory obj"""
         inventory = db_session.query(Inventory).filter(Inventory.serial_number == self.serial_number).first()
+
         if inventory:
             # update only when there is actual update! - If there is a discrepancy with existing inventory data
-            if not inventory.attributes_equal_to(host_id=self.host_id,
-                                                 model_name=self.model_name,
-                                                 description=self.description,
-                                                 hardware_revision=self.hardware_revision):
-                inventory.update(db_session, host_id=self.host_id, model_name=self.model_name,
-                                 description=self.description, hardware_revision=self.hardware_revision,
-                                 changed_time=datetime.datetime.utcnow())
+            inventory.update(db_session, host_id=self.host_id, name=self.name,
+                             model_name=self.model_name, description=self.description,
+                             hardware_revision=self.hardware_revision)
+
         # check that serial_number is not None or "" just to be explicit here
         elif self.serial_number:
-            inv = Inventory(serial_number=self.serial_number, host_id=self.host_id, model_name=self.model_name,
-                            description=self.description, hardware_revision=self.hardware_revision)
+            inv = Inventory(serial_number=self.serial_number, host_id=self.host_id, name=self.name,
+                            model_name=self.model_name, description=self.description,
+                            hardware_revision=self.hardware_revision)
             db_session.add(inv)
+        return
 
 
-class Inventory(BaseModel):
+class Inventory(BaseInventoryModel):
     __tablename__ = 'inventory'
 
     serial_number = Column(String(50), primary_key=True)
 
     host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
+    name = Column(String(100))
     model_name = Column(String(50))
     description = Column(String(200))
     hardware_revision = Column(String(10))
@@ -559,18 +579,21 @@ class Inventory(BaseModel):
     notes = Column(Text)
     changed_time = Column(DateTime, default=datetime.datetime.utcnow)
 
-    def __init__(self, serial_number="", host_id=None, model_name="", description="",
-                 hardware_revision="", notes=""):
+    def __init__(self, serial_number="", host_id=None, name="", model_name="",
+                 description="", hardware_revision="", notes=""):
         if not serial_number:
             return
         self.serial_number = serial_number
         self.host_id = host_id
+        self.name = name
         self.model_name = model_name
         self.description = description
         self.hardware_revision = hardware_revision
         self.notes = notes
+        return
 
     def attributes_equal_to(self, **data):
+        """Check if current attributes have the same value in the input data dictionary"""
         for key, value in data.iteritems():
             if hasattr(self, key):
                 if getattr(self, key) != value:
@@ -579,8 +602,15 @@ class Inventory(BaseModel):
                 continue
         return True
 
+    def update(self, db_session, **new_data):
+        """Compare to check if there is an actual update first, if so, update all attributes"""
+        if not self.attributes_equal_to(**new_data):
+            super(Inventory, self).update(db_session, **new_data)
+            self.changed_time = datetime.datetime.utcnow()
+        return
 
-class HostInventoryHistory(BaseModel):
+
+class HostInventoryHistory(BaseInventoryModel):
     __tablename__ = 'host_inventory_history'
     id = Column(Integer, primary_key=True)
 

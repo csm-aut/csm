@@ -13,9 +13,7 @@ from common import fill_custom_command_profiles
 from common import fill_default_region
 from common import fill_regions
 from common import fill_servers
-from common import get_last_install_action
 from common import get_host
-from common import get_host_list
 from common import get_return_url
 from common import get_server_by_id
 from common import get_server_list
@@ -33,7 +31,7 @@ from flask import flash
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
 
-from models import InstallJob, SystemOption, ConvertConfigJob, JobStatus
+from models import Host, InstallJob, SystemOption, ConvertConfigJob, JobStatus
 from models import logger
 
 from wtforms import Form
@@ -408,8 +406,12 @@ def migration():
                                )
 
 
+def get_asr9k_host_list(db_session):
+    return db_session.query(Host).filter(Host.software_platform == "ASR9K").order_by(Host.hostname.asc()).all()
+
+
 def init_schedule_form(db_session, http_request, get=False):
-    hosts = get_host_list(db_session)
+    hosts = get_asr9k_host_list(db_session)
     if hosts is None:
         abort(404)
 
@@ -420,7 +422,6 @@ def init_schedule_form(db_session, http_request, get=False):
 
     if get:
         # Initialize the hidden fields
-
         schedule_form.hidden_server_name.data = ''
         schedule_form.hidden_server.data = -1
         schedule_form.hidden_server_directory.data = ''

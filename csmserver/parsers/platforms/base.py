@@ -109,12 +109,17 @@ class BaseInventoryParser(object):
             inventory_data[idx]['position'] = idx
 
         db_session = DBSession()
+        # this is necessary for now because somewhere in the thread, can be
+        # anywhere in the code, the db_session was not closed - to be found out later.
+        db_session.close()
 
         if len(ctx.host.host_inventory) > 0:
             self.compare_and_update(ctx, db_session, inventory_data, chassis_idx)
         else:
             self.store_new_inventory(db_session, inventory_data, ctx.host.id, chassis_idx)
-        db_session.commit()
+
+        db_session.close()
+        return
 
     def compare_and_update(self, ctx, db_session, inventory_data, chassis_idx):
         """
@@ -161,7 +166,7 @@ class BaseInventoryParser(object):
                 #  create new record for this one!
                 if not existing_inventory_match:
                     new_inventory = HostInventory(db_session, **retrieved_inventory_data)
-                    db_session.flush()
+                    db_session.commit()
                     updated_inventory_ids.add(new_inventory.id)
                 else:
                     # Single match in serial number found - update it!
@@ -174,17 +179,17 @@ class BaseInventoryParser(object):
                         duplicate_serial_numbers.add(retrieved_inventory_data.get('serial_number'))
 
                         [inv.delete(db_session) for inv in existing_inventory_match if inv.id != chassis_inventory.id]
-                        db_session.flush()
+                        db_session.commit()
 
                         new_inventory = HostInventory(db_session, **retrieved_inventory_data)
-                        db_session.flush()
+                        db_session.commit()
                         updated_inventory_ids.add(new_inventory.id)
 
         # Lastly, delete all inventories that are no longer found for this host in this retrieval
         for inventory in existing_host_inventory_query.all():
             if inventory.id not in updated_inventory_ids:
                 inventory.delete(db_session)
-        db_session.flush()
+        db_session.commit()
 
     def store_new_inventory(self, db_session, inventory_data, host_id, chassis_idx):
         """
@@ -206,6 +211,7 @@ class BaseInventoryParser(object):
                 HostInventory(db_session, **retrieved_inventory_data)
 
         db_session.add(chassis_inventory)
+        db_session.commit()
 
     def set_extra_params_for_nonchassis(self, inventory_dict, host_id, chassis_inventory):
         """
@@ -260,6 +266,6 @@ class BaseInventoryParser(object):
 
         chassis_inventory = HostInventory(db_session, **retrieved_chassis_data)
         db_session.add(chassis_inventory)
-        db_session.flush()
+        db_session.commit()
 
         return chassis_inventory
