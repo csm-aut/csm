@@ -27,7 +27,7 @@ from flask import jsonify
 import math
 
 RECORDS_PER_PAGE = 1000
-ENVELOPE = 'api_response'
+ENVELOPE = 'data'
 STATUS = 'status'
 STATUS_MESSAGE = 'status_message'
 

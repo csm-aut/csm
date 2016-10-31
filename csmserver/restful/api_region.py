@@ -25,7 +25,7 @@
 from flask import jsonify
 
 from csm_exceptions.exceptions import ValueNotFound
-from csm_exceptions.exceptions import RegionException
+from csm_exceptions.exceptions import OperationNotAllowed
 
 from common import get_region
 from common import get_region_list
@@ -39,6 +39,7 @@ from models import Host
 
 from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
+from api_utils import ENVELOPE
 from api_utils import APIStatus
 from api_utils import check_parameters
 from api_utils import failed_response
@@ -83,10 +84,11 @@ def api_create_regions(request):
                     return_code = 400
             else:
                 if 'server_repositories' in data.keys():
+                    print data.keys()
                     for server in data['server_repositories'].split(','):
                         repo = get_server(db_session, server)
                         if not repo:
-                            status_message = "Invalid value for server_repositories: %s" % server
+                            status_message = "Server repository '%s' does not exist in CSM database." % server
                 else:
                     data['server_repositories'] = ""
 
@@ -99,7 +101,7 @@ def api_create_regions(request):
                 row[STATUS] = APIStatus.SUCCESS
                 row['name'] = region.name
                 partial_success = True
-            except Exception as e:
+            except ValueNotFound as e:
                 row[STATUS] = APIStatus.FAILED
                 row[STATUS_MESSAGE] = e.message
                 row['name'] = data['name']
@@ -131,7 +133,7 @@ def api_edit_region(db_session, region, data):
         row[STATUS] = APIStatus.SUCCESS
         row['name'] = region.name
         success = True
-    except Exception as e:
+    except ValueNotFound as e:
         row[STATUS] = APIStatus.FAILED
         row[STATUS_MESSAGE] = e.message
         row['name'] = data['name']
@@ -179,10 +181,7 @@ def api_delete_region(name):
         delete_region(db_session, name)
         row['name'] = name
         row[STATUS] = APIStatus.SUCCESS
-    except (ValueNotFound, RegionException) as e:
-        row[STATUS] = APIStatus.FAILED
-        row[STATUS_MESSAGE] = e.message
-        row['name'] = name
-        return_code = 400
+    except (ValueNotFound, OperationNotAllowed) as e:
+        return failed_response(e.message)
 
-    return jsonify(**{'data':{'region_list': [row]}}), return_code
+    return jsonify(**{ENVELOPE: row}), return_code

@@ -25,7 +25,7 @@
 from flask import jsonify
 
 from csm_exceptions.exceptions import ValueNotFound
-from csm_exceptions.exceptions import ServerException
+from csm_exceptions.exceptions import OperationNotAllowed
 
 from common import get_server_list
 from common import get_server
@@ -38,6 +38,7 @@ from database import DBSession
 
 from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
+from api_utils import ENVELOPE
 from api_utils import APIStatus
 from api_utils import check_parameters
 from api_utils import failed_response
@@ -89,7 +90,7 @@ def api_create_server_repositories(request):
     server_directory = {
         'TFTP': 'file_directory',
         'FTP': 'home_directory',
-        'SFTP': 'file_directory',
+        'SFTP': 'home_directory',
         'LOCAL': ''
         #'SCP': 'file_directory'
     }
@@ -269,10 +270,7 @@ def api_delete_server_repositories(hostname):
         delete_server_repository(db_session, hostname)
         row['hostname'] = hostname
         row[STATUS] = APIStatus.SUCCESS
-    except (ValueNotFound, ServerException) as e:
-        row['hostname'] = hostname
-        row[STATUS] = APIStatus.FAILED
-        row[STATUS_MESSAGE] = e.message
-        return_code = 400
+    except (ValueNotFound, OperationNotAllowed) as e:
+        return failed_response(e.message)
 
-    return jsonify(**{'data': {'server_repository_list': [row]}}), return_code
+    return jsonify(**{ENVELOPE: row}), return_code

@@ -34,9 +34,5 @@ class ValueNotFound(Exception):
     pass
 
 
-class RegionException(Exception):
-    pass
-
-
-class ServerException(Exception):
+class OperationNotAllowed(Exception):
     pass

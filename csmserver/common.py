@@ -27,8 +27,7 @@ from flask import g, send_file
 from sqlalchemy import or_, and_, not_
 
 from csm_exceptions.exceptions import ValueNotFound
-from csm_exceptions.exceptions import RegionException
-from csm_exceptions.exceptions import ServerException
+from csm_exceptions.exceptions import OperationNotAllowed
 
 from constants import ServerType
 from constants import UserPrivilege
@@ -445,10 +444,13 @@ def create_or_update_region(db_session, name, server_repositories, region=None):
 
     region.name = name
     region.servers = []
-    for server in server_repositories.split(','):
-        valid_server = get_server(db_session, server.strip())
-        if valid_server is not None:
-            region.servers.append(valid_server)
+    if server_repositories is not '':
+        for server in server_repositories.split(','):
+            valid_server = get_server(db_session, server.strip())
+            if valid_server is not None:
+                region.servers.append(valid_server)
+            else:
+                raise ValueNotFound("Server repository '%s' does not exist in CSM database." % server)
     db_session.commit()
 
     return region
@@ -465,7 +467,7 @@ def delete_region(db_session, name):
     # Older version of db does not perform check on
     # foreign key constrain, so do it programmatically here.
     if count > 0:
-        raise RegionException("Unable to delete region '%s'. Verify that it is not used by other hosts." % name)
+        raise OperationNotAllowed("Unable to delete region '%s'. Verify that it is not used by other hosts." % name)
 
     db_session.delete(region)
     db_session.commit()
@@ -536,7 +538,7 @@ def delete_server_repository(db_session, hostname):
         raise ValueNotFound("Unable to locate server repository '%s'" % hostname)
 
     if len(server.regions) > 0:
-        raise ServerException("Unable to delete server repository '%s'. Verify that it is not used by other regions." % hostname)
+        raise OperationNotAllowed("Unable to delete server repository '%s'. Verify that it is not used by other regions." % hostname)
 
     db_session.delete(server)
     db_session.commit()

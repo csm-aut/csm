@@ -37,6 +37,7 @@ from utils import get_acceptable_string
 
 from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
+from api_utils import ENVELOPE
 from api_utils import APIStatus
 from api_utils import check_parameters
 from api_utils import failed_response
@@ -209,10 +210,6 @@ def api_delete_jump_host(hostname):
         row[STATUS] = APIStatus.SUCCESS
         row['hostname'] = hostname
     except ValueNotFound as e:
-        #return failed_response(e.message)
-        row[STATUS] = APIStatus.FAILED
-        row[STATUS_MESSAGE] = e.message
-        row['hostname'] = hostname
-        return_code = 400
+        return failed_response(e.message)
 
-    return jsonify(**{'data':{'jump_host_list': [row]}}), return_code
+    return jsonify(**{ENVELOPE: row}), return_code
