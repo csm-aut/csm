@@ -128,6 +128,7 @@
                 bootbox.alert("Home Directory has not been specified.");
                 return false;
             }
+            console.log("server_directory " + server_directory + ",");
 
             var hostname = $('#hostname').val();
             var acceptable_string = get_acceptable_string(hostname);
