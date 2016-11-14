@@ -26,13 +26,12 @@ from wtforms import Form, validators
 from wtforms import RadioField
 from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
 from wtforms.validators import Length, required
-from wtforms.widgets import TextArea
 from constants import ConnectionType
 from constants import ServerType
 from constants import UserPrivilege
 from constants import SMTPSecureConnection
 from constants import DefaultHostAuthenticationChoice
-from constants import ExportSoftwareInformationFormat
+from constants import ExportInformationFormat
 from constants import ExportSoftwareInformationLayout
 
 
@@ -217,30 +216,21 @@ class SoftwareProfileForm(Form):
     profile_name = StringField('Profile Name', [required(), Length(max=30)])
 
 
-class ExportSoftwareInformationForm(Form):
+class ExportInformationForm(Form):
     export_format = SelectField('Export Format', coerce=str,
-                                choices=[(ExportSoftwareInformationFormat.HTML,
-                                          ExportSoftwareInformationFormat.HTML),
-                                         (ExportSoftwareInformationFormat.MICROSOFT_EXCEL,
-                                          ExportSoftwareInformationFormat.MICROSOFT_EXCEL)])
+                                choices=[(ExportInformationFormat.HTML,
+                                          ExportInformationFormat.HTML),
+                                         (ExportInformationFormat.MICROSOFT_EXCEL,
+                                          ExportInformationFormat.MICROSOFT_EXCEL)])
 
+
+class ExportSoftwareInformationForm(ExportInformationForm):
     export_layout = SelectField('Layout', coerce=str,
                                 choices=[(ExportSoftwareInformationLayout.CONCISE,
                                           ExportSoftwareInformationLayout.CONCISE),
                                          (ExportSoftwareInformationLayout.DEFAULT,
                                           ExportSoftwareInformationLayout.DEFAULT)])
 
-
-class QueryInventoryBySerialNumberForm(Form):
-    serial_number = StringField('Serial Number', [required(), Length(max=50)])
-    hidden_submit_sn = HiddenField('')
-
-
-class UpdateInventoryForm(Form):
-    model_name = StringField('Model Number (PID)', [Length(max=50)])
-    notes = StringField('Notes', widget=TextArea())
-    hidden_serial_number = HiddenField('')
-    hidden_action = HiddenField('')
 
 if __name__ == '__main__':
     pass

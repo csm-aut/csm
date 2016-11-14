@@ -284,6 +284,7 @@ class Host(Base):
 
     host_inventory = relationship("HostInventory",
                                   order_by="HostInventory.id",
+                                  backref="host",
                                   cascade="all, delete-orphan")
 
     inventory = relationship("Inventory")

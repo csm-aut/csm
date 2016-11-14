@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+from common import get_last_successful_inventory_elapsed_time
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
@@ -326,3 +327,286 @@ class ExportSoftwareInfoExcelDefaultWriter(ExportSoftwareInfoExcelWriter):
 
                 if row < len(functional_areas):
                     self.ws.write(self.row, 5, functional_areas[row])
+
+
+class ExportInventoryInfoWriter(ReportWriter):
+    def __init__(self, **kwargs):
+        ReportWriter.__init__(self, **kwargs)
+        self.user = kwargs.pop('user')
+        self.serial_number = kwargs.pop('serial_number')
+        self.region_names = kwargs.pop('region_names')
+        self.chassis_types = kwargs.pop('chassis_types')
+        self.software_versions = kwargs.pop('software_versions')
+        self.model_names = kwargs.pop('model_names')
+        self.partial_model_names = kwargs.pop('partial_model_names')
+
+        self.available_inventory_iter = kwargs.pop('available_inventory_iter')
+        self.in_use_inventory_iter = kwargs.pop('in_use_inventory_iter')
+
+        temp_user_dir = create_temp_user_directory(self.user.username)
+        self.output_file_directory = os.path.normpath(os.path.join(temp_user_dir, "inventory_information_export"))
+
+        create_directory(self.output_file_directory)
+        make_file_writable(self.output_file_directory)
+
+
+class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
+    def __init__(self, **kwargs):
+        ExportInventoryInfoWriter.__init__(self, **kwargs)
+
+    def get_report_header(self):
+        html = '<p><b>Search Filter(s):</b></p>'
+        has_search_filter = False
+
+        html += '<ul>'
+        if self.serial_number:
+            html += '<li><b>Serial Number: ' + self.serial_number + '</b></li>'
+            has_search_filter = True
+        if self.region_names:
+            html += '<li><b>Region: ' + ',&nbsp'.join(self.region_names) + '</b></li>'
+            has_search_filter = True
+        if self.chassis_types:
+            html += '<li><b>Chassis: ' + ',&nbsp'.join(self.chassis_types) + '</b></li>'
+            has_search_filter = True
+        if self.software_versions:
+            html += '<li><b>Software: ' + ',&nbsp'.join(self.software_versions) + '</b></li>'
+            has_search_filter = True
+        if self.model_names:
+            html += '<li><b>Model Names: ' + ',&nbsp'.join(self.model_names) + '</b></li>'
+            has_search_filter = True
+        if self.partial_model_names:
+            html += '<li><b>Partial Model Names: ' + ',&nbsp'.join(self.partial_model_names) + '</b></li>'
+            has_search_filter = True
+        html += '</ul>'
+        if not has_search_filter:
+            html = '<p><b>Search Filter(s): None</b></p>'
+        return html
+
+    def write_report(self):
+        output_file_path = os.path.join(self.output_file_directory, 'inventory_information.html')
+        with open(output_file_path, 'w') as output_file:
+            output_file.write(self.get_content())
+
+        return output_file_path
+
+    def get_content(self):
+        content = self.get_report_header()
+        content += '<p>'
+        content += '<html><body>'
+        content += self.get_in_use_inventory_table_content()
+        content += '<p><p><p><p><p>'
+        content += self.get_available_inventory_table_content()
+        content += '</body></html>'
+
+        return content
+
+    def get_available_inventory_table_content(self):
+        content = 'Number of Available Inventories: ' + str(self.available_inventory_iter.count())
+        if self.available_inventory_iter.count() > 0:
+            content += '<table cellspacing=1 cellpadding=2 border=1 width=100%>' + \
+                        '<tr>' + \
+                        '<th><b>Model Name</b></th>' + \
+                        '<th><b>Serial Number</b></th>' + \
+                        '<th><b>Description</b></th>' + \
+                        '<th><b>Notes</b></th>' + \
+                        '</tr>'
+
+            for inventory in self.available_inventory_iter:
+                content += '<tr>' + \
+                    '<td>' + (inventory.model_name if inventory.model_name else '') + '</td>' + \
+                    '<td>' + (inventory.serial_number if inventory.serial_number else '') + '</td>' + \
+                    '<td>' + (inventory.description if inventory.description else '') + '</td>' + \
+                    '<td>' + (inventory.notes if inventory.notes else '') + '</td>' + \
+                    '</tr>'
+
+            content += '</table>'
+
+        return content
+
+    def get_in_use_inventory_table_content(self):
+        content = 'Number of In Use Inventories: ' + str(self.in_use_inventory_iter.count())
+        if self.in_use_inventory_iter.count() > 0:
+            content += '<table cellspacing=1 cellpadding=2 border=1 width=100%>' + \
+                       '<tr>' + \
+                       '<th><b>Model Name</b></th>' + \
+                       '<th><b>Name</b></th>' + \
+                       '<th><b>Serial Number</b></th>' + \
+                       '<th><b>Description</b></th>' + \
+                       '<th><b>Hostname</b></th>' + \
+                       '<th><b>Chassis</b></th>' + \
+                       '<th><b>Platform</b></th>' + \
+                       '<th><b>Software</b></th>' + \
+                       '<th><b>Region</b></th>' + \
+                       '<th><b>Location</b></th>' + \
+                       '<th><b>Last Successful Retrieval</b></th>' + \
+                       '</tr>'
+
+            for inventory in self.in_use_inventory_iter:
+                content += '<tr>' + \
+                           '<td>' + (inventory.model_name if inventory.model_name else '') + '</td>' + \
+                           '<td>' + (inventory.name if inventory.name else '') + '</td>' + \
+                           '<td>' + (inventory.serial_number if inventory.serial_number else '') + '</td>' + \
+                           '<td>' + (inventory.description if inventory.description else '') + '</td>'
+
+                host = inventory.host
+                if host:
+                    inventory_job = host.inventory_job[0]
+                    if inventory_job and inventory_job.last_successful_time:
+                        last_successful_retrieval = get_last_successful_inventory_elapsed_time(host)
+                    else:
+                        last_successful_retrieval = ''
+                    content += '<td>' + (host.hostname if host.hostname else '') + '</td>' + \
+                               '<td>' + (host.platform if host.platform else '') + '</td>' + \
+                               '<td>' + (host.software_platform if host.software_platform else '') + '</td>' + \
+                               '<td>' + (host.software_version if host.software_version else '') + '</td>' + \
+                               '<td>' + (host.region.name if host.region.name else '') + '</td>' + \
+                               '<td>' + (host.location if host.location else '') + '</td>' + \
+                               '<td>' + last_successful_retrieval + '</td>' + \
+                               '</tr>'
+                else:
+                    content += '<td></td>' + '<td></td>' + '<td></td>' + \
+                               '<td></td>' + '<td></td>' + '<td></td>' + '<td></td>'\
+                               '</tr>'
+
+            content += '</table>'
+
+        return content
+
+
+class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
+    def __init__(self, **kwargs):
+        ExportInventoryInfoWriter.__init__(self, **kwargs)
+        self.style_title = xlwt.easyxf('font: height 350, bold on; align: vert centre;')
+        self.style_bold = xlwt.easyxf('font: bold on, height 260;')
+        self.style_summary = xlwt.easyxf('font: height 220;')
+        self.style_center = xlwt.easyxf('align: vert centre, horiz center;')
+
+        self.wb = xlwt.Workbook()
+        self.ws = self.wb.add_sheet('Inventory Information Report')
+        self.ws.set_portrait(False)
+
+        self.row = 0
+
+    def next_row(self):
+        self.row += 1
+        return self.row
+
+    def write_report_header(self):
+        if not self.serial_number and not self.region_names and not self.chassis_types and \
+                not self.software_versions and not self.model_names and not self.partial_model_names:
+            self.ws.write(self.row, 0, "Search Filter(s): None", self.style_title)
+        else:
+            self.ws.write(self.row, 0, "Search Filter(s):", self.style_title)
+        self.next_row()
+        if self.serial_number:
+            self.ws.write(self.row, 1, "Serial Number: " + self.serial_number, self.style_title)
+            self.next_row()
+        if self.region_names:
+            self.ws.write(self.row, 1, "Region: " + ', '.join(self.region_names), self.style_title)
+            self.next_row()
+        if self.chassis_types:
+            self.ws.write(self.row, 1, "Chassis: " + ', '.join(self.chassis_types), self.style_title)
+            self.next_row()
+        if self.software_versions:
+            self.ws.write(self.row, 1, "Software: " + ', '.join(self.software_versions), self.style_title)
+            self.next_row()
+        if self.model_names:
+            self.ws.write(self.row, 1, "Model Names: " + ', '.join(self.model_names), self.style_title)
+            self.next_row()
+        if self.partial_model_names:
+            self.ws.write(self.row, 1, "Partial Model Names: " + ', '.join(self.partial_model_names), self.style_title)
+            self.next_row()
+
+        return
+
+    def write_report(self):
+        self.write_report_header()
+        self.next_row()
+        self.write_report_contents()
+
+        output_file_path = os.path.join(self.output_file_directory, 'inventory_information.xls')
+        self.wb.save(output_file_path)
+
+        return output_file_path
+
+    def write_report_contents(self):
+        # Fit for Landscape mode
+        self.ws.col(0).width = 5000
+        self.ws.col(1).width = 8500
+        self.ws.col(2).width = 4000
+        self.ws.col(3).width = 13000
+        self.ws.col(4).width = 4000
+        self.ws.col(5).width = 4000
+        self.ws.col(6).width = 4000
+        self.ws.col(7).width = 4000
+        self.ws.col(8).width = 5000
+        self.ws.col(9).width = 5000
+        self.ws.col(10).width = 5000
+
+        self.write_in_use_inventory_table_content()
+        self.next_row()
+        self.next_row()
+        self.next_row()
+        self.write_available_inventory_table_content()
+
+        return
+
+    def write_available_inventory_table_content(self):
+        self.ws.write(self.row, 0, 'Number of Available Inventories: ' + str(self.available_inventory_iter.count()),
+                      self.style_bold)
+        if self.available_inventory_iter.count() > 0:
+            self.next_row()
+            self.ws.write(self.row, 0, 'Model Name', self.style_bold)
+            self.ws.write(self.row, 1, 'Serial Number', self.style_bold)
+            self.ws.write(self.row, 2, 'Description', self.style_bold)
+            self.ws.write(self.row, 3, 'Notes', self.style_bold)
+
+            for inventory in self.available_inventory_iter:
+                self.next_row()
+                self.ws.write(self.row, 0, (inventory.model_name if inventory.model_name else ''))
+                self.ws.write(self.row, 1, (inventory.serial_number if inventory.serial_number else ''))
+                self.ws.write(self.row, 2, (inventory.description if inventory.description else ''))
+                self.ws.write(self.row, 3, (inventory.notes if inventory.notes else ''))
+
+        return
+
+    def write_in_use_inventory_table_content(self):
+        self.ws.write(self.row, 0, 'Number of In Use Inventories: ' + str(self.in_use_inventory_iter.count()),
+                      self.style_bold)
+        if self.in_use_inventory_iter.count() > 0:
+            self.next_row()
+            self.ws.write(self.row, 0, 'Model Name', self.style_bold)
+            self.ws.write(self.row, 1, 'Name', self.style_bold)
+            self.ws.write(self.row, 2, 'Serial Number', self.style_bold)
+            self.ws.write(self.row, 3, 'Description', self.style_bold)
+            self.ws.write(self.row, 4, 'Hostname', self.style_bold)
+            self.ws.write(self.row, 5, 'Chassis', self.style_bold)
+            self.ws.write(self.row, 6, 'Platform', self.style_bold)
+            self.ws.write(self.row, 7, 'Software', self.style_bold)
+            self.ws.write(self.row, 8, 'Region', self.style_bold)
+            self.ws.write(self.row, 9, 'Location', self.style_bold)
+            self.ws.write(self.row, 10, 'Last Successful Retrieval', self.style_bold)
+
+            for inventory in self.in_use_inventory_iter:
+                self.next_row()
+                self.ws.write(self.row, 0, (inventory.model_name if inventory.model_name else ''))
+                self.ws.write(self.row, 1, (inventory.name if inventory.name else ''))
+                self.ws.write(self.row, 2, (inventory.serial_number if inventory.serial_number else ''))
+                self.ws.write(self.row, 3, (inventory.description if inventory.description else ''))
+
+                host = inventory.host
+                if host:
+                    inventory_job = host.inventory_job[0]
+                    if inventory_job and inventory_job.last_successful_time:
+                        last_successful_retrieval = get_last_successful_inventory_elapsed_time(host)
+                    else:
+                        last_successful_retrieval = ''
+                    self.ws.write(self.row, 4, (host.hostname if host.hostname else ''))
+                    self.ws.write(self.row, 5, (host.platform if host.platform else ''))
+                    self.ws.write(self.row, 6, (host.software_platform if host.software_platform else ''))
+                    self.ws.write(self.row, 7, (host.software_version if host.software_version else ''))
+                    self.ws.write(self.row, 8, (host.region.name if host.region.name else ''))
+                    self.ws.write(self.row, 9, (host.location if host.location else ''))
+                    self.ws.write(self.row, 10, last_successful_retrieval)
+
+        return

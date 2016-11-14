@@ -152,7 +152,7 @@ class DefaultHostAuthenticationChoice:
     HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD = "2"
 
 
-class ExportSoftwareInformationFormat:
+class ExportInformationFormat:
     HTML = 'HTML'
     MICROSOFT_EXCEL = 'Microsoft Excel'
 

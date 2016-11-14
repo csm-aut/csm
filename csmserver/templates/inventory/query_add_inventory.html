@@ -100,7 +100,7 @@ input field is disabled.</pre>
                     {{ edit_field(update_inventory_form.model_name, maxlength=50, field_width="col-sm-4", class="form-control", extra_field=info) }}
                 {% else %}
                     {{ edit_field(update_inventory_form.model_name, maxlength=50, field_width="col-sm-4", class="form-control",
-                        placeholder="Optional.", extra_field=info) }}
+                        placeholder="Optional", extra_field=info) }}
                 {% endif %}
                 {% if hostname != None %}
                     </fieldset>
@@ -139,7 +139,7 @@ input field is disabled.</pre>
                             <div class="container" id="host_info">
                                 <div class="row">
                                     <div class="col-sm-5">
-                                        <span style="color: Gray;"><b>Hostname:</b></span>&nbsp;&nbsp;{{ hostname }}
+                                        <span style="color: Gray;"><b>Hostname:</b></span>&nbsp;&nbsp;<a href='/hosts/{{ hostname }}/host_dashboard/'> {{ hostname }} </a>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -177,14 +177,14 @@ input field is disabled.</pre>
                     <label class="col-sm-4 control-label" id="label_{{ update_inventory_form.notes.id }}">{{ update_inventory_form.notes.label.text }}</label>
 
                     <div class="col-sm-4">
-                        {{ update_inventory_form.notes(placeholder="Optional.") }}
+                        {{ update_inventory_form.notes(placeholder="Optional") }}
                     </div>
 
                 </div>
                 <p style="text-align: center;">
                     <button id="submit-update-inventory" class="btn btn-primary" type="submit">Save</button>
                     <button id="cancel" type="button" class="btn btn-default" type="submit">Cancel</button>
-                    {% if hostname == None %}
+                    {% if hostname == None and not new_inventory %}
                         <button id="submit-delete-inventory" type="button" class="btn btn-danger" title="Delete it from the managed inventories.">Delete</button>
                     {% endif %}
                 </p>

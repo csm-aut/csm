@@ -1,0 +1,436 @@
+{% extends 'base_inventory.html' %}
+{% from 'host/common.html' import edit_field %}
+
+
+{% block head %}
+    <link rel="stylesheet" type="text/css" href="/static/jquery/css/inventory.css" xmlns="http://www.w3.org/1999/html">
+
+    <script>
+
+    $(function () {
+        var table_finished_drawing = 0;
+        var search_clicked = false;
+        var spinner = $('#spinner');
+        var no_inventory_match = $('#no-inventory');
+        spinner.hide();
+        no_inventory_match.hide();
+
+        var available_inventory_table = $("#available-inventory-datatable").DataTable({
+            "ajax": {
+                "url": "{{ url_for('inventory.api_search_inventory') }}",
+                "contentType": "application/json",
+                "type": "POST",
+                "data": function (d) {
+                    d.available = true;
+                    d.serial_number = $('#serial_number').val();
+                    d.region_ids = $('#region-selector').val();
+                    d.chassis_types = $('#chassis-selector').val();
+                    d.software_versions = $('#software-selector').val();
+                    if ($("#select-model-name").hasClass("active")) {
+                        d.model_names = $('#model-name-selector').val()
+                    } else {
+                        d.partial_model_names = $('#partial_model_names').val().split(',');
+                    }
+                    return JSON.stringify( d );
+                }
+            },
+            "order": [
+                [0, "asc"]
+            ],
+            "pageLength": 100,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'model_name'
+            }, {
+                "targets": 1,
+                "data": 'serial_number'
+            }, {
+                "targets": 2,
+                "data": 'description'
+            }, {
+                "targets": 3,
+                "data": 'notes'
+            }]
+        }).on('draw.dt', function(e, settings, json) {
+            if (available_inventory_table.page.info().recordsTotal > 0) {
+
+                if ($('li#available').length == 0) {
+                    $('<li id="available"><a data-toggle="tab" href="#available-inventory">Available &nbsp;<span id="badge-available" class="customized-badge-height badge alert-info">0</span></a></li>').appendTo('#search-inventory-tabs');
+                }
+                $('#badge-available').html(available_inventory_table.page.info().recordsTotal);
+
+            }
+            if (search_clicked) {
+                post_handling_after_drawing_table();
+            }
+        });
+
+        var in_use_inventory_table = $("#in-use-inventory-datatable").DataTable({
+            "ajax": {
+                "url": "{{ url_for('inventory.api_search_inventory') }}",
+                "contentType": "application/json",
+                "type": "POST",
+                "data": function (d) {
+                    d.available = false;
+                    d.serial_number = $('#serial_number').val();
+                    d.region_ids = $('#region-selector').val();
+                    d.chassis_types = $('#chassis-selector').val();
+                    d.software_versions = $('#software-selector').val();
+                    if ($("#select-model-name").hasClass("active")) {
+                        d.model_names = $('#model-name-selector').val();
+                    } else {
+                        d.partial_model_names = $('#partial_model_names').val().split(',');
+                    }
+                    return JSON.stringify( d );
+                }
+            },
+            "order": [
+                [4, "asc"]
+            ],
+            "pageLength": 100,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'model_name'
+            }, {
+                "targets": 1,
+                "data": 'name'
+            }, {
+                "targets": 2,
+                "data": 'serial_number'
+            }, {
+                "targets": 3,
+                "data": 'description'
+            }, {
+                "targets": 4,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a target="_blank" href="/hosts/' + row['hostname'] + '/host_dashboard/">' + row['hostname'] + '</a>';
+                }
+            },  {
+                "targets": 5,
+                "data": 'chassis'
+            }, {
+                "targets": 6,
+                "data": 'platform'
+            }, {
+                "targets": 7,
+                "data": 'software'
+            }, {
+                "targets": 8,
+                "data": 'region'
+            }, {
+                "targets": 9,
+                "data": 'location'
+            }, {
+                "targets": 10,
+                "data": 'last_successful_retrieval'
+            }]
+        }).on('draw.dt', function(e, settings, json) {
+            if (in_use_inventory_table.page.info().recordsTotal > 0) {
+                if ($('li#in-use').length == 0) {
+                    $('#search-inventory-tabs').prepend('<li id="in-use"><a data-toggle="tab" href="#in-use-inventory">In Use &nbsp;<span id="badge-in-use" class="customized-badge-height badge alert-info">0</span></a></li>');
+                }
+                $('#badge-in-use').html(in_use_inventory_table.page.info().recordsTotal);
+            }
+            if (search_clicked) {
+                post_handling_after_drawing_table();
+            }
+        });
+        $('#search').on('click', function(e) {
+            spinner.show();
+            $('#search-inventory-tabs').empty();
+            $('#tables').hide();
+            search_clicked = true;
+            in_use_inventory_table.ajax.reload();
+            available_inventory_table.ajax.reload();
+        });
+
+        function post_handling_after_drawing_table() {
+            table_finished_drawing++;
+            if(table_finished_drawing == 2) {
+                spinner.hide();
+                $('#in-use-inventory-datatable').wrap("<div class='scrollableTable'></div>");
+                $('#available-inventory-datatable').wrap("<div class='scrollableTable'></div>");
+
+                if (in_use_inventory_table.page.info().recordsTotal == 0) {
+                    if (available_inventory_table.page.info().recordsTotal > 0) {
+                        $('a[href=#available-inventory]').tab('show');
+                        no_inventory_match.hide();
+                        $('#tables').show();
+                    } else {
+                        no_inventory_match.show();
+                    }
+                } else {
+                    $('a[href=#in-use-inventory]').tab('show');
+                    no_inventory_match.hide();
+                    $('#tables').show();
+                }
+
+                $('#search-inventory-result').show();
+                table_finished_drawing = 0;
+            }
+        }
+
+
+        $('#region-selector').select2({
+            placeholder: "Optional",
+            allowClear: true,
+            ajax: {
+                url: "/api/get_regions/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                }
+            }
+        });
+        $('#chassis-selector').select2({
+            placeholder: "Optional",
+            allowClear: true,
+            ajax: {
+                url: "/inventory/api/get_chassis_types/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                }
+            }
+        });
+        $('#software-selector').select2({
+            placeholder: "Optional",
+            allowClear: true,
+            ajax: {
+                url: "/inventory/api/get_software_versions/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                }
+            }
+        });
+        $('#model-name-selector').select2({
+            placeholder: "Optional",
+            allowClear: true,
+            ajax: {
+                url: "/inventory/api/get_model_names/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                }
+            }
+        });
+
+        $('.btn-toggle').click(function() {
+            $(this).find('.btn').toggleClass('active');
+
+            if ($(this).find('.btn-info').size() > 0) {
+                $(this).find('.btn').toggleClass('btn-info');
+            }
+
+            $(this).find('.btn').toggleClass('btn-default');
+
+            if ($("#select-model-name").hasClass("active")) {
+                $('#model-name-selector-div').show();
+                $('#partial-model-names-div').hide()
+            } else {
+                $('#partial-model-names-div').show();
+                $('#model-name-selector-div').hide()
+            }
+        });
+
+        $('#export').click(function() {
+            $('#export-inventory-information-dialog').modal('show');
+        });
+
+        $('#on-export-inventory-submit').click(function() {
+            $('#hidden_serial_number').val($('#serial_number').val());
+            $('#hidden_region_ids').val($('#region-selector').val());
+            $('#hidden_chassis_types').val($('#chassis-selector').val());
+            $('#hidden_software_versions').val($('#software-selector').val());
+
+            if ($("#select-model-name").hasClass("active")) {
+                $('#hidden_model_names').val($('#model-name-selector').val());
+                $('#hidden_partial_model_names').val('');
+            } else {
+                $('#hidden_model_names').val('');
+                $('#hidden_partial_model_names').val($('#partial_model_names').val().split(','));
+            }
+
+            $('#export-inventory-information-form').attr('action', "{{ url_for('inventory.export_inventory_information') }}");
+            $('#export-inventory-information-form').submit();
+        });
+
+    })
+
+    </script>
+{% endblock %}
+
+{% macro custom_edit_field(field, field_width="col-sm-4", label_field_width="col-sm-2", catch_kwargs=true, extra_field="None") %}
+    <label class="{{ label_field_width }} control-label" id="label_{{ field.id }}">{{ field.label.text }}</label>
+    <div class="{{ field_width }}">
+        {{ field(class="form-control", **kwargs) }}
+    </div>
+{% endmacro %}
+
+{% macro selector_row(label, field) %}
+    <div class="row top-bottom-margin">
+        <label class="col-sm-2 control-label" id="label_{{ field }}">{{ label }}</label>
+        <div class="col-sm-4">
+            <select multiple="multiple" class="form-control" id="{{ field }}-selector"></select>
+        </div>
+    </div>
+{% endmacro %}
+
+{% block main %}
+
+<div id="export-inventory-information-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" id="export-inventory-information-form" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>
+                        <center>Export Inventory Search Results</center>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    {{ edit_field(export_results_form.export_format, field_width="col-sm-6", class="form-control") }}
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-export-inventory-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                <input id="hidden_serial_number" name="{{ export_results_form.hidden_serial_number.name }}" value="{{ export_results_form.hidden_serial_number.data }}" type="hidden">
+                <input id="hidden_region_ids" name="{{ export_results_form.hidden_region_ids.name }}" value="{{ export_results_form.hidden_region_ids.data }}" type="hidden">
+                <input id="hidden_chassis_types" name="{{ export_results_form.hidden_chassis_types.name }}" value="{{ export_results_form.hidden_chassis_types.data }}" type="hidden">
+                <input id="hidden_software_versions" name="{{ export_results_form.hidden_software_versions.name }}" value="{{ export_results_form.hidden_software_versions.data }}" type="hidden">
+                <input id="hidden_model_names" name="{{ export_results_form.hidden_model_names.name }}" value="{{ export_results_form.hidden_model_names.data }}" type="hidden">
+                <input id="hidden_partial_model_names" name="{{ export_results_form.hidden_partial_model_names.name }}" value="{{ export_results_form.hidden_partial_model_names.data }}" type="hidden">
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="form-horizontal form-group row">
+    <div class="container">
+        <h4>Search Inventory:</h4><hr style="margin-top:10px;margin-bottom:30px;">
+        <div class="row top-bottom-margin">
+            {{ custom_edit_field(search_inventory_form.serial_number, placeholder="Optional") }}
+        </div>
+        {{ selector_row("Region", "region") }}
+        {{ selector_row("Chassis", "chassis") }}
+        {{ selector_row("Software", "software") }}
+
+        <div class="row top-bottom-margin">
+            <label class="col-sm-2 control-label" id="label_model_name">Model Name (PID)</label>
+
+            <div id="model-name-selector-div" class="col-sm-4">
+                <select multiple="multiple" class="form-control" id="model-name-selector"></select>
+            </div>
+            <div id="partial-model-names-div" class="col-sm-4" style="display:none">
+                {{ search_inventory_form.partial_model_names(class="form-control", placeholder="Comma-delimited full or partial PID's") }}
+            </div>
+
+            <div class="btn-group btn-toggle" id="select-or-enter">
+                <button type="button" id="select-model-name" class="btn btn-info active" data-value=1>Select</button>
+                <button type="button" id="enter-model-name" class="btn btn-default" data-value=0>Enter text</button>
+            </div>
+
+            <button id="search" type="button" class="btn btn-primary" style="margin-left: 21%;">
+                Search
+            </button>
+            <span id="spinner">
+                <img src="{{ url_for('static', filename='spinner.gif') }}">
+            </span>
+        </div>
+
+
+        <div id="search-inventory-result" style="display:none;">
+            <br>
+            <br>
+            <div class="row">
+                <div style="float:left;margin-left: 15px;"><h4>Results:</h4></div>
+                <div><button type="button" id="export" class="btn btn-default" style="margin-left: 77%;">Export</button></div>
+
+            </div>
+            <hr style="margin-top:10px;margin-bottom:30px;">
+            <div id="no-inventory"><h4>No inventory matches the search criteria.</h4></div>
+            <div id="tables" class="row">
+                <div class="col-sm-12">
+                    <ul class="nav nav-tabs" id="search-inventory-tabs">
+                    </ul>
+                    <div class="tab-content" style="margin-top:20px;">
+                        <div id="available-inventory" class="tab-pane fade in active">
+                            <table class="display table" id="available-inventory-datatable">
+                                <thead>
+                                    <tr>
+                                        <th>Model Name</th>
+                                        <th>Serial Number</th>
+                                        <th>Description</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <div id="in-use-inventory" class="tab-pane fade">
+                            <table class="display table" id="in-use-inventory-datatable">
+                                <thead>
+                                    <tr>
+                                        <th>Model Name</th>
+                                        <th>Name</th>
+                                        <th>Serial Number</th>
+                                        <th>Description</th>
+                                        <th>Hostname</th>
+                                        <th>Chassis</th>
+                                        <th>Platform</th>
+                                        <th>Software</th>
+                                        <th>Region</th>
+                                        <th>Location</th>
+                                        <th>Last Successful Retrieval</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+{% endblock %}
