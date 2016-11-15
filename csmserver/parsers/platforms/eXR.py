@@ -164,7 +164,7 @@ class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
                 line = line.strip()
                 if len(line) == 0: continue
 
-                if re.match("(ncs.*|asr9k.*)", line):
+                if re.match("(ncs.*|asr9k.*|xrv9k.*)", line):
                     package_dict[line] = Package(location=None, name=line, state=package_state)
 
         return package_dict
@@ -230,7 +230,7 @@ class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
                 package_list = []
                 for module in trunks:
                     for package in trunks[module]:
-                        if not package in package_list and re.match("(ncs.*|asr9k.*|iosxr.*)", package):
+                        if not package in package_list and re.match("(ncs.*|asr9k.*|iosxr.*|xrv9k.*)", package):
                             package_list.append(package)
 
                 for package_name in package_list:
@@ -300,7 +300,7 @@ class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
                     module = '{}/CPU0'.format(module)
             else:
                 if module is not None:
-                    if re.match("(ncs.*|asr9k.*)", line):
+                    if re.match("(ncs.*|asr9k.*|xrv9k.*)", line):
                         # For situation: ncs6k-xr-5.2.1 version=5.2.1 [Boot image]
                         trunk.append(line.split()[0])
                     else:
