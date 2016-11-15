@@ -142,7 +142,7 @@ class BaseHandler(object):
             ctx.host.UDIs = [udi]
 
     def get_inventory(self, ctx):
-        parser_factory = get_parser_factory(ctx.host.software_platform)
+        parser_factory = get_parser_factory(ctx.host.software_platform, ctx.host.os_type)
 
         software_package_parser = parser_factory.create_software_package_parser()
         software_package_parser.set_host_packages_from_cli(ctx)
