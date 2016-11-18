@@ -40,7 +40,9 @@ from utils import create_temp_user_directory
 from utils import create_directory
 from utils import make_file_writable
 
-from werkzeug import secure_filename
+from common import create_or_update_custom_command_profile
+from common import delete_custom_command_profile as delete_ccp
+from common import get_custom_command_profile
 
 import os
 import json
@@ -154,14 +156,20 @@ def command_profile_create():
             return render_template('custom_command/command_profile_edit.html',
                                    form=form, duplicate_error=True)
 
-        command_profile = CustomCommandProfile(
+        #command_profile = CustomCommandProfile(
+        #    profile_name=form.profile_name.data,
+        #    command_list=','.join([l for l in form.command_list.data.splitlines() if l]),
+        #    created_by=current_user.username
+        #)
+
+        command_profile = create_or_update_custom_command_profile(
+            db_session=db_session,
             profile_name=form.profile_name.data,
-            command_list=','.join([l for l in form.command_list.data.splitlines() if l]),
-            created_by=current_user.username
+            command_list=','.join([l for l in form.command_list.data.splitlines() if l])
         )
 
-        db_session.add(command_profile)
-        db_session.commit()
+        #db_session.add(command_profile)
+        #db_session.commit()
 
         return redirect(url_for('custom_command.home'))
     else:
@@ -187,10 +195,17 @@ def command_profile_edit(profile_name):
             return render_template('custom_commad/command_profile_edit.html',
                                    form=form, duplicate_error=True)
 
-        command_profile.profile_name = form.profile_name.data
-        command_profile.command_list = ','.join([l for l in form.command_list.data.splitlines() if l]),
+        #command_profile.profile_name = form.profile_name.data
+        #command_profile.command_list = ','.join([l for l in form.command_list.data.splitlines() if l]),
 
-        db_session.commit()
+        #db_session.commit()
+
+        command_profile = create_or_update_custom_command_profile(
+            db_session=db_session,
+            profile_name=form.profile_name.data,
+            command_list=','.join([l for l in form.command_list.data.splitlines() if l]),
+            custom_command_profile=get_custom_command_profile(db_session, profile_name)
+        )
 
         return redirect(url_for('custom_command.home'))
     else:
@@ -207,14 +222,18 @@ def command_profile_edit(profile_name):
 def delete_custom_command_profile(profile_name):
     db_session = DBSession()
 
-    command_profile = get_command_profile(db_session, profile_name)
-    if command_profile is None:
+    #command_profile = get_command_profile(db_session, profile_name)
+    #if command_profile is None:
+    #    abort(404)
+
+    #db_session.delete(command_profile)
+    #db_session.commit()
+
+    try:
+        delete_ccp(db_session, profile_name)
+        return jsonify({'status': 'OK'})
+    except:
         abort(404)
-
-    db_session.delete(command_profile)
-    db_session.commit()
-
-    return jsonify({'status': 'OK'})
 
 
 def get_command_profile(db_session, profile_name):

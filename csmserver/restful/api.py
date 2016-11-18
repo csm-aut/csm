@@ -44,6 +44,7 @@ import api_install
 import api_region
 import api_jump_host
 import api_server_repository
+import api_custom_command_profile
 
 restful_api = Blueprint('restful', __name__, url_prefix='/api')
 auth = HTTPBasicAuth()
@@ -215,3 +216,27 @@ def get_session_log(id):
     if not can_install(g.api_user):
         return failed_response('Not Authorized', return_code=401)
     return api_install.api_get_session_log(id)
+
+# --------------------------------------------------------------------------------------------------------------
+
+
+@restful_api.route('/v1/custom_command_profiles', methods=['GET', 'POST'])
+@auth.login_required
+def api_custom_command_profiles():
+    if request.method == 'POST':
+        if not can_create(g.api_user):
+            return failed_response('Not Authorized', return_code=401)
+        return api_custom_command_profile.api_create_custom_command_profiles(request)
+    elif request.method == 'GET':
+        return api_custom_command_profile.api_get_custom_command_profiles(request)
+
+
+@restful_api.route('/v1/custom_command_profiles/<profile_name>/delete', methods=['DELETE'])
+@auth.login_required
+def custom_command_profile_delete(profile_name):
+    if not can_delete(g.api_user):
+        return failed_response('Not Authorized', return_code=401)
+    else:
+        return api_custom_command_profile.api_delete_custom_command_profile(profile_name)
+
+# --------------------------------------------------------------------------------------------------------------

@@ -269,6 +269,14 @@ def get_custom_command_profile_by_id(db_session, id):
     return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == id).first()
 
 
+def get_custom_command_profile(db_session, name):
+    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.profile_name == name).first()
+
+
+def get_custom_command_profile_list(db_session):
+    return db_session.query(CustomCommandProfile).order_by(CustomCommandProfile.profile_name.asc()).all()
+
+
 def get_region(db_session, region_name):
     return db_session.query(Region).filter(Region.name == region_name).first()
 
@@ -473,11 +481,42 @@ def delete_region(db_session, name):
     db_session.commit()
 
 
+def create_or_update_custom_command_profile(db_session, profile_name, command_list, custom_command_profile=None):
+    '''
+    :param db_session:
+    :param profile_name:
+    :param custom_command_profile:
+    :return:
+    '''
+    if custom_command_profile is None:
+        custom_command_profile = CustomCommandProfile()
+        db_session.add(custom_command_profile)
+
+    if hasattr(current_user, 'username'):
+        custom_command_profile.created_by = current_user.username
+    else:
+        custom_command_profile.created_by = g.api_user.username
+
+    custom_command_profile.profile_name = profile_name
+    custom_command_profile.command_list = command_list
+    db_session.commit()
+
+    return custom_command_profile
+
+
+def delete_custom_command_profile(db_session, profile_name):
+    custom_command_profile = get_custom_command_profile(db_session, profile_name)
+    if custom_command_profile is None:
+        raise ValueNotFound("Unable to locate custom command profile '%s'" % profile_name)
+
+    db_session.delete(custom_command_profile)
+    db_session.commit()
+
+
 def create_or_update_jump_host(db_session, hostname, connection_type, host_or_ip,
                                 port_number, username, password='', jumphost=None):
     if jumphost == None:
         jumphost = JumpHost()
-        #jumphost.hostname = hostname
         db_session.add(jumphost)
 
     if hasattr(current_user, 'username'):
