@@ -180,6 +180,7 @@ class AdminConsoleForm(Form):
                             'Hosts with no Specified Username and Password')])
     enable_ldap_auth = HiddenField("Enable LDAP")
     ldap_server_url = StringField('LDAP Server URL')
+    ldap_server_distinguished_names = StringField('Distinguished Names')
     enable_cco_lookup = HiddenField("Enable CCO Connection")
     cco_lookup_time = HiddenField("Last Retrieval")
     enable_user_credential_for_host = HiddenField("Use CSM Server User Credential")

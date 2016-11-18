@@ -978,6 +978,7 @@ class SystemOption(Base):
     enable_ldap_auth = Column(Boolean, default=False)
     enable_ldap_host_auth = Column(Boolean, default=False)
     ldap_server_url = Column(String(100))
+    ldap_server_distinguished_names = Column(String(100))
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)
     enable_user_credential_for_host = Column(Boolean, default=False)

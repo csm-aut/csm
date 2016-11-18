@@ -61,8 +61,11 @@ def ldap_auth(system_option, username, password):
     ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
     try:
         con = ldap.initialize(ldap_server_url)
-        if 'cisco' in ldap_server_url:
+        if 'cisco' in ldap_server_url and is_empty(system_option.ldap_server_distinguished_names):
             username = '{}@cisco.com'.format(username)
+
+        if not is_empty(system_option.ldap_server_distinguished_names):
+            username = system_option.ldap_server_distinguished_names.format(username)
 
         con.bind_s(username, password)
         return True

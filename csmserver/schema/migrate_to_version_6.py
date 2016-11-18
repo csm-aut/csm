@@ -28,6 +28,7 @@ from database import DBSession
 sql_statements = [
     'alter table host add location VARCHAR(100)',
     'alter table smu_info add smu_category VARCHAR(20)',
+    'alter table system_option add ldap_server_distinguished_names VARCHAR(100)',
     'alter table system_option add use_utc_timezone BOOLEAN default 0'
     ]
 

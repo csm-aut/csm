@@ -2068,6 +2068,7 @@ def admin_console():
         if not is_empty(admin_console_form.enable_ldap_auth.data):
             system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
             system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
+            system_option.ldap_server_distinguished_names = admin_console_form.ldap_server_distinguished_names.data.strip()
         
         system_option.inventory_hour = admin_console_form.inventory_hour.data 
         system_option.inventory_history_per_host = admin_console_form.inventory_history_per_host.data 
@@ -2098,6 +2099,7 @@ def admin_console():
         admin_console_form.enable_email_notify.data = system_option.enable_email_notify
         admin_console_form.enable_ldap_auth.data = system_option.enable_ldap_auth
         admin_console_form.ldap_server_url.data = system_option.ldap_server_url
+        admin_console_form.ldap_server_distinguished_names.data = system_option.ldap_server_distinguished_names
         admin_console_form.enable_inventory.data = system_option.enable_inventory
         admin_console_form.inventory_hour.data = system_option.inventory_hour 
         admin_console_form.inventory_history_per_host.data = system_option.inventory_history_per_host
