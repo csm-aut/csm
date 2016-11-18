@@ -32,3 +32,10 @@ div.scrollableTable {
     padding-right: 7px !important;
     padding-left: 7px !important;
 }
+
+textarea#general_notes {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 80%;
+}

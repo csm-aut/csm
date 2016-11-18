@@ -312,6 +312,7 @@ class HostImportForm(Form):
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     data_list = TextAreaField('')
 
+
 class IPRangeForm(Form):
     beginIP = StringField('Beginning IP', [required()])
     endIP = StringField('Ending IP', [required()])

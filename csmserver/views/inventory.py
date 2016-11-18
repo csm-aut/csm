@@ -22,6 +22,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+import csv
+
+from flask import abort
 from flask import Blueprint
 from flask import render_template, jsonify, send_file
 from flask.ext.login import login_required, current_user
@@ -31,6 +34,7 @@ from sqlalchemy import or_
 
 from wtforms import Form
 from wtforms import StringField, HiddenField
+from wtforms import TextAreaField
 from wtforms.widgets import TextArea
 from wtforms.validators import Length, required
 
@@ -44,6 +48,8 @@ from database import DBSession
 
 from forms import ExportInformationForm
 
+from host_import import get_column_number
+
 from models import HostInventory, Inventory
 from models import Host, Region
 
@@ -52,11 +58,15 @@ from report_writer import ExportInventoryInfoExcelWriter
 
 inventory = Blueprint('inventory', __name__, url_prefix='/inventory')
 
+HEADER_FIELD_SERIAL_NUMBER = 'serial_number'
+HEADER_FIELD_MODEL_NAME = 'model_name'
+HEADER_FIELD_NOTES = 'notes'
+
 
 @inventory.route('/inventory_home')
 @login_required
 def inventory_home():
-    return render_template('inventory/home.html')
+    return render_template('inventory/home.html', current_user=current_user)
 
 
 @inventory.route('/query_add_inventory', methods=['GET', 'POST'])
@@ -128,7 +138,7 @@ def query_add_inventory():
 
     return render_template('inventory/query_add_inventory.html', sn_form=sn_form,
                            update_inventory_form=update_inventory_form, success_msg=success_msg,
-                           error_msg=error_msg, **inventory_data_fields)
+                           error_msg=error_msg, current_user=current_user, **inventory_data_fields)
 
 
 def init_query_add_inventory_forms(sn_form, update_inventory_form):
@@ -186,7 +196,7 @@ def get_inventory_data_by_serial_number(db_session, sn_form, update_inventory_fo
     return
 
 
-def update_or_add_inventory(db_session, inventory_obj, serial_number, model_name, notes):
+def update_or_add_inventory(db_session, inventory_obj, serial_number, model_name, notes, commit=True):
     """
     Either update or add the inventory given serial number, model name(optional), and notes(optional)
     :param db_session: session of database transactions
@@ -194,6 +204,7 @@ def update_or_add_inventory(db_session, inventory_obj, serial_number, model_name
     :param serial_number: input serial number string
     :param model_name: input model name string
     :param notes: input notes string
+    :param commit: if true, commit the db transaction in the end, else, don't commit
     :return: None.
     """
     if inventory_obj:
@@ -205,14 +216,15 @@ def update_or_add_inventory(db_session, inventory_obj, serial_number, model_name
         # if this inventory is not found in a host, user can define/update the model_name
         else:
             inventory_obj.update(db_session, model_name=model_name, notes=notes)
-        db_session.commit()
-
+        if commit:
+            db_session.commit()
     else:
         inv = Inventory(serial_number=serial_number,
                         model_name=model_name,
                         notes=notes)
         db_session.add(inv)
-        db_session.commit()
+        if commit:
+            db_session.commit()
     return
 
 
@@ -249,7 +261,7 @@ def search_inventory():
     export_results_form = ExportInventoryInformationForm(request.form)
 
     return render_template('inventory/search_inventory.html', search_inventory_form=search_inventory_form,
-                           export_results_form=export_results_form)
+                           export_results_form=export_results_form, current_user=current_user)
 
 
 @inventory.route('/api/search_inventory/', methods=['GET', 'POST'])
@@ -434,6 +446,117 @@ def export_inventory_information():
     return send_file(writer.write_report(), as_attachment=True)
 
 
+@inventory.route('/import_inventory')
+@login_required
+def import_inventory():
+    if current_user.privilege != UserPrivilege.ADMIN:
+        abort(401)
+
+    form = ImportInventoryForm(request.form)
+
+    return render_template('inventory/import_inventory.html', form=form)
+
+
+@inventory.route('/api/import_inventory', methods=['POST'])
+@login_required
+def api_import_inventory():
+    """
+    API for importing inventory
+    Note: 1. If inventory already exists in db, and the model name has been discovered
+         by CSM, we will not overwrite the model name with data from here.
+         2. For data with duplicate serial numbers, only the first data entry will be created
+         in db or used to update an existing inventory.
+    return either status: OK with unimported_inventory: list of unimported data rows
+                                                        (for noting duplicated serial numbers)
+           or status: errors in the imported data separated by comma's
+    """
+    if current_user.privilege != UserPrivilege.ADMIN:
+        abort(401)
+    importable_header = [HEADER_FIELD_SERIAL_NUMBER, HEADER_FIELD_MODEL_NAME, HEADER_FIELD_NOTES]
+    general_notes = request.form['general_notes']
+    data_list = request.form['data_list']
+
+    db_session = DBSession()
+
+    reader = csv.reader(data_list.splitlines(), delimiter=',')
+    header_row = next(reader)
+
+    # Check mandatory data fields
+    error = []
+    if HEADER_FIELD_SERIAL_NUMBER not in header_row:
+        error.append('"serial_number" is missing in the header.')
+
+    for header_field in header_row:
+        if header_field not in importable_header:
+            error.append('"' + header_field + '" is not a valid header field.')
+
+    if error:
+        return jsonify({'status': ','.join(error)})
+
+    row = 2
+    # already checked that HEADER_FIELD_SERIAL_NUMBER is in header
+    serial_number_idx = header_row.index(HEADER_FIELD_SERIAL_NUMBER)
+
+    data_list = list(reader)
+
+    # Check if each row has the same number of data fields as the header
+    for row_data in data_list:
+        if len(row_data) > 0:
+            if len(row_data) != len(header_row):
+                error.append('line %d has wrong number of data fields.' % row)
+            else:
+                if not row_data[serial_number_idx]:
+                    error.append('line %d missing serial number value.' % row)
+        row += 1
+
+    if error:
+        return jsonify({'status': ','.join(error)})
+
+    # Import the data
+    unique_serial_numbers = set()
+    unimported_inventory = []
+    row = 1
+    for data in data_list:
+        row += 1
+        if len(data) == 0:
+            continue
+
+        serial_number = ''
+        model_name = ''
+        notes = general_notes
+
+        for column in range(len(header_row)):
+
+            header_field = header_row[column]
+            data_field = data[column].strip()
+
+            if header_field == HEADER_FIELD_SERIAL_NUMBER:
+                serial_number = data_field
+            elif header_field == HEADER_FIELD_MODEL_NAME:
+                model_name = data_field
+            elif header_field == HEADER_FIELD_NOTES and data_field:
+                notes = data_field
+
+        if serial_number:
+            inventory_obj = db_session.query(Inventory).filter(Inventory.serial_number == serial_number).first()
+            # only create/update inventory data if the serial number is unique among the imported data
+            if serial_number not in unique_serial_numbers:
+                update_or_add_inventory(db_session, inventory_obj, serial_number, model_name, notes, commit=False)
+                unique_serial_numbers.add(serial_number)
+            else:
+                unimported_inventory.append('line %d: ' % row + ','.join(data))
+        else:
+            return jsonify({'status': 'Serial number data field cannot be empty.'})
+
+    db_session.commit()
+    db_session.close()
+
+    if unimported_inventory:
+        return jsonify({'status': 'OK', 'unimported_inventory': unimported_inventory})
+
+    return jsonify({'status': 'OK', 'unimported_inventory': []})
+
+
 @inventory.route('/api/get_chassis_types/')
 @login_required
 def api_get_chassis():
@@ -509,3 +632,8 @@ class UpdateInventoryForm(Form):
 class SearchInventoryForm(Form):
     serial_number = StringField('Serial Number', [Length(max=50)])
     partial_model_names = StringField('Model Name (PID)')
+
+
+class ImportInventoryForm(Form):
+    general_notes = TextAreaField('')
+    data_list = TextAreaField('')

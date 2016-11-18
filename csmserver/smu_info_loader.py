@@ -81,6 +81,7 @@ XML_TAG_TAR_SOFTWARE_TYPE_ID = 'tarSoftwareTypeID'
 XML_TAG_ID = 'id'
 XML_TAG_NAME = 'name'
 XML_TAG_SMU_TYPE = 'smuType'
+XML_TAG_SMU_CATEGORY = 'smuCategory'
 XML_TAG_DESCRIPTION = 'description'
 XML_TAG_IMPACT = 'impact'
 XML_TAG_DDTS = 'ddts'
@@ -253,6 +254,7 @@ class SMUInfoLoader(object):
             smu_info.name = self.getChildElementText(node, XML_TAG_NAME)
             smu_info.status = node.attributes[XML_TAG_STATUS].value
             smu_info.type = self.getChildElementText(node, XML_TAG_SMU_TYPE)
+            smu_info.smu_category = self.getChildElementText(node, XML_TAG_SMU_CATEGORY)
             smu_info.posted_date = self.getChildElementText(node, XML_TAG_POSTED_DATE)
             smu_info.eta_date = self.getChildElementText(node, XML_TAG_ETA_DATE)
             smu_info.ddts = self.getChildElementText(node, XML_TAG_DDTS)
