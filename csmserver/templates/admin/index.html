@@ -357,8 +357,8 @@
                                         </div>
                                         <hr>
                                         If enabled, CSM Server User Credential will be used for device authentication during software installation.
-                                        This will not affect the daily software inventory retrieval as it will still use the host username and password
-                                        (or if the Default Host Authentication is enabled, the default host username and password will be used).
+                                        This will not affect the daily host inventory retrieval. It will still use the defined host username and password
+                                        unless the Default Host Authentication is enabled, in such case, the default host username and password will be used.
                                         <p></p>
                                         <div class="form-group ">
                                             <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_user_credential_for_host.id }}">{{ admin_console_form.enable_user_credential_for_host.label.text }}</label>
