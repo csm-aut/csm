@@ -561,7 +561,8 @@ class SMUInfoLoader(object):
                     # External Name: asr9k-mcast-px.pie-5.3.2 | asr9k-px-5.3.3.CSCuy81837.pie
                     # Internal Name: disk0:asr9k-mcast-px-5.3.2 | disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
                     platform = CCO_PLATFORM_ASR9K
-                elif 'hfr' in package_name and '-px' in package_name:
+                elif ('hfr' in package_name or 'CRS' in package_name) and '-px' in package_name:
+                    # Release Software Name: CRS-iosxr-px-6.1.2.tar
                     # Internal Name: disk0:hfr-mini-px-4.2.1 | disk0:hfr-px-4.2.3.CSCtz89449
                     platform = CCO_PLATFORM_CRS
                 elif 'ncs6k-sysadmin' in package_name:

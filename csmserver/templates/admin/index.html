@@ -305,9 +305,9 @@
                                     </div>
                                     {{ edit_field(admin_console_form.ldap_server_url, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
                                     <hr>
-                                    To restrict access to certain user group, define the Active Directory Distinguished Names (CN) below.  An example may be<br><br>
+                                    To restrict access to certain user group, define the Active Directory Distinguished Names below.  An example may be<br><br>
                                     CN={},OU=Employees,OU=Cisco Users,DC=cisco,DC=com<br><br>
-                                    The string '{}' will be replaced with the username used during CSM Server user login authentication.<p></p>
+                                    '{}' will be replaced with the user login name.<p></p>
 
                                     {{ edit_field(admin_console_form.ldap_server_distinguished_names, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control", placeholder="Optional") }}
                                 </div>
