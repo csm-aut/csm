@@ -8,13 +8,18 @@
 
     $(function() {
         $('#on-finish-submit').on('click', function(e) {
+            var trimmed_data = trim_lines($('#data_list').val());
+            if (!trimmed_data) {
+                bootbox.alert('<img src="/static/error.png">&nbsp; Please input data.');
+                return false;
+            }
             $.ajax({
                 url: "/inventory/api/import_inventory",
                 type: "POST",
                 dataType: 'json',
                 data: {
                     general_notes: trim_lines($('#general_notes').val()),
-                    data_list: trim_lines($('#data_list').val()),
+                    data_list: trimmed_data
                 },
                 success: function(data) {
                     if (data.status == 'OK') {

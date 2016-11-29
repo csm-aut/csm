@@ -8,13 +8,18 @@
 
 $(function() {
     $('#on-finish-submit').on('click', function(e) {
+        var trimmed_data = trim_lines($('#data_list').val());
+        if (!trimmed_data) {
+            bootbox.alert('<img src="/static/error.png">&nbsp; Please input data.');
+            return false;
+        }
         $.ajax({
             url: "/host_import/api/import_hosts",
             type: "POST",
             dataType: 'json',
             data: {
                 region: $('#region').val(),
-                data_list: trim_lines($('#data_list').val()),
+                data_list: trimmed_data
             },
             success: function(data) {
                 if (data.status == 'OK') {
