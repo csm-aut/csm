@@ -46,8 +46,25 @@ def init():
             except:
                 print(traceback.format_exc())
 
+    apply_dialect_specific_codes()
+
     # Initialize certain tables 
     initialize()
+
+
+def apply_dialect_specific_codes():
+    """
+    Apply database engine specific codes.  Unlike schema migration codes, these codes are applied to
+    new CSM installation which does not require schema migration.
+    """
+    db_session = DBSession()
+
+    # For MYSQL: MEDIUMTEXT stores 2^24 characters. TEXT (65535) type is not enough when working with NCS6K
+    # Multi-Chassis which has twice as much information as a single chassis.
+    try:
+        db_session.execute('alter table host_context modify data MEDIUMTEXT')
+    except Exception:
+        pass
 
 
 if __name__ == '__main__':
