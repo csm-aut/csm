@@ -96,12 +96,9 @@ def get_server_managed_hosts(region_id):
 
             if len(host.connection_param) > 0:
                 row['host_or_ip'] = host.connection_param[0].host_or_ip
-                row['platform'] = host.platform
-
-                if host.software_version is not None:
-                    row['software'] = host.software_platform + ' (' + host.software_version + ')'
-                else:
-                    row['software'] = UNKNOWN
+                row['chassis'] = host.platform
+                row['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
+                row['software'] = UNKNOWN if host.software_version is None else host.software_version
 
                 inventory_job = host.inventory_job[0]
                 if inventory_job is not None and inventory_job.last_successful_time is not None:
