@@ -105,8 +105,18 @@
         });
 
         var host_table = $("#managed-host-datatable").dataTable({
-            "order": [
-                [0, "asc"]
+            "serverSide": true,
+            "ajax": {
+                "url": "/datatable/api/get_managed_hosts/region/" + selected_region_id,
+            },
+            "columns": [
+                { "data": "hostname" },
+                { "data": "region" },
+                { "data": "host_or_ip" },
+                { "data": "chassis" },
+                { "data": "platform" },
+                { "data": "software" },
+                { "data": "last_successful_retrieval", "orderable": false }
             ],
             "pageLength": parseInt(host_datatable_page_length),
             "columnDefs": [{
@@ -130,7 +140,7 @@
             }, {
                 "targets": 4,
                 "data": 'platform'
-            },{
+            }, {
                 "targets": 5,
                 "data": 'software'
             }, {
@@ -150,9 +160,6 @@
                     return '<a href="/hosts/' + data + '/schedule_install/">Install</a>';
                 }
             }, ],
-            "ajax": {
-                "url": "/api/get_managed_hosts/region/" + selected_region_id,
-            }
         }).on('draw.dt', function(e, settings, json) {
             $('#region_hosts_count').html(host_table.api().page.info().recordsTotal);
         });

@@ -180,6 +180,7 @@ from views.inventory import inventory, update_select2_options
 from views.tar_support import tar_support
 from views.host_import import host_import
 from views.custom_command import custom_command
+from views.datatable import datatable
 
 from report_writer import ExportSoftwareInfoHTMLConciseWriter
 from report_writer import ExportSoftwareInfoHTMLDefaultWriter
@@ -206,6 +207,7 @@ app.register_blueprint(inventory)
 app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
 app.register_blueprint(custom_command)
+app.register_blueprint(datatable)
 
 # Hook up the filters
 filters.init(app)
@@ -489,46 +491,6 @@ def get_region_name(region_id):
             region_name = region.name
         
     return jsonify(**{'data': [{'region_name': region_name}]})
-        
-    
-@app.route('/api/get_managed_hosts/region/<int:region_id>')
-@login_required
-def get_managed_hosts(region_id):
-
-    rows = []
-    db_session = DBSession()
-
-    if region_id == 0:
-        hosts = db_session.query(Host)
-    else:
-        hosts = db_session.query(Host).filter(Host.region_id == region_id)
-    
-    if hosts is not None:
-        for host in hosts:
-            row = {}
-            row['hostname'] = host.hostname
-            row['region'] = '' if host.region is None else host.region.name
-
-            if len(host.connection_param) > 0:
-                row['host_or_ip'] = host.connection_param[0].host_or_ip
-                row['chassis'] = host.platform
-
-                row['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
-                row['software'] = UNKNOWN if host.software_version is None else host.software_version
-
-                inventory_job = host.inventory_job[0]
-                if inventory_job is not None and inventory_job.last_successful_time is not None:
-                    row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
-                    row['inventory_status'] = inventory_job.status
-                else:
-                    row['last_successful_retrieval'] = ''
-                    row['inventory_status'] = ''
-
-                rows.append(row)
-            else:
-                logger.error('Host %s has no connection information.', host.hostname)
-    
-    return jsonify(**{'data': rows})
 
 
 @app.route('/api/get_managed_host_details/region/<int:region_id>')
