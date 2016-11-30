@@ -6,13 +6,7 @@
 
 <script>
     $(function() {
-
-        var selected_region_id = read_cookie_value('list-host-selected-region', 0);
-        var list_host_datatable_page_length = read_cookie_value('list_host_datatable_page_length', 10);
-
-        $('#host-datatable').on( 'length.dt', function ( e, settings, len ) {
-            write_cookie_value('list_host_datatable_page_length', len);
-        });
+        display_region_name();
 
         $('#search-region-selector').select2({
             placeholder: "Filter Hosts by Region",
@@ -60,7 +54,7 @@
         var host_table = $("#host-datatable").dataTable({
             "serverSide": true,
             "ajax": {
-                "url": "/datatable/api/get_managed_host_details/region/" + selected_region_id,
+                "url": "/datatable/api/get_managed_host_details/region/" + read_cookie_value('list-host-selected-region', 0),
             },
             "columns": [
                 { "data": "hostname" },
@@ -73,7 +67,7 @@
                 { "data": "username" },
                 { "data": "jump_host" }
             ],
-            "pageLength": parseInt(list_host_datatable_page_length),
+            "pageLength": parseInt(read_cookie_value('list_host_datatable_page_length', 10)),
             "columnDefs": [{
                 "targets": 0,
                 "data": 'hostname',
@@ -121,18 +115,20 @@
             }, ],
         });
 
-        refresh_host_table(selected_region_id);
-
         $('#search-region-selector').on('change', function(e) {
-            refresh_host_table($(this).val());
+            write_cookie_value('list-host-selected-region', $(this).val());
+            refresh_host_table();
+            display_region_name();
         });
 
-        function refresh_host_table(region_id) {
-            write_cookie_value('list-host-selected-region', region_id);
-            host_table.api().ajax.url("/datatable/api/get_managed_host_details/region/" + region_id).load();
+        function refresh_host_table() {
+            host_table.api().ajax.url("/datatable/api/get_managed_host_details/region/" +
+                parseInt(read_cookie_value('list-host-selected-region', 0))).load();
+        }
 
+        function display_region_name() {
             $.ajax({
-                url: "/api/get_region_name/region/" + region_id,
+                url: "/api/get_region_name/region/" + parseInt(read_cookie_value('list-host-selected-region', 0)),
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {
@@ -141,6 +137,11 @@
                 }
             });
         }
+
+        $('#host-datatable').on( 'length.dt', function ( e, settings, len ) {
+            write_cookie_value('list_host_datatable_page_length', len);
+        });
+
 
     });
 </script>
