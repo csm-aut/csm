@@ -187,7 +187,7 @@
         });
 
         function refresh_host_platform_table() {
-            host_platform_table.api().ajax.reload();
+             host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + get_region_from_cookie()).load();
         }
 
         function refresh_region_name() {
