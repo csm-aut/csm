@@ -171,7 +171,8 @@ def get_managed_host_details(region_id):
                getattr(ConnectionParam.connection_type, dt_params.sort_order)(),
                getattr(ConnectionParam.host_or_ip, dt_params.sort_order)(),
                getattr(ConnectionParam.port_number, dt_params.sort_order)(),
-               getattr(ConnectionParam.username, dt_params.sort_order)()]
+               getattr(ConnectionParam.username, dt_params.sort_order)(),
+               getattr(JumpHost.hostname, dt_params.sort_order)()]
 
     hosts = query.order_by(columns[dt_params.column_order])\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
