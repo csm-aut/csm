@@ -180,15 +180,13 @@ def fill_custom_command_profiles(choices):
 
 
 def get_last_successful_inventory_elapsed_time(host):
-    if host is not None:
+    if host:
         # Last inventory successful time
         inventory_job = host.inventory_job[0]
         if inventory_job.request_update:
             return 'Pending Retrieval'
         else:
-            if inventory_job.last_successful_time is None:
-                return 'None'
-            else:
+            if inventory_job.last_successful_time:
                 return time_difference_UTC(inventory_job.last_successful_time)
 
     return ''
