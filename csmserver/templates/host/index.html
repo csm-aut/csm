@@ -7,6 +7,34 @@
 <script>
     $(function() {
 
+        var selected_region_id = read_cookie_value('list-host-selected-region', 0);
+        var list_host_datatable_page_length = read_cookie_value('list_host_datatable_page_length', 10);
+
+        $('#host-datatable').on( 'length.dt', function ( e, settings, len ) {
+            write_cookie_value('list_host_datatable_page_length', len);
+        });
+
+        $('#search-region-selector').select2({
+            placeholder: "Filter Hosts by Region",
+            allowClear: true,
+            ajax: {
+                url: "/api/get_regions/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        show_all: true,
+                        page: params.page
+                    };
+                },
+            },
+        });
+
         // Use delegate pattern for event
         $("#host-datatable").on("click", ".host-delete-link", function() {
             var delete_url = $(this).attr('data-delete-url');
@@ -19,7 +47,7 @@
                         type: 'DELETE',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                host_table.api().ajax.url("/api/get_managed_host_details/region/" + get_selected_region_cookie()).load();
+                                refresh_host_table(read_cookie_value('list-host-selected-region', 0));
                             } else {
                                 bootbox.alert('Delete failed.');
                             }
@@ -30,9 +58,22 @@
         });
 
         var host_table = $("#host-datatable").dataTable({
-            "order": [
-                [0, "asc"]
+            "serverSide": true,
+            "ajax": {
+                "url": "/datatable/api/get_managed_host_details/region/" + selected_region_id,
+            },
+            "columns": [
+                { "data": "hostname" },
+                { "data": "chassis" },
+                { "data": "platform" },
+                { "data": "software" },
+                { "data": "connection" },
+                { "data": "host_or_ip" },
+                { "data": "port_number" },
+                { "data": "username" },
+                { "data": "jump_host" }
             ],
+            "pageLength": parseInt(list_host_datatable_page_length),
             "columnDefs": [{
                 "targets": 0,
                 "data": 'hostname',
@@ -80,56 +121,15 @@
             }, ],
         });
 
-        $('#search-region-selector').select2({
-            placeholder: "Filter Hosts by Region",
-            allowClear: true,
-            ajax: {
-                url: "/api/get_regions/",
-                dataType: 'json',
-                processResults: function(data, page) {
-                    return {
-                        results: data.data
-                    };
-                },
-                data: function(params) {
-                    return {
-                        q: params.term, // search term
-                        page: params.page
-                    };
-                },
-            },
-        });
+        refresh_host_table(selected_region_id);
 
         $('#search-region-selector').on('change', function(e) {
-            on_refresh_host_table($(this).val());
+            refresh_host_table($(this).val());
         });
 
-        on_refresh_host_table(get_selected_region_cookie());
-
-        function on_refresh_host_table(region_id) {
-            $.ajax({
-                url: "/api/get_region_host_count/region/" + region_id,
-                dataType: 'json',
-                success: function(data) {
-                    $.each(data, function(index, element) {
-                        var region_host_count = element[0].region_host_count;
-                        if (region_host_count >= 2000) {
-                            bootbox.confirm('The selected region has ' + region_host_count + ' hosts and may cause longer time to load. Continue?', function(result) {
-                                if (result) {
-                                    refresh_host_table(region_id);
-                                }
-                            });
-                        } else {
-                            refresh_host_table(region_id);
-                        }
-                    });
-                }
-            });
-        }
-
         function refresh_host_table(region_id) {
-            $.cookie('list-host-selected-region', region_id);
-            host_table.api().ajax.url("/api/get_managed_host_details/region/" + region_id).load();
+            write_cookie_value('list-host-selected-region', region_id);
+            host_table.api().ajax.url("/datatable/api/get_managed_host_details/region/" + region_id).load();
 
             $.ajax({
                 url: "/api/get_region_name/region/" + region_id,
@@ -142,9 +142,6 @@
             });
         }
 
-        function get_selected_region_cookie() {
-            return $.cookie('list-host-selected-region') == null ? 0 : $.cookie('list-host-selected-region');
-        }
     });
 </script>
 

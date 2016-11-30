@@ -493,45 +493,6 @@ def get_region_name(region_id):
     return jsonify(**{'data': [{'region_name': region_name}]})
 
 
-@app.route('/api/get_managed_host_details/region/<int:region_id>')
-@login_required
-def get_managed_host_details(region_id):
-    rows = []   
-    db_session = DBSession()
-
-    if region_id == 0:
-        hosts = db_session.query(Host)
-    else:
-        hosts = db_session.query(Host).filter(Host.region_id == region_id)
-    
-    if hosts is not None:
-        for host in hosts:
-            row = {} 
-            row['hostname'] = host.hostname
-            row['chassis'] = host.platform
-            row['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
-            row['software'] = UNKNOWN if host.software_version is None else host.software_version
-
-            if len(host.connection_param) > 0:
-                connection_param = host.connection_param[0]
-                row['connection'] = connection_param.connection_type
-                row['host_or_ip'] = connection_param.host_or_ip
-                row['port_number'] = 'Default' if is_empty(connection_param.port_number) else connection_param.port_number
-
-                if not is_empty(connection_param.jump_host):
-                    row['jump_host'] = connection_param.jump_host.hostname
-                else:
-                    row['jump_host'] = ''
-
-                row['username'] = connection_param.username
-
-                rows.append(row)
-            else:
-                logger.error('Host %s has no connection information.', host.hostname)
-    
-    return jsonify(**{'data': rows})
-
-
 @app.route('/api/acknowledge_csm_message', methods=['POST'])
 def api_acknowledge_csm_message():
     username = request.form['username']      
