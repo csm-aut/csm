@@ -156,6 +156,7 @@ class DefaultHostAuthenticationChoice:
 class ExportInformationFormat:
     HTML = 'HTML'
     MICROSOFT_EXCEL = 'Microsoft Excel'
+    CSV = 'CSV'
 
 
 class ExportSoftwareInformationLayout:

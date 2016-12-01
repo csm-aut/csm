@@ -28,6 +28,7 @@ from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
 
+import csv
 import xlwt
 import os
 
@@ -55,7 +56,7 @@ class ExportSoftwareInfoWriter(ReportWriter):
         self.sp_list = sorted(self.sp_list, key=lambda x: x.posted_date, reverse=True)
 
         temp_user_dir = create_temp_user_directory(self.user.username)
-        self.output_file_directory = os.path.normpath(os.path.join(temp_user_dir, "software_information_export"))
+        self.output_file_directory = os.path.normpath(os.path.join(temp_user_dir, 'software_information_export'))
 
         create_directory(self.output_file_directory)
         make_file_writable(self.output_file_directory)
@@ -344,7 +345,7 @@ class ExportInventoryInfoWriter(ReportWriter):
         self.in_use_inventory_iter = kwargs.pop('in_use_inventory_iter')
 
         temp_user_dir = create_temp_user_directory(self.user.username)
-        self.output_file_directory = os.path.normpath(os.path.join(temp_user_dir, "inventory_information_export"))
+        self.output_file_directory = os.path.normpath(os.path.join(temp_user_dir, 'inventory_information_export'))
 
         create_directory(self.output_file_directory)
         make_file_writable(self.output_file_directory)
@@ -494,27 +495,27 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
     def write_report_header(self):
         if not self.serial_number and not self.region_names and not self.chassis_types and \
                 not self.software_versions and not self.model_names and not self.partial_model_names:
-            self.ws.write(self.row, 0, "Search Filter(s): None", self.style_title)
+            self.ws.write(self.row, 0, 'Search Filter(s): None', self.style_title)
         else:
-            self.ws.write(self.row, 0, "Search Filter(s):", self.style_title)
+            self.ws.write(self.row, 0, 'Search Filter(s):', self.style_title)
         self.next_row()
         if self.serial_number:
-            self.ws.write(self.row, 1, "Serial Number: " + self.serial_number, self.style_title)
+            self.ws.write(self.row, 1, 'Serial Number: ' + self.serial_number, self.style_title)
             self.next_row()
         if self.region_names:
-            self.ws.write(self.row, 1, "Region: " + ', '.join(self.region_names), self.style_title)
+            self.ws.write(self.row, 1, 'Region: ' + ', '.join(self.region_names), self.style_title)
             self.next_row()
         if self.chassis_types:
-            self.ws.write(self.row, 1, "Chassis: " + ', '.join(self.chassis_types), self.style_title)
+            self.ws.write(self.row, 1, 'Chassis: ' + ', '.join(self.chassis_types), self.style_title)
             self.next_row()
         if self.software_versions:
-            self.ws.write(self.row, 1, "Software: " + ', '.join(self.software_versions), self.style_title)
+            self.ws.write(self.row, 1, 'Software: ' + ', '.join(self.software_versions), self.style_title)
             self.next_row()
         if self.model_names:
-            self.ws.write(self.row, 1, "Model Names: " + ', '.join(self.model_names), self.style_title)
+            self.ws.write(self.row, 1, 'Model Names: ' + ', '.join(self.model_names), self.style_title)
             self.next_row()
         if self.partial_model_names:
-            self.ws.write(self.row, 1, "Partial Model Names: " + ', '.join(self.partial_model_names), self.style_title)
+            self.ws.write(self.row, 1, 'Partial Model Names: ' + ', '.join(self.partial_model_names), self.style_title)
             self.next_row()
 
         return
@@ -608,5 +609,98 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
                     self.ws.write(self.row, 8, (host.region.name if host.region.name else ''))
                     self.ws.write(self.row, 9, (host.location if host.location else ''))
                     self.ws.write(self.row, 10, last_successful_retrieval)
+
+        return
+
+
+class ExportInventoryInfoCSVWriter(ExportInventoryInfoWriter):
+    def __init__(self, **kwargs):
+        ExportInventoryInfoWriter.__init__(self, **kwargs)
+
+    def write_report_header(self, csv_writer):
+        if not self.serial_number and not self.region_names and not self.chassis_types and \
+                not self.software_versions and not self.model_names and not self.partial_model_names:
+            csv_writer.writerow(['Search Filter(s): None'])
+            return
+        else:
+            csv_writer.writerow(['Search Filter(s):'])
+            prepare_row = []
+
+        if self.serial_number:
+            prepare_row.append(('Serial Number: ' + self.serial_number))
+        if self.region_names:
+            prepare_row.append(('Region: ' + ', '.join(self.region_names)))
+        if self.chassis_types:
+            prepare_row.append(('Chassis: ' + ', '.join(self.chassis_types)))
+        if self.software_versions:
+            prepare_row.append(('Software: ' + ', '.join(self.software_versions)))
+        if self.model_names:
+            prepare_row.append(('Model Names: ' + ', '.join(self.model_names)))
+        if self.partial_model_names:
+            prepare_row.append(('Partial Model Names: ' + ', '.join(self.partial_model_names)))
+
+        csv_writer.writerow(prepare_row)
+        return
+
+    def write_report(self):
+        output_file_path = os.path.join(self.output_file_directory, 'inventory_information.csv')
+
+        with open(output_file_path, 'w') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter=',')
+            self.write_report_header(csv_writer)
+            csv_writer.writerow([])
+            self.write_report_contents(csv_writer)
+
+        return output_file_path
+
+    def write_report_contents(self, csv_writer):
+        self.write_in_use_inventory_table_content(csv_writer)
+        csv_writer.writerow([])
+        self.write_available_inventory_table_content(csv_writer)
+        return
+
+    def write_available_inventory_table_content(self, csv_writer):
+        csv_writer.writerow(['Number of Available Inventories: ' + str(self.available_inventory_iter.count())])
+
+        if self.available_inventory_iter.count() > 0:
+
+            csv_writer.writerow(['Model Name', 'Serial Number', 'Description', 'Notes'])
+
+            for inventory in self.available_inventory_iter:
+                csv_writer.writerow([(inventory.model_name if inventory.model_name else ''),
+                                     (inventory.serial_number if inventory.serial_number else ''),
+                                     (inventory.description if inventory.description else ''),
+                                     (inventory.notes if inventory.notes else '')])
+
+        return
+
+    def write_in_use_inventory_table_content(self, csv_writer):
+        csv_writer.writerow(['Number of In Use Inventories: ' + str(self.in_use_inventory_iter.count())])
+
+        if self.in_use_inventory_iter.count() > 0:
+            csv_writer.writerow(['Model Name', 'Name', 'Serial Number', 'Description', 'Hostname', 'Chassis',
+                                 'Platform', 'Software', 'Region', 'Location', 'Last Successful Retrieval'])
+
+            for inventory in self.in_use_inventory_iter:
+                prepare_row = [(inventory.model_name if inventory.model_name else ''),
+                               (inventory.name if inventory.name else ''),
+                               (inventory.serial_number if inventory.serial_number else ''),
+                               (inventory.description if inventory.description else '')]
+
+                host = inventory.host
+                if host:
+                    inventory_job = host.inventory_job[0]
+                    if inventory_job and inventory_job.last_successful_time:
+                        last_successful_retrieval = get_last_successful_inventory_elapsed_time(host)
+                    else:
+                        last_successful_retrieval = ''
+                    prepare_row.extend([(host.hostname if host.hostname else ''),
+                                       (host.platform if host.platform else ''),
+                                       (host.software_platform if host.software_platform else ''),
+                                       (host.software_version if host.software_version else ''),
+                                       (host.region.name if host.region.name else ''),
+                                       (host.location if host.location else ''),
+                                       last_successful_retrieval])
+                csv_writer.writerow(prepare_row)
 
         return

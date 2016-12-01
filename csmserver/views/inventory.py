@@ -33,7 +33,9 @@ from flask import request
 from sqlalchemy import or_
 
 from wtforms import Form
-from wtforms import StringField, HiddenField
+from wtforms import HiddenField
+from wtforms import SelectField
+from wtforms import StringField
 from wtforms import TextAreaField
 from wtforms.widgets import TextArea
 from wtforms.validators import Length, required
@@ -46,13 +48,10 @@ from constants import UserPrivilege
 
 from database import DBSession
 
-from forms import ExportInformationForm
-
-from host_import import get_column_number
-
 from models import HostInventory, Inventory
 from models import Host, Region
 
+from report_writer import ExportInventoryInfoCSVWriter
 from report_writer import ExportInventoryInfoHTMLWriter
 from report_writer import ExportInventoryInfoExcelWriter
 
@@ -394,6 +393,8 @@ def export_inventory_information():
         writer = ExportInventoryInfoHTMLWriter(**export_data)
     elif export_data.get('export_format') == ExportInformationFormat.MICROSOFT_EXCEL:
         writer = ExportInventoryInfoExcelWriter(**export_data)
+    elif export_data.get('export_format') == ExportInformationFormat.CSV:
+        writer = ExportInventoryInfoCSVWriter(**export_data)
 
     return send_file(writer.write_report(), as_attachment=True)
 
@@ -560,7 +561,14 @@ def update_select2_options(request_args, data_field):
     return jsonify(**{'data': rows})
 
 
-class ExportInventoryInformationForm(ExportInformationForm):
+class ExportInventoryInformationForm(Form):
+    export_format = SelectField('Export Format', coerce=str,
+                                choices=[(ExportInformationFormat.CSV,
+                                          ExportInformationFormat.CSV),
+                                         (ExportInformationFormat.HTML,
+                                          ExportInformationFormat.HTML),
+                                         (ExportInformationFormat.MICROSOFT_EXCEL,
+                                          ExportInformationFormat.MICROSOFT_EXCEL)])
     hidden_serial_number = HiddenField('')
     hidden_region_ids = HiddenField('')
     hidden_chassis_types = HiddenField('')
