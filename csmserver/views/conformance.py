@@ -355,7 +355,7 @@ def run_conformance_report(profile_name, match_criteria, hostnames):
         for hostname in hostnames.split(','):
             host = get_host(db_session, hostname)
             if host:
-                packages_to_match = [software_profile_package.replace('.pie', '')
+                packages_to_match = [software_profile_package.replace('.pie', '').replace('.smu', '')
                                      for software_profile_package in software_profile_packages]
 
                 inventory_job = host.inventory_job[0]
@@ -449,7 +449,7 @@ def get_missing_packages(host_packages, software_profile_packages):
     for software_profile_package in software_profile_packages:
         # Might require more stripping for other platforms.
         # Currently, this works for ASR9K and CRS
-        match_package = software_profile_package.replace('.pie', '')
+        match_package = software_profile_package.replace('.pie', '').replace('.smu', '')
         matched = False
         for host_package in host_packages:
             if re.search(match_package, host_package) is not None:

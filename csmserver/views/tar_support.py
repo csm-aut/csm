@@ -152,7 +152,7 @@ def get_sp_files_from_csm_repository():
     file_list = get_file_list(get_repository_directory())
 
     for filename in file_list:
-        if '.pie' in filename:
+        if '.pie' in filename or '.smu' in filename:
             statinfo = os.stat(get_repository_directory() + filename)
             row = {}
             row['image_name'] = filename

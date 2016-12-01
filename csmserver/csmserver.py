@@ -3642,7 +3642,8 @@ def api_get_reload_list():
 def host_packages_contains(host_packages, smu_name):
     for package in host_packages:
         # Performs a partial match
-        if smu_name.replace('.pie', '') in package:
+        smu_name = smu_name.replace('.pie', '').replace('.smu', '')
+        if smu_name in package:
             return True
     return False
 
