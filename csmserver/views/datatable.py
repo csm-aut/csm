@@ -114,7 +114,7 @@ def get_server_managed_hosts(region_id):
                 row['software'] = UNKNOWN if host.software_version is None else host.software_version
 
                 inventory_job = host.inventory_job[0]
-                if inventory_job is not None and inventory_job.last_successful_time is not None:
+                if inventory_job is not None:
                     row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
                     row['inventory_status'] = inventory_job.status
                 else:

@@ -12,6 +12,10 @@
         var browse_spinner = $('#browse-spinner');
         browse_spinner.hide();
 
+        // Initialize
+        refresh_region_name();
+        refresh_host_and_region_counts();
+
         $('#search-region-selector').select2({
             placeholder: "Filter Hosts by Region",
             allowClear: true,
@@ -33,9 +37,6 @@
             },
         });
 
-        $('#search-region-selector').on('change', function(e) {
-            refresh_host_table($(this).val());
-        });
 
         $(".host-delete-link").on("click", function() {
             var delete_url = $(this).attr('delete-url');
@@ -80,8 +81,12 @@
             }, {
                 "targets": 2,
                 "data": 'host_count',
-            }]
+            }],
+            "ajax": {
+                "url": "/api/get_host_platform_version/region/" + get_region_from_cookie()
+            },
         });
+
 
         function display_delete_error(name, host_type) {
             var message = "Unable to delete \'" + name + "\'";
@@ -97,17 +102,31 @@
             bootbox.alert(message);
         }
 
-        var selected_region_id = read_cookie_value('main-selected-region', 0);
-        var host_datatable_page_length = read_cookie_value('host_datatable_page_length', 10);
+        function get_region_from_cookie() {
+            return parseInt(read_cookie_value('main-selected-region', 0));
+        }
+
+        function get_page_length_from_cookie() {
+            return parseInt(read_cookie_value('host_datatable_page_length', 10));
+        }
+
+        function write_region_to_cookie(region_id) {
+            write_cookie_value('main-selected-region', region_id);
+        }
+
+        function write_page_length_to_cookie(page_length) {
+            write_cookie_value('host_datatable_page_length', page_length);
+        }
 
         $('#managed-host-datatable').on( 'length.dt', function ( e, settings, len ) {
-            write_cookie_value('host_datatable_page_length', len);
+            write_page_length_to_cookie(len);
         });
 
+        // https://datatables.net/manual/server-side#Returned-data
         var host_table = $("#managed-host-datatable").dataTable({
             "serverSide": true,
             "ajax": {
-                "url": "/datatable/api/get_managed_hosts/region/" + selected_region_id,
+                "url": "/datatable/api/get_managed_hosts/region/" + get_region_from_cookie(),
             },
             "columns": [
                 { "data": "hostname" },
@@ -118,7 +137,7 @@
                 { "data": "software" },
                 { "data": "last_successful_retrieval", "orderable": false }
             ],
-            "pageLength": parseInt(host_datatable_page_length),
+            "pageLength": get_page_length_from_cookie(),
             "columnDefs": [{
                 "targets": 0,
                 "data": 'hostname',
@@ -150,6 +169,9 @@
                     if (row['inventory_status'] == 'failed') {
                         return '<span style="color:red;">' + data + '</span>';
                     } else {
+                        if (data == 'Pending Retrieval') {
+                           data = '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">' + data;
+                        }
                         return data;
                     }
                 }
@@ -164,32 +186,52 @@
             $('#region_hosts_count').html(host_table.api().page.info().recordsTotal);
         });
 
-        // Initialize
-        update_host_platform_table(selected_region_id);
-        update_region_name(selected_region_id);
-
-        function refresh_host_table(region_id) {
-            write_cookie_value('main-selected-region', region_id);
-            host_table.api().ajax.url("/datatable/api/get_managed_hosts/region/" + region_id).load();
-            update_host_platform_table(region_id);
-            update_region_name(region_id);
+        function refresh_host_platform_table() {
+             host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + get_region_from_cookie()).load();
         }
 
-        function update_host_platform_table(region_id) {
-            host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + region_id).load();
-        }
-
-        function update_region_name(region_id) {
+        function refresh_region_name() {
             $.ajax({
-                url: "/api/get_region_name/region/" + region_id,
+                url: "/api/get_region_name/region/" + get_region_from_cookie(),
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {
-                        $('#selected-region').html(element[0].region_name)
+                        $('#selected-region').html(element[0].region_name);
                     });
                 }
             });
         }
+
+        function refresh_host_table_with_new_region() {
+            host_table.api().ajax.url("/datatable/api/get_managed_hosts/region/" + get_region_from_cookie()).load();
+        }
+
+        function refresh_host_table() {
+            // user paging is not reset on reload - https://datatables.net/reference/api/ajax.reload()
+            host_table.api().ajax.reload(null, false);
+        }
+
+        function refresh_host_and_region_counts() {
+            $.ajax({
+                url: "/api/get_host_and_region_counts",
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        $('#total-region-count').html(element[0].total_region_count);
+                        $('#total-host-count').html(element[0].total_host_count);
+                    });
+                }
+            });
+        }
+
+        $('#search-region-selector').on('change', function(e) {
+            write_region_to_cookie($(this).val());
+
+            refresh_region_name();
+            refresh_host_table_with_new_region();
+            refresh_host_platform_table();
+        });
+
 
         $("#managed-jump-host-datatable").dataTable({
             "iDisplayLength": 10
@@ -228,8 +270,16 @@
             });
         }
 
+        function refresh_page() {
+            refresh_region_name();
+            get_server_time();
+            refresh_host_and_region_counts();
+            refresh_host_platform_table();
+            refresh_host_table();
+        }
+
         setInterval(function() {
-            get_server_time()
+            refresh_page();
         }, 10000);
 
         var file_list_table = $("#file-list-table").dataTable({
@@ -366,11 +416,11 @@
                     <tbody>
                         <tr>
                             <td>Total Regions</td>
-                            <td>{{ total_region_count }}</td>
+                            <td id="total-region-count"></td>
                         </tr>
                         <tr>
                             <td>Total Hosts</td>
-                            <td>{{ total_host_count }}</td>
+                            <td id="total-host-count"></td>
                         </tr>
                     </tbody>
                 </table>

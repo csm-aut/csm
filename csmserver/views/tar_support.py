@@ -44,6 +44,9 @@ from utils import get_tarfile_file_list, get_file_list, untar, make_file_writabl
 
 from constants import get_repository_directory, get_temp_directory
 
+from package_utils import is_external_file_a_smu
+from package_utils import is_external_file_a_release_software
+
 import os
 import shutil
 import errno
@@ -135,7 +138,7 @@ def get_full_software_tar_files_from_csm_repository():
     file_list = get_file_list(get_repository_directory())
 
     for filename in file_list:
-        if '-iosxr-' in filename and filename.endswith('.tar'):
+        if is_external_file_a_release_software(filename):
             statinfo = os.stat(get_repository_directory() + filename)
             row = {}
             row['image_name'] = filename
@@ -152,7 +155,7 @@ def get_sp_files_from_csm_repository():
     file_list = get_file_list(get_repository_directory())
 
     for filename in file_list:
-        if '.pie' in filename:
+        if is_external_file_a_smu(filename):
             statinfo = os.stat(get_repository_directory() + filename)
             row = {}
             row['image_name'] = filename

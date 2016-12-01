@@ -172,6 +172,7 @@ from cisco_service.bsd_service import BSDServiceHandler
 from cisco_service.bug_service import BugServiceHandler
 
 from package_utils import get_target_software_package_list
+from package_utils import strip_smu_file_extension
 from restful import restful_api
 
 from views.asr9k_64_migrate import asr9k_64_migrate
@@ -232,9 +233,6 @@ def load_user(user_id):
 @login_required
 def home():
     db_session = DBSession()
-
-    total_host_count = db_session.query(Host).count()
-    total_region_count = db_session.query(Region).count()
     
     jump_hosts = get_jump_host_list(db_session)
     regions = get_region_list(db_session)
@@ -243,10 +241,21 @@ def home():
     form = BrowseServerDialogForm(request.form)
     fill_servers(form.dialog_server.choices, get_server_list(DBSession()), False)
 
-    return render_template('host/home.html', form=form, total_host_count=total_host_count, 
-                           total_region_count=total_region_count, jump_hosts=jump_hosts, regions=regions,
+    return render_template('host/home.html', form=form,
+                           jump_hosts=jump_hosts, regions=regions,
                            servers=servers, system_option=SystemOption.get(db_session),
                            build_date=get_build_date(), current_user=current_user)
+
+
+@app.route('/api/get_host_and_region_counts')
+@login_required
+def get_host_and_region_counts():
+    db_session = DBSession()
+
+    total_host_count = db_session.query(Host).count()
+    total_region_count = db_session.query(Region).count()
+
+    return jsonify(**{'data': [{'total_host_count': total_host_count, 'total_region_count': total_region_count}]})
 
 
 @app.route('/api/get_host_platform_version/region/<int:region_id>')
@@ -3568,9 +3577,10 @@ def api_get_reload_list():
 
 
 def host_packages_contains(host_packages, smu_name):
+    smu_name = strip_smu_file_extension(smu_name)
     for package in host_packages:
         # Performs a partial match
-        if smu_name.replace('.pie', '') in package:
+        if smu_name in package:
             return True
     return False
 

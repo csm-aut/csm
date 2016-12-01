@@ -6,7 +6,7 @@
 
 <script>
     $(function() {
-        display_region_name();
+        refresh_region_name();
 
         $('#search-region-selector').select2({
             placeholder: "Filter Hosts by Region",
@@ -41,7 +41,7 @@
                         type: 'DELETE',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                refresh_host_table(read_cookie_value('list-host-selected-region', 0));
+                                refresh_host_table();
                             } else {
                                 bootbox.alert('Delete failed.');
                             }
@@ -51,10 +51,26 @@
             });
         });
 
+        function get_region_from_cookie() {
+            return parseInt(read_cookie_value('list-host-selected-region', 0));
+        }
+
+        function get_page_length_from_cookie() {
+            return parseInt(read_cookie_value('list_host_datatable_page_length', 10));
+        }
+
+        function write_region_to_cookie(region_id) {
+            write_cookie_value('list-host-selected-region', region_id);
+        }
+
+        function write_page_length_to_cookie(page_length) {
+            write_cookie_value('list_host_datatable_page_length', page_length);
+        }
+
         var host_table = $("#host-datatable").dataTable({
             "serverSide": true,
             "ajax": {
-                "url": "/datatable/api/get_managed_host_details/region/" + read_cookie_value('list-host-selected-region', 0),
+                "url": "/datatable/api/get_managed_host_details/region/" + get_region_from_cookie(),
             },
             "columns": [
                 { "data": "hostname" },
@@ -67,7 +83,7 @@
                 { "data": "username" },
                 { "data": "jump_host" }
             ],
-            "pageLength": parseInt(read_cookie_value('list_host_datatable_page_length', 10)),
+            "pageLength": get_page_length_from_cookie(),
             "columnDefs": [{
                 "targets": 0,
                 "data": 'hostname',
@@ -116,19 +132,19 @@
         });
 
         $('#search-region-selector').on('change', function(e) {
-            write_cookie_value('list-host-selected-region', $(this).val());
+            write_region_to_cookie( $(this).val());
+            refresh_region_name();
             refresh_host_table();
-            display_region_name();
         });
 
         function refresh_host_table() {
             host_table.api().ajax.url("/datatable/api/get_managed_host_details/region/" +
-                parseInt(read_cookie_value('list-host-selected-region', 0))).load();
+                get_region_from_cookie()).load();
         }
 
-        function display_region_name() {
+        function refresh_region_name() {
             $.ajax({
-                url: "/api/get_region_name/region/" + parseInt(read_cookie_value('list-host-selected-region', 0)),
+                url: "/api/get_region_name/region/" + get_region_from_cookie(),
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {
@@ -139,7 +155,7 @@
         }
 
         $('#host-datatable').on( 'length.dt', function ( e, settings, len ) {
-            write_cookie_value('list_host_datatable_page_length', len);
+            write_page_length_to_cookie(len);
         });
 
 
