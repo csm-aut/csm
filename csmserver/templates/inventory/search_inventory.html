@@ -9,9 +9,10 @@
     $(function () {
         var table_finished_drawing = 0;
         var search_clicked = false;
-        var spinner = $('#spinner');
+        var search_spinner = $('#search_spinner');
         var no_inventory_match = $('#no-inventory');
-        spinner.hide();
+        search_spinner.css("visibility", "hidden");
+
         no_inventory_match.hide();
 
         function convert_array_to_string(array) {
@@ -169,7 +170,7 @@
             }
         });
         $('#search').on('click', function(e) {
-            spinner.show();
+            search_spinner.css("visibility", "visible");
             $('#search-inventory-tabs').empty();
             $('#tables').hide();
             search_clicked = true;
@@ -180,7 +181,7 @@
         function post_handling_after_drawing_table() {
             table_finished_drawing++;
             if(table_finished_drawing == 2) {
-                spinner.hide();
+                search_spinner.css("visibility", "hidden");
                 $('#in-use-inventory-datatable').wrap("<div class='scrollableTable'></div>");
                 $('#available-inventory-datatable').wrap("<div class='scrollableTable'></div>");
 
@@ -298,10 +299,6 @@
         });
 
         $('#export').click(function() {
-            if ($('#search-inventory-result').css('display') == 'none') {
-                bootbox.alert('No search result to export!');
-                return false;
-            }
             $('#export-inventory-information-dialog').modal('show');
         });
 
@@ -383,10 +380,7 @@
 
 <div class="form-horizontal form-group row">
     <div class="container">
-        <div class="row">
-            <div style="float:left;margin-left:15px;"><h4>Search Inventory:</h4></div>
-            <div><button type="button" id="export" class="btn btn-primary" style="margin-left: 61%;">Export</button></div>
-        </div>
+        <h4>Search Inventory:</h4>
         <hr style="margin-top:10px;margin-bottom:30px;">
         <div class="row custom-margin">
             {{ custom_edit_field(search_inventory_form.serial_number, placeholder="Optional") }}
@@ -407,12 +401,15 @@
             <label class="col-sm-2 control-label" id="label_model_name" style="margin-left: 50px;">OR</label>
             {{ search_inventory_form.partial_model_names(class="form-control", placeholder="Enter Comma-delimited Partial or Full PID(s)", style="width: 28.2%;display:inline;border: 1px solid #aaa;") }}
 
-            <button id="search" type="button" class="btn btn-primary" style="margin-left: 10%;">
-                Search
-            </button>
-            <span id="spinner">
+            <span id="search_spinner" style="margin-left:10%; display:inline-block;">
                 <img src="{{ url_for('static', filename='spinner.gif') }}">
             </span>
+            <button id="search" type="button" class="btn btn-primary">
+                Search
+            </button>
+            <button type="button" id="export" class="btn btn-primary">
+                Export
+            </button>
 
         </div>
 
