@@ -227,6 +227,7 @@ def api_search_inventory():
 
     search_filters = dict()
 
+    search_filters['serial_number'] = request_args.get('serial_number')
     search_filters['region_ids'] = request_args.get('region_ids').split(',') \
         if request_args.get('region_ids') else []
     search_filters['chassis_types'] = request_args.get('chassis_types').split(',') \
