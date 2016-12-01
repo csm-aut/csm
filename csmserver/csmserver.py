@@ -172,6 +172,7 @@ from cisco_service.bsd_service import BSDServiceHandler
 from cisco_service.bug_service import BugServiceHandler
 
 from package_utils import get_target_software_package_list
+from package_utils import strip_smu_file_extension
 from restful import restful_api
 
 from views.asr9k_64_migrate import asr9k_64_migrate
@@ -3576,9 +3577,10 @@ def api_get_reload_list():
 
 
 def host_packages_contains(host_packages, smu_name):
+    smu_name = strip_smu_file_extension(smu_name)
     for package in host_packages:
         # Performs a partial match
-        if smu_name.replace('.pie', '') in package:
+        if smu_name in package:
             return True
     return False
 

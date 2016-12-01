@@ -120,7 +120,30 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                 else:
                     # asr9k-mgbl-x64-3.0.0.0-r601.x86_64.rpm, ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
                     target_list.append("{}-{}-{}.{}".format(package_name, '\d\.\d\.\d.\d',
-                                                               'r' + target_version.replace('.', ''),
-                                                               'x86_64.rpm'))
+                                                            'r' + target_version.replace('.', ''),
+                                                            'x86_64.rpm'))
 
     return target_list
+
+
+def is_file_acceptable_for_install_add(filename):
+    """
+    ASR9K, CRS: .pie, .tar
+    NCS6K: .smu, .iso, .pkg, .tar
+    ASR9K-64: .iso, .rpm, .tar
+    ASR900: .bin
+    """
+    acceptable_file_types = ['.pie', '.rpm', '.tar', '.smu', '.iso', '.pkg', '.bin']
+    return any(ext in filename for ext in acceptable_file_types)
+
+
+def is_external_file_a_smu(filename):
+    return 'CSC' in filename and (filename.endswith('.pie') or filename.endswith('.smu'))
+
+
+def is_external_file_a_release_software(filename):
+    return '-iosxr-' in filename and filename.endswith('.tar')
+
+
+def strip_smu_file_extension(filename):
+    return filename.replace('.pie', '').replace('.smu', '')

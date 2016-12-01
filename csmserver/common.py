@@ -70,6 +70,7 @@ from utils import create_temp_user_directory
 from utils import make_file_writable
 
 from smu_info_loader import SMUInfoLoader
+from package_utils import is_file_acceptable_for_install_add
 
 import os
 import zipfile
@@ -585,12 +586,6 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
                                  server=-1, server_directory='', custom_command_profile=-1, dependency=0,
                                  pending_downloads=None, install_job=None):
 
-    # ASR9K, CRS: .pie, .tar
-    # NCS6K: .smu, .iso, .pkg, .tar
-    # ASR9K-64: .iso, .rpm, .tar
-    # ASR900: .bin
-    acceptable_package_types_for_add = ['.pie', '.rpm', '.tar', '.smu', '.iso', '.pkg', '.bin']
-
     # This is a new install_job
     if install_job is None:
         install_job = InstallJob()
@@ -630,8 +625,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
 
         for software_package in software_packages:
             if install_action == InstallAction.INSTALL_ADD:
-                # Install Add only accepts external package names with the following suffix
-                if any(ext in software_package for ext in acceptable_package_types_for_add):
+                if is_file_acceptable_for_install_add(software_package):
                     install_job_packages.append(software_package)
             else:
                 # Install Activate can have external or internal package names
