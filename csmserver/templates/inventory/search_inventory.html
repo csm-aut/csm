@@ -298,6 +298,10 @@
         });
 
         $('#export').click(function() {
+            if ($('#search-inventory-result').css('display') == 'none') {
+                bootbox.alert('No search result to export!');
+                return false;
+            }
             $('#export-inventory-information-dialog').modal('show');
         });
 
@@ -381,7 +385,7 @@
     <div class="container">
         <div class="row">
             <div style="float:left;margin-left:15px;"><h4>Search Inventory:</h4></div>
-            <div><button type="button" id="export" class="btn btn-default" style="margin-left: 61%;">Export</button></div>
+            <div><button type="button" id="export" class="btn btn-primary" style="margin-left: 61%;">Export</button></div>
         </div>
         <hr style="margin-top:10px;margin-bottom:30px;">
         <div class="row custom-margin">
