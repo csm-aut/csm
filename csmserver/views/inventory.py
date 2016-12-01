@@ -264,54 +264,6 @@ def search_inventory():
                            export_results_form=export_results_form, current_user=current_user)
 
 
-@inventory.route('/api/search_inventory/', methods=['GET', 'POST'])
-@login_required
-def api_search_inventory():
-    rows = []
-    db_session = DBSession()
-    json_data = request.json
-
-    if json_data.get('available'):
-        results = query_available_inventory(db_session, json_data.get('serial_number'),
-                                            json_data.get('model_names'), json_data.get('partial_model_names'))
-    else:
-        results = query_in_use_inventory(db_session, json_data)
-
-    for inventory_entry in results:
-        row = {'model_name': inventory_entry.model_name,
-               'serial_number': inventory_entry.serial_number,
-               'description': inventory_entry.description}
-        if hasattr(inventory_entry, 'notes'):
-            row['notes'] = inventory_entry.notes
-        else:
-            row['hostname'] = ''
-            row['region'] = ''
-            row['chassis'] = ''
-            row['platform'] = ''
-            row['software'] = ''
-            row['last_successful_retrieval'] = ''
-            row['inventory_retrieval_status'] = ''
-            row['name'] = inventory_entry.name
-
-            host = inventory_entry.host
-            if host:
-                row['hostname'] = host.hostname
-                row['chassis'] = host.platform
-                row['platform'] = host.software_platform
-                row['software'] = host.software_version
-                row['region'] = host.region.name
-                row['location'] = host.location
-
-                inventory_job = host.inventory_job[0]
-                if inventory_job and inventory_job.last_successful_time:
-                    row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
-                    row['inventory_retrieval_status'] = inventory_job.status
-
-        rows.append(row)
-
-    return jsonify(**{'data': rows})
-
-
 def query_available_inventory(db_session, serial_number, model_names, partial_model_names):
     """
     Search for the available inventories matching the selected filters. Only serial number, model name(s),
@@ -363,7 +315,7 @@ def query_in_use_inventory(db_session, json_data):
 def get_filter_clauses_for_serial_number_model_name(serial_number, model_names, partial_model_names,
                                                     filter_table, filter_clauses):
     """
-    helper class to api_search_inventory, create filter clauses for selected
+    helper function to api_search_inventory, create filter clauses for selected
     serial number and an array of selected model names or an array of entered
     partial model names.
     """

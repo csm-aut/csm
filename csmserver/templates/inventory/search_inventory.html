@@ -14,25 +14,38 @@
         spinner.hide();
         no_inventory_match.hide();
 
+        function convert_array_to_string(array) {
+            if (array) {
+                return array.toString()
+            }
+            return ''
+        }
+
         var available_inventory_table = $("#available-inventory-datatable").DataTable({
+            "processing": true,
+            "serverSide": true,
             "ajax": {
-                "url": "{{ url_for('inventory.api_search_inventory') }}",
-                "contentType": "application/json",
-                "type": "POST",
+                "url": "{{ url_for('datatable.api_search_inventory') }}",
                 "data": function (d) {
                     d.available = true;
                     d.serial_number = $('#serial_number').val();
-                    d.region_ids = $('#region-selector').val();
-                    d.chassis_types = $('#chassis-selector').val();
-                    d.software_versions = $('#software-selector').val();
-                    if ($("#select-model-name").hasClass("active")) {
-                        d.model_names = $('#model-name-selector').val()
+                    d.region_ids = convert_array_to_string($('#region-selector').val());
+                    d.chassis_types = convert_array_to_string($('#chassis-selector').val());
+                    d.software_versions = convert_array_to_string($('#software-selector').val());
+                    if ($('#model-name-selector').prop('disabled')) {
+                        d.partial_model_names = $('#partial_model_names').val();
                     } else {
-                        d.partial_model_names = $('#partial_model_names').val().split(',');
+                        d.model_names = convert_array_to_string($('#model-name-selector').val());
                     }
-                    return JSON.stringify( d );
+                    console.log(d)
                 }
             },
+            "columns": [
+                { "data": "model_name" },
+                { "data": "serial_number" },
+                { "data": "description" },
+                { "data": "notes"}
+            ],
             "order": [
                 [0, "asc"]
             ],
@@ -65,24 +78,37 @@
         });
 
         var in_use_inventory_table = $("#in-use-inventory-datatable").DataTable({
+            "processing": true,
+            "serverSide": true,
             "ajax": {
-                "url": "{{ url_for('inventory.api_search_inventory') }}",
-                "contentType": "application/json",
-                "type": "POST",
+                "url": "{{ url_for('datatable.api_search_inventory') }}",
                 "data": function (d) {
                     d.available = false;
                     d.serial_number = $('#serial_number').val();
-                    d.region_ids = $('#region-selector').val();
-                    d.chassis_types = $('#chassis-selector').val();
-                    d.software_versions = $('#software-selector').val();
-                    if ($("#select-model-name").hasClass("active")) {
-                        d.model_names = $('#model-name-selector').val();
+                    d.region_ids = convert_array_to_string($('#region-selector').val());
+                    d.chassis_types = convert_array_to_string($('#chassis-selector').val());
+                    d.software_versions = convert_array_to_string($('#software-selector').val());
+                    if ($('#model-name-selector').prop('disabled')) {
+                        d.partial_model_names = $('#partial_model_names').val();
                     } else {
-                        d.partial_model_names = $('#partial_model_names').val().split(',');
+                        d.model_names = convert_array_to_string($('#model-name-selector').val());
                     }
-                    return JSON.stringify( d );
+                    console.log(d)
                 }
             },
+            "columns": [
+                { "data": "model_name" },
+                { "data": "name" },
+                { "data": "serial_number" },
+                { "data": "description" },
+                { "data": "hostname" },
+                { "data": "chassis" },
+                { "data": "platform" },
+                { "data": "software" },
+                { "data": "region" },
+                { "data": "location" },
+                { "data": "last_successful_retrieval", "orderable": false }
+            ],
             "order": [
                 [4, "asc"]
             ],
@@ -122,7 +148,14 @@
                 "data": 'location'
             }, {
                 "targets": 10,
-                "data": 'last_successful_retrieval'
+                "data": 'last_successful_retrieval',
+                "render": function(data, type, row) {
+                    if (row['inventory_status'] == 'failed') {
+                        return '<span style="color:red;">' + data + '</span>';
+                    } else {
+                        return data;
+                    }
+                }
             }]
         }).on('draw.dt', function(e, settings, json) {
             if (in_use_inventory_table.page.info().recordsTotal > 0) {
@@ -248,21 +281,19 @@
             }
         });
 
-        $('.btn-toggle').click(function() {
-            $(this).find('.btn').toggleClass('active');
-
-            if ($(this).find('.btn-info').size() > 0) {
-                $(this).find('.btn').toggleClass('btn-info');
-            }
-
-            $(this).find('.btn').toggleClass('btn-default');
-
-            if ($("#select-model-name").hasClass("active")) {
-                $('#model-name-selector-div').show();
-                $('#partial-model-names-div').hide()
+        $('#model-name-selector').on("change", function (e) {
+            if ($('#model-name-selector').val()) {
+                $('#partial_model_names').prop('disabled', true);
             } else {
-                $('#partial-model-names-div').show();
-                $('#model-name-selector-div').hide()
+                $('#partial_model_names').prop('disabled', false);
+            }
+        });
+
+        $('#partial_model_names').on("input", function (e) {
+            if ($('#partial_model_names').val() != '') {
+                $('#model-name-selector').prop('disabled', true);
+            } else {
+                $('#model-name-selector').prop('disabled', false);
             }
         });
 
@@ -276,12 +307,15 @@
             $('#hidden_chassis_types').val($('#chassis-selector').val());
             $('#hidden_software_versions').val($('#software-selector').val());
 
-            if ($("#select-model-name").hasClass("active")) {
+            if ($('#model-name-selector').prop('disabled')) {
+                $('#hidden_model_names').val('');
+                $('#hidden_partial_model_names').val($('#partial_model_names').val());
+            } else if ($('#partial_model_names').prop('disabled')) {
                 $('#hidden_model_names').val($('#model-name-selector').val());
                 $('#hidden_partial_model_names').val('');
             } else {
                 $('#hidden_model_names').val('');
-                $('#hidden_partial_model_names').val($('#partial_model_names').val().split(','));
+                $('#hidden_partial_model_names').val('');
             }
 
             $('#export-inventory-information-form').attr('action', "{{ url_for('inventory.export_inventory_information') }}");
@@ -296,12 +330,12 @@
 {% macro custom_edit_field(field, field_width="col-sm-4", label_field_width="col-sm-2", catch_kwargs=true, extra_field="None") %}
     <label class="{{ label_field_width }} control-label" id="label_{{ field.id }}">{{ field.label.text }}</label>
     <div class="{{ field_width }}">
-        {{ field(class="form-control", **kwargs) }}
+        {{ field(class="form-control", style="border: 1px solid #aaa;", **kwargs) }}
     </div>
 {% endmacro %}
 
 {% macro selector_row(label, field) %}
-    <div class="row top-bottom-margin">
+    <div class="row custom-margin">
         <label class="col-sm-2 control-label" id="label_{{ field }}">{{ label }}</label>
         <div class="col-sm-4">
             <select multiple="multiple" class="form-control" id="{{ field }}-selector"></select>
@@ -345,46 +379,44 @@
 
 <div class="form-horizontal form-group row">
     <div class="container">
-        <h4>Search Inventory:</h4><hr style="margin-top:10px;margin-bottom:30px;">
-        <div class="row top-bottom-margin">
+        <div class="row">
+            <div style="float:left;margin-left:15px;"><h4>Search Inventory:</h4></div>
+            <div><button type="button" id="export" class="btn btn-default" style="margin-left: 61%;">Export</button></div>
+        </div>
+        <hr style="margin-top:10px;margin-bottom:30px;">
+        <div class="row custom-margin">
             {{ custom_edit_field(search_inventory_form.serial_number, placeholder="Optional") }}
         </div>
         {{ selector_row("Region", "region") }}
         {{ selector_row("Chassis", "chassis") }}
         {{ selector_row("Software", "software") }}
 
-        <div class="row top-bottom-margin">
+        <div class="row custom-margin">
             <label class="col-sm-2 control-label" id="label_model_name">Model Name (PID)</label>
 
             <div id="model-name-selector-div" class="col-sm-4">
                 <select multiple="multiple" class="form-control" id="model-name-selector"></select>
             </div>
-            <div id="partial-model-names-div" class="col-sm-4" style="display:none">
-                {{ search_inventory_form.partial_model_names(class="form-control", placeholder="Comma-delimited full or partial PID's") }}
-            </div>
 
-            <div class="btn-group btn-toggle" id="select-or-enter">
-                <button type="button" id="select-model-name" class="btn btn-info active" data-value=1>Select</button>
-                <button type="button" id="enter-model-name" class="btn btn-default" data-value=0>Enter text</button>
-            </div>
+        </div>
+        <div class="row custom-margin">
+            <label class="col-sm-2 control-label" id="label_model_name" style="margin-left: 50px;">OR</label>
+            {{ search_inventory_form.partial_model_names(class="form-control", placeholder="Enter Comma-delimited Partial or Full PID's", style="width: 28.2%;display:inline;border: 1px solid #aaa;") }}
 
-            <button id="search" type="button" class="btn btn-primary" style="margin-left: 21%;">
+            <button id="search" type="button" class="btn btn-primary" style="margin-left: 10%;">
                 Search
             </button>
             <span id="spinner">
                 <img src="{{ url_for('static', filename='spinner.gif') }}">
             </span>
+
         </div>
 
 
         <div id="search-inventory-result" style="display:none;">
             <br>
             <br>
-            <div class="row">
-                <div style="float:left;margin-left: 15px;"><h4>Results:</h4></div>
-                <div><button type="button" id="export" class="btn btn-default" style="margin-left: 77%;">Export</button></div>
-
-            </div>
+            <h4>Results:</h4>
             <hr style="margin-top:10px;margin-bottom:30px;">
             <div id="no-inventory"><h4>No inventory matches the search criteria.</h4></div>
             <div id="tables" class="row">

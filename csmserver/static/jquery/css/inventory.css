@@ -17,9 +17,11 @@ form div#host_info {
     padding-right: 0px;
 }
 
-.top-bottom-margin {
+.custom-margin {
     margin-top: 15px;
     margin-bottom: 15px;
+    margin-left: 120px;
+    width: 110%;
 }
 
 
@@ -38,4 +40,8 @@ textarea#general_notes {
     margin-left: auto;
     margin-right: auto;
     width: 80%;
+}
+
+td {
+    white-space: nowrap;
 }

@@ -31,7 +31,12 @@ from flask.ext.login import login_required
 
 from database import DBSession
 
+from inventory import query_available_inventory
+from inventory import query_in_use_inventory
+
 from models import Host
+from models import HostInventory
+from models import Inventory
 from models import Region
 from models import JumpHost
 from models import ConnectionParam
@@ -209,3 +214,149 @@ def get_managed_host_details(region_id):
     dictionary['data'] = rows
 
     return jsonify(**dictionary)
+
+
+@datatable.route('/api/search_inventory/')
+@login_required
+def api_search_inventory():
+    request_args = request.args
+    dt_params = DataTableParams(request)
+
+    rows = []
+    db_session = DBSession()
+
+    search_filters = dict()
+
+    search_filters['region_ids'] = request_args.get('region_ids').split(',') \
+        if request_args.get('region_ids') else []
+    search_filters['chassis_types'] = request_args.get('chassis_types').split(',') \
+        if request_args.get('chassis_types') else []
+    search_filters['software_versions'] = request_args.get('software_versions').split(',') \
+        if request_args.get('software_versions') else []
+    search_filters['model_names'] = request_args.get('model_names').split(',') \
+        if request_args.get('model_names') else []
+    search_filters['partial_model_names'] = request_args.get('partial_model_names').split(',') \
+        if request_args.get('partial_model_names') else []
+
+    if request_args.get('available') == "true":
+        results, total_count, filtered_count = handle_search_for_available_inventory(db_session,
+                                                                                     search_filters, dt_params)
+    else:
+        results, total_count, filtered_count = handle_search_for_in_use_inventory(db_session,
+                                                                                  search_filters, dt_params)
+
+    for inventory_entry in results:
+        row = {'model_name': inventory_entry.model_name,
+               'serial_number': inventory_entry.serial_number,
+               'description': inventory_entry.description}
+        if hasattr(inventory_entry, 'notes'):
+            row['notes'] = inventory_entry.notes
+        else:
+            row['hostname'] = ''
+            row['region'] = ''
+            row['chassis'] = ''
+            row['platform'] = ''
+            row['software'] = ''
+            row['last_successful_retrieval'] = ''
+            row['inventory_retrieval_status'] = ''
+            row['name'] = inventory_entry.name
+
+            host = inventory_entry.host
+            if host:
+                row['hostname'] = host.hostname
+                row['chassis'] = host.platform
+                row['platform'] = host.software_platform
+                row['software'] = host.software_version
+                row['region'] = host.region.name
+                row['location'] = host.location
+
+                inventory_job = host.inventory_job[0]
+                if inventory_job and inventory_job.last_successful_time:
+                    row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
+                    row['inventory_retrieval_status'] = inventory_job.status
+
+        rows.append(row)
+
+    draw_datatable = dict()
+    draw_datatable['draw'] = dt_params.draw
+    draw_datatable['recordsTotal'] = total_count
+    draw_datatable['recordsFiltered'] = filtered_count
+    draw_datatable['data'] = rows
+
+    return jsonify(**draw_datatable)
+
+
+def handle_search_for_available_inventory(db_session, json_data, dt_params):
+
+    results = query_available_inventory(db_session, json_data.get('serial_number'),
+                                        json_data.get('model_names'), json_data.get('partial_model_names'))
+    total_count = results.count()
+
+    clauses = []
+
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(Inventory.model_name.like(criteria))
+        clauses.append(Inventory.serial_number.like(criteria))
+        clauses.append(Inventory.description.like(criteria))
+        clauses.append(Inventory.notes.like(criteria))
+
+        results = results.filter(or_(*clauses))
+        filtered_count = results.count()
+    else:
+        filtered_count = total_count
+
+    columns = [getattr(Inventory.model_name, dt_params.sort_order)(),
+               getattr(Inventory.serial_number, dt_params.sort_order)(),
+               getattr(Inventory.description, dt_params.sort_order)(),
+               getattr(Inventory.notes, dt_params.sort_order)()]
+
+    results = results.order_by(columns[dt_params.column_order]) \
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    return results, total_count, filtered_count
+
+
+def handle_search_for_in_use_inventory(db_session, json_data, dt_params):
+
+    results = query_in_use_inventory(db_session, json_data)
+    total_count = results.count()
+
+    clauses = []
+
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(HostInventory.model_name.like(criteria))
+        clauses.append(HostInventory.name.like(criteria))
+        clauses.append(HostInventory.serial_number.like(criteria))
+        clauses.append(HostInventory.description.like(criteria))
+
+        clauses.append(Host.hostname.like(criteria))
+        clauses.append(Host.platform.like(criteria))
+        clauses.append(Host.software_platform.like(criteria))
+        clauses.append(Host.software_version.like(criteria))
+        clauses.append(Host.location.like(criteria))
+        clauses.append(Region.name.like(criteria))
+
+        results = results.join(Host, HostInventory.host_id == Host.id) \
+            .join(Region, Host.region_id == Region.id) \
+            .filter(or_(*clauses))
+        filtered_count = results.count()
+    else:
+        filtered_count = total_count
+
+    columns = [getattr(HostInventory.model_name, dt_params.sort_order)(),
+               getattr(HostInventory.name, dt_params.sort_order)(),
+               getattr(HostInventory.serial_number, dt_params.sort_order)(),
+               getattr(HostInventory.description, dt_params.sort_order)(),
+               getattr(Host.hostname, dt_params.sort_order)(),
+               getattr(Host.platform, dt_params.sort_order)(),
+               getattr(Host.software_platform, dt_params.sort_order)(),
+               getattr(Host.software_version, dt_params.sort_order)(),
+               getattr(Region.name, dt_params.sort_order)(),
+               getattr(Host.location, dt_params.sort_order)()]
+
+    results = results.order_by(columns[dt_params.column_order]) \
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length)
+
+    return results, total_count, filtered_count
