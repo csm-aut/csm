@@ -77,7 +77,12 @@ class JSONEncodedDict(TypeDecorator):
 
     def process_result_value(self, value, dialect):
         if value is not None:
-            value = json.loads(value)
+            try:
+                value = json.loads(value)
+            except ValueError:
+                # nothing we can do if this happens.
+                value = {}
+
         return value
 
 
@@ -328,18 +333,20 @@ class Host(Base):
             try:
                 shutil.rmtree(os.path.join(get_log_directory(), inventory_job.session_log))
             except:
-                logger.exception('hit exception when deleting host inventory job session logs')
+                pass # do nothing
 
         for install_job in self.install_job_history:
             try:
                 shutil.rmtree(os.path.join(get_log_directory(), install_job.session_log))
             except:
-                logger.exception('hit exception when deleting host install job session logs')
+                pass # do nothing
 
         for inventory in self.inventory:
             inventory.update(db_session, host_id=None)
 
         db_session.delete(self)
+        db_session.commit()
+
 
     def get_json(self):
         result = {}

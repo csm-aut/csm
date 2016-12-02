@@ -427,18 +427,17 @@ def delete_host(db_session, hostname):
         raise ValueNotFound("Unable to locate host '%s'" % hostname)
 
     host.delete(db_session)
-    db_session.commit()
 
 
 def create_or_update_region(db_session, name, server_repositories, region=None):
-    '''
+    """
     :param db_session:
     :param name:
     :param server_repositories:
         assumes server_repositories is a comma-delimited string of valid server names that exist in CSM
     :param region:
     :return:
-    '''
+    """
     if region is None:
         region = Region()
         region.name = name
