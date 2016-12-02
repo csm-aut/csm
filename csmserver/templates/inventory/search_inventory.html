@@ -196,7 +196,13 @@
                         no_inventory_match.show();
                     }
                 } else {
-                    $('a[href=#in-use-inventory]').tab('show');
+                    if (available_inventory_table.page.info().recordsTotal > 0) {
+                        var selected_tab = $.cookie('search-inventory-tab') == null ? '#in-use-inventory' : $.cookie('search-inventory-tab');
+                        $('a[href=' + selected_tab + ']').tab('show');
+                    } else {
+                        $('a[href=#in-use-inventory]').tab('show');
+                    }
+
                     no_inventory_match.hide();
                     $('#tables').show();
                 }
@@ -205,6 +211,10 @@
                 table_finished_drawing = 0;
             }
         }
+
+        $('#search-inventory-tabs').on('shown.bs.tab', function (e) {
+            $.cookie('search-inventory-tab', $('.nav-tabs .active > a').attr('href'));
+        });
 
         setInterval(function() {
             // user paging is not reset on reload - https://datatables.net/reference/api/ajax.reload()
