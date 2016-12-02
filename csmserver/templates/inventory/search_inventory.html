@@ -38,7 +38,6 @@
                     } else {
                         d.model_names = convert_array_to_string($('#model-name-selector').val());
                     }
-                    console.log(d)
                 }
             },
             "columns": [
@@ -94,7 +93,6 @@
                     } else {
                         d.model_names = convert_array_to_string($('#model-name-selector').val());
                     }
-                    console.log(d)
                 }
             },
             "columns": [
@@ -169,6 +167,8 @@
                 post_handling_after_drawing_table();
             }
         });
+
+
         $('#search').on('click', function(e) {
             search_spinner.css("visibility", "visible");
             $('#search-inventory-tabs').empty();
@@ -182,8 +182,10 @@
             table_finished_drawing++;
             if(table_finished_drawing == 2) {
                 search_spinner.css("visibility", "hidden");
-                $('#in-use-inventory-datatable').wrap("<div class='scrollableTable'></div>");
-                $('#available-inventory-datatable').wrap("<div class='scrollableTable'></div>");
+                if ($('div.scrollableTable').length == 0) {
+                    $('#in-use-inventory-datatable').wrap("<div class='scrollableTable'></div>");
+                    $('#available-inventory-datatable').wrap("<div class='scrollableTable'></div>");
+                }
 
                 if (in_use_inventory_table.page.info().recordsTotal == 0) {
                     if (available_inventory_table.page.info().recordsTotal > 0) {
@@ -203,6 +205,12 @@
                 table_finished_drawing = 0;
             }
         }
+
+        setInterval(function() {
+            // user paging is not reset on reload - https://datatables.net/reference/api/ajax.reload()
+            in_use_inventory_table.ajax.reload(null, false);
+            available_inventory_table.ajax.reload(null, false);
+        }, 10000);
 
 
         $('#region-selector').select2({

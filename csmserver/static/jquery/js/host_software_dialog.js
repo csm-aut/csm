@@ -54,7 +54,7 @@ $(function() {
         var hostname = $('#host_software_dialog_host').val();
         if (hostname != null && hostname.length > 0) {
             $.ajax({
-                url: '/api/get_software/' + hostname,
+                url: '/api/get_inventory/' + hostname,
                 success: function(response) {
                     if (response.status == 'OK') {
                         refresh_host_software(hostname);

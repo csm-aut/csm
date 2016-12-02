@@ -8,6 +8,18 @@
         var error = "{{ error_msg }}";
         var success = "{{ success_msg }}";
 
+        var hostname = "{{ hostname }}";
+
+        var refresh_host_inventory_retrieval_interval;
+        if (hostname != null && hostname.length > 0) {
+            refresh_host_inventory_retrieval_interval = setInterval(function() {
+                refresh_host_inventory_retrieval(hostname, false)
+            }, 10000);
+        }
+
+        var host_software_dialog_spinner = $('#host-software-dialog-browse-spinner');
+        host_software_dialog_spinner.hide();
+
         if (success != "None" && success != "") {
             bootbox.alert(success);
         }
@@ -60,6 +72,64 @@
             $('#hidden_serial_number').val("{{ serial_number_submitted }}");
             $('#update_inventory_form').submit();
         });
+
+        $('#host-software-retrieve-software').on('click', function(e) {
+            host_software_dialog_spinner.show();
+
+            if (hostname != null && hostname.length > 0) {
+                $.ajax({
+                    url: '/api/get_inventory/' + hostname,
+                    success: function(response) {
+                        if (response.status == 'OK') {
+                            clearInterval(refresh_host_inventory_retrieval_interval);
+                            refresh_host_inventory_retrieval_interval = setInterval(function() {
+                                refresh_host_inventory_retrieval(hostname, true)
+                            }, 10000);
+                            refresh_host_inventory_retrieval(hostname, true);
+
+                        } else {
+                            bootbox.alert("<img src='/static/error.png'> &nbsp;A similar request may be in progress.");
+                        }
+                    }
+                });
+            }
+        });
+
+
+        function refresh_host_inventory_retrieval(hostname, reload_page_after_done) {
+            // Update the last successful inventory elapsed time
+            if (hostname != null && hostname.length > 0) {
+                $.ajax({
+                    url: '/api/hosts/' + hostname + '/last_successful_inventory_elapsed_time',
+                    dataType: 'json',
+                    success: function (data) {
+                        $.each(data, function (index, element) {
+                            var elapsed_time = element[0].last_successful_inventory_elapsed_time;
+
+                            $('#last-successful-retrieval').text(elapsed_time);
+
+                            if (elapsed_time.indexOf('Pending') == -1) {
+                                host_software_dialog_spinner.hide();
+                                if (element[0].status == 'failed') {
+                                    $('#last-successful-retrieval').css({'color': 'red'});
+
+                                } else if (element[0].status == 'completed') {
+                                    $('#last-successful-retrieval').removeAttr('style');
+                                    if (reload_page_after_done) {
+                                        $('#hidden_submit_sn').val('True');
+                                        $('#sn_form').submit();
+                                    }
+                                }
+                            } else {
+                                host_software_dialog_spinner.show();
+                                $('#last-successful-retrieval').removeAttr('style');
+                            }
+
+                        });
+                    }
+                });
+            }
+        }
     });
     </script>
 {% endblock %}
@@ -162,10 +232,17 @@ input field is disabled.</pre>
                                     <div class="col-sm-5">
                                         <span style="color: Gray;"><b>Last Successful Retrieval:</b></span>&nbsp;&nbsp;
                                         {% if inventory_retrieval_status == "failed" %}
-                                            <span style="color:red">{{ last_successful_retrieval }}</span>
+                                            <span id="last-successful-retrieval" style="color:red">{{ last_successful_retrieval }}</span>
                                         {% else %}
-                                            {{ last_successful_retrieval }}
+                                            <span id="last-successful-retrieval">{{ last_successful_retrieval }}</span>
                                         {% endif %}
+                                        &nbsp;&nbsp;&nbsp;&nbsp;
+                                        <a href="javascript://" id="host-software-retrieve-software">
+                                            <img src="/static/refresh.png" title="Retrieve Latest Software">
+                                        </a>
+                                        <span id="host-software-dialog-browse-spinner">
+                                            <img src="/static/spinner.gif">
+                                        </span>
                                     </div>
                                 </div>
                             </div>
