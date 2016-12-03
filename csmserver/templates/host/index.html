@@ -74,6 +74,7 @@
             },
             "columns": [
                 { "data": "hostname" },
+                { "data": "region" },
                 { "data": "chassis" },
                 { "data": "platform" },
                 { "data": "software" },
@@ -92,36 +93,39 @@
                 }
             }, {
                 "targets": 1,
+                "data": 'region'
+            }, {
+                "targets": 2,
                 "data": 'chassis'
             },{
-                "targets": 2,
+                "targets": 3,
                 "data": 'platform'
             }, {
-                "targets": 3,
+                "targets": 4,
                 "data": 'software'
             }, {
-                "targets": 4,
+                "targets": 5,
                 "data": 'connection'
             }, {
-                "targets": 5,
+                "targets": 6,
                 "data": 'host_or_ip',
                 "render": function(data, type, row) {
                     return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
                 }
             }, {
-                "targets": 6,
+                "targets": 7,
                 "data": 'port_number',
                 "render": function(data, type, row) {
                     return comma2br(data);
                 }
             }, {
-                "targets": 7,
+                "targets": 8,
                 "data": 'username',
             }, {
-                "targets": 8,
+                "targets": 9,
                 "data": 'jump_host'
             }, {
-                "targets": 9,
+                "targets": 10,
                 "data": 'hostname',
                 "render": function(data, type, row) {
                     return '<a class="host-delete-link" href="javascript://"  \
@@ -184,6 +188,7 @@
             <thead>
                 <tr>
                     <th>Hostname</th>
+                    <th>Region</th>
                     <th>Chassis</th>
                     <th>Platform</th>
                     <th>Software</th>

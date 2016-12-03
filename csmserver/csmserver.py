@@ -566,13 +566,7 @@ def api_get_csm_message():
 @app.route('/hosts/')
 @login_required
 def host_list():
-    db_session = DBSession()
-
-    hosts = get_host_list(db_session)
-    if hosts is None:
-        abort(404)
-            
-    return render_template('host/index.html', hosts=hosts)
+    return render_template('host/index.html')
 
 
 @app.route('/hosts/create/', methods=['GET', 'POST'])
