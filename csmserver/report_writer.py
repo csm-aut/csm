@@ -356,32 +356,13 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
         ExportInventoryInfoWriter.__init__(self, **kwargs)
 
     def get_report_header(self):
-        html = '<p><b>Search Filter(s):</b></p>'
-        has_search_filter = False
 
-        html += '<ul>'
-        if self.serial_number:
-            html += '<li><b>Serial Number: ' + self.serial_number + '</b></li>'
-            has_search_filter = True
-        if self.region_names:
-            html += '<li><b>Region: ' + ',&nbsp'.join(self.region_names) + '</b></li>'
-            has_search_filter = True
-        if self.chassis_types:
-            html += '<li><b>Chassis: ' + ',&nbsp'.join(self.chassis_types) + '</b></li>'
-            has_search_filter = True
-        if self.software_versions:
-            html += '<li><b>Software: ' + ',&nbsp'.join(self.software_versions) + '</b></li>'
-            has_search_filter = True
-        if self.model_names:
-            html += '<li><b>Model Names: ' + ',&nbsp'.join(self.model_names) + '</b></li>'
-            has_search_filter = True
-        if self.partial_model_names:
-            html += '<li><b>Partial Model Names: ' + ',&nbsp'.join(self.partial_model_names) + '</b></li>'
-            has_search_filter = True
-        html += '</ul>'
-        if not has_search_filter:
-            html = '<p><b>Search Filter(s): None</b></p>'
-        return html
+        html = get_search_filter_in_html(self.__dict__)
+
+        if html:
+            return '<b><p>Search Filter(s):</p>' + html + '</b>'
+
+        return '<p><b>Search Filter(s): None</b></p>'
 
     def write_report(self):
         output_file_path = os.path.join(self.output_file_directory, 'inventory_information.html')
@@ -472,6 +453,31 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
             content += '</table>'
 
         return content
+
+
+# public function - used in inventory too
+def get_search_filter_in_html(filters_dict):
+    html = ''
+    html += check_and_add_search_filter('Serial Number', filters_dict.get('serial_number'))
+    html += check_and_add_search_filter('Region', filters_dict.get('region_names'))
+    html += check_and_add_search_filter('Chassis', filters_dict.get('chassis_types'))
+    html += check_and_add_search_filter('Software', filters_dict.get('software_versions'))
+    html += check_and_add_search_filter('Model Names', filters_dict.get('model_names'))
+    html += check_and_add_search_filter('Partial Model Names', filters_dict.get('partial_model_names'))
+    if html:
+        return '<ul>' + html + '</ul>'
+
+    return html
+
+
+def check_and_add_search_filter(filter_title, filter_value):
+    if filter_value:
+        if isinstance(filter_value, list):
+            return '<li>{}: '.format(filter_title) + ',&nbsp;'.join(filter_value) + '</li>'
+        else:
+            return '<li>{}: '.format(filter_title) + filter_value + '</li>'
+
+    return ''
 
 
 class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):

@@ -321,6 +321,33 @@
         });
 
         $('#on-export-inventory-submit').click(function() {
+            if ($('#send_email').prop('checked')) {
+                if ($('#user_email').val().trim() == "") {
+                    bootbox.alert("Email Address has not been specified.");
+                    return false;
+                } else {
+                    $.ajax({
+                        url: "/inventory/api/check_if_email_notify_enabled/",
+                        dataType: 'json',
+                        success: function(result) {
+                            if (result.email_notify_enabled) {
+                                submit_export_form();
+                            } else {
+                                bootbox.alert("<img src='/static/error.png'>&nbsp;Please enable Email Notification at <a target='_blank' href='{{ url_for('admin_console') }}'>Tools > Admin Console > Notifications</a> in Software page.");
+                                return false;
+                            }
+                        }
+                    });
+                }
+
+            } else {
+                submit_export_form();
+            }
+
+        });
+
+
+        function submit_export_form() {
             $('#hidden_serial_number').val($('#serial_number').val());
             $('#hidden_region_ids').val($('#region-selector').val());
             $('#hidden_chassis_types').val($('#chassis-selector').val());
@@ -338,7 +365,17 @@
             }
 
             $('#export-inventory-information-form').attr('action', "{{ url_for('inventory.export_inventory_information') }}");
+            $('#export-inventory-information-dialog').modal('hide');
             $('#export-inventory-information-form').submit();
+
+        }
+        $('[data-toggle="popover_email"]').popover({
+            trigger : 'click',
+            placement : 'top',
+            html : true,
+            content : function() {
+                return $('#popover_email').html()
+            }
         });
 
     })
@@ -364,6 +401,13 @@
 
 {% block main %}
 
+<div id="popover_email" style="display: none">
+  <pre>By default, the email address in the user account
+is used. To define it, go to <a href='{{ url_for('current_user_edit') }}'>Tools > Edit User</a>
+in Software page. Or, you may enter one or more
+comma-delimited email address(es) here.</pre>
+</div>
+
 <div id="export-inventory-information-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" id="export-inventory-information-form" class="form-horizontal">
@@ -376,11 +420,24 @@
                 </div>
                 <div class="modal-body">
                     {{ edit_field(export_results_form.export_format, field_width="col-sm-6", class="form-control") }}
+                    {% set info ='<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue"
+                           aria-hidden="true" data-toggle="popover_email"></span></a>' %}
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label" style="padding-top: 10px;padding-left: 0px;" id="label_{{ export_results_form.send_email.id }}">{{ export_results_form.send_email.label.text }}</label>
+                        {{ info | safe }}
+                        <div class="col-sm-6" style="width:50px;">
+                            {{ export_results_form.send_email(type='checkbox', class="form-control", style="-webkit-box-shadow:none") }}
+                        </div>
+                        <div class="col-sm-6" style="padding-top: 5px;padding-left: 0px;">
+                            {{ export_results_form.user_email(class="form-control", placeholder="Comma-delimited Email Address(es)") }}
+                        </div>
+
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <div class="form-actions">
                         <div class="btn col-sm-offset-4">
-                            <button id="on-export-inventory-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button id="on-export-inventory-submit" type="button" class="btn btn-primary">OK</button>
                             <button class="btn" data-dismiss="modal">Cancel</button>
                         </div>
                     </div>
@@ -417,7 +474,7 @@
         </div>
         <div class="row custom-margin">
             <label class="col-sm-2 control-label" id="label_model_name" style="margin-left: 50px;">OR</label>
-            {{ search_inventory_form.partial_model_names(class="form-control", placeholder="Enter Comma-delimited Partial or Full PID(s)", style="width: 28.2%;display:inline;border: 1px solid #aaa;") }}
+            {{ search_inventory_form.partial_model_names(class="form-control", placeholder="Comma-delimited Partial or Full PID(s)", style="width: 28.2%;display:inline;border: 1px solid #aaa;") }}
 
             <span id="search_spinner" style="margin-left:10%; display:inline-block;">
                 <img src="{{ url_for('static', filename='spinner.gif') }}">

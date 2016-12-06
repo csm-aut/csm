@@ -38,6 +38,7 @@ from email import Encoders
 
 from os.path import basename
 
+
 def create_email_job(db_session, logger, message, username):
     system_option = SystemOption.get(db_session)
     if not system_option.enable_email_notify:
@@ -53,17 +54,17 @@ def create_email_job(db_session, logger, message, username):
     db_session.commit()
 
 
-def sendmail(logger, server, server_port, sender, recipient,
-             message, use_authentication, username, password,
+def sendmail(logger, server, server_port, sender, recipients, message, use_authentication, username, password,
              secure_connection, file_attachments=None):
     """
-    :param file_attachments: A list of absolute file paths for file attachments
+    :param recipients: String containing email recipient(s), separated by comma
+    :param file_attachments: String containing absolute file paths for file attachment(s), separated by comma
     """
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = 'Notification from CSM Server'
         msg['From'] = sender
-        msg['To'] = recipient
+        msg['To'] = recipients
         
         part = MIMEText(message, 'html')
         msg.attach(part)
@@ -84,8 +85,8 @@ def sendmail(logger, server, server_port, sender, recipient,
             else:
                 s = smtplib.SMTP(server, int(server_port))
 
-        if file_attachments is not None:
-            for file_attachment in file_attachments:
+        if file_attachments:
+            for file_attachment in file_attachments.split(","):
                 try:
                     part = MIMEBase('application', "octet-stream")
                     part.set_payload(open(file_attachment, "rb").read())
@@ -95,7 +96,7 @@ def sendmail(logger, server, server_port, sender, recipient,
                 except:
                     logger.exception('sendmail: Unable to attach %s', basename(file_attachment))
 
-        s.sendmail(sender, recipient.split(","), msg.as_string()) 
+        s.sendmail(sender, recipients.split(","), msg.as_string())
         s.close()
 
         return True

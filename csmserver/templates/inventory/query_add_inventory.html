@@ -162,22 +162,21 @@ input field is disabled.</pre>
             {% if update_inventory_form.model_name.data != None %}
                 {% set info ='<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue"
                            aria-hidden="true" data-toggle="popover_model_name"></span></a>' %}
-
-                {% if hostname != None %}
+                {% if hostname != ''%}
                     <fieldset disabled>
                 {% endif %}
-                {% if hostname != None and update_inventory_form.model_name.data == "" %}
+                {% if hostname != '' and update_inventory_form.model_name.data == "" %}
                     {{ edit_field(update_inventory_form.model_name, maxlength=50, field_width="col-sm-4", class="form-control", extra_field=info) }}
                 {% else %}
                     {{ edit_field(update_inventory_form.model_name, maxlength=50, field_width="col-sm-4", class="form-control",
                         placeholder="Optional", extra_field=info) }}
                 {% endif %}
-                {% if hostname != None %}
+                {% if hostname != '' %}
                     </fieldset>
                 {% endif %}
 
                 {% if (description != None and description != "") or (hardware_revision != None and hardware_revision != "") %}
-                    {% if hostname != None %}
+                    {% if hostname != '' %}
                         <div class="form-group row">
                             <label class="col-sm-4 control-label">Name</label>
                             <div class="col-sm-4">
@@ -202,7 +201,7 @@ input field is disabled.</pre>
                 <div class="form-group row">
                     <label class="col-sm-4 control-label" style="padding-top: 0px;">Status</label>
                     <div class="col-sm-4">
-                        {% if hostname == None %}
+                        {% if hostname == '' %}
                             <p class="form-control-static mb-0" style="padding-top: 0px;">Available</p>
                         {% else %}
                             <p class="form-control-static mb-0" style="padding-top: 0px;">In Use</p>
@@ -261,7 +260,7 @@ input field is disabled.</pre>
                 <p style="text-align: center;">
                     <button id="submit-update-inventory" class="btn btn-primary" type="submit">Save</button>
                     <button id="cancel" type="button" class="btn btn-default" type="submit">Cancel</button>
-                    {% if hostname == None and not new_inventory %}
+                    {% if hostname == '' and not new_inventory %}
                         <button id="submit-delete-inventory" type="button" class="btn btn-danger" title="Delete it from the managed inventories.">Delete</button>
                     {% endif %}
                 </p>

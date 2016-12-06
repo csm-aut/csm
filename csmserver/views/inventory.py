@@ -33,6 +33,7 @@ from flask import request
 from sqlalchemy import or_
 
 from wtforms import Form
+from wtforms import BooleanField
 from wtforms import HiddenField
 from wtforms import SelectField
 from wtforms import StringField
@@ -41,6 +42,7 @@ from wtforms.widgets import TextArea
 from wtforms.validators import Length, required
 
 from common import get_last_successful_inventory_elapsed_time
+from common import get_user
 
 from constants import UNKNOWN
 from constants import ExportInformationFormat
@@ -50,10 +52,14 @@ from database import DBSession
 
 from models import HostInventory, Inventory
 from models import Host, Region
+from models import SystemOption
+from models import EmailJob
+from models import logger
 
 from report_writer import ExportInventoryInfoCSVWriter
 from report_writer import ExportInventoryInfoHTMLWriter
 from report_writer import ExportInventoryInfoExcelWriter
+from report_writer import get_search_filter_in_html
 
 inventory = Blueprint('inventory', __name__, url_prefix='/inventory')
 
@@ -83,7 +89,7 @@ def query_add_inventory():
 
     inventory_data_fields = {'serial_number_submitted': None, 'new_inventory': False,
                              'inventory_name': None, 'description': None,
-                             'hardware_revision': None, 'hostname': None, 'region_name': None,
+                             'hardware_revision': None, 'hostname': '', 'region_name': None,
                              'chassis': None, 'platform': None, 'software': None,
                              'last_successful_retrieval': None, 'inventory_retrieval_status': None}
 
@@ -259,6 +265,8 @@ def search_inventory():
     search_inventory_form = SearchInventoryForm(request.form)
     export_results_form = ExportInventoryInformationForm(request.form)
 
+    export_results_form.user_email.data = current_user.email if current_user.email else ""
+
     return render_template('inventory/search_inventory.html', search_inventory_form=search_inventory_form,
                            export_results_form=export_results_form, current_user=current_user)
 
@@ -358,6 +366,7 @@ def export_inventory_information():
     """export the inventory search result to html or excel format."""
     db_session = DBSession()
     export_results_form = ExportInventoryInformationForm(request.form)
+
     export_data = dict()
     export_data['export_format'] = export_results_form.export_format.data
     export_data['serial_number'] = export_results_form.hidden_serial_number.data
@@ -389,6 +398,7 @@ def export_inventory_information():
 
     export_data['user'] = current_user
 
+    writer = None
     if export_data.get('export_format') == ExportInformationFormat.HTML:
         writer = ExportInventoryInfoHTMLWriter(**export_data)
     elif export_data.get('export_format') == ExportInformationFormat.MICROSOFT_EXCEL:
@@ -396,7 +406,45 @@ def export_inventory_information():
     elif export_data.get('export_format') == ExportInformationFormat.CSV:
         writer = ExportInventoryInfoCSVWriter(**export_data)
 
-    return send_file(writer.write_report(), as_attachment=True)
+    if writer:
+        file_path = writer.write_report()
+
+        if export_results_form.send_email.data:
+            email_message = "<html><head></head><body>Please find in the attachment the inventory search results " \
+                            "matching the following search criteria: "
+            search_criteria_in_html = get_search_filter_in_html(export_data)
+            if search_criteria_in_html:
+                email_message += search_criteria_in_html + '</body></html>'
+            else:
+                email_message += '&nbsp;None</body></html>'
+            create_email_job_with_attachment_files(db_session, email_message, file_path,
+                                                   export_results_form.user_email.data)
+
+        return send_file(file_path, as_attachment=True)
+
+    logger.error('inventory: invalid export format "%s" chosen.' % export_data.get('export_format'))
+    return
+
+
+@inventory.route('/api/check_if_email_notify_enabled/')
+@login_required
+def check_if_email_notify_enabled():
+    db_session = DBSession()
+    system_option = SystemOption.get(db_session)
+    db_session.close()
+    return jsonify({'email_notify_enabled': system_option.enable_email_notify})
+
+
+def create_email_job_with_attachment_files(db_session, message, file_paths, recipients):
+    system_option = SystemOption.get(db_session)
+    if not system_option.enable_email_notify:
+        return
+
+    email_job = EmailJob(recipients=recipients, message=message, created_by=current_user.username,
+                         attachment_file_paths=file_paths)
+    db_session.add(email_job)
+    db_session.commit()
+    return
 
 
 @inventory.route('/import_inventory')
@@ -569,6 +617,8 @@ class ExportInventoryInformationForm(Form):
                                           ExportInformationFormat.HTML),
                                          (ExportInformationFormat.MICROSOFT_EXCEL,
                                           ExportInformationFormat.MICROSOFT_EXCEL)])
+    send_email = BooleanField('Email Export Data')
+    user_email = StringField('User Email')
     hidden_serial_number = HiddenField('')
     hidden_region_ids = HiddenField('')
     hidden_chassis_types = HiddenField('')

@@ -1087,6 +1087,7 @@ class EmailJob(Base):
     id = Column(Integer, primary_key=True)
     recipients = Column(String(200))
     message = Column(Text)
+    attachment_file_paths = Column(String(300))
     scheduled_time = Column(DateTime, default=datetime.datetime.utcnow)
     status = Column(String(200))
     status_time = Column(DateTime)
@@ -1095,6 +1096,7 @@ class EmailJob(Base):
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
+
 
 class CreateTarJob(Base):
     __tablename__ = 'create_tar_job'
