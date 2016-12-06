@@ -146,6 +146,7 @@ def get_managed_host_details(region_id):
     if len(dt_params.search_value):
         criteria = '%' + dt_params.search_value + '%'
         clauses.append(Host.hostname.like(criteria))
+        clauses.append(Region.name.like(criteria))
         clauses.append(Host.platform.like(criteria))
         clauses.append(Host.software_platform.like(criteria))
         clauses.append(Host.software_version.like(criteria))
@@ -170,6 +171,7 @@ def get_managed_host_details(region_id):
     filtered_count = query.count()
 
     columns = [getattr(Host.hostname, dt_params.sort_order)(),
+               getattr(Region.name, dt_params.sort_order)(),
                getattr(Host.platform, dt_params.sort_order)(),
                getattr(Host.software_platform, dt_params.sort_order)(),
                getattr(Host.software_version, dt_params.sort_order)(),
@@ -186,6 +188,7 @@ def get_managed_host_details(region_id):
         for host in hosts:
             row = {}
             row['hostname'] = host.hostname
+            row['region'] = '' if host.region is None else host.region.name
             row['chassis'] = host.platform
             row['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
             row['software'] = UNKNOWN if host.software_version is None else host.software_version
