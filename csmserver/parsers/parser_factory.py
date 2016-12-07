@@ -60,6 +60,12 @@ class EXRParserFactory(ParserFactory):
         return EXRInventoryParser()
 
 
+class IOSXRvParserFactory(EXRParserFactory):
+
+    def create_inventory_parser(self):
+        return None
+
+
 class NCS1K5KParserFactory(EXRParserFactory):
 
     def create_inventory_parser(self):

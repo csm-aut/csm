@@ -25,7 +25,8 @@
 from constants import PlatformFamily
 from csm_exceptions.exceptions import UnknownSoftwarePlatform
 from parser_factory import ASR9KParserFactory, CRSParserFactory, NCS1K5KParserFactory, \
-    EXRParserFactory, IOSXEParserFactory, IOSParserFactory, NXOSParserFactory
+    EXRParserFactory, IOSXRvParserFactory, IOSXEParserFactory, IOSParserFactory, \
+    NXOSParserFactory
 
 
 def get_parser_factory(software_platform, os_type):
@@ -38,8 +39,7 @@ def get_parser_factory(software_platform, os_type):
         return NCS1K5KParserFactory()
     elif software_platform in [PlatformFamily.ASR9K_64,
                                PlatformFamily.NCS6K,
-                               PlatformFamily.NCS5500,
-                               PlatformFamily.IOSXRv]:
+                               PlatformFamily.NCS5500]:
         return EXRParserFactory()
     elif software_platform == PlatformFamily.ASR900:
         if os_type == 'IOS':
@@ -50,5 +50,7 @@ def get_parser_factory(software_platform, os_type):
             raise UnknownSoftwarePlatform('%s' % software_platform)
     elif software_platform == PlatformFamily.N9K:
         return NXOSParserFactory()
+    elif software_platform == PlatformFamily.IOSXRv:
+        return IOSXRvParserFactory()
     else:
         raise UnknownSoftwarePlatform('%s' % software_platform)

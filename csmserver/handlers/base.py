@@ -145,10 +145,12 @@ class BaseHandler(object):
         parser_factory = get_parser_factory(ctx.host.software_platform, ctx.host.os_type)
 
         software_package_parser = parser_factory.create_software_package_parser()
-        software_package_parser.set_host_packages_from_cli(ctx)
+        if software_package_parser:
+            software_package_parser.set_host_packages_from_cli(ctx)
 
         inventory_parser = parser_factory.create_inventory_parser()
-        inventory_parser.process_inventory(ctx)
+        if inventory_parser:
+            inventory_parser.process_inventory(ctx)
 
     def generate_post_upgrade_file_diff(self, ctx):
         install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_UPGRADE)
