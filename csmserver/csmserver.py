@@ -182,6 +182,8 @@ from views.tar_support import tar_support
 from views.host_import import host_import
 from views.custom_command import custom_command
 from views.datatable import datatable
+from views.install_dashboard import install_dashboard
+from views.install_dashboard import get_install_job_json_dict
 
 from report_writer import ExportSoftwareInfoHTMLConciseWriter
 from report_writer import ExportSoftwareInfoHTMLDefaultWriter
@@ -209,6 +211,7 @@ app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
 app.register_blueprint(custom_command)
 app.register_blueprint(datatable)
+app.register_blueprint(install_dashboard)
 
 # Hook up the filters
 filters.init(app)
@@ -292,18 +295,12 @@ def get_host_platform_version(region_id):
         
     return jsonify(**{'data': rows})
 
-
+"""
 @app.route('/install_dashboard')
 @login_required
 def install_dashboard():
-    db_session = DBSession()
-
-    hosts = get_host_list(db_session)
-    if hosts is None:
-        abort(404)
-            
-    return render_template('host/install_dashboard.html', hosts=hosts, system_option=SystemOption.get(DBSession()))
-
+    return render_template('host/install_dashboard.html', system_option=SystemOption.get(DBSession()))
+"""
 
 @app.route('/users/create', methods=['GET','POST'])
 @login_required
@@ -1221,115 +1218,6 @@ def get_inventory_job_json_dict(inventory_jobs):
     return {'data': rows}
 
 
-@app.route('/api/install_scheduled/')
-@login_required
-def api_get_install_scheduled():
-    db_session = DBSession()
-    
-    install_jobs = db_session.query(InstallJob).filter(
-        (InstallJob.install_action is not None),
-        and_(InstallJob.status == None))
-
-    return jsonify(**get_install_job_json_dict(install_jobs))
-
-
-@app.route('/api/install_in_progress/')
-@login_required
-def api_get_install_in_progress():
-    db_session = DBSession()    
-    install_jobs = db_session.query(InstallJob).filter(and_(
-        InstallJob.status != None,
-        InstallJob.status != JobStatus.FAILED))
-
-    return jsonify(**get_install_job_json_dict(install_jobs))
-
-
-@app.route('/api/install_failed/')
-@login_required
-def api_get_install_failed():
-    db_session = DBSession()   
-    install_jobs = db_session.query(InstallJob).filter(InstallJob.status == JobStatus.FAILED)
-
-    return jsonify(**get_install_job_json_dict(install_jobs))
-
-
-def get_download_job_status(download_job_key_dict, install_job, dependency_status):
-    num_pending_downloads = 0
-    num_failed_downloads = 0
-    is_pending_download = False
-
-    pending_downloads = install_job.pending_downloads.split(',')
-    for filename in pending_downloads:
-        download_job_key = get_download_job_key(install_job.user_id, filename, install_job.server_id, install_job.server_directory)
-        if download_job_key in download_job_key_dict:
-            download_job = download_job_key_dict[download_job_key]
-            if download_job.status == JobStatus.FAILED:
-                num_failed_downloads += 1
-            else:
-                num_pending_downloads += 1
-            is_pending_download = True
-
-    if is_pending_download:
-        job_status = "({} pending".format(num_pending_downloads)
-        if num_failed_downloads > 0:
-            job_status = "{},{} failed)".format(job_status, num_failed_downloads)
-        else:
-            job_status = "{})".format(job_status)
-            
-        # job_status = '(Failed)' if is_download_failed else ''
-        download_url = '<a href="' + url_for('download_dashboard') + '">Pending Download ' + job_status + '</a>'
-        if len(dependency_status) > 0:
-            dependency_status = '{}<br/>{}'.format(dependency_status, download_url)
-        else:
-            dependency_status = download_url
-            
-    return dependency_status
-                        
-
-def get_install_job_json_dict(install_jobs):
-    """
-    install_jobs is a list of install_job instances from the install_job or install_job_history table.
-    Schema in the install_job_history table is a superset of the install_job table.
-    """
-    download_job_key_dict = get_download_job_key_dict()
-    rows = []    
-    for install_job in install_jobs:
-        if isinstance(install_job, InstallJob) or isinstance(install_job, InstallJobHistory):
-            row = {}
-            row['install_job_id'] = install_job.id
-            row['hostname'] = install_job.host.hostname
-            row['dependency'] = '' if install_job.dependency is None else 'Another Installation'
-            row['install_action'] = install_job.install_action
-            row['scheduled_time'] = install_job.scheduled_time
-
-            # Retrieve the pending download status of the scheduled download job.
-            # The install job has not been started if its status is None.
-            if install_job.status is None:
-                row['dependency'] = get_download_job_status(download_job_key_dict, install_job, row['dependency'])
-
-            row['start_time'] = install_job.start_time
-            row['packages'] = install_job.packages
-                           
-            if isinstance(install_job, InstallJob):
-                row['server_id'] = install_job.server_id
-                row['server_directory'] = install_job.server_directory
-                row['user_id'] = install_job.user_id
-            
-            row['status'] = install_job.status
-            row['status_time'] = install_job.status_time               
-            row['created_by'] = install_job.created_by
-            
-            if install_job.session_log is not None:
-                row['session_log'] = install_job.session_log
-                
-            if install_job.trace is not None:
-                row['trace'] = install_job.id
-                  
-            rows.append(row)
-       
-    return {'data': rows}
-
-
 @app.route('/api/get_files_from_csm_repository/')
 @login_required
 def get_files_from_csm_repository():
@@ -1636,39 +1524,6 @@ def get_install_scheduled_time_list():
             
     return result_list
 
-         
-@app.route('/api/install_completed/')
-@login_required
-def api_get_install_completed():
-    db_session = DBSession()
-
-    record_limit = request.args.get('record_limit')
-
-    if record_limit is None or record_limit.lower() == 'all':  
-        install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.status == JobStatus.COMPLETED). \
-            order_by(InstallJobHistory.status_time.desc())
-    else:  
-        install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.status == JobStatus.COMPLETED). \
-            order_by(InstallJobHistory.status_time.desc()).limit(record_limit)
-              
-    return jsonify(**get_install_job_json_dict(install_jobs))
-
-
-@app.route('/api/install_dashboard/cookie')
-@login_required
-def api_get_install_dashboard_cookie():
-    db_session = DBSession()
-    system_option = SystemOption.get(db_session)
-
-    completed_install_job_count = db_session.query(InstallJobHistory).filter(
-        InstallJobHistory.status == JobStatus.COMPLETED).count()
-    
-    return jsonify(**{'data': [
-        {'last_completed_install_job_count': completed_install_job_count,
-         'can_schedule': system_option.can_schedule,
-         'can_install': system_option.can_install
-         }]})
-    
 
 @app.route('/hosts/schedule_install/', methods=['GET', 'POST'])
 @login_required
@@ -1740,7 +1595,7 @@ def schedule_install():
                                                                            pending_downloads=pending_downloads,
                                                                            dependency=dependency)
                             dependency = new_install_job.id
-                                                  
+
         return redirect(url_for(return_url))
     else:                
         # Initialize the hidden fields
@@ -2081,42 +1936,6 @@ def host_dashboard(hostname):
                                            PackageState.INACTIVE_COMMITTED, PackageState.INACTIVE])
 
 
-@app.route('/hosts/delete_all_failed_installs/', methods=['DELETE'])
-@login_required
-def delete_all_failed_installs():
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    return delete_all_installs(status=JobStatus.FAILED)
-
-
-@app.route('/hosts/delete_all_scheduled_installs/', methods=['DELETE'])
-@login_required
-def delete_all_scheduled_installs():
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    return delete_all_installs()
-
-    
-def delete_all_installs(status=None):        
-    db_session = DBSession()
-    
-    try:
-        install_jobs = db_session.query(InstallJob).filter(InstallJob.status == status)    
-        for install_job in install_jobs:
-            db_session.delete(install_job)
-            if status == JobStatus.FAILED:
-                delete_install_job_dependencies(db_session, install_job.id)
-        
-        db_session.commit()    
-
-        return jsonify({'status': 'OK'})
-    except:
-        logger.exception('delete_install_job() hit exception')
-        return jsonify({'status': 'Failed: check system logs for details'})
-
-
 @app.route('/hosts/<hostname>/delete_all_failed_installs/', methods=['DELETE'])
 @login_required
 def delete_all_failed_installs_for_host(hostname):
@@ -2159,33 +1978,6 @@ def delete_all_installs_for_host(hostname, status=None):
         db_session.commit()
         return jsonify({'status': 'OK'})
     except:
-        logger.exception('delete_install_job() hit exception')
-        return jsonify({'status': 'Failed: check system logs for details'})
-
-
-@app.route('/hosts/<int:id>/delete_install_job/', methods=['DELETE'])
-@login_required
-def delete_install_job(id):
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    db_session = DBSession()
-    
-    install_job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
-    if install_job is None:
-        abort(404)
-        
-    try:
-        # Install jobs that are in progress cannot be deleted.
-        if install_job.status is None or install_job.status == JobStatus.FAILED:
-            db_session.delete(install_job)        
-        delete_install_job_dependencies(db_session, install_job.id)
-        
-        db_session.commit()
-        
-        return jsonify({'status': 'OK'})
-
-    except:  
         logger.exception('delete_install_job() hit exception')
         return jsonify({'status': 'Failed: check system logs for details'})
 
@@ -2933,6 +2725,7 @@ def get_host_json(hosts, request):
         hosts_list.append(host.get_json())
     
     return jsonify(**{'host': hosts_list})
+
 
 def get_return_url(request, default_url=None):
     """
