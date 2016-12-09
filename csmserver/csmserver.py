@@ -42,7 +42,6 @@ from forms import UserForm
 from forms import RegionForm
 from forms import ServerForm 
 from forms import ScheduleInstallForm
-from forms import HostScheduleInstallForm
 from forms import AdminConsoleForm
 from forms import SMTPForm
 from forms import PreferencesForm
@@ -50,6 +49,7 @@ from forms import ServerDialogForm
 from forms import BrowseServerDialogForm
 from forms import SoftwareProfileForm
 from forms import ExportSoftwareInformationForm
+from forms import HostScheduleInstallForm
 
 from models import Host
 from models import JumpHost
@@ -182,8 +182,8 @@ from views.tar_support import tar_support
 from views.host_import import host_import
 from views.custom_command import custom_command
 from views.datatable import datatable
+from views.host_dashboard import host_dashboard
 from views.install_dashboard import install_dashboard
-from views.install_dashboard import get_install_job_json_dict
 
 from report_writer import ExportSoftwareInfoHTMLConciseWriter
 from report_writer import ExportSoftwareInfoHTMLDefaultWriter
@@ -211,6 +211,7 @@ app.register_blueprint(tar_support)
 app.register_blueprint(host_import)
 app.register_blueprint(custom_command)
 app.register_blueprint(datatable)
+app.register_blueprint(host_dashboard)
 app.register_blueprint(install_dashboard)
 
 # Hook up the filters
@@ -295,12 +296,6 @@ def get_host_platform_version(region_id):
         
     return jsonify(**{'data': rows})
 
-"""
-@app.route('/install_dashboard')
-@login_required
-def install_dashboard():
-    return render_template('host/install_dashboard.html', system_option=SystemOption.get(DBSession()))
-"""
 
 @app.route('/users/create', methods=['GET','POST'])
 @login_required
@@ -1011,213 +1006,6 @@ def api_get_host_packages_by_states(hostname):
     return jsonify(**{'data': rows})
 
 
-@app.route('/api/hosts/<hostname>/packages/<package_state>')
-@login_required
-def api_get_host_dashboard_packages(hostname, package_state):
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-
-    rows = []       
-    if host is not None:
-        # It is possible that package_state contains a commas delimited state list.
-        # In this case, the union of those packages will be used.
-        package_states = package_state.split(',')
-        packages = []
-        for package_state in package_states:
-            packages_list = db_session.query(Package).filter(
-                and_(Package.host_id == host.id, Package.state == package_state)). order_by(Package.name).all()
-            if len(packages_list) > 0:
-                packages.extend(packages_list)
-            
-        has_module_packages = False
-        for package in packages:        
-            if len(package.modules_package_state) > 0:
-                has_module_packages = True
-                break
-            
-        if has_module_packages:
-            module_package_dict = {}
-            
-            # Format it from module, then packages
-            for package in packages:
-                package_name = package.name if package.location is None else package.location + ':' + package.name
-                for modules_package_state in package.modules_package_state:
-                    module = modules_package_state.module_name
-                    if module in module_package_dict:
-                        module_package_dict[module].append(package_name)
-                    else:
-                        package_list = []
-                        package_list.append(package_name)
-                        module_package_dict[module] = package_list
-            
-            sorted_dict = collections.OrderedDict(sorted(module_package_dict.items()))
-            
-            for module in sorted_dict:
-                package_list = sorted_dict[module]
-                rows.append({'package': module})
-                for package_name in package_list:  
-                    rows.append({'package': ('&nbsp;' * 7) + package_name})
-            
-        else:
-            for package in packages:
-                rows.append({'package': package.name if package.location is None else package.location + ':' + package.name})
-
-    return jsonify(**{'data': rows})
-
-
-@app.route('/api/hosts/<hostname>/scheduled_installs', methods=['GET','POST'])
-@login_required
-def api_get_host_dashboard_scheduled_install(hostname):
-    """
-    Returns scheduled installs for a host in JSON format.
-    """
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-    
-    rows = []       
-    if host is not None and len(host.install_job) > 0:
-        for install_job in host.install_job:
-            row = {}
-            row['hostname'] = host.hostname
-            row['install_job_id'] = install_job.id
-            row['install_action'] = install_job.install_action
-            row['scheduled_time'] = install_job.scheduled_time
-            row['session_log'] = install_job.session_log
-            row['status'] = install_job.status
-
-            rows.append(row)
-            
-    return jsonify(**{'data': rows})
-
-
-@app.route('/api/hosts/<hostname>/host_dashboard/cookie', methods=['GET', 'POST'])
-@login_required
-def api_get_host_dashboard_cookie(hostname):
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-
-    rows = []
-    if host is not None:
-        system_option = SystemOption.get(db_session)
-        row = {}
-        connection_param = host.connection_param[0]
-        row['hostname'] = host.hostname
-        row['region'] = host.region.name if host.region is not None else UNKNOWN
-        row['location'] = host.location
-        row['roles'] = host.roles
-        row['platform'] = host.platform
-        row['software_platform'] = host.software_platform
-        row['software_version'] = host.software_version
-        row['host_or_ip'] = connection_param.host_or_ip
-        row['username'] = connection_param.username
-        row['connection'] = connection_param.connection_type
-        row['port_number'] = connection_param.port_number
-        row['created_by'] = host.created_by
-        
-        if connection_param.jump_host is not None:
-            row['jump_host'] = connection_param.jump_host.hostname
-            
-        # Last inventory successful time
-        inventory_job = host.inventory_job[0]
-        row['last_successful_inventory_elapsed_time'] = get_last_successful_inventory_elapsed_time(host)
-        row['last_successful_inventory_time'] = inventory_job.last_successful_time
-        row['status'] = inventory_job.status
-        
-        install_job_history_count = 0
-        if host is not None:
-            install_job_history_count = db_session.query(InstallJobHistory).count()
-        
-        row['last_install_job_history_count'] = install_job_history_count
-        row['can_schedule'] = system_option.can_schedule
-        rows.append(row)
-    
-    return jsonify(**{'data': rows})
-
-
-@app.route('/api/hosts/<hostname>/inventory', methods=['GET'])
-@login_required
-def api_get_inventory(hostname):
-    rows = []
-    db_session = DBSession()
-
-    host = get_host(db_session, hostname)
-    if host is not None:
-        for inventory in host.host_inventory:
-            row = {}
-            row['location'] = inventory.location
-            row['model_name'] = inventory.model_name
-            row['name'] = inventory.name
-            row['description'] = inventory.description
-            row['serial_number'] = inventory.serial_number
-            row['vid'] = inventory.hardware_revision
-            rows.append(row)
-
-    return jsonify(**{'data': rows})
-
-
-@app.route('/api/hosts/<hostname>/install_job_history', methods=['GET'])
-@login_required
-def api_get_host_dashboard_install_job_history(hostname):
-    rows = [] 
-    db_session = DBSession()
-    
-    host = get_host(db_session, hostname)
-    if host is not None:  
-        record_limit = request.args.get('record_limit')
-        if record_limit is None or record_limit.lower() == 'all':  
-            install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id). \
-                order_by(InstallJobHistory.created_time.desc())
-        else:  
-            install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.host_id == host.id). \
-                order_by(InstallJobHistory.created_time.desc()).limit(record_limit)
-
-        return jsonify(**get_install_job_json_dict(install_jobs))
-    
-    return jsonify(**{'data': rows})
-
-
-@app.route('/api/hosts/<hostname>/software_inventory_history', methods=['GET'])
-@login_required
-def api_get_host_dashboard_software_inventory_history(hostname):
-    rows = [] 
-    db_session = DBSession()
-    
-    host = get_host(db_session, hostname)
-    if host is not None:  
-        record_limit = request.args.get('record_limit')
-        if record_limit is None or record_limit.lower() == 'all':  
-            inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id). \
-                order_by(InventoryJobHistory.created_time.desc())
-        else:  
-            inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id). \
-                order_by(InventoryJobHistory.created_time.desc()).limit(record_limit)
-
-        return jsonify(**get_inventory_job_json_dict(inventory_jobs))
-    
-    return jsonify(**{'data': rows})
-
-
-def get_inventory_job_json_dict(inventory_jobs):
-    rows = []    
-    for inventory_job in inventory_jobs:
-        row = {}
-        row['hostname'] = inventory_job.host.hostname
-        row['status'] = inventory_job.status
-        row['status_time'] = inventory_job.status_time  
-        row['elapsed_time'] = time_difference_UTC(inventory_job.status_time)
-        row['inventory_job_id'] = inventory_job.id
-            
-        if inventory_job.session_log is not None:
-            row['session_log'] = inventory_job.session_log
-             
-        if inventory_job.trace is not None:
-            row['trace'] = inventory_job.id
-                  
-        rows.append(row)
-       
-    return {'data': rows}
-
-
 @app.route('/api/get_files_from_csm_repository/')
 @login_required
 def get_files_from_csm_repository():
@@ -1540,7 +1328,6 @@ def schedule_install():
     # Fills the selections
     fill_regions(form.region.choices)
     fill_dependencies(form.dependency.choices)
-    fill_custom_command_profiles(form.custom_command_profile.choices)
     
     return_url = get_return_url(request, 'home')
     
@@ -1801,11 +1588,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url)
 
-
-def get_host_schedule_install_form(request, host):
-    return HostScheduleInstallForm(request.form)
-
-
 @app.route('/admin_console/', methods=['GET','POST'])
 @login_required
 def admin_console():
@@ -1918,69 +1700,6 @@ def admin_console():
                                smtp_form=smtp_form,
                                system_option=SystemOption.get(db_session),
                                is_ldap_supported=is_ldap_supported())
-
-
-@app.route('/hosts/<hostname>/host_dashboard/')
-@login_required
-def host_dashboard(hostname):
-    db_session = DBSession()
-
-    host = get_host(db_session, hostname)
-    if host is None:
-        abort(404)        
-    
-    return render_template('host/host_dashboard.html', host=host, 
-                           form=get_host_schedule_install_form(request, host),
-                           system_option=SystemOption.get(db_session),
-                           package_states=[PackageState.ACTIVE_COMMITTED,
-                                           PackageState.ACTIVE,
-                                           PackageState.INACTIVE_COMMITTED, PackageState.INACTIVE])
-
-
-@app.route('/hosts/<hostname>/delete_all_failed_installs/', methods=['DELETE'])
-@login_required
-def delete_all_failed_installs_for_host(hostname):
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    return delete_all_installs_for_host(hostname=hostname, status=JobStatus.FAILED)
-
-
-@app.route('/hosts/<hostname>/delete_all_scheduled_installs/', methods=['DELETE'])
-@login_required
-def delete_all_scheduled_installs_for_host(hostname):
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    return delete_all_installs_for_host(hostname)
-
-
-def delete_all_installs_for_host(hostname, status=None):
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    db_session = DBSession()
-
-    host = get_host(db_session, hostname)
-    if host is None:
-        abort(404)
-        
-    try: 
-        install_jobs = db_session.query(InstallJob).filter(
-            InstallJob.host_id == host.id, InstallJob.status == status).all()
-        if not install_jobs:
-            return jsonify(status="No record fits the delete criteria.")
-        
-        for install_job in install_jobs:
-            db_session.delete(install_job)
-            if status == JobStatus.FAILED:
-                delete_install_job_dependencies(db_session, install_job.id)
-            
-        db_session.commit()
-        return jsonify({'status': 'OK'})
-    except:
-        logger.exception('delete_install_job() hit exception')
-        return jsonify({'status': 'Failed: check system logs for details'})
 
 
 @app.route('/hosts/<hostname>/<table>/session_log/<int:id>/')
@@ -2503,24 +2222,6 @@ def api_get_hosts_by_region(region_id, role, software):
                 rows.append(row)
     
     return jsonify(**{'data': rows})
-
-
-@app.route('/api/get_inventory/<hostname>')
-@login_required
-def get_inventory(hostname):
-    if not can_retrieve_software(current_user):
-        abort(401)
-    
-    db_session = DBSession()
-    
-    host = get_host(db_session, hostname)
-    if host is not None:
-        if not host.inventory_job[0].request_update:
-            host.inventory_job[0].request_update = True
-            db_session.commit()
-            return jsonify({'status': 'OK'})
-   
-    return jsonify({'status': 'Failed'})
 
 
 @app.route('/api/hosts/<hostname>/password', methods=['DELETE'])

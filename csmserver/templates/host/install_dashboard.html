@@ -136,7 +136,7 @@
                         },
                         success: function(result) {
                             if (result.status == 'OK') {
-                                install_scheduled_table.api().ajax.reload(null, false);
+                                refresh_scheduled_install_table();
                             } else {
                                 bootbox.alert('Failed to submit download(s).  Check system logs for details.');
                             }
@@ -171,7 +171,7 @@
                     "targets": 0,
                     "data": 'hostname',
                     "render": function(data, type, row) {
-                        return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                        return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
                     }
                 }, {
                     "targets": 1,
@@ -253,7 +253,7 @@
                 "targets": 0,
                 "data": 'hostname',
                 "render": function(data, type, row) {
-                    return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                    return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
                 }
             }, {
                 "targets": 1,
@@ -316,7 +316,7 @@
                 "targets": 0,
                 "data": 'hostname',
                 "render": function(data, type, row) {
-                    return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                    return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
                 }
             }, {
                 "targets": 1,
@@ -421,7 +421,7 @@
                 "targets": 0,
                 "data": 'hostname',
                 "render": function(data, type, row) {
-                    return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                    return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
                 }
             }, {
                 "targets": 1,
