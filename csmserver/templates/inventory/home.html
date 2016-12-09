@@ -1,5 +1,219 @@
 {% extends 'base_inventory.html' %}
 
+
+{% block head %}
+    <link rel="stylesheet" type="text/css" href="/static/jquery/css/inventory.css">
+    <script type="text/javascript" src="/static/jquery/js/common-utils.js"></script>
+
+    <script>
+
+    $(function () {
+        // Initialize
+        refresh_region_name();
+
+        var chassis_summary_table = $("#chassis-summary-table").DataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "bLengthChange": false,
+            "pageLength": 10,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'chassis'
+            }, {
+                "targets": 1,
+                "data": 'count'
+            }],
+            "ajax": {
+                "url": "/inventory/api/get_chassis_summary/" + get_region_from_cookie()
+            },
+            "dom": '<f<t>p>'
+        }).on('draw.dt', function(e, settings, json) {
+            $('#chassis_count').html(chassis_summary_table.page.info().recordsTotal);
+        });
+
+        var model_name_summary_table = $("#model-name-summary-table").DataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "bLengthChange": false,
+            "pageLength": 10,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'model_name'
+            }, {
+                "targets": 1,
+                "data": 'in_use_count'
+            }, {
+                "targets": 2,
+                "data": 'available_count'
+            }],
+            "ajax": {
+                "url": "/inventory/api/get_model_name_summary/" + get_region_from_cookie()
+            },
+            "dom": '<f<t>p>'
+        }).on('draw.dt', function(e, settings, json) {
+            $('#model_name_count').html(model_name_summary_table.page.info().recordsTotal);
+        });
+
+        var host_no_serial_number_table = $("#host-no-serial-number-table").DataTable({
+            "order": [
+                [0, "asc"]
+            ],
+            "bLengthChange": false,
+            "pageLength": 10,
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a href="/hosts/' + row['hostname'] + '/host_dashboard/">' + row['hostname'] + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'count'
+            }, {
+                "targets": 2,
+                "data": 'last_successful_retrieval',
+                "render": function(data, type, row) {
+                    if (row['inventory_status'] == 'failed') {
+                        return '<span style="color:red;">' + data + '</span>';
+                    } else {
+                        return data;
+                    }
+                }
+            }],
+            "ajax": {
+                "url": "/inventory/api/get_hosts_contain_inventory_without_serial_number/" + get_region_from_cookie()
+            },
+            "dom": '<f<t>p>'
+        }).on('draw.dt', function(e, settings, json) {
+            $('#host_no_serial_number_count').html(host_no_serial_number_table.page.info().recordsTotal);
+        });
+
+        $('#filter-region-selector').select2({
+            placeholder: "Filter by Region",
+            allowClear: true,
+            ajax: {
+                url: "/api/get_regions/",
+                dataType: 'json',
+                processResults: function(data, page) {
+                    return {
+                        results: data.data
+                    };
+                },
+                data: function(params) {
+                    return {
+                        q: params.term, // search term
+                        show_all: true,
+                        page: params.page
+                    };
+                }
+            }
+        });
+
+        $('#filter-region-selector').on('change', function(e) {
+            write_region_to_cookie($(this).val());
+
+            refresh_region_name();
+
+            chassis_summary_table.ajax.reload();
+            model_name_summary_table.ajax.reload();
+            host_no_serial_number_table.ajax.reload();
+
+        });
+
+        function get_region_from_cookie() {
+            return parseInt(read_cookie_value('region-filter', 0));
+        }
+
+        function write_region_to_cookie(region_id) {
+            write_cookie_value('region-filter', region_id);
+        }
+
+        function refresh_region_name() {
+            $.ajax({
+                url: "/api/get_region_name/region/" + get_region_from_cookie(),
+                dataType: 'json',
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        $('#selected-region').html(element[0].region_name);
+                    });
+                }
+            });
+        }
+    })
+
+    </script>
+{% endblock %}
+
 {% block main %}
-    <h2>NOT IMPLEMENTED</h2>
+<div class="container">
+    <div class="row">
+        <div class="col-sm-3">
+            <div class="input-group">
+                <span title="Filter Hosts" class="input-group-addon glyphicon glyphicon-filter"></span>
+                <input type="hidden" class="select2" id="filter-region-selector">
+            </div>
+        </div>
+        <div class="col-sm-3" style="padding-top: 4px;">
+            <span><strong>Selected Region:&nbsp;&nbsp;</strong></span><span id='selected-region'></span>
+        </div>
+    </div>
+
+    <div class="row"><hr></div>
+
+    <div class="row">
+        <div class="col-sm-3">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    Chassis Summary:
+                    <span id="chassis_count"></span>
+                </div>
+                <table class="display table" id="chassis-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Chassis</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    Model Name Summary:
+                    <span id="model_name_count"></span>
+                </div>
+                <table class="display table" id="model-name-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Model Name (PID)</th>
+                            <th>In Use</th>
+                            <th>Available</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    Hosts Contain Inventory without Serial Number:
+                    <span id="host_no_serial_number_count"></span>
+                </div>
+                <table class="display table" id="host-no-serial-number-table">
+                    <thead>
+                        <tr>
+                            <th>Hostname</th>
+                            <th>Count</th>
+                            <th>Last Successful Retrieval</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+        </div>
+     </div>
+</div>
 {% endblock %}

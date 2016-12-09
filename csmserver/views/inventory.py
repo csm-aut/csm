@@ -30,7 +30,9 @@ from flask import render_template, jsonify, send_file
 from flask.ext.login import login_required, current_user
 from flask import request
 
+from sqlalchemy import and_
 from sqlalchemy import or_
+from sqlalchemy import func
 
 from wtforms import Form
 from wtforms import BooleanField
@@ -558,6 +560,118 @@ def api_import_inventory():
     return jsonify({'status': 'OK', 'unimported_inventory': []})
 
 
+@inventory.route('/api/get_chassis_summary/<int:region_id>')
+@login_required
+def api_get_chassis_summary(region_id):
+    """
+    Return the chassis, count summary datatable json data
+    """
+    db_session = DBSession()
+
+    if region_id == 0:
+        chassis_summary_query = db_session.query(Host.platform, func.count(Host.platform)).group_by(Host.platform.asc())
+    else:
+        chassis_summary_query = db_session.query(Host.platform, func.count(Host.platform))\
+            .filter(Host.region_id == region_id).group_by(Host.platform.asc())
+
+    rows = []
+    for chassis_type, count in chassis_summary_query:
+        rows.append({'chassis': chassis_type, 'count': count})
+
+    db_session.close()
+    return jsonify(**{'data': rows})
+
+
+@inventory.route('/api/get_model_name_summary/<int:region_id>')
+@login_required
+def api_get_model_name_summary(region_id):
+    """
+    Return the model name, in use (count), available (count) summary datatable json data
+    """
+    db_session = DBSession()
+
+    available_model_name_summary_iter = db_session.query(Inventory.model_name, func.count(Inventory.model_name))\
+        .filter(Inventory.host_id == None)\
+        .group_by(Inventory.model_name.asc()).__iter__()
+
+    if region_id == 0:
+        in_use_model_name_summary_iter = db_session.query(HostInventory.model_name,
+                                                          func.count(HostInventory.model_name))\
+            .group_by(HostInventory.model_name.asc()).__iter__()
+
+    else:
+        in_use_model_name_summary_iter = db_session.query(HostInventory.model_name,
+                                                          func.count(HostInventory.model_name))\
+            .filter(Host.region_id == region_id).group_by(HostInventory.model_name.asc()).__iter__()
+
+    rows = []
+
+    # weaving two sorted (sorted based on model name) arrays of tuples into rows, which is
+    # an array of dictionaries sorted based on the values of 'model_name' in the dictionary.
+    available_model_name, available_count = next(available_model_name_summary_iter, (None, None))
+    in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
+
+    # available_model_name and in_use_model_name may be ''
+    while available_model_name is not None and in_use_model_name is not None:
+
+        if available_model_name == in_use_model_name:
+            rows.append({'model_name': available_model_name, 'in_use_count': in_use_count,
+                         'available_count': available_count})
+            available_model_name, available_count = next(available_model_name_summary_iter, (None, None))
+            in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
+        elif available_model_name < in_use_model_name:
+            rows.append({'model_name': available_model_name, 'in_use_count': 0, 'available_count': available_count})
+            available_model_name, available_count = next(available_model_name_summary_iter, (None, None))
+        else:
+            rows.append({'model_name': in_use_model_name, 'in_use_count': in_use_count, 'available_count': 0})
+            in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
+
+    while available_model_name:
+        rows.append({'model_name': available_model_name, 'in_use_count': 0, 'available_count': available_count})
+        available_model_name, available_count = next(available_model_name_summary_iter, (None, None))
+
+    while in_use_model_name:
+        rows.append({'model_name': in_use_model_name, 'in_use_count': in_use_count, 'available_count': 0})
+        in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
+
+    db_session.close()
+    return jsonify(**{'data': rows})
+
+
+@inventory.route('/api/get_hosts_contain_inventory_without_serial_number/<int:region_id>')
+@login_required
+def api_get_hosts_contain_inventory_without_serial_number(region_id):
+    """
+    Return the hostname, count (of inventory without serial numbers in the host), last successful retrieval
+    datatable json data
+    """
+    db_session = DBSession()
+
+    if region_id == 0:
+        host_with_count_query = db_session.query(Host, func.count(HostInventory.name))\
+            .group_by(Host.hostname.asc())\
+            .filter(and_(Host.id == HostInventory.host_id, HostInventory.serial_number == ""))
+    else:
+        host_with_count_query = db_session.query(Host, func.count(HostInventory.name))\
+            .group_by(Host.hostname.asc())\
+            .filter(and_(Host.region_id == region_id, Host.id == HostInventory.host_id,
+                         HostInventory.serial_number == "")).all()
+
+    rows = []
+    for host, count in host_with_count_query:
+        data_field = {'hostname': host.hostname, 'count': count,
+                      'last_successful_retrieval': '', 'inventory_retrieval_status': ''}
+        if host:
+            inventory_job = host.inventory_job[0]
+            if inventory_job and inventory_job.last_successful_time:
+                data_field['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
+                data_field['inventory_retrieval_status'] = inventory_job.status
+        rows.append(data_field)
+
+    db_session.close()
+    return jsonify(**{'data': rows})
+
+
 @inventory.route('/api/get_chassis_types/')
 @login_required
 def api_get_chassis():
@@ -605,7 +719,7 @@ def update_select2_options(request_args, data_field):
     for item in item_iter:
         if item[0]:
             rows.append({'id': item[0], 'text': item[0]})
-
+    db_session.close()
     return jsonify(**{'data': rows})
 
 
