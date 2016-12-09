@@ -1768,6 +1768,7 @@ def schedule_install():
     # Fills the selections
     fill_regions(form.region.choices)
     fill_dependencies(form.dependency.choices)
+    fill_custom_command_profiles(form.custom_command_profile.choices)
     
     return_url = get_return_url(request, 'home')
     
