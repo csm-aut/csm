@@ -70,9 +70,9 @@ HEADER_FIELD_MODEL_NAME = 'model_name'
 HEADER_FIELD_NOTES = 'notes'
 
 
-@inventory.route('/inventory_home')
+@inventory.route('/')
 @login_required
-def inventory_home():
+def home():
     return render_template('inventory/home.html', current_user=current_user)
 
 
