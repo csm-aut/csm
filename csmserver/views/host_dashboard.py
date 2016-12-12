@@ -230,13 +230,8 @@ def api_get_host_dashboard_software_inventory_history(hostname):
 
     host = get_host(db_session, hostname)
     if host is not None:
-        record_limit = request.args.get('record_limit')
-        if record_limit is None or record_limit.lower() == 'all':
-            inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id). \
-                order_by(InventoryJobHistory.created_time.desc())
-        else:
-            inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id). \
-                order_by(InventoryJobHistory.created_time.desc()).limit(record_limit)
+        inventory_jobs = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.host_id == host.id). \
+            order_by(InventoryJobHistory.created_time.desc())
 
         return jsonify(**get_inventory_job_json_dict(inventory_jobs))
 
