@@ -124,7 +124,7 @@
             var server_directory = this_record.attr('data-server-directory');
 
             var message = "Re-submit the failed downloads for <b>" + install_action + "</b>' for host '<b>" + hostname + "</b>'?<br>" +
-                "(Notice: Until all downloads are successful, the scheduled install will not proceed.)"
+                "(Notice: Until all downloads are successful, the scheduled installation will not proceed.)"
             bootbox.confirm(message, function(result) {
                 if (result) {
                     $.ajax({
@@ -194,7 +194,7 @@
                                 data-server-id="' + row['server_id'] + '" \
                                 data-server-directory="' + row['server_directory'] + '" \
                                 data-user-id="' + row['user_id'] + '" \
-                                data-resubmit-url="/api/resubmit_download_jobs/"><img src="/static/resubmit.png" title="Re-submit Failed Download(s)"></a>';
+                                data-resubmit-url="/install_dashboard/api/resubmit_download_jobs/"><img src="/static/resubmit.png" title="Click to re-submit failed download(s)"></a>';
                         }
                         return data;
 

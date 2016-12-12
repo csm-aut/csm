@@ -52,7 +52,6 @@ from forms import ExportSoftwareInformationForm
 from forms import HostScheduleInstallForm
 
 from models import Host
-from models import JumpHost
 from models import InventoryJob
 from models import Log, logger 
 from models import InventoryJobHistory
@@ -69,17 +68,13 @@ from models import Preferences
 from models import SMUMeta
 from models import SMUInfo
 from models import DownloadJob
-from models import DownloadJobHistory
 from models import CSMMessage
-from models import get_download_job_key_dict
-from models import Inventory
 
 from validate import is_connection_valid
 from validate import is_reachable
 
 from constants import InstallAction
 from constants import JobStatus
-from constants import PackageState
 from constants import ServerType
 from constants import UserPrivilege
 from constants import UNKNOWN
@@ -123,7 +118,6 @@ from common import get_smtp_server
 from common import can_check_reachability
 from common import can_retrieve_software
 from common import can_install
-from common import can_delete_install
 from common import can_edit_install
 from common import can_create_user
 from common import can_edit
@@ -132,10 +126,8 @@ from common import can_create
 from common import create_or_update_install_job
 from common import create_or_update_region
 from common import create_download_jobs
-from common import get_download_job_key
 from common import create_or_update_host
 from common import delete_host
-from common import delete_install_job_dependencies
 from common import get_last_install_action
 from common import get_last_completed_install_job_for_install_action
 from common import download_session_logs
@@ -148,7 +140,6 @@ from utils import get_file_list
 from utils import make_url
 from utils import trim_last_slash
 from utils import is_empty
-from utils import get_tarfile_file_list
 from utils import comma_delimited_str_to_list
 from utils import get_base_url 
 from utils import is_ldap_supported
@@ -157,7 +148,6 @@ from utils import get_json_value
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
-from utils import datetime_from_local_to_utc
 
 from server_helper import get_server_impl
 from wtforms.validators import Required
@@ -184,13 +174,12 @@ from views.custom_command import custom_command
 from views.datatable import datatable
 from views.host_dashboard import host_dashboard
 from views.install_dashboard import install_dashboard
+from views.download_dashboard import download_dashboard
 
 from report_writer import ExportSoftwareInfoHTMLConciseWriter
 from report_writer import ExportSoftwareInfoHTMLDefaultWriter
 from report_writer import ExportSoftwareInfoExcelConciseWriter
 from report_writer import ExportSoftwareInfoExcelDefaultWriter
-
-from tarfile import ReadError
 
 import os
 import io
@@ -213,6 +202,7 @@ app.register_blueprint(custom_command)
 app.register_blueprint(datatable)
 app.register_blueprint(host_dashboard)
 app.register_blueprint(install_dashboard)
+app.register_blueprint(download_dashboard)
 
 # Hook up the filters
 filters.init(app)
@@ -1006,245 +996,6 @@ def api_get_host_packages_by_states(hostname):
     return jsonify(**{'data': rows})
 
 
-@app.route('/api/get_files_from_csm_repository/')
-@login_required
-def get_files_from_csm_repository():
-    rows = []
-    file_list = get_file_list(get_repository_directory())
-    
-    for filename in file_list:
-        if filename.endswith('.tar'):
-            statinfo = os.stat(get_repository_directory() + filename)
-            row = {}
-            row['image_name'] = filename
-            row['image_size'] = str(statinfo.st_size)
-            row['downloaded_time'] = datetime_from_local_to_utc(datetime.datetime.fromtimestamp(statinfo.st_mtime))
-            rows.append(row)
-
-    return jsonify(**{'data': rows})
-
-@app.route('/api/image/<image_name>/delete/', methods=['DELETE'])
-@login_required  
-def api_delete_image_from_repository(image_name):
-    if current_user.privilege != UserPrivilege.ADMIN and current_user.privilege != UserPrivilege.NETWORK_ADMIN:
-        abort(401)
-    
-    tar_image_path = get_repository_directory() + image_name
-    try:
-        file_list = get_tarfile_file_list(tar_image_path)
-        for filename in file_list:
-            try:
-                os.remove(get_repository_directory() + filename)
-            except:
-                pass
-    except ReadError:
-        # In case, it is a partial downloaded TAR.
-        pass
-       
-    try:
-        os.remove(tar_image_path) 
-        os.remove(tar_image_path + '.size')
-    except:
-        logger.exception('api_delete_image_from_repository() hit exception')
-        return jsonify({'status': 'Failed'})
-    
-    return jsonify({'status': 'OK'})
-
-    
-@app.route('/api/download_scheduled/')
-@login_required
-def api_get_download_scheduled():  
-    db_session = DBSession()
-    download_jobs = db_session.query(DownloadJob).filter(DownloadJob.status == None)
-
-    return jsonify(**get_download_job_json_dict(db_session, download_jobs))
-
-
-@app.route('/api/download_in_progress/')
-@login_required
-def api_get_download_in_progress():
-    db_session = DBSession()    
-    download_jobs = db_session.query(DownloadJob).filter(and_(
-    DownloadJob.status != None,
-    DownloadJob.status != JobStatus.FAILED) )
-
-    return jsonify(**get_download_job_json_dict(db_session, download_jobs))
-
-
-@app.route('/api/download_failed/')
-@login_required
-def api_get_download_failed():
-    db_session = DBSession()   
-    download_jobs = db_session.query(DownloadJob).filter(DownloadJob.status == JobStatus.FAILED)
-
-    return jsonify(**get_download_job_json_dict(db_session, download_jobs))
-
-
-@app.route('/api/download_completed/')
-@login_required
-def api_get_download_completed():
-    db_session = DBSession()
-
-    record_limit = request.args.get('record_limit')
-
-    if record_limit is None or record_limit.lower() == 'all':   
-        download_jobs = db_session.query(DownloadJobHistory).filter(DownloadJobHistory.status == JobStatus.COMPLETED). \
-            order_by(DownloadJobHistory.status_time.desc())
-    else:  
-        download_jobs = db_session.query(DownloadJobHistory).filter(DownloadJobHistory.status == JobStatus.COMPLETED). \
-            order_by(DownloadJobHistory.status_time.desc()).limit(record_limit)
-
-    return jsonify(**get_download_job_json_dict(db_session, download_jobs))
-
-
-@app.route('/api/download_dashboard/cookie')
-@login_required
-def api_get_download_dashboard_cookie():
-    db_session = DBSession()
-
-    completed_download_job_count = db_session.query(DownloadJobHistory).filter(
-        DownloadJobHistory.status == JobStatus.COMPLETED).count()
-    
-    return jsonify(**{'data': [{'last_completed_download_job_count': completed_download_job_count}]})
-
-
-def get_download_job_json_dict(db_session, download_jobs):
-    rows = []    
-    for download_job in download_jobs:
-        if isinstance(download_job, DownloadJob) or isinstance(download_job, DownloadJobHistory):
-            row = {}
-            row['download_job_id'] = download_job.id
-            row['image_name'] = download_job.cco_filename 
-            row['scheduled_time'] = download_job.scheduled_time
-            
-            server = get_server_by_id(db_session, download_job.server_id)
-            if server is not None:
-                row['server_repository'] = server.hostname
-                if not is_empty(download_job.server_directory):
-                    row['server_repository'] = row['server_repository'] + \
-                                               '<br><span style="color: Gray;"><b>Sub-directory:</b></span> ' + \
-                                               download_job.server_directory
-            else:
-                row['server_repository'] = UNKNOWN
-                
-            row['status'] = download_job.status
-            row['status_time'] = download_job.status_time               
-            row['created_by'] = download_job.created_by
-            
-            if download_job.trace is not None:
-                row['trace'] = download_job.id
-                  
-            rows.append(row)
-       
-    return {'data': rows}
-
-
-@app.route('/api/resubmit_download_jobs/')
-@login_required
-def api_resubmit_download_jobs():
-    if not can_install(current_user):
-        abort(401)
-     
-    user_id = request.args.get("user_id")   
-    server_id = request.args.get("server_id")
-    server_directory = request.args.get("server_directory")
-    
-    db_session = DBSession()   
-    download_jobs = db_session.query(DownloadJob).filter(and_(DownloadJob.user_id == user_id, 
-        DownloadJob.server_id == server_id, DownloadJob.server_directory == server_directory))
-    
-    for download_job in download_jobs:
-        download_job.status = None
-        download_job.status_time = None        
-    db_session.commit()
-    
-    return jsonify({'status': 'OK'})
-
-
-@app.route('/resubmit_download_job/<int:id>/', methods=['POST'])
-@login_required
-def resubmit_download_job(id):
-    if not can_install(current_user):
-        abort(401)
-    
-    db_session = DBSession()
-    
-    download_job = db_session.query(DownloadJob).filter(DownloadJob.id == id).first()
-    if download_job is None:
-        abort(404)   
-
-    try: 
-        # Download jobs that are in progress cannot be deleted.
-        download_job.status = None
-        download_job.status_time = None        
-        db_session.commit()
-        
-        return jsonify({'status': 'OK'})
-
-    except:  
-        logger.exception('resubmit_download_job() hit exception')
-        return jsonify({'status': 'Failed: check system logs for details'})
-
-
-@app.route('/delete_download_job/<int:id>/', methods=['DELETE'])
-@login_required
-def delete_download_job(id):
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    db_session = DBSession()
-    
-    download_job = db_session.query(DownloadJob).filter(DownloadJob.id == id).first()
-    if download_job is None:
-        abort(404)
-        
-    try: 
-        # Download jobs that are in progress cannot be deleted.
-        if download_job.status is None or download_job.status == JobStatus.FAILED:
-            db_session.delete(download_job)            
-            db_session.commit()
-        
-        return jsonify({'status': 'OK'})
-
-    except:  
-        logger.exception('delete_download_job() hit exception')
-        return jsonify({'status': 'Failed: check system logs for details'})
-
-
-@app.route('/hosts/delete_all_failed_downloads/', methods=['DELETE'])
-@login_required
-def delete_all_failed_downloads():
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    return delete_all_downloads(status=JobStatus.FAILED)
-
-
-@app.route('/hosts/delete_all_scheduled_downloads/', methods=['DELETE'])
-@login_required
-def delete_all_scheduled_downloads():
-    if not can_delete_install(current_user):
-        abort(401)
-        
-    return delete_all_downloads()
-
-
-def delete_all_downloads(status=None):        
-    db_session = DBSession()
-    
-    try:
-        download_jobs = db_session.query(DownloadJob).filter(DownloadJob.status == status)    
-        for download_job in download_jobs:
-            db_session.delete(download_job)
-        
-        db_session.commit()    
-
-        return jsonify({'status': 'OK'})
-    except:
-        logger.exception('delete_download_job() hit exception')
-        return jsonify({'status': 'Failed: check system logs for details'})
-
-
 @app.route('/api/get_server_time')
 @login_required
 def api_get_server_time():  
@@ -1447,15 +1198,6 @@ def api_get_supported_install_actions(hostname):
     return jsonify(**{'data': rows})
 
 
-@app.route('/hosts/download_dashboard/', methods=['GET', 'POST'])
-@login_required
-def download_dashboard():
-    if not can_install(current_user):
-        abort(401)
-
-    return render_template('host/download_dashboard.html', system_option=SystemOption.get(DBSession()))
-
-
 @app.route('/api/create_download_jobs', methods=['POST'])
 @login_required
 def api_create_download_jobs():
@@ -1481,7 +1223,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     if host is None:
         abort(404)
 
-    return_url = get_return_url(request, 'host_dashboard')
+    return_url = get_return_url(request, 'host_dashboard.home')
 
     form = HostScheduleInstallForm(request.form)
     

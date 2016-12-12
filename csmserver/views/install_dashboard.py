@@ -27,19 +27,24 @@ from flask import jsonify
 from flask import abort
 from flask import render_template
 from flask import url_for
+from flask import request
 from flask.ext.login import current_user
+
+from sqlalchemy import and_
 
 from database import DBSession
 
 from models import logger
 from models import SystemOption
 from models import InstallJob
+from models import DownloadJob
 from models import InstallJobHistory
 from models import get_download_job_key_dict
 
 from common import get_download_job_key
 from common import delete_install_job_dependencies
 from common import can_delete_install
+from common import can_install
 
 from constants import JobStatus
 
@@ -150,7 +155,7 @@ def get_download_job_status(download_job_key_dict, install_job, dependency_statu
             job_status = "{})".format(job_status)
 
         # job_status = '(Failed)' if is_download_failed else ''
-        download_url = '<a href="' + url_for('download_dashboard') + '">Pending Download ' + job_status + '</a>'
+        download_url = '<a href="' + url_for('download_dashboard.home') + '">Pending Download ' + job_status + '</a>'
         if len(dependency_status) > 0:
             dependency_status = '{}<br/>{}'.format(dependency_status, download_url)
         else:
@@ -202,3 +207,24 @@ def get_install_job_json_dict(install_jobs):
 
     return {'data': rows}
 
+
+@install_dashboard.route('/api/resubmit_download_jobs/')
+@login_required
+def api_resubmit_download_jobs():
+    if not can_install(current_user):
+        abort(401)
+
+    user_id = request.args.get("user_id")
+    server_id = request.args.get("server_id")
+    server_directory = request.args.get("server_directory")
+
+    db_session = DBSession()
+    download_jobs = db_session.query(DownloadJob).filter(and_(DownloadJob.user_id == user_id,
+        DownloadJob.server_id == server_id, DownloadJob.server_directory == server_directory))
+
+    for download_job in download_jobs:
+        download_job.status = None
+        download_job.status_time = None
+    db_session.commit()
+
+    return jsonify({'status': 'OK'})
