@@ -79,6 +79,7 @@ from report_writer import ExportSoftwareInfoExcelConciseWriter
 from report_writer import ExportSoftwareInfoExcelDefaultWriter
 
 from smu_utils import SMU_INDICATOR
+from smu_utils import get_validated_list
 
 from cisco_service.bug_service import BugServiceHandler
 
@@ -352,7 +353,7 @@ def validate_software():
     server_dialog_form = ServerDialogForm(request.form)
     software_profile_form = SoftwareProfileForm(request.form)
 
-    return render_template('csm_client/validate_software.html',
+    return render_template('cco/validate_software.html',
                            server_dialog_form=server_dialog_form,
                            software_profile_form=software_profile_form,
                            system_option=SystemOption.get(DBSession()))
@@ -520,6 +521,12 @@ def is_smu_applicable(host_packages, required_package_bundles):
 
     return True
 
+
+@cco.route('/api/validate_software')
+@login_required
+def api_validate_software():
+    smu_list = request.args.get('smu_list').split()
+    return jsonify(**{'data': get_validated_list(smu_list)})
 
 
 class PreferencesForm(Form):

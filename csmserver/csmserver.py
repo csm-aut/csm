@@ -137,7 +137,6 @@ from utils import make_file_writable
 from server_helper import get_server_impl
 from wtforms.validators import Required
 
-from smu_utils import get_validated_list
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
 
@@ -2359,13 +2358,6 @@ def host_packages_contains(host_packages, smu_name):
         if smu_name in package:
             return True
     return False
-
-
-@app.route('/api/validate_software')
-@login_required
-def api_validate_software():
-    smu_list = request.args.get('smu_list').split()
-    return jsonify(**{'data': get_validated_list(smu_list)})
 
 
 # This route will prompt a file download
