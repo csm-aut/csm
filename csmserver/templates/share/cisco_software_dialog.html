@@ -10,6 +10,37 @@ Caller may provide the following WTForms elements with the following IDs
 
 {% macro cisco_software_dialog(enable_cco_lookup, server, server_directory) %}
 
+<div id="display-ddts-details-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <span id="ddts-spinner">
+                        <img src="{{ url_for('static', filename='spinner.gif') }}">
+                    </span>
+                    <h4>
+                        <center><span id="ddts-name-title"></span></center>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div style="height:350px; overflow-y:scroll; word-wrap:break-word;">
+                        <table class="table table-striped" id="ddts-details-table">
+                            <thead>
+                                <tr>
+                                    <th>Field Name</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 <div id="smu-info-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" class="form-horizontal">
@@ -43,7 +74,7 @@ Caller may provide the following WTForms elements with the following IDs
     </div>
 </div>
 
-<div id="cisco-software-dialog" data-hostname="" data-cco-lookup-enabled="{{ cco_lookup_enable }}" class="modal" role="dialog">
+<div id="cisco-software-dialog" data-hostname="" data-cco-lookup-enabled="{{ enable_cco_lookup }}" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" class="form-horizontal">
             <div class="modal-content">

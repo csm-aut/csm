@@ -25,9 +25,9 @@
     <li class="divider"></li>
     <li><a href="{{ url_for('current_user_edit') }}">Edit User</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('validate_software') }}">Validate Software</a></li>
+    <li><a href="{{ url_for('cco.validate_software') }}">Validate Software</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('user_preferences') }}">User Preferences</a></li>
+    <li><a href="{{ url_for('cco.user_preferences') }}">User Preferences</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('tools.create_tar_file') }}">Create Tar File</a></li>
     {% if current_user.privilege == 'Admin' or current_user.privilege == 'Network Admin' %}
@@ -83,7 +83,7 @@
 
         function create_menu() {
             $.ajax({
-                url: "{{ url_for('api_get_catalog') }}",
+                url: "{{ url_for('cco.api_get_catalog') }}",
                 dataType: 'json',
                 success: function(data) {
                     var html = '';
@@ -100,7 +100,7 @@
                                 '<ul class="dropdown-menu">';
 
                             for (var j = 0; j < releases.length; j++) {
-                                html += '<li><a href="/get_smu_list/platform/' + platform + '/release/' + releases[j] + '">' + releases[j] + '</a></li>'
+                                html += '<li><a href="/cco/platform/' + platform + '/release/' + releases[j] + '">' + releases[j] + '</a></li>'
                             }
 
                             html += '</ul>' + '</li>'
