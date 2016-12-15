@@ -40,7 +40,6 @@
             "order": [
                 [0, "asc"]
             ],
-            "bLengthChange": false,
             "pageLength": 10,
             "columnDefs": [{
                 "targets": 0,
@@ -62,7 +61,7 @@
             "ajax": {
                 "url": "/inventory/api/get_model_name_summary/" + prepare_region_from_cookie_for_rest_api()
             },
-            "dom": '<f<t>p>'
+            "dom": '<lf<t>p>'
         }).on('draw.dt', function(e, settings, json) {
             $('#model_name_count').html(model_name_summary_table.page.info().recordsTotal);
         });

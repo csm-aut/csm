@@ -75,10 +75,10 @@ HEADER_FIELD_MODEL_NAME = 'model_name'
 HEADER_FIELD_NOTES = 'notes'
 
 
-@inventory.route('/')
+@inventory.route('/dashboard')
 @login_required
-def home():
-    return render_template('inventory/home.html', current_user=current_user)
+def dashboard():
+    return render_template('inventory/dashboard.html', current_user=current_user)
 
 
 @inventory.route('/query_add_inventory', methods=['GET', 'POST'])

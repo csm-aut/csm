@@ -19,7 +19,7 @@
         <div class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
                 {% if current_user.is_authenticated() %}
-                <li class="active"><a href="{{ url_for('inventory.home') }}">Home</a></li>
+                <li class="active"><a href="{{ url_for('inventory.dashboard') }}">Inventory Dashboard</a></li>
                 <li><a href="{{ url_for('inventory.query_add_inventory') }}">Query/Add Inventory</a></li>
                 <li><a href="{{ url_for('inventory.search_inventory') }}">Search</a></li>
                 {% endif %}
