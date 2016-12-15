@@ -2268,7 +2268,9 @@ def host_session_log(hostname, table, id):
     """
     db_session = DBSession()
     
-    record = None   
+    record = None
+    doc_central_log_file_path = ''
+
     if table == 'install_job':
         record = db_session.query(InstallJob).filter(InstallJob.id == id).first()
     elif table == 'install_job_history':
