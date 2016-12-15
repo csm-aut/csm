@@ -11,15 +11,35 @@
         var search_clicked = false;
         var search_spinner = $('#search_spinner');
         var no_inventory_match = $('#no-inventory');
+        var search_filters = {};
         search_spinner.css("visibility", "hidden");
 
         no_inventory_match.hide();
 
-        function convert_array_to_string(array) {
-            if (array) {
-                return array.toString()
+        function prepare_filters_for_rest_api(json_data, search_available_or_not) {
+            json_data.available = search_available_or_not;
+
+            if (search_filters['serial_number']) {
+                json_data.serial_number = search_filters['serial_number'];
             }
-            return ''
+
+            if (search_filters['region_ids']) {
+                json_data.region_ids = search_filters['region_ids']
+            }
+            if (search_filters['chassis_types']) {
+                json_data.chassis_types = search_filters['chassis_types']
+            }
+            if (search_filters['software_versions']) {
+                json_data.software_versions = search_filters['software_versions']
+            }
+            if (search_filters['partial_model_names']) {
+                json_data.partial_model_names = search_filters['partial_model_names']
+            }
+            if (search_filters['model_names']) {
+                json_data.model_names = search_filters['model_names']
+            }
+
+            return json_data;
         }
 
         var available_inventory_table = $("#available-inventory-datatable").DataTable({
@@ -28,16 +48,7 @@
             "ajax": {
                 "url": "{{ url_for('datatable.api_search_inventory') }}",
                 "data": function (d) {
-                    d.available = true;
-                    d.serial_number = $('#serial_number').val();
-                    d.region_ids = convert_array_to_string($('#region-selector').val());
-                    d.chassis_types = convert_array_to_string($('#chassis-selector').val());
-                    d.software_versions = convert_array_to_string($('#software-selector').val());
-                    if ($('#model-name-selector').prop('disabled')) {
-                        d.partial_model_names = $('#partial_model_names').val();
-                    } else {
-                        d.model_names = convert_array_to_string($('#model-name-selector').val());
-                    }
+                    prepare_filters_for_rest_api(d, true);
                 }
             },
             "columns": [
@@ -83,16 +94,8 @@
             "ajax": {
                 "url": "{{ url_for('datatable.api_search_inventory') }}",
                 "data": function (d) {
-                    d.available = false;
-                    d.serial_number = $('#serial_number').val();
-                    d.region_ids = convert_array_to_string($('#region-selector').val());
-                    d.chassis_types = convert_array_to_string($('#chassis-selector').val());
-                    d.software_versions = convert_array_to_string($('#software-selector').val());
-                    if ($('#model-name-selector').prop('disabled')) {
-                        d.partial_model_names = $('#partial_model_names').val();
-                    } else {
-                        d.model_names = convert_array_to_string($('#model-name-selector').val());
-                    }
+                    prepare_filters_for_rest_api(d, false);
+
                 }
             },
             "columns": [
@@ -174,9 +177,39 @@
             $('#search-inventory-tabs').empty();
             $('#tables').hide();
             search_clicked = true;
+            set_search_filters();
             in_use_inventory_table.ajax.reload();
             available_inventory_table.ajax.reload();
         });
+
+        function set_search_filters() {
+            if ($('#serial_number').val() == "") {
+                search_filters['serial_number'] = null;
+            } else {
+                search_filters['serial_number'] = $('#serial_number').val();
+            }
+
+            assign_search_filter($('#region-selector'), 'region_ids');
+            assign_search_filter($('#chassis-selector'), 'chassis_types');
+            assign_search_filter($('#software-selector'), 'software_versions');
+
+
+            if ($('#model-name-selector').prop('disabled')) {
+                search_filters['model_names'] = null;
+                search_filters['partial_model_names'] = $('#partial_model_names').val();
+            } else {
+                search_filters['partial_model_names'] = null;
+                assign_search_filter($('#model-name-selector'), 'model_names');
+            }
+        }
+
+        function assign_search_filter(filter_jquery_field, filter_name) {
+            if (filter_jquery_field.val()) {
+                search_filters[filter_name] = filter_jquery_field.val().toString()
+            } else {
+                search_filters[filter_name] = null
+            }
+        }
 
         function post_handling_after_drawing_table() {
             table_finished_drawing++;

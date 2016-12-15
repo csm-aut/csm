@@ -25,7 +25,7 @@
 from flask import Blueprint
 from flask import request
 from flask import jsonify
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 
 from flask.ext.login import login_required
 
@@ -37,6 +37,7 @@ from inventory import query_in_use_inventory
 from models import Host
 from models import HostInventory
 from models import Inventory
+from models import InventoryJob
 from models import Region
 from models import JumpHost
 from models import ConnectionParam
@@ -66,9 +67,12 @@ class DataTableParams(object):
         self.column_order = int(request.args.get('order[0][column]'))
 
 
-@datatable.route('/api/get_managed_hosts/region/<int:region_id>')
+@datatable.route('/api/get_managed_hosts/region/<int:region_id>', defaults={'chassis': None, 'filter_failed': 0})
+@datatable.route('/api/get_managed_hosts/region/<int:region_id>/chassis/<string:chassis>', defaults={'filter_failed': 0})
+@datatable.route('/api/get_managed_hosts/region/<int:region_id>/filter_failed/<int:filter_failed>',
+                 defaults={'chassis': None})
 @login_required
-def get_server_managed_hosts(region_id):
+def get_server_managed_hosts(region_id, chassis, filter_failed):
     dt_params = DataTableParams(request)
 
     rows = []
@@ -79,6 +83,7 @@ def get_server_managed_hosts(region_id):
         criteria = '%' + dt_params.search_value + '%'
         clauses.append(Host.hostname.like(criteria))
         clauses.append(Region.name.like(criteria))
+        clauses.append(Host.location.like(criteria))
         clauses.append(ConnectionParam.host_or_ip.like(criteria))
         clauses.append(Host.platform.like(criteria))
         clauses.append(Host.software_platform.like(criteria))
@@ -88,17 +93,30 @@ def get_server_managed_hosts(region_id):
         .join(Region, Host.region_id == Region.id)\
         .join(ConnectionParam, Host.id == ConnectionParam.host_id)\
 
-    if region_id == 0:
-        query = query.filter(or_(*clauses))
-        total_count = db_session.query(Host).count()
+    and_clauses = []
+    if region_id != 0:
+        and_clauses.append(Host.region_id == region_id)
+
+    if chassis is not None:
+        and_clauses.append(Host.platform == chassis)
+
+    if filter_failed != 0:
+        query = query.join(InventoryJob, Host.id == InventoryJob.host_id)
+        and_clauses.append(InventoryJob.status == JobStatus.FAILED)
+
+    if and_clauses:
+        query = query.filter(and_(*and_clauses))
+        total_count = query.count()
     else:
-        query = query.filter(and_(Host.region_id == region_id), or_(*clauses))
-        total_count = db_session.query(Host).filter(Host.region_id == region_id).count()
+        total_count = db_session.query(Host).count()
+
+    query = query.filter(or_(*clauses))
 
     filtered_count = query.count()
 
     columns = [getattr(Host.hostname, dt_params.sort_order)(),
                getattr(Region.name, dt_params.sort_order)(),
+               getattr(Host.location, dt_params.sort_order)(),
                getattr(ConnectionParam.host_or_ip, dt_params.sort_order)(),
                getattr(Host.platform, dt_params.sort_order)(),
                getattr(Host.software_platform, dt_params.sort_order)(),
@@ -112,6 +130,7 @@ def get_server_managed_hosts(region_id):
             row = dict()
             row['hostname'] = host.hostname
             row['region'] = '' if host.region is None else host.region.name
+            row['location'] = host.location
 
             if len(host.connection_param) > 0:
                 row['host_or_ip'] = host.connection_param[0].host_or_ip
@@ -136,7 +155,6 @@ def get_server_managed_hosts(region_id):
     response['recordsTotal'] = total_count
     response['recordsFiltered'] = filtered_count
     response['data'] = rows
-
     return jsonify(**response)
 
 
@@ -413,17 +431,21 @@ def api_search_inventory():
 
     search_filters = dict()
 
-    search_filters['serial_number'] = request_args.get('serial_number')
+    search_filters['serial_number'] = request_args.get('serial_number') \
+        if request_args.get('serial_number') is not None else None
     search_filters['region_ids'] = request_args.get('region_ids').split(',') \
-        if request_args.get('region_ids') else []
+        if request_args.get('region_ids') is not None else []
     search_filters['chassis_types'] = request_args.get('chassis_types').split(',') \
-        if request_args.get('chassis_types') else []
+        if request_args.get('chassis_types') is not None else []
     search_filters['software_versions'] = request_args.get('software_versions').split(',') \
-        if request_args.get('software_versions') else []
+        if request_args.get('software_versions') is not None else []
     search_filters['model_names'] = request_args.get('model_names').split(',') \
-        if request_args.get('model_names') else []
+        if request_args.get('model_names') is not None else []
     search_filters['partial_model_names'] = request_args.get('partial_model_names').split(',') \
-        if request_args.get('partial_model_names') else []
+        if request_args.get('partial_model_names') is not None else []
+
+    search_filters['hostname'] = request_args.get('hostname') \
+        if request_args.get('hostname') is not None else None
 
     if request_args.get('available') == "true":
         results, total_count, filtered_count = handle_search_for_available_inventory(db_session,
@@ -525,9 +547,7 @@ def handle_search_for_in_use_inventory(db_session, json_data, dt_params):
         clauses.append(Host.location.like(criteria))
         clauses.append(Region.name.like(criteria))
 
-        results = results.join(Host, HostInventory.host_id == Host.id) \
-            .join(Region, Host.region_id == Region.id) \
-            .filter(or_(*clauses))
+        results = results.join(Region, Host.region_id == Region.id).filter(or_(*clauses))
         filtered_count = results.count()
     else:
         filtered_count = total_count
@@ -547,3 +567,114 @@ def handle_search_for_in_use_inventory(db_session, json_data, dt_params):
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length)
 
     return results, total_count, filtered_count
+
+
+@datatable.route('/api/get_inventory_without_serial_number/<int:region_id>')
+@login_required
+def api_get_inventory_without_serial_number(region_id):
+    """
+    Return the hostname, count (# of inventory without serial numbers in the host)
+    datatable json data
+    """
+    dt_params = DataTableParams(request)
+
+    db_session = DBSession()
+
+    clause = None
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clause = Host.hostname.like(criteria)
+
+    if region_id == 0:
+        host_with_count_query = db_session.query(Host.hostname, func.count(HostInventory.name)) \
+            .group_by(Host.hostname.asc()) \
+            .filter(and_(Host.id == HostInventory.host_id, HostInventory.serial_number == ""))
+    else:
+        host_with_count_query = db_session.query(Host.hostname, func.count(HostInventory.name)) \
+            .group_by(Host.hostname.asc()) \
+            .filter(and_(Host.region_id == region_id, Host.id == HostInventory.host_id,
+                         HostInventory.serial_number == ""))
+
+    total_count = host_with_count_query.count()
+    if clause is not None:
+        host_with_count_query = host_with_count_query.filter(clause)
+        filtered_count = host_with_count_query.count()
+    else:
+        filtered_count = total_count
+
+    columns = [getattr(Host.hostname, dt_params.sort_order)()]
+
+    host_with_count = host_with_count_query.order_by(columns[dt_params.column_order]) \
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    rows = []
+    for hostname, count in host_with_count:
+        rows.append({'hostname': hostname, 'count': count})
+
+    db_session.close()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response['data'] = rows
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_inventory_with_duplicate_serial_number/<int:region_id>')
+@login_required
+def api_get_inventory_with_duplicate_serial_number(region_id):
+    """
+    Return the hostname, count (# of inventory with duplicate serial numbers in the host)
+    datatable json data
+    """
+    dt_params = DataTableParams(request)
+
+    db_session = DBSession()
+
+    clause = None
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clause = HostInventory.serial_number.like(criteria)
+
+    if region_id == 0:
+        serial_number_with_count_query = db_session.query(HostInventory.serial_number,
+                                                          func.count(HostInventory.serial_number))\
+            .filter(HostInventory.serial_number != "")\
+            .group_by(HostInventory.serial_number.asc()) \
+            .having(func.count(HostInventory.serial_number) > 1)
+
+    else:
+        serial_number_with_count_query = db_session.query(HostInventory.serial_number,
+                                                          func.count(HostInventory.serial_number))\
+            .join(Host)\
+            .filter(and_(Host.region_id == region_id, HostInventory.serial_number != ""))\
+            .group_by(HostInventory.serial_number.asc())\
+            .having(func.count(HostInventory.serial_number) > 1)
+
+    total_count = serial_number_with_count_query.count()
+    if clause is not None:
+        serial_number_with_count_query = serial_number_with_count_query.filter(clause)
+        filtered_count = serial_number_with_count_query.count()
+    else:
+        filtered_count = total_count
+
+    columns = [getattr(HostInventory.serial_number, dt_params.sort_order)()]
+
+    serial_number_with_count = serial_number_with_count_query.order_by(columns[dt_params.column_order]) \
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    rows = []
+    for serial_number, count in serial_number_with_count:
+        rows.append({'serial_number': serial_number, 'count': count})
+
+    db_session.close()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response['data'] = rows
+
+    return jsonify(**response)

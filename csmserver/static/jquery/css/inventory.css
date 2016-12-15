@@ -46,26 +46,17 @@ td {
     white-space: nowrap;
 }
 
-
-div#chassis-summary-table_filter, div#model-name-summary-table_filter, div#host-no-serial-number-table_filter {
-    padding-top: 5px;
-    padding-right: 5px;
-}
-div#chassis-summary-table_filter > label, div#model-name-summary-table_filter > label, div#host-no-serial-number-table_filter > label {
+div#chassis-summary-table_filter > label, div#model-name-summary-table_filter > label, div#host-no-serial-number-table_filter > label, div#host-duplicate-serial-number-table_filter > label {
     font-size: 12px;
 }
-div#chassis-summary-table_filter > label > input, div#model-name-summary-table_filter > label > input, div#host-no-serial-number-table_filter > label > input {
+div#chassis-summary-table_filter > label > input, div#model-name-summary-table_filter > label > input, div#host-no-serial-number-table_filter > label > input, div#host-duplicate-serial-number-table_filter > label > input {
     height: 20px;
     width: 100px;
     padding: 3px 6px;
     font-size: 12px;
 }
 
-div#chassis-summary-table_paginate, div#model-name-summary-table_paginate, div#host-no-serial-number-table_paginate {
-    padding-right:5px;
-}
-
-div#chassis-summary-table_paginate > ul > li > a, div#model-name-summary-table_paginate > ul > li > a, div#host-no-serial-number-table_paginate > ul > li > a{
+div#chassis-summary-table_paginate > ul > li > a, div#model-name-summary-table_paginate > ul > li > a, div#host-no-serial-number-table_paginate > ul > li > a, div#host-duplicate-serial-number-table_paginate > ul > li > a{
     padding: 3px 6px;
     font-size: 12px;
 }

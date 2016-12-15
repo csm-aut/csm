@@ -26,11 +26,13 @@ import csv
 
 from flask import abort
 from flask import Blueprint
-from flask import render_template, jsonify, send_file
-from flask.ext.login import login_required, current_user
+from flask import render_template
+from flask import jsonify
+from flask import send_file
+from flask.ext.login import login_required
+from flask.ext.login import current_user
 from flask import request
 
-from sqlalchemy import and_
 from sqlalchemy import or_
 from sqlalchemy import func
 
@@ -41,7 +43,8 @@ from wtforms import SelectField
 from wtforms import StringField
 from wtforms import TextAreaField
 from wtforms.widgets import TextArea
-from wtforms.validators import Length, required
+from wtforms.validators import Length
+from wtforms.validators import required
 
 from common import get_last_successful_inventory_elapsed_time
 from common import get_user
@@ -52,8 +55,10 @@ from constants import UserPrivilege
 
 from database import DBSession
 
-from models import HostInventory, Inventory
-from models import Host, Region
+from models import HostInventory
+from models import Inventory
+from models import Host
+from models import Region
 from models import SystemOption
 from models import EmailJob
 from models import logger
@@ -309,6 +314,9 @@ def query_in_use_inventory(db_session, json_data):
     results = db_session.query(HostInventory).filter(*filter_clauses)
 
     join_filter_clauses = []
+    if json_data.get('hostname') is not None:
+        join_filter_clauses.append(Host.hostname == json_data.get('hostname'))
+
     if json_data.get('region_ids'):
         join_filter_clauses.append(Host.region_id.in_(map(int, json_data.get('region_ids'))))
 
@@ -328,7 +336,7 @@ def get_filter_clauses_for_serial_number_model_name(serial_number, model_names, 
     serial number and an array of selected model names or an array of entered
     partial model names.
     """
-    if serial_number:
+    if serial_number is not None:
         filter_clauses.append(filter_table.serial_number == serial_number)
 
     if model_names:
@@ -601,7 +609,7 @@ def api_get_model_name_summary(region_id):
 
     else:
         in_use_model_name_summary_iter = db_session.query(HostInventory.model_name,
-                                                          func.count(HostInventory.model_name))\
+                                                          func.count(HostInventory.model_name)).join(Host)\
             .filter(Host.region_id == region_id).group_by(HostInventory.model_name.asc()).__iter__()
 
     rows = []
@@ -633,40 +641,6 @@ def api_get_model_name_summary(region_id):
     while in_use_model_name:
         rows.append({'model_name': in_use_model_name, 'in_use_count': in_use_count, 'available_count': 0})
         in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
-
-    db_session.close()
-    return jsonify(**{'data': rows})
-
-
-@inventory.route('/api/get_hosts_contain_inventory_without_serial_number/<int:region_id>')
-@login_required
-def api_get_hosts_contain_inventory_without_serial_number(region_id):
-    """
-    Return the hostname, count (of inventory without serial numbers in the host), last successful retrieval
-    datatable json data
-    """
-    db_session = DBSession()
-
-    if region_id == 0:
-        host_with_count_query = db_session.query(Host, func.count(HostInventory.name))\
-            .group_by(Host.hostname.asc())\
-            .filter(and_(Host.id == HostInventory.host_id, HostInventory.serial_number == ""))
-    else:
-        host_with_count_query = db_session.query(Host, func.count(HostInventory.name))\
-            .group_by(Host.hostname.asc())\
-            .filter(and_(Host.region_id == region_id, Host.id == HostInventory.host_id,
-                         HostInventory.serial_number == "")).all()
-
-    rows = []
-    for host, count in host_with_count_query:
-        data_field = {'hostname': host.hostname, 'count': count,
-                      'last_successful_retrieval': '', 'inventory_retrieval_status': ''}
-        if host:
-            inventory_job = host.inventory_job[0]
-            if inventory_job and inventory_job.last_successful_time:
-                data_field['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
-                data_field['inventory_retrieval_status'] = inventory_job.status
-        rows.append(data_field)
 
     db_session.close()
     return jsonify(**{'data': rows})
@@ -720,6 +694,32 @@ def update_select2_options(request_args, data_field):
         if item[0]:
             rows.append({'id': item[0], 'text': item[0]})
     db_session.close()
+    return jsonify(**{'data': rows})
+
+
+@inventory.route('/api/get_regions/')
+@login_required
+def api_get_regions():
+    """
+    This method is called by ajax attached to Select2 in home page.
+    The returned JSON contains the predefined tags.
+    """
+    db_session = DBSession()
+
+    rows = []
+    criteria = '%'
+    if request.args and request.args.get('q'):
+        criteria += request.args.get('q') + '%'
+    else:
+        criteria += '%'
+
+    regions = db_session.query(Region).filter(Region.name.like(criteria)).order_by(Region.id.asc()).all()
+    if len(regions) > 0:
+        if request.args.get('show_all'):
+            rows.append({'id': 1, 'text': 'ALL'})
+        for region in regions:
+            rows.append({'id': region.id + 1, 'text': region.name})
+
     return jsonify(**{'data': rows})
 
 
