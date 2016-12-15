@@ -448,7 +448,7 @@ def delete_host_install_job_session_logs(db_session, host):
 
 def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=None,
                                  server=-1, server_directory='', custom_command_profile=-1, dependency=0,
-                                 pending_downloads=None, doc_central=False, install_job=None):
+                                 pending_downloads=None, upload_to_doc_central=False, install_job=None):
 
     # ASR9K, CRS: .pie, .tar
     # NCS6K: .smu, .iso, .pkg, .tar
@@ -505,11 +505,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     install_job.packages = ','.join(install_job_packages)
     install_job.dependency = dependency if dependency > 0 else None
 
-    install_job.save_data("doc_central", doc_central)
-    #data = json.loads(str(install_job.data))
-    #data['doc_central'] = doc_central
-    #install_job.data = json.dumps(data)
-    #install_job.data['doc_central'] = doc_central
+    install_job.save_data("upload_to_doc_central", upload_to_doc_central)
 
     if hasattr(current_user, 'username'):
         install_job.created_by = current_user.username

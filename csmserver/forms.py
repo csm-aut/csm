@@ -99,7 +99,7 @@ class HostScheduleInstallForm(ServerDialogForm):
 
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
 
-    doc_central = BooleanField("Upload log files to Doc Central")
+    upload_to_doc_central = BooleanField('Upload Log to Doc Central')
 
     scheduled_time = StringField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
@@ -131,7 +131,7 @@ class ScheduleInstallForm(HostScheduleInstallForm):
     role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
     software = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
 
-    doc_central = BooleanField("Upload log files to Doc Central")
+    upload_to_doc_central = BooleanField("Upload log files to Doc Central")
 
 
 class ServerForm(Form):

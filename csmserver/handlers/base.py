@@ -102,19 +102,13 @@ class BaseHandler(object):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
-                    print "context ctx"
-                    print ctx
                     system_option = SystemOption.get(ctx.db_session)
-                    print system_option.doc_central_path is not None
-                    print ctx.install_job.status
                     if ctx.install_job.status != JobStatus.FAILED and system_option.doc_central_path is not None:
                         self.aggregate_and_upload_logs(ctx)
                 elif ctx.requested_action == InstallAction.MIGRATE_SYSTEM or \
                      ctx.requested_action == InstallAction.POST_MIGRATE:
                     self.generate_post_migrate_file_diff(ctx)
                 elif ctx.requested_action == InstallAction.PRE_UPGRADE:
-                    print "pre-upgrade load data check"
-                    print ctx.host.software_version
                     ctx.install_job.save_data("from_release", ctx.host.software_version)
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
@@ -233,11 +227,10 @@ class BaseHandler(object):
         filename_template = "%s_%s_%s-to-%s-%s.txt"
         platform = ctx.host.software_platform
         hostname = ctx.host.hostname
-        from_release = "na" if not ctx.install_job.load_data("from_release") else ctx.install_job.load_data("from_release")
+        from_release = self.get_from_release(ctx.db_session, chain)
         to_release = ctx.host.software_version
-        timestamp = datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d")
+        timestamp = datetime.datetime.strftime(datetime.datetime.now(), "%Y_%m_%d_%H_%M_%S")
         filename = filename_template %(platform, hostname, from_release, to_release, timestamp)
-        print filename
         ctx.install_job.save_data('doc_central_log_file_path', filename)
         # "<software_platform>-<CSM hostname>-<from release>- to - <to release>.<time stamp>.txt"
         output_file = os.path.join(get_doc_central_directory(), filename)
@@ -257,13 +250,12 @@ class BaseHandler(object):
                     if ('.txt' in log or '.log' in log) and log not in ['plugins.log', 'condoor.log'] and '.html' not in log:
                         with open(os.path.join(log_directory, log)) as f:
                             outfile.write("#####################################\n")
-                            outfile.write("### %s: %s ###\n" % (job.install_action, log))
+                            outfile.write("### %s: %s \n" % (job.install_action, log))
                             outfile.write("#####################################\n")
                             outfile.write(f.read())
                             outfile.write("\n\n")
 
-        make_file_writable(output_file)
-        return send_file(output_file, as_attachment=True)
+        return
         #doc_central_url = "https://docs-services.cisco.com/docservices/upload"
         # url =  "https://docs-services-stg.cisco.com/docservices/upload"
 
@@ -315,19 +307,23 @@ class BaseHandler(object):
 
         dependencies.append(install_id)
         return dependencies
-        #dependencies = [install_id]
 
-        #install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == install_id).first()
-        #if install_job is None:
-        #    install_job = db_session.query(InstallJob).filter(InstallJob.id == install_id).first()
-        #if install_job is None:
-        #    return
-        #if install_job.dependency:
-        #    #dependencies.append(install_job.dependency)
-        #    dependencies = self.get_dependency_chain(db_session, install_job.dependency) + dependencies
 
-        #return dependencies
+    def get_from_release(self, db_session, chain):
+        '''
+        Expects to receive a list of ids, will check each for from_release in the data field.
+        '''
+        for id in chain:
+            job = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == id).first()
+            if job is None:
+                job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
+                if job is None:
+                    continue
+            from_release = job.load_data("from_release")
+            if from_release:
+                return from_release
 
+        return "NA"
 
 class BaseConnectionHandler(BaseHandler):
     def start(self, ctx):
