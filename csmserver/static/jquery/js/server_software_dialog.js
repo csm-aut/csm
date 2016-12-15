@@ -25,9 +25,10 @@ $(function() {
     });
   
     $('#server_dialog_server').on('change', function(e) {
-        server_id = $('#server_dialog_server').val();
+        var server_id = $('#server_dialog_server').val();
         if (server_id == -1) {
             $('#server_dialog_server_directory').html('');
+            server_software_selector.initialize([], []);
         } else {
             server_software_retrieve_file_list(server_id, $('#server_dialog_server_directory'), '')
         }
@@ -39,8 +40,7 @@ $(function() {
             $('#server_dialog_server_directory'), 
             $('#server_dialog_server_directory').val() );
     });
-    
-    
+
     // Move up one folder (i.e. parent folder)   
     $('#server-dialog-move-up').on('click', function(e) {
         server_software_retrieve_file_list(
@@ -68,29 +68,49 @@ $(function() {
  
  });
  
- function display_server_software_dialog(hostname_list, server_id, server_directory, target_software) {
-
-     if (hostname_list.length == 1) {
-         server_software_hostname = hostname_list[0];
-         $('#server-dialog-auto-select-software-panel').show();
-         $('#server-dialog-title').html('> Host: <span style="color: Gray;">' + server_software_hostname + '</span>');
-     } else {
-         $('#server-dialog-auto-select-software-panel').hide();
-         $('#server-dialog-title').html('');
-     }
+function display_server_software_dialog(hostname_list, server_id, server_directory, target_software) {
+    if (hostname_list.length == 1) {
+        server_software_hostname = hostname_list[0];
+        $('#server-dialog-auto-select-software-panel').show();
+        $('#server-dialog-title').html('> Host: <span style="color: Gray;">' + server_software_hostname + '</span>');
+    } else {
+        $('#server-dialog-auto-select-software-panel').hide();
+        $('#server-dialog-title').html('');
+    }
      
-     $('#server_dialog_target_software').val(target_software);
-     $('#server-software-dialog').modal({ show: true, backdrop:'static' })  
+    $('#server_dialog_target_software').val(target_software);
+    $('#server-software-dialog').modal({ show: true, backdrop:'static' })
 
-     if (server_id && server_id != -1) {
+    if (server_id && server_id != -1) {
         $('#server_dialog_server').val(server_id);
         server_software_retrieve_file_list(server_id, $('#server_dialog_server_directory'), server_directory);
+    } else {
+        populate_all_servers();
     }
- }
- 
+}
+
+function populate_all_servers() {
+    server_software_selector.initialize([], []);
+    $.ajax({
+        url: "/api/get_servers",
+        dataType: 'json',
+        success: function(response) {
+            $.each(response, function(index, element) {
+                $('#server_dialog_server').html('');
+                $('#server_dialog_server').append('<option value=-1></option>');
+                for (i = 0; i < element.length; i++) {
+                    $('#server_dialog_server').append('<option value="' + element[i].server_id + '">' + element[i].hostname + '</option>');
+                }
+            });
+        }
+
+    });
+}
+
 function server_software_retrieve_file_list(server_id, server_directory_selector, server_directory) {
     server_directory_selector.html('');
     server_directory_selector.append('<option value="' + server_directory + '">' + server_directory + '</option>');
+    server_software_selector.initialize([], []);
 
     server_software_dialog_spinner.show();
 
