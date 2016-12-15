@@ -230,7 +230,7 @@ class BaseHandler(object):
 
         output_dir = get_doc_central_directory()
 
-        filename_template = "%s_%s_%s-to-%s.%s.meh.txt"
+        filename_template = "%s_%s_%s-to-%s.%s.txt"
         platform = ctx.host.software_platform
         hostname = ctx.host.hostname
         from_release = "na" if not ctx.install_job.load_data("from_release") else ctx.install_job.load_data("from_release")
