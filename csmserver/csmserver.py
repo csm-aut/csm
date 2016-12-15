@@ -1933,7 +1933,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server_directory = form.hidden_server_directory.data
         pending_downloads = form.hidden_pending_downloads.data
         custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
-        doc_central = form.doc_central.data
+        upload_to_doc_central = form.upload_to_doc_central.data
 
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
@@ -1943,7 +1943,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                          scheduled_time=scheduled_time, software_packages=software_packages, server=server,
                                          server_directory=server_directory, pending_downloads=pending_downloads,
                                          custom_command_profile=custom_command_profile, dependency=dependency,
-                                         doc_central=doc_central, install_job=install_job)
+                                         upload_to_doc_central=upload_to_doc_central, install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
@@ -1958,7 +1958,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                                                server_directory=server_directory,
                                                                pending_downloads=pending_downloads,
                                                                custom_command_profile=custom_command_profile,
-                                                               dependency=dependency, doc_central=doc_central,
+                                                               dependency=dependency, upload_to_doc_central=upload_to_doc_central,
                                                                install_job=install_job)
                 dependency = new_install_job.id
                    
@@ -1976,6 +1976,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         # In Edit mode
         if install_job is not None:   
             form.install_action.data = install_job.install_action
+            form.upload_to_doc_central.data = install_job.load_data("upload_to_doc_central")
 
             if install_job.server_id is not None:
                 form.hidden_server.data = install_job.server_id
