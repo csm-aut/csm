@@ -230,7 +230,7 @@ class BaseHandler(object):
 
         output_dir = get_doc_central_directory()
 
-        filename_template = "%s_%s_%s-to-%s.%s.txt"
+        filename_template = "%s_%s_%s-to-%s-%s.txt"
         platform = ctx.host.software_platform
         hostname = ctx.host.hostname
         from_release = "na" if not ctx.install_job.load_data("from_release") else ctx.install_job.load_data("from_release")
@@ -238,6 +238,7 @@ class BaseHandler(object):
         timestamp = datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d")
         filename = filename_template %(platform, hostname, from_release, to_release, timestamp)
         print filename
+        ctx.install_job.save_data('doc_central_log_file_path', filename)
         # "<software_platform>-<CSM hostname>-<from release>- to - <to release>.<time stamp>.txt"
         output_file = os.path.join(get_doc_central_directory(), filename)
 
