@@ -74,7 +74,7 @@ $(document)
 
 function display_smu_details(table, title, smu_id) {
     $.ajax({
-        url: "/api/get_smu_details/smu_id/" + smu_id,
+        url: "/cco/api/get_smu_details/smu_id/" + smu_id,
         dataType: 'json',
         success: function(data) {
             $.each(data, function(index, element) {
@@ -110,7 +110,7 @@ function display_smu_details(table, title, smu_id) {
 
 function display_ddts_details(table, title, ddts_id, ddts_spinner) {
     $.ajax({
-        url: "/api/get_ddts_details/ddts_id/" + ddts_id,
+        url: "/cco/api/get_ddts_details/ddts_id/" + ddts_id,
         dataType: 'json',
         success: function(data) {
             var html = '';

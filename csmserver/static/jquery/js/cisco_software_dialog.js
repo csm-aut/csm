@@ -22,12 +22,15 @@ $(function() {
     cisco_software_dialog_spinner = $('#cisco-software-dialog-browse-spinner');
     cisco_software_dialog_spinner.hide()
 
+    var ddts_spinner = $('#ddts-spinner');
+    ddts_spinner.hide();
+
     filter_option = $.cookie('platforms-and-releases-filter-option') == null ? 'Optimal' : $.cookie('platforms-and-releases-filter-option');
     $("#filter-selector option[value='" + filter_option + "']").attr('selected', 'selected');
     
     $('#smu-list-tab').tab();
     $('#smu-list-tab a:first').tab('show');
-    
+
     smu_table = $("#smu-datatable").dataTable({
         "order": [
             [1, "desc"]
@@ -77,7 +80,7 @@ $(function() {
             "targets": 3,
             "data" : 'ddts',
             "render": function ( data, type, row ) {
-              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+                return '<a class="show-ddts-details" ddts_id="' + data + '" href="javascript://">' + data + '</a>';
             }
         }, {
             "targets": 4,
@@ -157,7 +160,7 @@ $(function() {
             "targets": 3,
             "data" : 'ddts',
             "render": function ( data, type, row ) {
-              return '<a class="show-ddts-details" ddts_url="' + row['ddts_url'] + '" href="javascript://">' + data + '</a>';
+                return '<a class="show-ddts-details" ddts_id="' + data + '" href="javascript://">' + data + '</a>';
             }
         }, {
             "targets": 4,
@@ -188,17 +191,21 @@ $(function() {
         cisco_software_dialog_spinner.hide();
     });
 
-    smu_table.on("click", ".show-ddts-details", function() {
-        open_ddts_url($(this).attr('ddts_url') );
+    $("#smu-datatable").on("click", ".show-ddts-details", function() {
+        display_ddts_details_dialog($(this).attr('ddts_id'));
     });
 
-    sp_table.on("click", ".show-ddts-details", function() {
-        open_ddts_url($(this).attr('ddts_url') );
+    $("#sp-datatable").on("click", ".show-ddts-details", function() {
+        display_ddts_details_dialog($(this).attr('ddts_id'));
     });
 
-    function open_ddts_url(url) {
-        if (cco_lookup_enabled) {
-            window.open(url,'_blank');
+    function display_ddts_details_dialog(ddts_id) {
+        if (cco_lookup_enabled){
+            $('#display-ddts-details-dialog').modal({
+                show: true
+            })
+            ddts_spinner.show();
+            display_ddts_details($('#ddts-details-table'), $('#ddts-name-title'), ddts_id, ddts_spinner)
         } else {
             bootbox.alert("Unable to view DDTS information.  The administrator has disabled outgoing CCO connection.");
         }
@@ -340,7 +347,7 @@ $(function() {
         if (platform.length > 0 && release.length > 0) {
             if (!cco_lookup_enabled) {
                 $.ajax({
-                    url: "/api/get_smu_meta_retrieval_elapsed_time/platform/" + platform + "/release/" + release,
+                    url: "{{ url_for('cco.api_get_cco_retrieval_elapsed_time', platform=platform, release=release) }}",
                     dataType: 'json',
                     success: function(response) {
                         $.each(response, function(index, element) {
@@ -431,7 +438,7 @@ function refresh_tables() {
 
 function refresh_smu_list_table() {
     if (platform.length > 0 && release.length > 0) {
-        smu_table.api().ajax.url("/api/get_smu_list/platform/" + platform + "/release/" + release +
+        smu_table.api().ajax.url("/cco/api/get_smu_list/platform/" + platform + "/release/" + release +
             "?filter=" + filter_option +
             "&hide_installed_packages=" + $('#hide-installed-packages-checkbox').is(":checked") +
             "&hostname=" + $('#cisco-software-dialog').data('hostname')).load();
@@ -440,7 +447,7 @@ function refresh_smu_list_table() {
 
 function refresh_sp_list_table() {
     if (platform.length > 0 && release.length > 0) {
-        sp_table.api().ajax.url("/api/get_sp_list/platform/" + platform + "/release/" + release +
+        sp_table.api().ajax.url("/cco/api/get_sp_list/platform/" + platform + "/release/" + release +
             "?filter=" + filter_option +
             "&hide_installed_packages=" + $('#hide-installed-packages-checkbox').is(":checked") +
             "&hostname=" + $('#cisco-software-dialog').data('hostname')).load();
@@ -490,7 +497,7 @@ function populate_file_list(element, server_directory_selector, server_directory
 
 function create_menu() {
     $.ajax({
-        url: "/api/get_catalog",
+        url: "/cco/api/get_catalog",
         dataType: 'json',
         success: function(data) {
             var html = '';

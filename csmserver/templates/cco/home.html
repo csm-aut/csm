@@ -116,7 +116,7 @@
                 "data": 'package_bundles'
             }, ],
             "ajax": {
-                "url": "{{ url_for('api_get_smu_list', platform=platform, release=release) }}" + "?filter=" + filter_option
+                "url": "{{ url_for('cco.api_get_smu_list', platform=platform, release=release) }}" + "?filter=" + filter_option
             }
         }).on('draw.dt', function(e, settings, json) {
             var rows = smu_table.api().ajax.json().data.length;
@@ -194,7 +194,7 @@
                 "data": 'package_bundles',
             }, ],
             "ajax": {
-                "url": "{{ url_for('api_get_sp_list', platform=platform, release=release) }}" + "?filter=" + filter_option
+                "url": "{{ url_for('cco.api_get_sp_list', platform=platform, release=release) }}" + "?filter=" + filter_option
             }
         }).on('draw.dt', function(e, settings, json) {
             var rows = sp_table.api().ajax.json().data.length;
@@ -239,7 +239,7 @@
                 "data": 'compressed_size'
             }, ],
             "ajax": {
-                "url": "{{ url_for('api_get_tar_list', platform=platform, release=release) }}"
+                "url": "{{ url_for('cco.api_get_tar_list', platform=platform, release=release) }}"
             }
         }).on('draw.dt', function ( e, settings, json ) {
             var rows = tar_table.api().ajax.json().data.length;
@@ -270,7 +270,7 @@
         function get_retrieval_elapsed_time() {
             if (!cco_lookup_enabled) {
                 $.ajax({
-                    url: "{{ url_for('api_get_smu_meta_retrieval_elapsed_time', platform=platform, release=release) }}",
+                    url: "{{ url_for('cco.api_get_cco_retrieval_elapsed_time', platform=platform, release=release) }}",
                     dataType: 'json',
                     success: function(response) {
                         $.each(response, function(index, element) {
@@ -282,17 +282,17 @@
         }
 
         function refresh_smu_list_table() {
-            smu_table.api().ajax.url("{{ url_for('api_get_smu_list', platform=platform, release=release) }}" +
+            smu_table.api().ajax.url("{{ url_for('cco.api_get_smu_list', platform=platform, release=release) }}" +
                 "?filter=" + filter_option).load();
         }
 
         function refresh_sp_list_table() {
-            sp_table.api().ajax.url("{{ url_for('api_get_sp_list', platform=platform, release=release) }}" +
+            sp_table.api().ajax.url("{{ url_for('cco.api_get_sp_list', platform=platform, release=release) }}" +
                 "?filter=" + filter_option).load();
         }
 
         function refresh_tar_list_table() {
-            tar_table.api().ajax.url("{{ url_for('api_get_tar_list', platform=platform, release=release) }}" +
+            tar_table.api().ajax.url("{{ url_for('cco.api_get_tar_list', platform=platform, release=release) }}" +
                 "?filter=" + filter_option).load();
         }
 
@@ -409,7 +409,7 @@
                 return;
             }
 
-            $.post("/api/create_download_jobs",
+            $.post("/cco/api/create_download_jobs",
             {
                 server_id: validate_object.server_id,
                 server_directory: validate_object.server_directory,
@@ -422,7 +422,7 @@
                     if (response.status == 'Failed') {
                         bootbox.alert("Unable to create download jobs.");
                     } else {
-                        var download_dashboard_url = "{{ url_for('download_dashboard') }}";
+                        var download_dashboard_url = "{{ url_for('download_dashboard.home') }}";
                         bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
                     }
                 } else {
@@ -465,7 +465,7 @@
         }
 
         function display_ddts_details_dialog(ddts_id) {
-            if(cco_lookup_enabled){
+            if (cco_lookup_enabled){
                 $('#display-ddts-details-dialog').modal({
                     show: true
                 })
@@ -495,7 +495,7 @@
             var export_layout = $('#export_layout').val();
 
             $('#export-software-information-form').attr('action',
-                "{{ url_for('export_software_information', platform=platform, release=release) }}" +
+                "{{ url_for('cco.export_software_information', platform=platform, release=release) }}" +
                 "?filter=" + filter_option + "&export_format=" + export_format +  "&export_layout=" + export_layout);
             $('#export-software-information-form').submit();
 

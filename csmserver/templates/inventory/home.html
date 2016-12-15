@@ -151,7 +151,7 @@
                 "targets": 0,
                 "data": 'hostname',
                 "render": function(data, type, row) {
-                    return '<a href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                    return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
                 }
             }, {
                 "targets": 1,
@@ -348,7 +348,7 @@
                     "targets": 3,
                     "data": 'hostname',
                     "render": function(data, type, row) {
-                        return '<a target="_blank" href="/hosts/' + row['hostname'] + '/host_dashboard/">' + row['hostname'] + '</a>';
+                        return '<a target="_blank" href="/host_dashboard/hosts/' + row['hostname'] + '/">' + row['hostname'] + '</a>';
                     }
                 },  {
                     "targets": 4,
@@ -432,7 +432,7 @@
                     "targets": 3,
                     "data": 'hostname',
                     "render": function(data, type, row) {
-                        return '<a target="_blank" href="/hosts/' + row['hostname'] + '/host_dashboard/">' + row['hostname'] + '</a>';
+                        return '<a target="_blank" href="/host_dashboard/hosts/' + row['hostname'] + '/">' + row['hostname'] + '</a>';
                     }
                 },  {
                     "targets": 4,
@@ -491,7 +491,7 @@
                     "targets": 0,
                     "data": 'hostname',
                     "render": function(data, type, row) {
-                        return '<a target="_blank" href="/hosts/' + data + '/host_dashboard/">' + data + '</a>';
+                        return '<a target="_blank" href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
                     }
                 }, {
                     "targets": 1,

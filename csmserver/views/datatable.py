@@ -25,9 +25,10 @@
 from flask import Blueprint
 from flask import request
 from flask import jsonify
-from sqlalchemy import or_, and_, func
-
+from flask import abort
 from flask.ext.login import login_required
+
+from sqlalchemy import or_, and_, func
 
 from database import DBSession
 
@@ -44,7 +45,10 @@ from models import ConnectionParam
 from models import logger
 from models import InstallJob
 from models import InstallJobHistory
+from models import DownloadJob
+from models import DownloadJobHistory
 
+from common import get_host
 from common import get_last_successful_inventory_elapsed_time
 
 from constants import UNKNOWN
@@ -53,6 +57,7 @@ from constants import JobStatus
 from utils import is_empty
 
 from install_dashboard import get_install_job_json_dict
+from download_dashboard import get_download_job_json_dict
 
 datatable = Blueprint('datatable', __name__, url_prefix='/datatable')
 
@@ -416,6 +421,270 @@ def api_get_completed_install_jobs():
     response['recordsTotal'] = total_count
     response['recordsFiltered'] = filtered_count
     response.update(get_install_job_json_dict(install_jobs))
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_scheduled_download_jobs/')
+@login_required
+def api_get_scheduled_download_jobs():
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(DownloadJob.cco_filename.like(criteria))
+        clauses.append(DownloadJob.scheduled_time.like(criteria))
+        clauses.append(DownloadJob.created_by.like(criteria))
+
+    query = db_session.query(DownloadJob)
+
+    total_count = query.filter(DownloadJob.status == None).count()
+    filtered_count = query.filter(and_(DownloadJob.status == None), or_(*clauses)).count()
+
+    columns = [getattr(DownloadJob.cco_filename, dt_params.sort_order)(),
+               getattr(DownloadJob.scheduled_time, dt_params.sort_order)(),
+               '',
+               getattr(DownloadJob.created_by, dt_params.sort_order)()]
+
+    download_jobs = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(DownloadJob.status == None), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response.update(get_download_job_json_dict(db_session, download_jobs))
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_in_progress_download_jobs/')
+@login_required
+def api_get_in_progress_download_jobs():
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(DownloadJob.cco_filename.like(criteria))
+        clauses.append(DownloadJob.scheduled_time.like(criteria))
+        clauses.append(DownloadJob.status.like(criteria))
+        clauses.append(DownloadJob.status_time.like(criteria))
+        clauses.append(DownloadJob.created_by.like(criteria))
+
+    query = db_session.query(DownloadJob)
+
+    total_count = query.filter(and_(DownloadJob.status != None, DownloadJob.status != JobStatus.FAILED)).count()
+    filtered_count = query.filter(and_(DownloadJob.status != None, DownloadJob.status != JobStatus.FAILED),
+                                  or_(*clauses)).count()
+
+    columns = [getattr(DownloadJob.cco_filename, dt_params.sort_order)(),
+               getattr(DownloadJob.scheduled_time, dt_params.sort_order)(),
+               '',
+               getattr(DownloadJob.status, dt_params.sort_order)(),
+               getattr(DownloadJob.status_time, dt_params.sort_order)(),
+               getattr(DownloadJob.created_by, dt_params.sort_order)()]
+
+    download_jobs = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(DownloadJob.status != None, DownloadJob.status != JobStatus.FAILED), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response.update(get_download_job_json_dict(db_session, download_jobs))
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_failed_download_jobs/')
+@login_required
+def api_get_failed_download_jobs():
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(DownloadJob.cco_filename.like(criteria))
+        clauses.append(DownloadJob.scheduled_time.like(criteria))
+        clauses.append(DownloadJob.status.like(criteria))
+        clauses.append(DownloadJob.status_time.like(criteria))
+        clauses.append(DownloadJob.created_by.like(criteria))
+
+    query = db_session.query(DownloadJob)
+
+    total_count = query.filter(DownloadJob.status == JobStatus.FAILED).count()
+    filtered_count = query.filter(and_(DownloadJob.status == JobStatus.FAILED), or_(*clauses)).count()
+
+    columns = [getattr(DownloadJob.cco_filename, dt_params.sort_order)(),
+               getattr(DownloadJob.scheduled_time, dt_params.sort_order)(),
+               '',
+               getattr(DownloadJob.status, dt_params.sort_order)(),
+               getattr(DownloadJob.status_time, dt_params.sort_order)(),
+               getattr(DownloadJob.created_by, dt_params.sort_order)(),
+               '']
+
+    download_jobs = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(DownloadJob.status == JobStatus.FAILED), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response.update(get_download_job_json_dict(db_session, download_jobs))
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_completed_download_jobs/')
+@login_required
+def api_get_completed_download_jobs():
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(DownloadJobHistory.cco_filename.like(criteria))
+        clauses.append(DownloadJobHistory.scheduled_time.like(criteria))
+        clauses.append(DownloadJobHistory.status.like(criteria))
+        clauses.append(DownloadJobHistory.status_time.like(criteria))
+        clauses.append(DownloadJobHistory.created_by.like(criteria))
+
+    query = db_session.query(DownloadJobHistory)
+
+    total_count = query.filter(DownloadJobHistory.status == JobStatus.COMPLETED).count()
+    filtered_count = query.filter(and_(DownloadJobHistory.status == JobStatus.COMPLETED), or_(*clauses)).count()
+
+    columns = [getattr(DownloadJobHistory.cco_filename, dt_params.sort_order)(),
+               getattr(DownloadJobHistory.scheduled_time, dt_params.sort_order)(),
+               '',
+               getattr(DownloadJobHistory.status, dt_params.sort_order)(),
+               getattr(DownloadJobHistory.status_time, dt_params.sort_order)(),
+               getattr(DownloadJobHistory.created_by, dt_params.sort_order)()]
+
+    download_jobs = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(DownloadJobHistory.status == JobStatus.COMPLETED), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response.update(get_download_job_json_dict(db_session, download_jobs))
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/hosts/<hostname>/install_job_history')
+@login_required
+def api_get_host_dashboard_install_job_history(hostname):
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if not host:
+        abort(404)
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(Host.hostname.like(criteria))
+        clauses.append(InstallJobHistory.install_action.like(criteria))
+        clauses.append(InstallJobHistory.scheduled_time.like(criteria))
+        clauses.append(InstallJobHistory.start_time.like(criteria))
+        clauses.append(InstallJobHistory.packages.like(criteria))
+        clauses.append(InstallJobHistory.status_time.like(criteria))
+        clauses.append(InstallJobHistory.created_by.like(criteria))
+
+    query = db_session.query(InstallJobHistory)\
+        .join(Host, Host.id == InstallJobHistory.host_id)
+
+    total_count = query.filter(InstallJobHistory.host_id == host.id).count()
+    filtered_count = query.filter(and_(InstallJobHistory.host_id == host.id), or_(*clauses)).count()
+
+    columns = [getattr(InstallJobHistory.install_action, dt_params.sort_order)(),
+               getattr(InstallJobHistory.scheduled_time, dt_params.sort_order)(),
+               getattr(InstallJobHistory.start_time, dt_params.sort_order)(),
+               getattr(InstallJobHistory.packages, dt_params.sort_order)(),
+               getattr(InstallJobHistory.status, dt_params.sort_order)(),
+               getattr(InstallJobHistory.status_time, dt_params.sort_order)(),
+               '',
+               getattr(InstallJobHistory.created_by, dt_params.sort_order)()]
+
+    install_jobs = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(InstallJobHistory.host_id == host.id), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response.update(get_install_job_json_dict(install_jobs))
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/hosts/<hostname>/inventory')
+@login_required
+def api_get_inventory(hostname):
+    rows = []
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if not host:
+        abort(404)
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(HostInventory.location.like(criteria))
+        clauses.append(HostInventory.model_name.like(criteria))
+        clauses.append(HostInventory.name.like(criteria))
+        clauses.append(HostInventory.description.like(criteria))
+        clauses.append(HostInventory.serial_number.like(criteria))
+        clauses.append(HostInventory.hardware_revision.like(criteria))
+
+    query = db_session.query(HostInventory)\
+        .join(Host, Host.id == HostInventory.host_id)
+
+    total_count = query.filter(HostInventory.host_id == host.id).count()
+    filtered_count = query.filter(and_(HostInventory.host_id == host.id), or_(*clauses)).count()
+
+    columns = [getattr(HostInventory.location, dt_params.sort_order)(),
+               getattr(HostInventory.model_name, dt_params.sort_order)(),
+               getattr(HostInventory.name, dt_params.sort_order)(),
+               getattr(HostInventory.description, dt_params.sort_order)(),
+               getattr(HostInventory.serial_number, dt_params.sort_order)(),
+               getattr(HostInventory.hardware_revision, dt_params.sort_order)()]
+
+    host_inventory = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(HostInventory.host_id == host.id), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    for inventory in host_inventory:
+        row = dict()
+        row['location'] = inventory.location
+        row['model_name'] = inventory.model_name
+        row['name'] = inventory.name
+        row['description'] = inventory.description
+        row['serial_number'] = inventory.serial_number
+        row['vid'] = inventory.hardware_revision
+        rows.append(row)
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response['data'] = rows
 
     return jsonify(**response)
 

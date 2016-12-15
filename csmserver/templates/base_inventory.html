@@ -19,33 +19,27 @@
         <div class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
                 {% if current_user.is_authenticated() %}
-                <li class="active"><a href="{{ url_for('inventory.inventory_home') }}">Home</a></li>
-                <li><a href={{ url_for('inventory.query_add_inventory') }}>Query/Add Inventory</a></li>
-                <li><a href={{ url_for('inventory.search_inventory') }}>Search</a></li>
+                <li class="active"><a href="{{ url_for('inventory.home') }}">Home</a></li>
+                <li><a href="{{ url_for('inventory.query_add_inventory') }}">Query/Add Inventory</a></li>
+                <li><a href="{{ url_for('inventory.search_inventory') }}">Search</a></li>
                 {% endif %}
             </ul>
             {% if current_user.is_authenticated() %}
-            <ul class="nav navbar-nav navbar-right">
-                <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
-            </ul>
-            {% if current_user.privilege == 'Admin' %}
                 <ul class="nav navbar-nav navbar-right">
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
-
-                        <ul class="dropdown-menu">
-                            <li><a href="{{ url_for('inventory.import_inventory') }}">Import Inventory</a></li>
-                        </ul>
-
-                    </li>
+                    <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
                 </ul>
-            {% endif %}
+                {% if current_user.privilege == 'Admin' %}
+                    <ul class="nav navbar-nav navbar-right">
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
 
-            <form class="navbar-form navbar-left pull-right" role="search">
-                <div class="form-group" style="padding:5px">
-                    <input type="hidden" class="select2" id="search-host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
-                </div>
-            </form>
+                            <ul class="dropdown-menu">
+                                <li><a href="{{ url_for('inventory.import_inventory') }}">Import Inventory</a></li>
+                            </ul>
+
+                        </li>
+                    </ul>
+                {% endif %}
             {% endif %}
         </div>
         <!--/.nav-collapse -->

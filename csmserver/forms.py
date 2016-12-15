@@ -32,7 +32,6 @@ from constants import UserPrivilege
 from constants import SMTPSecureConnection
 from constants import DefaultHostAuthenticationChoice
 from constants import ExportInformationFormat
-from constants import ExportSoftwareInformationLayout
 
 
 class LoginForm(Form):
@@ -199,11 +198,6 @@ class SMTPForm(Form):
                                              (SMTPSecureConnection.TLS, SMTPSecureConnection.TLS)])
 
 
-class PreferencesForm(Form):
-    cco_username = StringField('Username')
-    cco_password = PasswordField('Password')
-
-
 class BrowseServerDialogForm(Form):
     dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
 
@@ -223,14 +217,6 @@ class ExportInformationForm(Form):
                                           ExportInformationFormat.HTML),
                                          (ExportInformationFormat.MICROSOFT_EXCEL,
                                           ExportInformationFormat.MICROSOFT_EXCEL)])
-
-
-class ExportSoftwareInformationForm(ExportInformationForm):
-    export_layout = SelectField('Layout', coerce=str,
-                                choices=[(ExportSoftwareInformationLayout.CONCISE,
-                                          ExportSoftwareInformationLayout.CONCISE),
-                                         (ExportSoftwareInformationLayout.DEFAULT,
-                                          ExportSoftwareInformationLayout.DEFAULT)])
 
 
 if __name__ == '__main__':

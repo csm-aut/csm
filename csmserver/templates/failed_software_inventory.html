@@ -37,7 +37,7 @@
 
       {% for inventory_job in inventory_jobs %}
          <tr>  
-            <td><a href="{{ url_for('host_dashboard', hostname = inventory_job.host.hostname) }}">{{ inventory_job.host.hostname }}</a></td>  
+            <td><a href="{{ url_for('host_dashboard.home', hostname = inventory_job.host.hostname) }}">{{ inventory_job.host.hostname }}</a></td>
             <td>{{ inventory_job.status }}</td>  
             <td class="UTCDate">{{ inventory_job.status_time | datetime_string }}</td>  
             <td>{{ inventory_job.last_successful_time | elapsed_time }}</td>

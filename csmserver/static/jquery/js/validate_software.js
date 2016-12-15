@@ -4,7 +4,7 @@ function validate_software(src_control, target_control, spinner) {
     if (spinner) { spinner.show() };
 
     $.ajax({
-        url: "/api/validate_software",
+        url: "/cco/api/validate_software",
         dataType: 'json',
         data: { smu_list: src_control.val() },
         success: function(data) {

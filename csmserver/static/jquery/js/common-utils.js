@@ -509,7 +509,7 @@ function display_downloadable_files_dialog(validate_object, missing_file_list, d
 
 function check_cisco_authentication(validate_object) {
     $.ajax({
-        url: "/api/check_cisco_authentication/",
+        url: "/cco/api/check_cisco_authentication/",
         type: "POST",
         dataType: 'json',
         success: function(response) {

@@ -7,40 +7,17 @@
     $(function() {
 
         var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
-        var record_limit = $.cookie('install-dashboard-record-limit') == null ? '10' : $.cookie('install-dashboard-record-limit');
-        $("#record-limit-selector option[value='" + record_limit + "']").attr('selected', 'selected');
-        update_record_limit_label(record_limit);
-
-        var last_completed_download_job_count = 0;
-        var new_completed_download_job_count = 0;
-        get_download_dashboard_cookie();
-
-        $('#record-limit-selector').on('change', function(e) {
-            update_record_limit_label($(this).val());
-            $.cookie('install-dashboard-record-limit', record_limit);
-            refresh_download_completed_table();
-        });
 
         $('#csm-server-repository-button').on("click", function() {
             window.location.href = "#csm-server-repository";
         });
-
-        function update_record_limit_label(selected_value) {
-            if (selected_value == 'ALL') {
-                $("#record-limit-selector-label").text('Retrieve ALL the Records:');
-            } else {
-                $("#record-limit-selector-label").text('Retrieve Last ' + selected_value + ' Records:');
-            }
-            record_limit = selected_value;
-        }
-
 
         $(".install-delete-all").on("click", function() {
             var delete_url = $(this).attr('install-delete-url');
             var status = $(this).attr('status');
 
             var message = "";
-            var notice_message = "<br>(Notice: Once the download is removed, any scheduled installs dependent on this download will proceed as scheduled.  The Installs may fail without the needed image.)";
+            var notice_message = "<br>(Notice: Once the download is removed, any scheduled installations dependent on this download will proceed as scheduled.  The Installations may fail without the needed image.)";
             if (status == 'failed') {
                 message = "Delete All Failed Downloads?" + notice_message;
             } else {
@@ -54,7 +31,11 @@
                         type: 'DELETE',
                         success: function(response) {
                             if (response.status == 'OK') {
-                                window.location = "{{ url_for('download_dashboard') }}";
+                                if (status == 'failed') {
+                                    refresh_failed_download_table();
+                                } else {
+                                    refresh_scheduled_download_table();
+                                }
                             } else {
                                 bootbox.alert('Unable to delete.');
                             }
@@ -80,7 +61,7 @@
                         type: 'DELETE',
                         success: function(response) {
                             if (response.status == 'OK') {
-                                window.location = "{{ url_for('download_dashboard') }}";
+                                refresh_server_repository_table();
                             } else {
                                 bootbox.alert('Deletion failed.  You may not be authorized to delete.');
                             }
@@ -114,7 +95,8 @@
                         type: 'POST',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                window.location = "{{ url_for('download_dashboard') }}";
+                                refresh_failed_download_table();
+                                refresh_scheduled_download_table();
                             } else {
                                 bootbox.alert('Unable to resubmit.');
                             }
@@ -137,7 +119,11 @@
                         type: 'DELETE',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                window.location = "{{ url_for('download_dashboard') }}";
+                                if (status == 'failed') {
+                                    refresh_failed_download_table();
+                                } else {
+                                    refresh_scheduled_download_table();
+                                }
                             } else {
                                 bootbox.alert('Unable to delete.');
                             }
@@ -155,8 +141,16 @@
         });
 
         var download_scheduled_table = $("#download-scheduled-datatable").dataTable({
+            "serverSide": true,
             "order": [
                 [1, "asc"]
+            ],
+            "columns": [
+                { "data": "image_name" },
+                { "data": "scheduled_time" },
+                { "data": "server_repository", "orderable": false },
+                { "data": "created_by" },
+                { "data": "download_job_id" }
             ],
             "columnDefs": [{
                 "targets": 0,
@@ -179,49 +173,28 @@
                 "render": function(data, type, row) {
                     return '<a class="download-scheduled-delete-link" href="javascript://"  \
                       data-delete-image-name="' + row['image_name'] + '?" \
-                      data-delete-url="/delete_download_job/' + data + '">Delete</a>';
+                      data-delete-url="/download_dashboard/delete_download_job/' + data + '">Delete</a>';
                 }
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_download_scheduled') }}",
+                "url": "{{ url_for('datatable.api_get_scheduled_download_jobs') }}",
             }
         }).on('draw.dt', function(e, settings, json) {
             $('#badge-scheduled').html(download_scheduled_table.api().page.info().recordsTotal);
         });
 
         var download_in_progress_table = $("#download-in-progress-datatable").dataTable({
+            "serverSide": true,
             "order": [
                 [3, "asc"]
             ],
-            "columnDefs": [{
-                "targets": 0,
-                "data": 'image_name'
-            }, {
-                "targets": 1,
-                "data": 'server_repository'
-            }, {
-                "targets": 2,
-                "data": 'status'
-            }, {
-                "targets": 3,
-                "data": 'status_time',
-                "render": function(data, type, row) {
-                    return getDateStringfromUTCString(data, use_utc_timezone);
-                }
-            }, {
-                "targets": 4,
-                "data": 'created_by'
-            }],
-            "ajax": {
-                "url": "{{ url_for('api_get_download_in_progress') }}",
-            }
-        }).on('draw.dt', function(e, settings, json) {
-            $('#badge-in-progress').html(download_in_progress_table.api().page.info().recordsTotal);
-        });
-
-        var download_failed_table = $("#download-failed-datatable").dataTable({
-            "order": [
-                [4, "desc"]
+            "columns": [
+                { "data": "image_name" },
+                { "data": "scheduled_time" },
+                { "data": "server_repository", "orderable": false },
+                { "data": "status" },
+                { "data": "status_time" },
+                { "data": "created_by" }
             ],
             "columnDefs": [{
                 "targets": 0,
@@ -246,7 +219,54 @@
                 }
             }, {
                 "targets": 5,
-                "data": 'Log',
+                "data": 'created_by'
+            }],
+            "ajax": {
+                "url": "{{ url_for('datatable.api_get_in_progress_download_jobs') }}",
+            }
+        }).on('draw.dt', function(e, settings, json) {
+            $('#badge-in-progress').html(download_in_progress_table.api().page.info().recordsTotal);
+        });
+
+        var download_failed_table = $("#download-failed-datatable").dataTable({
+            "serverSide": true,
+            "order": [
+                [4, "desc"]
+            ],
+            "columns": [
+                { "data": "image_name" },
+                { "data": "scheduled_time" },
+                { "data": "server_repository", "orderable": false },
+                { "data": "status" },
+                { "data": "status_time" },
+                { "data": "download_job_id", "orderable": false },
+                { "data": "created_by" },
+                { "data": "download_job_id", "orderable": false }
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'image_name'
+            }, {
+                "targets": 1,
+                "data": 'scheduled_time',
+                "render": function(data, type, row) {
+                    return getDateStringfromUTCString(data, use_utc_timezone);
+                }
+            }, {
+                "targets": 2,
+                "data": 'server_repository'
+            }, {
+                "targets": 3,
+                "data": 'status'
+            }, {
+                "targets": 4,
+                "data": 'status_time',
+                "render": function(data, type, row) {
+                    return getDateStringfromUTCString(data, use_utc_timezone);
+                }
+            }, {
+                "targets": 5,
+                "data": 'download_job_id',
                 "render": function(data, type, row) {
                     return get_log_icon(row['image_name'], 'download_job', row['download_job_id'], row['trace']);
                 }
@@ -262,18 +282,18 @@
                         '<ul class="dropdown-menu">' +
                         '<li><a class="download-resubmit-link" href="javascript://"  \
                              data-resubmit-image-name="' + row['image_name'] + '" \
-                             data-resubmit-url="/resubmit_download_job/' + data + '/">Re-submit</a></li>' +
+                             data-resubmit-url="/download_dashboard/resubmit_download_job/' + data + '/">Re-submit</a></li>' +
                         '<li class="divider"></li>' +
                         '<li><a class="download-scheduled-delete-link" href="javascript://"  \
                              data-delete-image-name="' + row['image_name'] + '?" \
                              status="failed" + \
-                             data-delete-url="/delete_download_job/' + data + '">Delete</a></li>' +
+                             data-delete-url="/download_dashboard/delete_download_job/' + data + '">Delete</a></li>' +
                         '</ul>' +
                         '</div>';
                 }
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_download_failed') }}",
+                "url": "{{ url_for('datatable.api_get_failed_download_jobs') }}",
             }
         }).on('draw.dt', function(e, settings, json) {
             $('#badge-failed').html(download_failed_table.api().page.info().recordsTotal);
@@ -297,8 +317,17 @@
         }
 
         var download_completed_table = $("#download-completed-datatable").dataTable({
+            "serverSide": true,
             "order": [
                 [4, "desc"]
+            ],
+            "columns": [
+                { "data": "image_name" },
+                { "data": "scheduled_time" },
+                { "data": "server_repository", "orderable": false },
+                { "data": "status" },
+                { "data": "status_time" },
+                { "data": "created_by" }
             ],
             "columnDefs": [{
                 "targets": 0,
@@ -326,13 +355,10 @@
                 "data": 'created_by'
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_download_completed') }}" + "?record_limit=" + record_limit,
+                "url": "{{ url_for('datatable.api_get_completed_download_jobs') }}",
             }
         }).on('draw.dt', function(e, settings, json) {
-            var json_data = download_completed_table.api().ajax.json().data;
-            $('#badge-completed').html(json_data.length);
-            $('#badge-completed-total').html(new_completed_download_job_count);
-            last_completed_download_job_count = new_completed_download_job_count
+            $('#badge-completed-total').html(download_completed_table.api().page.info().recordsTotal);
         });
 
         var server_repository_table = $("#server-repository-datatable").dataTable({
@@ -357,46 +383,39 @@
                 "render": function(data, type, row) {
                     return '<a class="image-delete-link" href="javascript://"  \
                         data-delete-image-name="' + data + '" \
-                        data-delete-url="/api/image/' + data + '/delete/">Delete</a>';
+                        data-delete-url="/download_dashboard/api/image/' + data + '/delete/">Delete</a>';
                 }
             }, ],
             "ajax": {
-                "url": "{{ url_for('get_files_from_csm_repository') }}",
+                "url": "{{ url_for('download_dashboard.api_get_files_from_csm_repository') }}",
             }
         });
 
-        function get_download_dashboard_cookie() {
-            $.ajax({
-                url: "{{ url_for('api_get_download_dashboard_cookie') }}",
-                dataType: 'json',
-                success: function(data) {
-                    $.each(data, function(index, element) {
-                        new_completed_download_job_count = element[0].last_completed_download_job_count;
-
-                        if (last_completed_download_job_count != new_completed_download_job_count) {
-                            refresh_download_completed_table();
-                            refresh_server_repository_table();
-                        }
-
-                    });
-                }
-            });
+        function refresh_server_repository_table() {
+            server_repository_table.api().ajax.reload(null, false);
         }
 
-        function refresh_server_repository_table() {
-            server_repository_table.api().ajax.url("{{ url_for('get_files_from_csm_repository') }}").load();
+        function refresh_scheduled_download_table() {
+            download_scheduled_table.api().ajax.reload(null, false);
+        }
+
+        function refresh_in_progress_download_table() {
+            download_in_progress_table.api().ajax.reload(null, false);
+        }
+
+        function refresh_failed_download_table() {
+            download_failed_table.api().ajax.reload(null, false);
         }
 
         function refresh_download_completed_table() {
-            download_completed_table.api().ajax.url("{{ url_for('api_get_download_completed') }}" +
-                "?record_limit=" + record_limit).load();
+            download_completed_table.api().ajax.reload(null, false);
         }
 
         setInterval(function() {
-            download_scheduled_table.api().ajax.reload();
-            download_in_progress_table.api().ajax.reload();
-            download_failed_table.api().ajax.reload();
-            get_download_dashboard_cookie();
+            refresh_scheduled_download_table();
+            refresh_in_progress_download_table();
+            refresh_failed_download_table();
+            refresh_download_completed_table();
         }, 10000);
 
     });
@@ -428,8 +447,8 @@
                     <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li><a href="javascript://" class="install-delete-all" status="" install-delete-url="{{ url_for('delete_all_scheduled_downloads') }}">Delete All Scheduled Downloads</a></li>
-                        <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('delete_all_failed_downloads') }}">Delete All Failed Downloads</a></li>
+                        <li><a href="javascript://" class="install-delete-all" status="scheduled" install-delete-url="{{ url_for('download_dashboard.delete_all_scheduled_downloads') }}">Delete All Scheduled Downloads</a></li>
+                        <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('download_dashboard.delete_all_failed_downloads') }}">Delete All Failed Downloads</a></li>
                     </ul>
                 </div>
             </div>
@@ -443,7 +462,7 @@
                 <li><a data-toggle="tab" href="#download-scheduled">Scheduled &nbsp;<span id="badge-scheduled" class="customized-badge-height badge alert-default">0</span></a></li>
                 <li><a data-toggle="tab" href="#download-in-progress">In Progress &nbsp;<span id="badge-in-progress" class="customized-badge-height badge alert-info">0</span></a></li>
                 <li><a data-toggle="tab" href="#install-failed">Failed &nbsp;<span id="badge-failed" class="customized-badge-height badge alert-danger">0</span></a></li>
-                <li><a data-toggle="tab" href="#install-completed">Completed &nbsp;(showing <span id="badge-completed" class="customized-badge-height badge alert-success">0</span>&nbsp;of <span id="badge-completed-total" class="customized-badge-height badge alert-success"></span>)</a></li>
+                <li><a data-toggle="tab" href="#install-completed">Completed &nbsp;<span id="badge-completed-total" class="customized-badge-height badge alert-success"></span></a></li>
             </ul>
             <div class="tab-content" style="margin-top:20px;">
                 <div id="download-scheduled" class="tab-pane fade in active">
@@ -464,6 +483,7 @@
                         <thead>
                             <tr>
                                 <th style="width:50px">Image Name</th>
+                                <th style="width:50px">Scheduled Time</th>
                                 <th style="width:50px">Server Repository</th>
                                 <th style="width:300px">Status</th>
                                 <th style="width:50px">Status Time</th>
@@ -487,20 +507,6 @@
                     </table>
                 </div>
                 <div id="install-completed" class="tab-pane fade in">
-                    <div class="container">
-                        <div class="form-group">
-                            <label class="DodgerBlue col-sm-3 control-label" id="record-limit-selector-label">Number of Records to Retrieve:</label>
-                            <div class="col-sm-4">
-                                <select class="form-control" id="record-limit-selector" name="record-limit-selector" style="width:200px">
-                                    <option value="10">10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
-                                    <option value="ALL">ALL</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
                     <table class="display table" id="download-completed-datatable">
                         <thead>
                             <tr>

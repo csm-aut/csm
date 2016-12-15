@@ -6,7 +6,6 @@
 <script>
     $(function() {
 
-        var auto_refresh = false;
         var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
 
         function insert_slider(packages, id) {
@@ -58,7 +57,7 @@
                 "data": 'package'
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='active-committed') }}",
+                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_packages', hostname=host.hostname, package_state='active-committed') }}",
             }
         }).on('draw.dt', function(e, settings, json) {
             if (active_committed_table.api().ajax.json().data.length > 0) {
@@ -78,7 +77,7 @@
                 "data": 'package'
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='active') }}",
+                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_packages', hostname=host.hostname, package_state='active') }}",
             }
         }).on('draw.dt', function(e, settings, json) {
             if (active_table.api().ajax.json().data.length > 0) {
@@ -98,7 +97,7 @@
                 "data": 'package'
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive') }}",
+                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive') }}",
             }
         }).on('draw.dt', function(e, settings, json) {
             if (inactive_table.api().ajax.json().data.length > 0) {
@@ -118,7 +117,7 @@
                 "data": 'package'
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive-committed') }}",
+                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_packages', hostname=host.hostname, package_state='inactive-committed') }}",
             }
         }).on('draw.dt', function(e, settings, json) {
             if (inactive_committed_table.api().ajax.json().data.length > 0) {
@@ -171,21 +170,28 @@
                 "render": function(data, type, row) {
                     return '<a class="install-delete" href="javascript://"  \
                 install-action="' + row['install_action'] + '" \
-                install-delete-url="/hosts/' + data + '/delete_install_job/" \
-                return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete</a>';
+                install-delete-url="/install_dashboard/api/hosts/install/delete/' + data + '/">Delete</a>';
                 }
             }],
             "ajax": {
-                "url": "{{ url_for('api_get_host_dashboard_scheduled_install', hostname=host.hostname) }}",
+                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_scheduled_install', hostname=host.hostname) }}",
             }
         });
 
-        var last_install_job_history_count = 0;
-        var new_last_install_job_history_count = 0;
-
         var install_job_history_table = $("#installation-history-datatable").dataTable({
+            "serverSide": true,
             "order": [
                 [5, "desc"]
+            ],
+            "columns": [
+                { "data": "install_action" },
+                { "data": "scheduled_time" },
+                { "data": "start_time" },
+                { "data": "packages" },
+                { "data": "status" },
+                { "data": "status_time" },
+                { "data": "session_log", "orderable": false },
+                { "data": "created_by" }
             ],
             "columnDefs": [{
                 "targets": 0,
@@ -226,6 +232,7 @@
                 }
             }, {
                 "targets": 6,
+                "data": 'session_log',
                 "render": function(data, type, row) {
                     return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace']);
                 }
@@ -234,15 +241,22 @@
                 "data": 'created_by'
             }, ],
             "ajax": {
-                "url": "{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}",
+                "url": "{{ url_for('datatable.api_get_host_dashboard_install_job_history', hostname=host.hostname) }}",
             }
-        }).on('draw.dt', function(e, settings, json) {
-            last_install_job_history_count = new_last_install_job_history_count;
         });
 
         var inventory_table = $("#inventory-datatable").dataTable({
+            "serverSide": true,
             "order": [
-                0, ["asc"]
+                [0, "asc"]
+            ],
+            "columns": [
+                { "data": "location" },
+                { "data": "model_name" },
+                { "data": "name" },
+                { "data": "description" },
+                { "data": "serial_number" },
+                { "data": "vid" }
             ],
             "columnDefs": [{
                 "targets": 0,
@@ -264,21 +278,9 @@
                 "data": 'vid'
             }, ],
             "ajax": {
-                "url": "{{ url_for('api_get_inventory', hostname=host.hostname) }}",
+                "url": "{{ url_for('datatable.api_get_inventory', hostname=host.hostname) }}",
             }
         });
-
-        function refresh_inventory_table() {
-            inventory_table.api().ajax.url("{{ url_for('api_get_inventory', hostname=host.hostname) }}").load();
-        }
-
-        function refresh_install_job_history_table() {
-            install_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_install_job_history', hostname=host.hostname) }}").load();
-        }
-
-        function refresh_inventory_job_history_table() {
-            inventory_job_history_table.api().ajax.url("{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}").load();
-        }
 
         var inventory_job_history_table = $("#retrieval-history-datatable").dataTable({
             "order": [
@@ -310,21 +312,20 @@
                 }
             }, ],
             "ajax": {
-                "url": "{{ url_for('api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}",
+                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_software_inventory_history', hostname=host.hostname) }}",
             }
         });
 
 
         $(".install-delete-all").on("click", function() {
             var delete_url = $(this).attr('install-delete-url');
-            var return_url = $(this).attr('return-url');
             var status = $(this).attr('status');
 
             var message = "";
             if (status == 'failed') {
-                message = "Delete All failed installs?<br>(Notice: Any scheduled installs dependent on the failed installs will also be deleted.)"
+                message = "Delete All failed installations?<br>(Notice: Any scheduled installations dependent on the failed installations will also be deleted.)"
             } else {
-                message = "Delete All scheduled installs?";
+                message = "Delete All scheduled installations?";
             }
 
             bootbox.confirm(message, function(result) {
@@ -333,7 +334,7 @@
                         url: delete_url,
                         type: 'DELETE',
                         success: function(xhr) {
-                            handle_ajax_success(window, xhr, return_url);
+                            handle_ajax_success(window, xhr);
                         }
                     });
                 }
@@ -343,50 +344,49 @@
         // Use delegate pattern for event
         $("#scheduled-install-datatable").on("click", ".install-delete", function() {
             var delete_url = $(this).attr('install-delete-url');
-            var return_url = $(this).attr('return-url');
             var install_action = $(this).attr('install-action');
 
-            bootbox.confirm("Delete the selected scheduled install, '<b>" + install_action + "</b>'?<br>" +
-                "(Notice: Any scheduled installs dependent on this item will also be deleted.)",
+            bootbox.confirm("Delete this scheduled installation, '<b>" + install_action + "</b>'?<br>" +
+                "(Notice: Any scheduled installations dependent on this item will also be deleted.)",
                 function(result) {
                     if (result) {
                         $.ajax({
                             url: delete_url,
                             type: 'DELETE',
                             success: function(xhr) {
-                                handle_ajax_success(window, xhr, return_url);
+                                handle_ajax_success(window, xhr);
                             },
                             error: function(xhr, status, error) {
-                                handle_ajax_error(window, xhr, error, return_url);
+                                handle_ajax_error(window, xhr, error);
                             }
                         });
                     }
                 });
         });
 
-        function handle_ajax_error(window, xhr, error, return_url) {
+        function handle_ajax_error(window, xhr, error) {
             var obj = $.parseJSON(xhr.responseText);
             if (typeof obj.error != "undefined") {
                 bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> Error=" + xhr.status + ": " + obj.error, function() {
-                    window.location = return_url;
+                    refresh_scheduled_install_table();
                 });
             } else {
                 bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\"> Error=" + xhr.status + ": " + error, function() {
-                    window.location = return_url;
+                    refresh_scheduled_install_table();
                 });
             }
         }
 
         function handle_ajax_success(window, xhr, return_url) {
             if (xhr.status == 'OK') {
-                window.location = return_url;
+                refresh_scheduled_install_table();
             } else {
                 if (xhr.status == null) {
                     // Not authorized
                     bootbox.alert('Unable to delete.');
                 } else {
                     bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">" + xhr.status, function() {
-                        window.location = return_url;
+                        refresh_scheduled_install_table();
                     });
                 }
             }
@@ -442,7 +442,7 @@
 
         function get_host_dashboard_cookie() {
             $.ajax({
-                url: "{{ url_for('api_get_host_dashboard_cookie', hostname=host.hostname) }}",
+                url: "{{ url_for('host_dashboard.api_get_host_dashboard_cookie', hostname=host.hostname) }}",
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {
@@ -483,14 +483,6 @@
                             last_successful_inventory_time = new_last_successful_inventory_time
                         }
 
-                        new_last_install_job_history_count = element[0].last_install_job_history_count;
-                        if (auto_refresh && last_install_job_history_count != new_last_install_job_history_count) {
-                            refresh_install_job_history_table();
-                        }
-
-                        // Always refresh as the elapsed time needs to be updated
-                        refresh_inventory_job_history_table();
-
                         display_alert(element[0].can_schedule);
                     });
                 }
@@ -498,16 +490,33 @@
         }
 
         function refresh_packages_tables() {
-            active_committed_table.api().ajax.reload();
-            active_table.api().ajax.reload();
-            inactive_committed_table.api().ajax.reload();
-            inactive_table.api().ajax.reload();
+            active_committed_table.api().ajax.reload(null, false);
+            active_table.api().ajax.reload(null, false);
+            inactive_committed_table.api().ajax.reload(null, false);
+            inactive_table.api().ajax.reload(null, false);
+        }
+
+        function refresh_scheduled_install_table() {
+            scheduled_install_table.api().ajax.reload(null, false);
+        }
+
+        function refresh_inventory_table() {
+            inventory_table.api().ajax.reload(null, false);
+        }
+
+        function refresh_install_job_history_table() {
+            install_job_history_table.api().ajax.reload(null, false);
+        }
+
+        function refresh_inventory_job_history_table() {
+            inventory_job_history_table.api().ajax.reload(null, false);
         }
 
         setInterval(function() {
-            auto_refresh = true;
             get_host_dashboard_cookie();
-            scheduled_install_table.api().ajax.reload();
+            refresh_scheduled_install_table();
+            refresh_install_job_history_table();
+            refresh_inventory_job_history_table();
         }, 10000);
 
         function display_alert(can_schedule) {
@@ -576,14 +585,14 @@
                     <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li id="schedule-install-menu-item"><a href="{{ url_for('host_schedule_install', hostname = host.hostname) }}?return_url=host_dashboard">Schedule an Install</a></li>
+                        <li id="schedule-install-menu-item"><a href="{{ url_for('host_schedule_install', hostname = host.hostname) }}?return_url=host_dashboard.home">Schedule an Install</a></li>
                         <li class="divider"></li>
-                        <li><a href="javascript://" class="install-delete-all" status="" install-delete-url="{{ url_for('delete_all_scheduled_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Scheduled Installs</a></li>
-                        <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('delete_all_failed_installs_for_host', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Delete All Failed Installs</a></li>
+                        <li><a href="javascript://" class="install-delete-all" status="scheduled" install-delete-url="{{ url_for('host_dashboard.delete_all_scheduled_installations_for_host', hostname = host.hostname) }}">Delete All Scheduled Installs</a></li>
+                        <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('host_dashboard.delete_all_failed_installations_for_host', hostname = host.hostname) }}">Delete All Failed Installs</a></li>
                         <li class="divider"></li>
-                        <li><a href="javascript://" id="retrieve-inventory" retrieve-inventory-url="{{ url_for('get_inventory', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard', hostname = host.hostname) }}">Retrieve Latest Inventory</a></li>
+                        <li><a href="javascript://" id="retrieve-inventory" retrieve-inventory-url="{{ url_for('host_dashboard.get_inventory', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard.home', hostname = host.hostname) }}">Retrieve Latest Inventory</a></li>
                         <li class="divider"></li>
-                        <li><a href="{{ url_for('host_edit', hostname = host.hostname) }}?return_url=host_dashboard">Edit Host</a></li>
+                        <li><a href="{{ url_for('host_edit', hostname = host.hostname) }}?return_url=host_dashboard.home">Edit Host</a></li>
                     </ul>
                 </div>
             </div>
