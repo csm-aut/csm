@@ -87,7 +87,7 @@ from constants import BUG_SEARCH_URL
 from constants import get_log_directory
 from constants import get_repository_directory
 from constants import DefaultHostAuthenticationChoice
-from constants import PlatformFamily
+from constants import get_doc_central_directory
 from constants import ExportSoftwareInformationFormat
 from constants import ExportSoftwareInformationLayout
 
@@ -2247,6 +2247,19 @@ def delete_install_job(id):
         return jsonify({'status': 'Failed: check system logs for details'})
 
 
+def get_doc_central_log_path(install_job):
+    """
+    This method is used to support SIT Doc Central feature
+    :param install_job: must be an install job history instance
+    :return: The aggregated path
+    """
+    doc_central_log_file_path = ''
+    if install_job.install_action == InstallAction.POST_UPGRADE:
+        doc_central_log_file_path = install_job.load_data('doc_central_log_file_path')
+
+    return doc_central_log_file_path
+
+
 @app.route('/hosts/<hostname>/<table>/session_log/<int:id>/')
 @login_required
 def host_session_log(hostname, table, id):
@@ -2260,6 +2273,7 @@ def host_session_log(hostname, table, id):
         record = db_session.query(InstallJob).filter(InstallJob.id == id).first()
     elif table == 'install_job_history':
         record = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+        doc_central_log_file_path = get_doc_central_log_path(record)
     elif table == 'inventory_job_history':
         record = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
     
@@ -2295,7 +2309,8 @@ def host_session_log(hostname, table, id):
 
     return render_template('host/session_log.html', hostname=hostname, table=table,
                            record_id=id, file_pairs=file_pairs, log_file_contents=log_file_contents,
-                           is_file=os.path.isfile(log_file_path))
+                           is_file=os.path.isfile(log_file_path),
+                           doc_central_log_file_path=doc_central_log_file_path)
 
 
 @app.route('/api/get_session_log_file_diff')
@@ -3657,6 +3672,13 @@ def host_packages_contains(host_packages, smu_name):
 def api_validate_software():
     smu_list = request.args.get('smu_list').split()
     return jsonify(**{'data': get_validated_list(smu_list)})
+
+
+# This route will prompt a file download
+@app.route('/download_doc_central_log')
+@login_required
+def download_doc_central_log():
+    return send_file(os.path.join(get_doc_central_directory(), request.args.get('file_path')), as_attachment=True)
 
 
 # This route will prompt a file download
