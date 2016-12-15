@@ -40,6 +40,7 @@ DIRECTORY_LOG = DIRECTORY_BASE + 'logs/'
 DIRECTORY_REPOSITORY = DIRECTORY_BASE + 'repository/'
 DIRECTORY_TEMP = DIRECTORY_BASE + 'temp/'
 DIRECTORY_MIGRATION = DIRECTORY_BASE + 'migration/'
+DIRECTORY_DOC_CENTRAL = DIRECTORY_BASE + 'doc_central/'
 
 
 def get_csm_data_directory():
@@ -60,6 +61,11 @@ def get_temp_directory():
 
 def get_migration_directory():
     return DIRECTORY_MIGRATION
+
+
+def get_doc_central_directory():
+    return DIRECTORY_DOC_CENTRAL
+
 
 BUG_SEARCH_URL = 'https://tools.cisco.com/bugsearch/bug/'
 

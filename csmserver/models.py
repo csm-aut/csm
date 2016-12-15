@@ -41,6 +41,7 @@ from constants import UNKNOWN
 from constants import JobStatus
 from constants import UserPrivilege
 from constants import ProxyAgent
+from constants import get_log_directory
 
 import datetime
 import logging
@@ -73,7 +74,12 @@ class JSONEncodedDict(TypeDecorator):
 
     def process_result_value(self, value, dialect):
         if value is not None:
-            value = json.loads(value)
+            try:
+                value = json.loads(value)
+            except ValueError:
+                # nothing we can do if this happens.
+                value = {}
+
         return value
 
 
@@ -507,14 +513,24 @@ class InstallJob(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     modified_time = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_by = Column(String(50))
-    
+    data = Column(JSONEncodedDict, default={})
+
     host_id = Column(Integer, ForeignKey('host.id'))     
     user_id = Column(Integer, ForeignKey('user.id'))
     custom_command_profile_id = Column(String(20))
 
+    def __init__(self):
+        self.data = {}
+
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        return self.data.get(key)
+
+    def save_data(self, key, value):
+        self.data[key] = value
 
 
 class InstallJobHistory(Base):
@@ -534,12 +550,22 @@ class InstallJobHistory(Base):
     session_log = Column(Text)
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
-                            
+    data = Column(JSONEncodedDict, default={})
+
     host_id = Column(Integer, ForeignKey('host.id'))
     
+    def __init__(self):
+        self.data = {}
+
     def set_status(self, status):
         self.status = status        
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        return self.data.get(key)
+
+    def save_data(self, key, value):
+        self.data[key] = value
 
 
 class Region(Base):
@@ -784,6 +810,7 @@ class SystemOption(Base):
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)
     enable_user_credential_for_host = Column(Boolean, default=False)
+    doc_central_path = Column(String(100))
     
     @property
     def default_host_password(self):

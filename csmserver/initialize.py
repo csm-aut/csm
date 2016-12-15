@@ -28,8 +28,15 @@ from models import SystemVersion
 from database import DBSession
 from database import CURRENT_SCHEMA_VERSION
 
+from models import SystemOption
+
+from utils import import_module
+
 from schema.loader import get_schema_migrate_class
 
+from constants import get_csm_data_directory
+
+import os
 import traceback
 
 
@@ -48,6 +55,42 @@ def init():
 
     # Initialize certain tables 
     initialize()
+    get_doc_central_config()
+
+
+def apply_dialect_specific_codes():
+    """
+    Apply database engine specific codes.  Unlike schema migration codes, these codes are applied to
+    new CSM installation which does not require schema migration.
+    """
+    db_session = DBSession()
+
+    # For MYSQL: MEDIUMTEXT stores 2^24 characters. TEXT (65535) type is not enough when working with NCS6K
+    # Multi-Chassis which has twice as much information as a single chassis.
+    try:
+        db_session.execute('alter table host_context modify data MEDIUMTEXT')
+    except Exception:
+        pass
+
+
+def get_doc_central_config():
+    db_session = DBSession()
+    module = import_module('ConfigParser')
+    if module is None:
+        module = import_module('configparser')
+
+    config = module.RawConfigParser()
+
+    config.read(os.path.join(get_csm_data_directory(), 'config'))
+    system_option = SystemOption.get(db_session)
+
+    if not config.has_section('Doc Central'):
+        system_option.doc_central_path = None
+        db_session.commit()
+    else:
+        doc_central_dict = dict(config.items('Doc Central'))
+        system_option.doc_central_path = doc_central_dict['directory_path']
+        db_session.commit()
 
 
 if __name__ == '__main__':

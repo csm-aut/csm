@@ -28,7 +28,10 @@ from models import InventoryJob
 
 
 sql_statements = [
-    'alter table host add location VARCHAR(100)'
+    'alter table host add location VARCHAR(100)',
+    'alter table system_option add doc_central_path varchar(100)',
+    'alter table install_job add data text',
+    'alter table install_job_history add data text'
     ]
 
 

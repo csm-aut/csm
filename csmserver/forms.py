@@ -24,7 +24,7 @@
 # =============================================================================
 from wtforms import Form, validators
 from wtforms import RadioField
-from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
+from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField, BooleanField
 from wtforms.validators import Length, required
 from constants import ConnectionType
 from constants import ServerType
@@ -99,6 +99,8 @@ class HostScheduleInstallForm(ServerDialogForm):
 
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
 
+    doc_central = BooleanField("Upload log files to Doc Central")
+
     scheduled_time = StringField('Scheduled Time', [required()])
     scheduled_time_UTC = HiddenField('Scheduled Time')
     software_packages = TextAreaField('Software Packages')
@@ -128,6 +130,8 @@ class ScheduleInstallForm(HostScheduleInstallForm):
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
     software = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
+
+    doc_central = BooleanField("Upload log files to Doc Central")
 
 
 class ServerForm(Form):

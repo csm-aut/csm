@@ -1933,7 +1933,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server_directory = form.hidden_server_directory.data
         pending_downloads = form.hidden_pending_downloads.data
         custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
-        
+        doc_central = form.doc_central.data
+
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
         if len(install_action) == 1:
@@ -1942,7 +1943,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                          scheduled_time=scheduled_time, software_packages=software_packages, server=server,
                                          server_directory=server_directory, pending_downloads=pending_downloads,
                                          custom_command_profile=custom_command_profile, dependency=dependency,
-                                         install_job=install_job)
+                                         doc_central=doc_central, install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will 
@@ -1957,7 +1958,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                                                server_directory=server_directory,
                                                                pending_downloads=pending_downloads,
                                                                custom_command_profile=custom_command_profile,
-                                                               dependency=dependency, install_job=install_job)
+                                                               dependency=dependency, doc_central=doc_central,
+                                                               install_job=install_job)
                 dependency = new_install_job.id
                    
         return redirect(url_for(return_url, hostname=hostname))

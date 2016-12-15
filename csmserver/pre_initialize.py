@@ -30,6 +30,7 @@ from constants import get_log_directory
 from constants import get_repository_directory
 from constants import get_temp_directory
 from constants import get_migration_directory
+from constants import get_doc_central_directory
 
 import os
 import shutil
@@ -51,6 +52,7 @@ def init():
     create_directory(get_repository_directory())
     create_directory(get_temp_directory())
     create_directory(get_migration_directory())
+    create_directory(get_doc_central_directory())
 
     if not is_ldap_supported():
         print('LDAP authentication is not supported because it has not been installed.')

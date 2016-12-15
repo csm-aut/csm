@@ -88,6 +88,10 @@
     {{ edit_field(form.dependency, field_width="col-sm-6", class="form-control") }}
 </div>
 
+<div id="doc-central">
+    {{ edit_field(form.doc_central, class="form-control", type='checkbox', style="-webkit-box-shadow:none")}}
+</div>
+
 <input id="hidden_selected_hosts" name="{{ form.hidden_selected_hosts.name }}" value="{{ form.hidden_selected_hosts.data }}" type="hidden">
 <input id="hidden_server" name="{{ form.hidden_server.name }}" value="{{ form.hidden_server.data }}" type="hidden">
 <input id="hidden_server_name" name="{{ form.hidden_server_name.name }}" value="{{ form.hidden_server_name.data }}" type="hidden">
@@ -212,6 +216,16 @@ $(function() {
         if (has_one_of_these(install_actions, [PRE_UPGRADE, POST_UPGRADE])) {
 
             $('#custom-command-profile-panel').show();
+        }
+
+        if ( "{{ system_option.doc_central_path }}" != "None") {
+            if (has_one_of_these(install_actions, [POST_UPGRADE])){
+                $('#doc-central').show();
+            } else {
+                $('#doc-central').hide();
+            }
+        } else {
+            $('#doc-central').hide();
         }
 
         should_enable_software_packages_panel();
