@@ -387,7 +387,8 @@ def export_inventory_information():
 
     export_data = dict()
     export_data['export_format'] = export_results_form.export_format.data
-    export_data['serial_number'] = export_results_form.hidden_serial_number.data
+    export_data['serial_number'] = export_results_form.hidden_serial_number.data \
+        if export_results_form.hidden_serial_number.data != "" else None
     export_data['region_ids'] = export_results_form.hidden_region_ids.data.split(',') \
         if export_results_form.hidden_region_ids.data else []
     export_data['chassis_types'] = export_results_form.hidden_chassis_types.data.split(',') \
@@ -855,6 +856,7 @@ class ExportInventoryInformationForm(BasicExportInventoryInformationForm):
 
 
 class ExportInventoryDashboardForm(BasicExportInventoryInformationForm):
+    # include_failed_hosts_table = BooleanField('Include "Hosts that Failed the Inventory Retrieval"')
     hidden_region_id = HiddenField('')
 
 
