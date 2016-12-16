@@ -240,7 +240,7 @@ class InstallContext(ConnectionContext):
     def server_repository_url(self):
         """
         Return the server repository URL (TFTP/FTP) where the packages can be found.
-        tftp://223.255.254.254/auto/tftp-gud/sit;VRF
+        tftp://223.255.254.254;VRF/auto/tftp-gud/sit
         ftp://username:password@10.55.7.21;VRF/remote/directory
         """
         server_id = self.install_job.server_id
@@ -250,16 +250,21 @@ class InstallContext(ConnectionContext):
             server_type = server.server_type
 
             if server_type == ServerType.TFTP_SERVER:
-                url = 'tftp://{}'.format(server.server_url.replace('tftp://',''))
+                tftp_string = 'tftp://'
+                url = '{}{}'.format(tftp_string, server.server_url.replace(tftp_string, ''))
 
                 if not is_empty(server.vrf):
-                    url = url + ";{}".format(server.vrf)
+                    try:
+                        pos = url.index('/', len(tftp_string))
+                    except ValueError:
+                        pos = len(url)
+                    url = url[:pos] + ';' + server.vrf + url[pos:]
 
                 server_sub_directory = self.install_job.server_directory
                 
                 if not is_empty(server_sub_directory):
                     url += '/' + server_sub_directory  
-                
+
                 return url
             
             elif server_type == ServerType.FTP_SERVER or server_type == ServerType.SFTP_SERVER:                              
