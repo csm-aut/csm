@@ -34,6 +34,8 @@ from database import DBSession
 
 from inventory import query_available_inventory
 from inventory import query_in_use_inventory
+from inventory import get_inventory_without_serial_number_query
+from inventory import get_inventory_with_duplicate_serial_number_query
 
 from models import Host
 from models import HostInventory
@@ -854,15 +856,7 @@ def api_get_inventory_without_serial_number(region_id):
         criteria = '%' + dt_params.search_value + '%'
         clause = Host.hostname.like(criteria)
 
-    if region_id == 0:
-        host_with_count_query = db_session.query(Host.hostname, func.count(HostInventory.name)) \
-            .group_by(Host.hostname.asc()) \
-            .filter(and_(Host.id == HostInventory.host_id, HostInventory.serial_number == ""))
-    else:
-        host_with_count_query = db_session.query(Host.hostname, func.count(HostInventory.name)) \
-            .group_by(Host.hostname.asc()) \
-            .filter(and_(Host.region_id == region_id, Host.id == HostInventory.host_id,
-                         HostInventory.serial_number == ""))
+    host_with_count_query = get_inventory_without_serial_number_query(db_session, region_id)
 
     total_count = host_with_count_query.count()
     if clause is not None:
@@ -895,7 +889,7 @@ def api_get_inventory_without_serial_number(region_id):
 @login_required
 def api_get_inventory_with_duplicate_serial_number(region_id):
     """
-    Return the hostname, count (# of inventory with duplicate serial numbers in the host)
+    Return the serial number, count (# of inventory with that serial number)
     datatable json data
     """
     dt_params = DataTableParams(request)
@@ -907,20 +901,7 @@ def api_get_inventory_with_duplicate_serial_number(region_id):
         criteria = '%' + dt_params.search_value + '%'
         clause = HostInventory.serial_number.like(criteria)
 
-    if region_id == 0:
-        serial_number_with_count_query = db_session.query(HostInventory.serial_number,
-                                                          func.count(HostInventory.serial_number))\
-            .filter(HostInventory.serial_number != "")\
-            .group_by(HostInventory.serial_number.asc()) \
-            .having(func.count(HostInventory.serial_number) > 1)
-
-    else:
-        serial_number_with_count_query = db_session.query(HostInventory.serial_number,
-                                                          func.count(HostInventory.serial_number))\
-            .join(Host)\
-            .filter(and_(Host.region_id == region_id, HostInventory.serial_number != ""))\
-            .group_by(HostInventory.serial_number.asc())\
-            .having(func.count(HostInventory.serial_number) > 1)
+    serial_number_with_count_query = get_inventory_with_duplicate_serial_number_query(db_session, region_id)
 
     total_count = serial_number_with_count_query.count()
     if clause is not None:

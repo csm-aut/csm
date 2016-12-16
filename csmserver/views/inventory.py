@@ -33,6 +33,7 @@ from flask.ext.login import login_required
 from flask.ext.login import current_user
 from flask import request
 
+from sqlalchemy import and_
 from sqlalchemy import or_
 from sqlalchemy import func
 
@@ -47,7 +48,6 @@ from wtforms.validators import Length
 from wtforms.validators import required
 
 from common import get_last_successful_inventory_elapsed_time
-from common import get_user
 
 from constants import UNKNOWN
 from constants import ExportInformationFormat
@@ -66,6 +66,9 @@ from models import logger
 from report_writer import ExportInventoryInfoCSVWriter
 from report_writer import ExportInventoryInfoHTMLWriter
 from report_writer import ExportInventoryInfoExcelWriter
+from report_writer import ExportInventoryDashboardHTMLWriter
+from report_writer import ExportInventoryDashboardExcelWriter
+from report_writer import ExportInventoryDashboardCSVWriter
 from report_writer import get_search_filter_in_html
 
 inventory = Blueprint('inventory', __name__, url_prefix='/inventory')
@@ -78,7 +81,12 @@ HEADER_FIELD_NOTES = 'notes'
 @inventory.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('inventory/dashboard.html', current_user=current_user)
+    export_dashboard_form = ExportInventoryDashboardForm(request.form)
+
+    export_dashboard_form.user_email.data = current_user.email if current_user.email else ""
+
+    return render_template('inventory/dashboard.html', current_user=current_user,
+                           export_dashboard_form=export_dashboard_form)
 
 
 @inventory.route('/query_add_inventory', methods=['GET', 'POST'])
@@ -373,7 +381,7 @@ def get_filter_clauses_for_partial_field_match(field, partial_strings_array):
 @inventory.route('/export', methods=['POST'])
 @login_required
 def export_inventory_information():
-    """export the inventory search result to html or excel format."""
+    """export the inventory search result to cvs, html or excel format."""
     db_session = DBSession()
     export_results_form = ExportInventoryInformationForm(request.form)
 
@@ -454,6 +462,63 @@ def create_email_job_with_attachment_files(db_session, message, file_paths, reci
                          attachment_file_paths=file_paths)
     db_session.add(email_job)
     db_session.commit()
+    return
+
+
+@inventory.route('/dashboard/export', methods=['POST'])
+@login_required
+def export_inventory_dashboard():
+    """export the inventory dashboard to cvs, html or excel format."""
+    db_session = DBSession()
+    export_dashboard_form = ExportInventoryDashboardForm(request.form)
+
+    export_data = dict()
+    export_data['export_format'] = export_dashboard_form.export_format.data
+    try:
+        export_data['region_id'] = int(export_dashboard_form.hidden_region_id.data) \
+            if export_dashboard_form.hidden_region_id.data else 0
+    except ValueError:
+        export_data['region_id'] = 0
+
+    if export_data['region_id'] == 0:
+        export_data['region_name'] = "ALL"
+    else:
+        export_data['region_name'] = db_session.query(Region.name).filter(
+            Region.id == export_data['region_id']).first()[0]
+
+    export_data['chassis_summary_iter'] = get_chassis_summary_query(db_session, export_data['region_id'])
+
+    export_data['model_name_summary_iter'] = get_model_name_summary_query_results(db_session,
+                                                                                  export_data['region_id']).__iter__()
+
+    export_data['inventory_without_serial_number_iter'] = \
+        get_inventory_without_serial_number_query(db_session, export_data['region_id'])
+
+    export_data['inventory_with_duplicate_serial_number_iter'] = \
+        get_inventory_with_duplicate_serial_number_query(db_session, export_data['region_id'])
+
+    export_data['user'] = current_user
+
+    writer = None
+    if export_data.get('export_format') == ExportInformationFormat.MICROSOFT_EXCEL:
+        writer = ExportInventoryDashboardExcelWriter(**export_data)
+    elif export_data.get('export_format') == ExportInformationFormat.HTML:
+        writer = ExportInventoryDashboardHTMLWriter(**export_data)
+    elif export_data.get('export_format') == ExportInformationFormat.CSV:
+        writer = ExportInventoryDashboardCSVWriter(**export_data)
+
+    if writer:
+        file_path = writer.write_report()
+
+        if export_dashboard_form.send_email.data:
+            email_message = "<html><head></head><body>Please find in the attachment the inventory dashboard summary " \
+                            "in region: " + export_data['region_name'] + '</body></html>'
+            create_email_job_with_attachment_files(db_session, email_message, file_path,
+                                                   export_dashboard_form.user_email.data)
+
+        return send_file(file_path, as_attachment=True)
+
+    logger.error('inventory: invalid export format "%s" chosen.' % export_data.get('export_format'))
     return
 
 
@@ -576,11 +641,7 @@ def api_get_chassis_summary(region_id):
     """
     db_session = DBSession()
 
-    if region_id == 0:
-        chassis_summary_query = db_session.query(Host.platform, func.count(Host.platform)).group_by(Host.platform.asc())
-    else:
-        chassis_summary_query = db_session.query(Host.platform, func.count(Host.platform))\
-            .filter(Host.region_id == region_id).group_by(Host.platform.asc())
+    chassis_summary_query = get_chassis_summary_query(db_session, region_id)
 
     rows = []
     for chassis_type, count in chassis_summary_query:
@@ -590,6 +651,15 @@ def api_get_chassis_summary(region_id):
     return jsonify(**{'data': rows})
 
 
+def get_chassis_summary_query(db_session, region_id):
+    if region_id == 0:
+        chassis_summary_query = db_session.query(Host.platform, func.count(Host.platform)).group_by(Host.platform.asc())
+    else:
+        chassis_summary_query = db_session.query(Host.platform, func.count(Host.platform))\
+            .filter(Host.region_id == region_id).group_by(Host.platform.asc())
+    return chassis_summary_query
+
+
 @inventory.route('/api/get_model_name_summary/<int:region_id>')
 @login_required
 def api_get_model_name_summary(region_id):
@@ -597,6 +667,14 @@ def api_get_model_name_summary(region_id):
     Return the model name, in use (count), available (count) summary datatable json data
     """
     db_session = DBSession()
+
+    rows = get_model_name_summary_query_results(db_session, region_id)
+
+    db_session.close()
+    return jsonify(**{'data': rows})
+
+
+def get_model_name_summary_query_results(db_session, region_id):
 
     available_model_name_summary_iter = db_session.query(Inventory.model_name, func.count(Inventory.model_name))\
         .filter(Inventory.host_id == None)\
@@ -642,8 +720,40 @@ def api_get_model_name_summary(region_id):
         rows.append({'model_name': in_use_model_name, 'in_use_count': in_use_count, 'available_count': 0})
         in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
 
-    db_session.close()
-    return jsonify(**{'data': rows})
+    return rows
+
+
+def get_inventory_without_serial_number_query(db_session, region_id):
+    """ Return query of hostname and count of the inventories without serial numbers in that host. """
+    if region_id == 0:
+        host_with_count_query = db_session.query(Host.hostname, func.count(HostInventory.name)) \
+            .group_by(Host.hostname.asc()) \
+            .filter(and_(Host.id == HostInventory.host_id, HostInventory.serial_number == ""))
+    else:
+        host_with_count_query = db_session.query(Host.hostname, func.count(HostInventory.name)) \
+            .group_by(Host.hostname.asc()) \
+            .filter(and_(Host.region_id == region_id, Host.id == HostInventory.host_id,
+                         HostInventory.serial_number == ""))
+    return host_with_count_query
+
+
+def get_inventory_with_duplicate_serial_number_query(db_session, region_id):
+    """ Return query of serial number and count of inventories with that serial number. """
+    if region_id == 0:
+        serial_number_with_count_query = db_session.query(HostInventory.serial_number,
+                                                          func.count(HostInventory.serial_number))\
+            .filter(HostInventory.serial_number != "")\
+            .group_by(HostInventory.serial_number.asc()) \
+            .having(func.count(HostInventory.serial_number) > 1)
+
+    else:
+        serial_number_with_count_query = db_session.query(HostInventory.serial_number,
+                                                          func.count(HostInventory.serial_number))\
+            .join(Host)\
+            .filter(and_(Host.region_id == region_id, HostInventory.serial_number != ""))\
+            .group_by(HostInventory.serial_number.asc())\
+            .having(func.count(HostInventory.serial_number) > 1)
+    return serial_number_with_count_query
 
 
 @inventory.route('/api/get_chassis_types/')
@@ -723,22 +833,29 @@ def api_get_regions():
     return jsonify(**{'data': rows})
 
 
-class ExportInventoryInformationForm(Form):
+class BasicExportInventoryInformationForm(Form):
     export_format = SelectField('Export Format', coerce=str,
-                                choices=[(ExportInformationFormat.CSV,
-                                          ExportInformationFormat.CSV),
+                                choices=[(ExportInformationFormat.MICROSOFT_EXCEL,
+                                          ExportInformationFormat.MICROSOFT_EXCEL),
                                          (ExportInformationFormat.HTML,
                                           ExportInformationFormat.HTML),
-                                         (ExportInformationFormat.MICROSOFT_EXCEL,
-                                          ExportInformationFormat.MICROSOFT_EXCEL)])
+                                         (ExportInformationFormat.CSV,
+                                          ExportInformationFormat.CSV)])
     send_email = BooleanField('Email Export Data')
     user_email = StringField('User Email')
+
+
+class ExportInventoryInformationForm(BasicExportInventoryInformationForm):
     hidden_serial_number = HiddenField('')
     hidden_region_ids = HiddenField('')
     hidden_chassis_types = HiddenField('')
     hidden_software_versions = HiddenField('')
     hidden_model_names = HiddenField('')
     hidden_partial_model_names = HiddenField('')
+
+
+class ExportInventoryDashboardForm(BasicExportInventoryInformationForm):
+    hidden_region_id = HiddenField('')
 
 
 class QueryInventoryBySerialNumberForm(Form):

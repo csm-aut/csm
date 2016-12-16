@@ -383,7 +383,7 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
         return content
 
     def get_available_inventory_table_content(self):
-        content = 'Number of Available Inventories: ' + str(self.available_inventory_iter.count())
+        content = '<b>Number of Available Inventories: {}</b>'.format(str(self.available_inventory_iter.count()))
         if self.available_inventory_iter.count() > 0:
             content += '<table cellspacing=1 cellpadding=2 border=1 width=100%>' + \
                         '<tr>' + \
@@ -406,7 +406,7 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
         return content
 
     def get_in_use_inventory_table_content(self):
-        content = 'Number of In Use Inventories: ' + str(self.in_use_inventory_iter.count())
+        content = '<b>Number of In Use Inventories: {}</b>'.format(str(self.in_use_inventory_iter.count()))
         if self.in_use_inventory_iter.count() > 0:
             content += '<table cellspacing=1 cellpadding=2 border=1 width=100%>' + \
                        '<tr>' + \
@@ -708,5 +708,392 @@ class ExportInventoryInfoCSVWriter(ExportInventoryInfoWriter):
                                        (host.location if host.location else ''),
                                        last_successful_retrieval])
                 csv_writer.writerow(prepare_row)
+
+        return
+
+
+class ExportInventoryDashboardWriter(ReportWriter):
+    def __init__(self, **kwargs):
+        ReportWriter.__init__(self, **kwargs)
+        self.user = kwargs.pop('user')
+        self.region_name = kwargs.pop('region_name')
+
+        self.chassis_summary_iter = kwargs.pop('chassis_summary_iter')
+        self.model_name_summary_iter = kwargs.pop('model_name_summary_iter')
+
+        self.inventory_without_serial_number_iter = kwargs.pop('inventory_without_serial_number_iter')
+        self.inventory_with_duplicate_serial_number_iter = kwargs.pop('inventory_with_duplicate_serial_number_iter')
+
+        temp_user_dir = create_temp_user_directory(self.user.username)
+        self.output_file_directory = os.path.normpath(os.path.join(temp_user_dir, 'inventory_information_export'))
+
+        create_directory(self.output_file_directory)
+        make_file_writable(self.output_file_directory)
+
+
+class ExportInventoryDashboardHTMLWriter(ExportInventoryDashboardWriter):
+    def __init__(self, **kwargs):
+        ExportInventoryDashboardWriter.__init__(self, **kwargs)
+
+    def get_report_header(self):
+        return '<b><p>Region:&nbsp;' + self.region_name + '</p></b>'
+
+    def write_report(self):
+        output_file_path = os.path.join(self.output_file_directory, 'inventory_dashboard_summary.html')
+        with open(output_file_path, 'w') as output_file:
+            output_file.write(self.get_content())
+
+        return output_file_path
+
+    def get_content(self):
+        content = self.get_report_header()
+        content += '<p>'
+        content += '<html><body>'
+        content += '<hr>'
+        content += self.get_chassis_summary_table_content()
+        content += '<br><hr>'
+        content += self.get_model_name_summary_table_content()
+        content += '<br><hr>'
+        content += self.get_inventory_without_serial_number_table_content()
+        content += '<br><hr>'
+        content += self.get_inventory_with_duplicate_serial_number_table_content()
+        content += '<br><hr>'
+        content += '</body></html>'
+
+        return content
+
+    def get_chassis_summary_table_content(self):
+
+        content = '<p><b>Total Chassis Types: {}</b></p>'.format(str(self.chassis_summary_iter.count()))
+        grand_total = 0
+
+        if self.chassis_summary_iter.count() > 0:
+            content += '<table cellspacing=1 cellpadding=1 border=1 width=30%>' + \
+                    '<tr>' + \
+                    '<th><b>Chassis</b></th>' + \
+                    '<th><b>Count</b></th>' + \
+                    '</tr>'
+
+            for chassis_type, count in self.chassis_summary_iter:
+                content += '<tr>' + \
+                    '<td>' + (chassis_type if chassis_type else '') + '</td>' + \
+                    '<td>' + str(count) + '</td>' + \
+                    '</tr>'
+                grand_total += count
+
+            content += '</table>'
+
+        content = '<p><b>Total Chassis: ' + str(grand_total) + '</b></p>' + content
+
+        return content
+
+    def get_model_name_summary_table_content(self):
+
+        total_pid_types = 0
+        content = ''
+
+        for table_dict in self.model_name_summary_iter:
+            content += '<tr>' + \
+                '<td>' + (table_dict['model_name']
+                          if table_dict['model_name'] != '' else '(Undefined PID)') + '</td>' + \
+                '<td>' + str(table_dict['in_use_count']) + '</td>' + \
+                '<td>' + str(table_dict['available_count']) + '</td>' + \
+                '</tr>'
+            total_pid_types += 1
+
+        if total_pid_types > 0:
+            content = '<b><p>Total PID Types: {}</p>'.format(str(total_pid_types)) + \
+                      '<p>Column "Available" refers to All Regions</p></b>' + \
+                      '<table cellspacing=1 cellpadding=1 border=1 width=30%>' + \
+                      '<tr>' + \
+                      '<th><b>Model Name (PID)</b></th>' + \
+                      '<th><b>In Use</b></th>' + \
+                      '<th><b>Available</b></th>' + \
+                      '</tr>' + content + '</table>'
+        else:
+            content = '<p><b>Total PID Types: 0</b></p>'
+
+        return content
+
+    def get_inventory_without_serial_number_table_content(self):
+        content = '<b><p>Inventory without Serial Number</p>' + \
+                  '<p>Total Hosts: {}</p></b>'.format(str(self.inventory_without_serial_number_iter.count()))
+
+        if self.inventory_without_serial_number_iter.count() > 0:
+            content += '<table cellspacing=1 cellpadding=1 border=1 width=30%>' + \
+                       '<tr>' + \
+                       '<th><b>Hostname</b></th>' + \
+                       '<th><b>Count</b></th>' + \
+                       '</tr>'
+
+            for hostname, count in self.inventory_without_serial_number_iter:
+                content += '<tr>' + \
+                           '<td>' + (hostname if hostname else '') + '</td>' + \
+                           '<td>' + str(count) + '</td>' + \
+                           '</tr>'
+
+            content += '</table>'
+
+        return content
+
+    def get_inventory_with_duplicate_serial_number_table_content(self):
+        content = '<b><p>Inventory with Duplicate Serial Numbers</p>' + \
+                  '<p>Total Duplicate Serial Numbers: {}</p></b>'.format(
+                      str(self.inventory_with_duplicate_serial_number_iter.count()))
+
+        if self.inventory_with_duplicate_serial_number_iter.count() > 0:
+            content += '<table cellspacing=1 cellpadding=1 border=1 width=30%>' + \
+                       '<tr>' + \
+                       '<th><b>Serial Number</b></th>' + \
+                       '<th><b>Count</b></th>' + \
+                       '</tr>'
+
+            for serial_number, count in self.inventory_with_duplicate_serial_number_iter:
+                content += '<tr>' + \
+                           '<td>' + (serial_number if serial_number else '(Undefined Serial Number)') + '</td>' + \
+                           '<td>' + str(count) + '</td>' + \
+                           '</tr>'
+
+            content += '</table>'
+
+        return content
+
+
+class ExportInventoryDashboardExcelWriter(ExportInventoryDashboardWriter):
+    def __init__(self, **kwargs):
+        ExportInventoryDashboardWriter.__init__(self, **kwargs)
+        self.style_title = xlwt.easyxf('font: height 350, bold on; align: vert centre;')
+        self.style_bold = xlwt.easyxf('font: bold on, height 260;')
+        self.style_summary = xlwt.easyxf('font: height 220;')
+        self.style_center = xlwt.easyxf('align: vert centre, horiz center;')
+
+        self.wb = xlwt.Workbook()
+        self.ws = self.wb.add_sheet('Inventory Dashboard Summary')
+        self.ws.set_portrait(False)
+
+        self.row = 0
+
+    def next_row(self):
+        self.row += 1
+        return self.row
+
+    def write_report_header(self):
+        if self.region_name:
+            self.ws.write(self.row, 0, 'Region: ' + self.region_name, self.style_title)
+        return
+
+    def write_report(self):
+        self.write_report_header()
+        self.next_row()
+        self.next_row()
+        self.next_row()
+        self.write_report_contents()
+
+        output_file_path = os.path.join(self.output_file_directory, 'inventory_dashboard_summary.xls')
+        self.wb.save(output_file_path)
+
+        return output_file_path
+
+    def write_report_contents(self):
+        # Fit for Landscape mode
+        self.ws.col(0).width = 5000
+        self.ws.col(1).width = 3000
+        self.ws.col(2).width = 3000
+
+        self.write_chassis_summary_table_content()
+        self.next_row()
+        self.next_row()
+        self.next_row()
+        self.write_model_name_summary_table_content()
+        self.next_row()
+        self.next_row()
+        self.next_row()
+        self.write_inventory_without_serial_number_table_content()
+        self.next_row()
+        self.next_row()
+        self.next_row()
+        self.write_inventory_with_duplicate_serial_number_table_content()
+
+        return
+
+    def write_chassis_summary_table_content(self):
+        header_row = self.row
+        self.next_row()
+        self.ws.write(self.row, 0, 'Total Chassis Types: ' + str(self.chassis_summary_iter.count()),
+                      self.style_bold)
+        grand_total = 0
+        if self.chassis_summary_iter.count() > 0:
+            self.next_row()
+            self.ws.write(self.row, 0, 'Chassis', self.style_bold)
+            self.ws.write(self.row, 1, 'Count', self.style_bold)
+
+            for chassis_type, count in self.chassis_summary_iter:
+                self.next_row()
+                self.ws.write(self.row, 0, (chassis_type if chassis_type else ''))
+                self.ws.write(self.row, 1, count)
+                grand_total += count
+
+        self.ws.write(header_row, 0, 'Total Chassis: ' + str(grand_total),
+                      self.style_bold)
+
+        return
+
+    def write_model_name_summary_table_content(self):
+        header_row = self.row
+        self.next_row()
+        self.next_row()
+        total_pid_types = 0
+        for table_dict in self.model_name_summary_iter:
+            self.next_row()
+            self.ws.write(self.row, 0, (table_dict['model_name']
+                                        if table_dict['model_name'] != '' else '(Undefined PID)'))
+            self.ws.write(self.row, 1, table_dict['in_use_count'])
+            self.ws.write(self.row, 2, table_dict['available_count'])
+            total_pid_types += 1
+
+        if total_pid_types > 0:
+            self.ws.write(header_row, 0, 'Total PID Types: ' + str(total_pid_types), self.style_bold)
+            self.ws.write(header_row + 1, 0, 'Column "Available" refers to All Regions', self.style_bold)
+            self.ws.write(header_row + 2, 0, 'Model Name (PID)', self.style_bold)
+            self.ws.write(header_row + 2, 1, 'In Use', self.style_bold)
+            self.ws.write(header_row + 2, 2, 'Available', self.style_bold)
+        else :
+            self.ws.write(header_row, 0, 'Total PID Types: 0', self.style_bold)
+            self.row -= 2
+
+        return
+
+    def write_inventory_without_serial_number_table_content(self):
+        self.ws.write(self.row, 0, 'Inventory without Serial Number', self.style_bold)
+        self.next_row()
+        self.ws.write(self.row, 0, 'Total Hosts: ' + str(self.inventory_without_serial_number_iter.count()),
+                      self.style_bold)
+
+        if self.inventory_without_serial_number_iter.count() > 0:
+            self.next_row()
+            self.ws.write(self.row, 0, 'Hostname', self.style_bold)
+            self.ws.write(self.row, 1, 'Count', self.style_bold)
+
+            for hostname, count in self.inventory_without_serial_number_iter:
+                self.next_row()
+                self.ws.write(self.row, 0, (hostname if hostname else ''))
+                self.ws.write(self.row, 1, count)
+
+        return
+
+    def write_inventory_with_duplicate_serial_number_table_content(self):
+        self.ws.write(self.row, 0, 'Inventory with Duplicate Serial Numbers', self.style_bold)
+        self.next_row()
+        self.ws.write(self.row, 0,
+                      'Total Duplicate Serial Numbers: ' + str(self.inventory_with_duplicate_serial_number_iter.count()),
+                      self.style_bold)
+        self.next_row()
+        if self.inventory_with_duplicate_serial_number_iter.count() > 0:
+            self.ws.write(self.row, 0, 'Serial Number', self.style_bold)
+            self.ws.write(self.row, 1, 'Count', self.style_bold)
+
+            for serial_number, count in self.inventory_with_duplicate_serial_number_iter:
+                self.next_row()
+                self.ws.write(self.row, 0, (serial_number if serial_number else '(Undefined Serial Number)'))
+                self.ws.write(self.row, 1, count)
+
+        return
+
+
+class ExportInventoryDashboardCSVWriter(ExportInventoryDashboardWriter):
+    def __init__(self, **kwargs):
+        ExportInventoryDashboardWriter.__init__(self, **kwargs)
+
+    def write_report_header(self, csv_writer):
+        csv_writer.writerow(['Region: ' + self.region_name])
+        return
+
+    def write_report(self):
+        output_file_path = os.path.join(self.output_file_directory, 'inventory_dashboard_summary.csv')
+
+        with open(output_file_path, 'w') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter=',')
+            self.write_report_header(csv_writer)
+            csv_writer.writerow([])
+            self.write_report_contents(csv_writer)
+
+        return output_file_path
+
+    def write_report_contents(self, csv_writer):
+        self.write_chassis_summary_table_content(csv_writer)
+        csv_writer.writerow([])
+        self.write_model_name_summary_table_content(csv_writer)
+        csv_writer.writerow([])
+        self.write_inventory_without_serial_number_table_content(csv_writer)
+        csv_writer.writerow([])
+        self.write_inventory_with_duplicate_serial_number_table_content(csv_writer)
+        csv_writer.writerow([])
+        return
+
+    def write_chassis_summary_table_content(self, csv_writer):
+
+        # reserve first spot for header
+        prepare_rows = [['']]
+
+        prepare_rows.append(['Total Chassis Types: ' + str(self.chassis_summary_iter.count())])
+
+        grand_total = 0
+        if self.chassis_summary_iter.count() > 0:
+
+            prepare_rows.append(['Chassis', 'Count'])
+
+            for chassis_type, count in self.chassis_summary_iter:
+                prepare_rows.append([(chassis_type if chassis_type else ''), str(count)])
+                grand_total += count
+
+        prepare_rows[0] = ['Total Chassis: ' + str(grand_total)]
+        csv_writer.writerows(prepare_rows)
+        return
+
+    def write_model_name_summary_table_content(self, csv_writer):
+
+        # reserve first spots for headers
+        prepare_rows = [[''], [''], ['']]
+
+        total_pid_types = 0
+        for table_dict in self.model_name_summary_iter:
+            prepare_rows.append([(table_dict['model_name'] if table_dict['model_name'] != '' else '(Undefined PID)'),
+                                 str(table_dict['in_use_count']),
+                                 str(table_dict['available_count'])])
+            total_pid_types += 1
+
+        if total_pid_types > 0:
+            prepare_rows[0] = ['Total PID Types: ' + str(total_pid_types)]
+            prepare_rows[1] = ['Column "Available" refers to All Regions']
+            prepare_rows[2] = ['Model Name (PID)', 'In Use', 'Available']
+        else:
+            prepare_rows = [['Total PID Types: 0']]
+
+        csv_writer.writerows(prepare_rows)
+        return
+
+    def write_inventory_without_serial_number_table_content(self, csv_writer):
+
+        csv_writer.writerow(['Inventory without Serial Number'])
+        csv_writer.writerow(['Total Hosts: ' + str(self.inventory_without_serial_number_iter.count())])
+
+        if self.inventory_without_serial_number_iter.count() > 0:
+            csv_writer.writerow(['Hostname', 'Count'])
+
+            for hostname, count in self.inventory_without_serial_number_iter:
+                csv_writer.writerow([(hostname if hostname else ''), str(count)])
+
+        return
+
+    def write_inventory_with_duplicate_serial_number_table_content(self, csv_writer):
+
+        csv_writer.writerow(['Inventory with Duplicate Serial Numbers'])
+        csv_writer.writerow(['Total Duplicate Serial Numbers: ' + str(self.inventory_with_duplicate_serial_number_iter.count())])
+
+        if self.inventory_with_duplicate_serial_number_iter.count() > 0:
+            csv_writer.writerow(['Serial Number', 'Count'])
+
+            for serial_number, count in self.inventory_with_duplicate_serial_number_iter:
+                csv_writer.writerow([(serial_number if serial_number else '(Undefined Serial Number)'), str(count)])
 
         return

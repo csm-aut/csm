@@ -1,4 +1,5 @@
 {% extends 'base_inventory.html' %}
+{% from 'host/common.html' import edit_field %}
 
 
 {% block head %}
@@ -30,9 +31,14 @@
             },
             "dom": '<f<t>p>'
         }).on('draw.dt', function(e, settings, json) {
-            $('#chassis_count').html(chassis_summary_table.column( 1 ).data().reduce( function (a,b) {
-                return a + b;
-            }));
+            if (chassis_summary_table.column( 1 ).data().length > 0) {
+                $('#chassis_count').html(chassis_summary_table.column( 1 ).data().reduce( function (a,b) {
+                    return a + b;
+                }));
+            } else {
+                $('#chassis_count').html("0");
+            }
+
             $('#chassis_types_count').html(chassis_summary_table.page.info().recordsTotal);
         });
 
@@ -258,7 +264,7 @@
                     { "data": "last_successful_retrieval", "orderable": false }
                 ],
                 "order": [
-                    [3, "asc"]
+                    [1, "asc"]
                 ],
                 "pageLength": 10,
                 "columnDefs": [{
@@ -592,6 +598,54 @@
             hosts_with_failed_inventory_retrieval_table.ajax.url("/datatable/api/get_managed_hosts/region/" + prepare_region_from_cookie_for_rest_api() + "/filter_failed/" + 1).load(null, false);
 
         }, 10000);
+
+         $('#export').click(function() {
+            $('#export-inventory-dashboard-dialog').modal('show');
+        });
+
+        $('#on-export-inventory-submit').click(function() {
+            if ($('#send_email').prop('checked')) {
+                if ($('#user_email').val().trim() == "") {
+                    bootbox.alert("Email Address has not been specified.");
+                    return false;
+                } else {
+                    $.ajax({
+                        url: "/inventory/api/check_if_email_notify_enabled/",
+                        dataType: 'json',
+                        success: function(result) {
+                            if (result.email_notify_enabled) {
+                                submit_export_form();
+                            } else {
+                                bootbox.alert("<img src='/static/error.png'>&nbsp;Please enable Email Notification at <a target='_blank' href='{{ url_for('admin_console') }}'>Tools > Admin Console > Notifications</a> in Software page.");
+                                return false;
+                            }
+                        }
+                    });
+                }
+
+            } else {
+                submit_export_form();
+            }
+
+        });
+
+
+        function submit_export_form() {
+            $('#hidden_region_id').val(prepare_region_from_cookie_for_rest_api().toString());
+
+            $('#export-inventory-dashboard-form').attr('action', "{{ url_for('inventory.export_inventory_dashboard') }}");
+            $('#export-inventory-dashboard-dialog').modal('hide');
+            $('#export-inventory-dashboard-form').submit();
+
+        }
+        $('[data-toggle="popover_email"]').popover({
+            trigger : 'click',
+            placement : 'top',
+            html : true,
+            content : function() {
+                return $('#popover_email').html()
+            }
+        });
     })
 
     </script>
@@ -599,6 +653,53 @@
 {% endblock %}
 
 {% block main %}
+<div id="popover_email" style="display: none">
+  <pre>By default, the email address in the user account
+is used. To define it, go to <a href='{{ url_for('current_user_edit') }}'>Tools > Edit User</a>
+in Software page. Or, you may enter one or more
+comma-delimited email address(es) here.</pre>
+</div>
+
+<div id="export-inventory-dashboard-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" id="export-inventory-dashboard-form" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>
+                        <center>Export Inventory Dashboard Summary</center>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    {{ edit_field(export_dashboard_form.export_format, field_width="col-sm-6", class="form-control") }}
+                    {% set info ='<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue"
+                           aria-hidden="true" data-toggle="popover_email"></span></a>' %}
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label" style="padding-top: 10px;padding-left: 0px;" id="label_{{ export_dashboard_form.send_email.id }}">{{ export_dashboard_form.send_email.label.text }}</label>
+                        {{ info | safe }}
+                        <div class="col-sm-6" style="width:50px;">
+                            {{ export_dashboard_form.send_email(type='checkbox', class="form-control", style="-webkit-box-shadow:none") }}
+                        </div>
+                        <div class="col-sm-6" style="padding-top: 5px;padding-left: 0px;">
+                            {{ export_dashboard_form.user_email(class="form-control", placeholder="Comma-delimited Email Address(es)") }}
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-export-inventory-submit" type="button" class="btn btn-primary">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                <input id="hidden_region_id" name="{{ export_dashboard_form.hidden_region_id.name }}" value="{{ export_dashboard_form.hidden_region_id.data }}" type="hidden">
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="container">
     <div class="row">
         <div class="col-sm-3">
@@ -611,6 +712,9 @@
                 </select>
             </div>
         </div>
+        <button type="button" id="export" class="btn btn-primary pull-right">
+            Export
+        </button>
     </div>
 
     <div class="row"><hr></div>
