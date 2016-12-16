@@ -154,8 +154,6 @@ def query_add_inventory():
                 sn_form.serial_number.data = update_inventory_form.hidden_serial_number.data
                 get_inventory_data_by_serial_number(db_session, sn_form, update_inventory_form, inventory_data_fields)
 
-        db_session.close()
-
     return render_template('inventory/query_add_inventory.html', sn_form=sn_form,
                            update_inventory_form=update_inventory_form, success_msg=success_msg,
                            error_msg=error_msg, current_user=current_user, **inventory_data_fields)

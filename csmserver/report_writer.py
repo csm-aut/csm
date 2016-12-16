@@ -462,8 +462,8 @@ def get_search_filter_in_html(filters_dict):
     html += check_and_add_search_filter('Region', filters_dict.get('region_names'))
     html += check_and_add_search_filter('Chassis', filters_dict.get('chassis_types'))
     html += check_and_add_search_filter('Software', filters_dict.get('software_versions'))
-    html += check_and_add_search_filter('Model Names', filters_dict.get('model_names'))
-    html += check_and_add_search_filter('Partial Model Names', filters_dict.get('partial_model_names'))
+    html += check_and_add_search_filter('Model Name', filters_dict.get('model_names'))
+    html += check_and_add_search_filter('Partial Model Name', filters_dict.get('partial_model_names'))
     if html:
         return '<ul>' + html + '</ul>'
 
@@ -518,10 +518,10 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
             self.ws.write(self.row, 1, 'Software: ' + ', '.join(self.software_versions), self.style_title)
             self.next_row()
         if self.model_names:
-            self.ws.write(self.row, 1, 'Model Names: ' + ', '.join(self.model_names), self.style_title)
+            self.ws.write(self.row, 1, 'Model Name: ' + ', '.join(self.model_names), self.style_title)
             self.next_row()
         if self.partial_model_names:
-            self.ws.write(self.row, 1, 'Partial Model Names: ' + ', '.join(self.partial_model_names), self.style_title)
+            self.ws.write(self.row, 1, 'Partial Model Name: ' + ', '.join(self.partial_model_names), self.style_title)
             self.next_row()
 
         return
@@ -641,9 +641,9 @@ class ExportInventoryInfoCSVWriter(ExportInventoryInfoWriter):
         if self.software_versions:
             prepare_row.append(('Software: ' + ', '.join(self.software_versions)))
         if self.model_names:
-            prepare_row.append(('Model Names: ' + ', '.join(self.model_names)))
+            prepare_row.append(('Model Name: ' + ', '.join(self.model_names)))
         if self.partial_model_names:
-            prepare_row.append(('Partial Model Names: ' + ', '.join(self.partial_model_names)))
+            prepare_row.append(('Partial Model Name: ' + ', '.join(self.partial_model_names)))
 
         csv_writer.writerow(prepare_row)
         return
