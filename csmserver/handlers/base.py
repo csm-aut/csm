@@ -22,16 +22,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from flask.ext.login import current_user
-from flask import send_file
-
-from sqlalchemy import and_
-
 from models import UDI
 from models import get_db_session_logger
-from models import Preferences
-from models import InstallJobHistory
-from models import InstallJob
 from models import SystemOption
 
 from context import ConnectionContext
@@ -40,7 +32,6 @@ from context import InstallContext
 
 from constants import InstallAction
 from constants import get_log_directory
-from constants import get_doc_central_directory
 from constants import JobStatus
 
 from common import get_last_completed_install_job_for_install_action
@@ -62,9 +53,7 @@ import os
 import re
 import shutil
 import condoor
-import json
-import requests
-import datetime
+
 
 class BaseHandler(object):
     def execute(self, ctx):
@@ -102,14 +91,11 @@ class BaseHandler(object):
             try:
                 if ctx.requested_action == InstallAction.POST_UPGRADE:
                     self.generate_post_upgrade_file_diff(ctx)
-                    system_option = SystemOption.get(ctx.db_session)
-                    if ctx.install_job.status != JobStatus.FAILED and system_option.doc_central_path is not None:
-                        self.aggregate_and_upload_logs(ctx)
+
                 elif ctx.requested_action == InstallAction.MIGRATE_SYSTEM or \
                      ctx.requested_action == InstallAction.POST_MIGRATE:
                     self.generate_post_migrate_file_diff(ctx)
-                elif ctx.requested_action == InstallAction.PRE_UPGRADE:
-                    ctx.install_job.save_data("from_release", ctx.host.software_version)
+
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
 
@@ -219,111 +205,6 @@ class BaseHandler(object):
                         with open(diff_file_name, 'w') as fo:
                             fo.write('<pre>' + html_code + results + '</pre>')
 
-    def aggregate_and_upload_logs(self, ctx):
-        chain = self.get_dependency_chain(ctx.db_session, ctx.install_job.id)
-
-        output_dir = get_doc_central_directory()
-
-        filename_template = "%s_%s_%s-to-%s-%s.txt"
-        platform = ctx.host.software_platform
-        hostname = ctx.host.hostname
-        from_release = self.get_from_release(ctx.db_session, chain)
-        to_release = ctx.host.software_version
-        timestamp = datetime.datetime.strftime(datetime.datetime.now(), "%Y_%m_%d_%H_%M_%S")
-        filename = filename_template %(platform, hostname, from_release, to_release, timestamp)
-        ctx.install_job.save_data('doc_central_log_file_path', filename)
-        # "<software_platform>-<CSM hostname>-<from release>- to - <to release>.<time stamp>.txt"
-        output_file = os.path.join(get_doc_central_directory(), filename)
-
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir, 0777)
-
-        with open(output_file, 'w') as outfile:
-            for job_id in chain:
-                job = ctx.db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == job_id).first()
-                if job is None:
-                    # Post-Upgrade jobs will not have moved to history table until after this runs
-                    job = ctx.db_session.query(InstallJob).filter(InstallJob.id == job_id).first()
-                log_directory = os.path.join(get_log_directory(), job.session_log)
-                job_logs = os.listdir(log_directory)
-                for log in job_logs:
-                    if ('.txt' in log or '.log' in log) and log not in ['plugins.log', 'condoor.log'] and '.html' not in log:
-                        with open(os.path.join(log_directory, log)) as f:
-                            outfile.write("#####################################\n")
-                            outfile.write("### %s: %s \n" % (job.install_action, log))
-                            outfile.write("#####################################\n")
-                            outfile.write(f.read())
-                            outfile.write("\n\n")
-
-        return
-        #doc_central_url = "https://docs-services.cisco.com/docservices/upload"
-        # url =  "https://docs-services-stg.cisco.com/docservices/upload"
-
-        #preferences = Preferences.get(ctx.db_session, ctx.install_job.id)
-        #username = preferences.cco_username
-        #password = preferences.cco_password
-
-        #headers = {'userid': username,
-        #           'password': password
-        #           }
-
-        #system_option = SystemOption.get(ctx.db_session)
-        #path = system_option.doc_central_path + '/' + to_release
-
-        #metadata = {
-        #    "fileName": output_file,
-        #    "title": "CSM Log File",
-        #    "description": "CSM Log File",
-        #    "docType": "Cisco Engineering Document",
-        #    "securityLevel": " ",
-        #    "theatre": " ",
-        #    "status": " ",
-        #    "parent": path
-        #}
-
-        #doc_central_url = doc_central_url + "?metadata=" + json.dumps(metadata)
-
-        #files = {'file': open(output_file, 'rb')}
-
-        #resp = requests.post(doc_central_url, headers=headers, files=files)
-
-        #print "Status Code:", resp.status_code
-        #print "Headers:", resp.headers
-        #print
-        #print resp.content
-
-        #return
-        #return jsonify(**{ENVELOPE: {'dependency_chain': str(chain)}})
-
-    def get_dependency_chain(self, db_session, install_id):
-        install_job = db_session.query(InstallJob).filter(InstallJob.id == install_id).first()
-        if install_job is None:
-            return
-
-        dependencies = []
-        jobs = db_session.query(InstallJobHistory).filter(and_(InstallJobHistory.scheduled_time == install_job.scheduled_time, InstallJobHistory.host_id == install_job.host_id)).all()
-        for job in jobs:
-            dependencies.append(job.install_job_id)
-
-        dependencies.append(install_id)
-        return dependencies
-
-
-    def get_from_release(self, db_session, chain):
-        '''
-        Expects to receive a list of ids, will check each for from_release in the data field.
-        '''
-        for id in chain:
-            job = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == id).first()
-            if job is None:
-                job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
-                if job is None:
-                    continue
-            from_release = job.load_data("from_release")
-            if from_release:
-                return from_release
-
-        return "NA"
 
 class BaseConnectionHandler(BaseHandler):
     def start(self, ctx):

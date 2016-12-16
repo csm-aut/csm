@@ -50,6 +50,8 @@ from models import SystemOption
 
 from common import get_last_completed_install_job_for_install_action
 
+from handlers.doc_central import handle_doc_central_logging
+
 import traceback
 import datetime
 import urllib
@@ -115,7 +117,17 @@ class InstallWorkUnit(WorkUnit):
             if ctx.success:
                 # Update the software
                 self.get_software(ctx, logger)
+
+                # Support Doc Central feature for SIT team
+                if install_job.install_action == InstallAction.PRE_UPGRADE or \
+                    install_job.install_action == InstallAction.INSTALL_ADD:
+                    install_job.save_data("from_release", ctx.host.software_version)
+
+                # Archive install job to install job history
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.COMPLETED, process_name)
+
+                # Support Doc Central feature for SIT team - must be done after archive_install_job.
+                handle_doc_central_logging(ctx, logger)
             else:
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
