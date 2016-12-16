@@ -75,7 +75,7 @@ class DataTableParams(object):
 
 
 @datatable.route('/api/get_managed_hosts/region/<int:region_id>', defaults={'chassis': None, 'filter_failed': 0})
-@datatable.route('/api/get_managed_hosts/region/<int:region_id>/chassis/<string:chassis>', defaults={'filter_failed': 0})
+@datatable.route('/api/get_managed_hosts/region/<int:region_id>/chassis/<path:chassis>', defaults={'filter_failed': 0})
 @datatable.route('/api/get_managed_hosts/region/<int:region_id>/filter_failed/<int:filter_failed>',
                  defaults={'chassis': None})
 @login_required
