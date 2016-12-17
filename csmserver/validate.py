@@ -38,9 +38,10 @@ def is_connection_valid(hostname, urls):
         if handler_class is None:
             logger.error('Unable to get connection handler')
         handler_class().execute(ctx)
-    except:
+    except Exception as e:
         logger.exception('is_connection_valid() hit exception')
-    
+        raise
+
     return ctx.success
 
 
