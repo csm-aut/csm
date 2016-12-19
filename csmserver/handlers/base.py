@@ -24,6 +24,7 @@
 # =============================================================================
 from models import UDI
 from models import get_db_session_logger
+from models import logger
 
 from context import ConnectionContext
 from context import InventoryContext
@@ -49,6 +50,12 @@ import os
 import re
 import shutil
 import condoor
+import logging
+
+#
+#logging.basicConfig(
+#        format='%(asctime)-15s %(levelname)8s: %(message)s',
+#        level=logging.DEBUG)
 
 
 class BaseHandler(object):
@@ -206,29 +213,29 @@ class BaseHandler(object):
 
 
 class BaseConnectionHandler(BaseHandler):
+    """Used when Check Reachability button is pressed when adding/editing host."""
+
     def start(self, ctx):
-        conn = condoor.Connection(ctx.hostname, ctx.host_urls)
+        conn = condoor.Connection(ctx.hostname, ctx.host_urls, log_dir=ctx.log_directory, log_level=logging.DEBUG)
         try:
             conn.connect()
             ctx.success = True
-        except condoor.ConnectionError as e:
-            pass
+        except (condoor.ConnectionError, condoor.GeneralError) as e:
+            logger.error(str(e))
+            raise e
+        finally:
+            conn.disconnect()
 
-
-#import logging
-#logging.basicConfig(
-#        format='%(asctime)-15s %(levelname)8s: %(message)s',
-#        level=logging.DEBUG)
 
 class BaseInventoryHandler(BaseHandler):
     def start(self, ctx):
         pm = CSMPluginManager(ctx)
-
         try:
             pm.dispatch("run")
         except condoor.GeneralError as e:
             logger = get_db_session_logger(ctx.db_session)
-            logger.exception('BaseInventoryHandler hit exception')
+            logger.error(str(e))
+            raise e
 
 
 class BaseInstallHandler(BaseHandler):
@@ -238,4 +245,5 @@ class BaseInstallHandler(BaseHandler):
             pm.dispatch("run")
         except condoor.GeneralError as e:
             logger = get_db_session_logger(ctx.db_session)
-            logger.exception(e.message)
+            logger.error(str(e))
+            raise e

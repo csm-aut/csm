@@ -25,15 +25,17 @@
 from utils import import_class
 from utils import get_software_platform
 from utils import get_software_version
+from models import logger
 from constants import UNKNOWN
 import condoor
 import logging
 
-def discover_platform_info(ctx):
-    conn = condoor.Connection(name=ctx.hostname, urls=ctx.host_urls, log_level=logging.CRITICAL)
 
+def discover_platform_info(ctx):
+    """Discover platform when added to CSM."""
+    conn = condoor.Connection(name=ctx.hostname, urls=ctx.host_urls, log_level=logging.CRITICAL)
     try:
-        conn.discovery()
+        conn.connect(force_discovery=True)
         ctx.host.family = conn.family
         ctx.host.platform = conn.platform
         ctx.host.software_platform = get_software_platform(family=conn.family, os_type=conn.os_type)
@@ -41,7 +43,7 @@ def discover_platform_info(ctx):
         ctx.host.os_type = conn.os_type
         ctx.db_session.commit()
     except condoor.ConnectionError as e:
-        pass
+        logger.error(str(e))
     finally:
         conn.disconnect()
 
