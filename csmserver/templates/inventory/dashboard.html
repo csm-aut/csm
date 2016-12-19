@@ -73,7 +73,6 @@
         });
 
         var host_no_serial_number_table = $("#host-no-serial-number-table").DataTable({
-            "processing": true,
             "serverSide": true,
             "order": [
                 [0, "asc"]
@@ -103,7 +102,6 @@
         });
 
         var host_duplicate_serial_number_table = $("#host-duplicate-serial-number-table").DataTable({
-            "processing": true,
             "serverSide": true,
             "order": [
                 [0, "asc"]
@@ -133,7 +131,6 @@
         });
 
         var hosts_with_failed_inventory_retrieval_table = $("#hosts-with-failed-inventory-retrieval-table").DataTable({
-            "processing": true,
             "serverSide": true,
             "ajax": {
                 "url": "/datatable/api/get_managed_hosts/region/" + prepare_region_from_cookie_for_rest_api() + "/filter_failed/" + 1
@@ -234,7 +231,7 @@
         }
 
         function display_host_no_serial_number_details(hostname) {
-            $('#host-no-serial-number-title').text('Inventory without Serial Number in Host: ' + hostname);
+            $('#host-no-serial-number-title').html('Inventory without Serial Number in Host: ' + '<a target="_blank" href="/host_dashboard/hosts/' + hostname + '/">' + hostname + '</a>');
 
             $("#host-no-serial-number-details-table").DataTable({
                 destroy: true,
@@ -843,7 +840,7 @@ comma-delimited email address(es) here.</pre>
                     </h4>
                 </div>
                 <div class="modal-body">
-                    <div style="height:500px; overflow-y: scroll;">
+                    <div style="height:570px; overflow-y: scroll;">
                         <table class="display table" id="chassis-details-table">
                             <thead>
                                 <tr>
@@ -875,7 +872,7 @@ comma-delimited email address(es) here.</pre>
                     </h4>
                 </div>
                 <div class="modal-body">
-                    <div style="height:550px; overflow-y: scroll;">
+                    <div style="height:570px; overflow-y: scroll;">
                         <table class="display table" id="model-name-details-table">
                             <thead>
                                 <tr>
@@ -911,7 +908,7 @@ comma-delimited email address(es) here.</pre>
                     </h4>
                 </div>
                 <div class="modal-body">
-                    <div style="height:550px; overflow-y: scroll;">
+                    <div style="height:570px; overflow-y: scroll;">
                         <table class="display table" id="host-no-serial-number-details-table">
                             <thead>
                                 <tr>
@@ -945,7 +942,7 @@ comma-delimited email address(es) here.</pre>
                     </h4>
                 </div>
                 <div class="modal-body">
-                    <div style="height:300px; overflow-y: scroll;">
+                    <div style="height:570px; overflow-y: scroll;">
                         <table class="display table" id="serial-number-details-table">
                             <thead>
                                 <tr>

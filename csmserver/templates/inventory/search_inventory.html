@@ -43,7 +43,6 @@
         }
 
         var available_inventory_table = $("#available-inventory-datatable").DataTable({
-            "processing": true,
             "serverSide": true,
             "ajax": {
                 "url": "{{ url_for('datatable.api_search_inventory') }}",
@@ -89,7 +88,6 @@
         });
 
         var in_use_inventory_table = $("#in-use-inventory-datatable").DataTable({
-            "processing": true,
             "serverSide": true,
             "ajax": {
                 "url": "{{ url_for('datatable.api_search_inventory') }}",
