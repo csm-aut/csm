@@ -28,7 +28,8 @@ from flask import jsonify
 from flask import abort
 from flask.ext.login import login_required
 
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_
+from sqlalchemy import and_
 
 from database import DBSession
 
@@ -734,6 +735,7 @@ def api_search_inventory():
         else:
             row['hostname'] = ''
             row['region'] = ''
+            row['host_or_ip'] = ''
             row['chassis'] = ''
             row['platform'] = ''
             row['software'] = ''
@@ -744,11 +746,14 @@ def api_search_inventory():
             host = inventory_entry.host
             if host:
                 row['hostname'] = host.hostname
-                row['chassis'] = host.platform
-                row['platform'] = host.software_platform
-                row['software'] = host.software_version
                 row['region'] = host.region.name
                 row['location'] = host.location
+                row['chassis'] = host.platform
+                row['platform'] = UNKNOWN if host.software_platform is None else host.software_platform
+                row['software'] = UNKNOWN if host.software_version is None else host.software_version
+
+                if len(host.connection_param) > 0:
+                    row['host_or_ip'] = host.connection_param[0].host_or_ip
 
                 inventory_job = host.inventory_job[0]
                 if inventory_job and inventory_job.last_successful_time:

@@ -329,6 +329,7 @@
                     { "data": "name" },
                     { "data": "description" },
                     { "data": "hostname" },
+                    { "data": "host_or_ip" },
                     { "data": "chassis" },
                     { "data": "platform" },
                     { "data": "software" },
@@ -355,23 +356,26 @@
                     "render": function(data, type, row) {
                         return '<a target="_blank" href="/host_dashboard/hosts/' + row['hostname'] + '/">' + row['hostname'] + '</a>';
                     }
-                },  {
+                }, {
                     "targets": 4,
-                    "data": 'chassis'
+                    "data": 'host_or_ip'
                 }, {
                     "targets": 5,
-                    "data": 'platform'
+                    "data": 'chassis'
                 }, {
                     "targets": 6,
-                    "data": 'software'
+                    "data": 'platform'
                 }, {
                     "targets": 7,
-                    "data": 'region'
+                    "data": 'software'
                 }, {
                     "targets": 8,
-                    "data": 'location'
+                    "data": 'region'
                 }, {
                     "targets": 9,
+                    "data": 'location'
+                }, {
+                    "targets": 10,
                     "data": 'last_successful_retrieval',
                     "render": function(data, type, row) {
                         if (row['inventory_status'] == 'failed') {
@@ -413,6 +417,7 @@
                     { "data": "serial_number" },
                     { "data": "description" },
                     { "data": "hostname" },
+                    { "data": "host_or_ip" },
                     { "data": "chassis" },
                     { "data": "platform" },
                     { "data": "software" },
@@ -441,21 +446,24 @@
                     }
                 },  {
                     "targets": 4,
-                    "data": 'chassis'
+                    "data": 'host_or_ip'
                 }, {
                     "targets": 5,
+                    "data": 'chassis'
+                },{
+                    "targets": 6,
                     "data": 'platform'
                 }, {
-                    "targets": 6,
+                    "targets": 7,
                     "data": 'software'
                 }, {
-                    "targets": 7,
+                    "targets": 8,
                     "data": 'region'
                 }, {
-                    "targets": 8,
+                    "targets": 9,
                     "data": 'location'
                 }, {
-                    "targets": 9,
+                    "targets": 10,
                     "data": 'last_successful_retrieval',
                     "render": function(data, type, row) {
                         if (row['inventory_status'] == 'failed') {
@@ -875,6 +883,7 @@ comma-delimited email address(es) here.</pre>
                                     <th>Serial Number</th>
                                     <th>Description</th>
                                     <th>Hostname</th>
+                                    <th>TS or IP</th>
                                     <th>Chassis</th>
                                     <th>Platform</th>
                                     <th>Software</th>
@@ -944,6 +953,7 @@ comma-delimited email address(es) here.</pre>
                                     <th>Name</th>
                                     <th>Description</th>
                                     <th>Hostname</th>
+                                    <th>TS or IP</th>
                                     <th>Chassis</th>
                                     <th>Platform</th>
                                     <th>Software</th>
