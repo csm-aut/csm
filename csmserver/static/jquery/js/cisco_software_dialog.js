@@ -251,10 +251,11 @@ $(function() {
         }
     }
 
+
     $("#dropdown-cisco-menu").on("click", ".selected-platform-and-release", function() {
         platform = $(this).attr('platform');
         release = $(this).attr('release');
-        refresh_tables();
+        fetch_software_info(platform, release);
     });
 
     // Sets the correct filter icon color
@@ -264,7 +265,7 @@ $(function() {
         filter_option = $(this).val();
         $.cookie('platforms-and-releases-filter-option', filter_option);
         toggle_filter_icon_color(filter_option);
-        refresh_tables();
+        fetch_software_info(platform, release);
     });
 
 
@@ -372,23 +373,32 @@ $(function() {
             $('#installed-packages-highlight-panel').show();
         }
 
-        refresh_tables();
+        fetch_software_info(platform, release);
     });
 
 });
 
+function fetch_software_info(platform, release) {
+    $.ajax({
+        url: "/cco/api_fetch_cco_software/platform/" + platform + "/release/" + release,
+        dataType: 'json',
+        success: function(response) {
+            $.each(response, function(index, element) {
+                if (platform.length > 0 && release.length > 0) {
+                    $('#platform-and-release').html(beautify_platform(platform) + "-" + release + " > SMUs &nbsp;");
+                    cisco_software_dialog_spinner.show();
+                    refresh_smu_list_table();
+                    refresh_sp_list_table();
+                }
+            });
+        }
+    });
+}
+
+
 function init_cisco_software_dialog(selected_platform, selected_release) {
     if (selected_platform != null && selected_release != null) {
-
-        if (selected_platform == 'asr9k-px' || selected_platform == 'hfr-px') {
-            // Normalize the version from 5.3.3.23I -> 5.3.3
-            if (selected_release.length > 5) {
-               selected_release = selected_release.substring(0,5);
-            }
-        }
-
-        // Convert the platform to the required known format.
-        platform = selected_platform.replace(/-/g,'_').replace('hfr','crs');
+        platform = selected_platform;
         release = selected_release;
     }
 }
@@ -424,16 +434,7 @@ function display_cisco_software_dialog(hostname_list, server_id, server_director
     }
 
     // Refresh the tables especially for re-entrance
-    refresh_tables();
-}
-
-function refresh_tables() {
-    if (platform.length > 0 && release.length > 0) {
-        $('#platform-and-release').html(beautify_platform(platform) + "-" + release + " > SMUs &nbsp;");
-        cisco_software_dialog_spinner.show();
-        refresh_smu_list_table();
-        refresh_sp_list_table();
-    }
+    fetch_software_info(platform, release);
 }
 
 function refresh_smu_list_table() {

@@ -111,11 +111,12 @@ CCO_PLATFORM_CRS = 'crs_px'
 CCO_PLATFORM_NCS6K = 'ncs6k'
 CCO_PLATFORM_NCS6K_SYSADMIN = 'ncs6k_sysadmin'
 
+
 class SMUInfoLoader(object):
     """
     Example: platform = asr9k_px, release = 4.2.1
     """
-    def __init__(self, platform, release, refresh=False):
+    def __init__(self, platform, release, from_cco=True):
         self.platform = self.get_cco_supported_platform(platform)
         self.release = self.get_cco_supported_release(release)
         self.smu_meta = None
@@ -124,10 +125,13 @@ class SMUInfoLoader(object):
         self.in_transit_smus = {}
         self.software = {}
 
-        if SystemOption.get(DBSession()).enable_cco_lookup or refresh:
-            self.get_smu_info_from_cco(platform, release)
+        if not SystemOption.get(DBSession()).enable_cco_lookup:
+            from_cco = False
+
+        if from_cco:
+            self.get_smu_info_from_cco(self.platform, self.release)
         else:
-            self.get_smu_info_from_db(platform, release)
+            self.get_smu_info_from_db(self.platform, self.release)
 
     def get_cco_supported_platform(self, platform):
         if platform == PlatformFamily.ASR9K:
@@ -148,18 +152,23 @@ class SMUInfoLoader(object):
     def get_smu_info_from_db(self, platform, release):
         # self.smu_meta is set to None if the requested platform and release are not in the database.
         self.smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
-        if not self.smu_meta is None:
-            self.smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU)
-            self.service_packs = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SERVICE_PACK)                
-            self.in_transit_smus = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SMU_IN_TRANSIT)
-            self.software = self.get_smus_by_package_type(self.smu_meta.smu_info, PackageType.SOFTWARE)
-        
+        if self.smu_meta:
+            for smu_info in self.smu_meta.smu_info:
+                if smu_info.package_type == PackageType.SMU:
+                    self.smus[smu_info.name] = smu_info
+                elif smu_info.package_type == PackageType.SERVICE_PACK:
+                    self.service_packs[smu_info.name] = smu_info
+                elif smu_info.package_type == PackageType.SMU_IN_TRANSIT:
+                    self.in_transit_smus[smu_info.name] = smu_info
+                elif smu_info.package_type == PackageType.SOFTWARE:
+                    self.software[smu_info.name] = smu_info
+
     def get_smu_info_from_cco(self, platform, release):
         same_as_db = False
         db_session = DBSession()
-        platform_release = platform + '_' + release
+
         try:
-            self.smu_meta = SMUMeta(platform_release=platform_release)
+            self.smu_meta = SMUMeta(platform_release=platform + '_' + release)
             # Load data from the SMU XML file
             self.load()
 
@@ -169,7 +178,7 @@ class SMUInfoLoader(object):
                 return
 
             db_smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
-            if db_smu_meta is not None:               
+            if db_smu_meta:
                 if db_smu_meta.created_time == self.smu_meta.created_time:
                     same_as_db = True
                 else:
@@ -193,15 +202,6 @@ class SMUInfoLoader(object):
         except Exception:
             db_session.rollback()
             logger.exception('get_smu_info_from_cco() hit exception')
-        
-    def get_smus_by_package_type(self, smu_list, package_type):
-        result_dict = {}
-        
-        for smu_info in self.smu_meta.smu_info:
-            if smu_info.package_type == package_type:
-                result_dict[smu_info.name] = smu_info
-                
-        return result_dict
 
     @property
     def is_valid(self):
@@ -245,8 +245,8 @@ class SMUInfoLoader(object):
         try:
             return parent_elem.getElementsByTagName(child_name)[0].firstChild.data
         except Exception:
-            return ''   
-    
+            return ''
+
     def load_smu_info(self, node_list, smu_dict, package_type):
         for node in node_list:
             smu_info = SMUInfo(id=node.attributes[XML_TAG_ID].value)
@@ -275,7 +275,7 @@ class SMUInfoLoader(object):
 
             self.smu_meta.smu_info.append(smu_info)
             smu_dict[smu_info.name] = smu_info
-            
+
         """
         for smu_name in smu_dict:
             smu_info = smu_dict[smu_name]
@@ -302,7 +302,7 @@ class SMUInfoLoader(object):
         self.smu_meta.smu_software_type_id = self.getChildElementText(xmldoc, XML_TAG_SMU_SOFTWARE_TYPE_ID)
         self.smu_meta.sp_software_type_id = self.getChildElementText(xmldoc, XML_TAG_SP_SOFTWARE_TYPE_ID)
         self.smu_meta.tar_software_type_id = self.getChildElementText(xmldoc, XML_TAG_TAR_SOFTWARE_TYPE_ID)
-        
+
         node_list = xmldoc.getElementsByTagName(XML_TAG_PLATFORM_MDF_ID)
         if len(node_list) > 0:
             for node in node_list:
@@ -489,9 +489,8 @@ class SMUInfoLoader(object):
                     for release in releases:
                         cco_catalog = CCOCatalog(platform=platform,release=release)
                         db_session.add(cco_catalog)
-                        
-                        # Now, retrieve from SMU XML file
-                        SMUInfoLoader(platform, release, refresh=True)
+
+                        SMUInfoLoader(platform, release)
                 
                 system_option.cco_lookup_time = datetime.datetime.utcnow()
                 db_session.commit()
