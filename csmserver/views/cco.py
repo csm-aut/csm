@@ -33,6 +33,8 @@ from flask import send_file
 from flask.ext.login import login_required
 from flask.ext.login import current_user
 
+from sqlalchemy import and_
+
 from wtforms import Form
 from wtforms import StringField
 from wtforms import PasswordField
@@ -58,6 +60,7 @@ from forms import ExportInformationForm
 from forms import BrowseServerDialogForm
 
 from constants import UNKNOWN
+from constants import PackageType
 from constants import BUG_SEARCH_URL
 from constants import get_repository_directory
 from constants import ExportInformationFormat
@@ -136,6 +139,7 @@ def api_create_download_jobs():
 def api_get_smu_details(smu_id):
     rows = []
     db_session = DBSession()
+
     smu_info = db_session.query(SMUInfo).filter(SMUInfo.id == smu_id).first()
     if smu_info is not None:
         row = dict()
@@ -393,11 +397,18 @@ def api_get_catalog():
     return jsonify(**{'data': rows})
 
 
+@cco.route('/api_fetch_cco_software/platform/<platform>/release/<release>')
+@login_required
+def api_fetch_cco_software(platform, release):
+    smu_loader = SMUInfoLoader(platform, release)
+    return jsonify({'status': 'OK' if smu_loader.is_valid else 'Failed'})
+
+
 @cco.route('/api/get_smu_list/platform/<platform>/release/<release>')
 @login_required
 def api_get_smu_list(platform, release):
-    smu_loader = SMUInfoLoader(platform, release)
-    if smu_loader.smu_meta is None:
+    smu_loader = SMUInfoLoader(platform, release, from_cco=False)
+    if not smu_loader.is_valid:
         return jsonify(**{'data': []})
 
     hostname = request.args.get('hostname')
@@ -414,8 +425,8 @@ def api_get_smu_list(platform, release):
 @cco.route('/api/get_sp_list/platform/<platform>/release/<release>')
 @login_required
 def api_get_sp_list(platform, release):
-    smu_loader = SMUInfoLoader(platform, release)
-    if smu_loader.smu_meta is None:
+    smu_loader = SMUInfoLoader(platform, release, from_cco=False)
+    if not smu_loader.is_valid:
         return jsonify(**{'data': []})
 
     hostname = request.args.get('hostname')
@@ -432,12 +443,12 @@ def api_get_sp_list(platform, release):
 @cco.route('/api/get_tar_list/platform/<platform>/release/<release>')
 @login_required
 def api_get_tar_list(platform, release):
-    smu_loader = SMUInfoLoader(platform, release)
-    file_list = get_file_list(get_repository_directory(), '.tar')
+    smu_loader = SMUInfoLoader(platform, release, from_cco=False)
 
-    if smu_loader.smu_meta is None:
+    if not smu_loader.is_valid:
         return jsonify(**{'data': []})
     else:
+        file_list = get_file_list(get_repository_directory(), '.tar')
         tars_list = smu_loader.get_tar_list()
         rows = []
         for tar_info in tars_list:

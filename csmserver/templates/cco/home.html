@@ -115,9 +115,6 @@
                 "targets": 10,
                 "data": 'package_bundles'
             }, ],
-            "ajax": {
-                "url": "{{ url_for('cco.api_get_smu_list', platform=platform, release=release) }}" + "?filter=" + filter_option
-            }
         }).on('draw.dt', function(e, settings, json) {
             var rows = smu_table.api().ajax.json().data.length;
             $('#badge-smu-list').html(rows);
@@ -193,9 +190,6 @@
                 "targets": 10,
                 "data": 'package_bundles',
             }, ],
-            "ajax": {
-                "url": "{{ url_for('cco.api_get_sp_list', platform=platform, release=release) }}" + "?filter=" + filter_option
-            }
         }).on('draw.dt', function(e, settings, json) {
             var rows = sp_table.api().ajax.json().data.length;
             $('#badge-sp-list').html(rows);
@@ -238,9 +232,6 @@
                 "targets": 3,
                 "data": 'compressed_size'
             }, ],
-            "ajax": {
-                "url": "{{ url_for('cco.api_get_tar_list', platform=platform, release=release) }}"
-            }
         }).on('draw.dt', function ( e, settings, json ) {
             var rows = tar_table.api().ajax.json().data.length;
             $('#badge-tar-list').html(rows);
@@ -292,9 +283,24 @@
         }
 
         function refresh_tar_list_table() {
-            tar_table.api().ajax.url("{{ url_for('cco.api_get_tar_list', platform=platform, release=release) }}" +
-                "?filter=" + filter_option).load();
+            tar_table.api().ajax.url("{{ url_for('cco.api_get_tar_list', platform=platform, release=release) }}").load();
         }
+
+        function fetch_software_info() {
+            $.ajax({
+                url: "{{ url_for('cco.api_fetch_cco_software', platform=platform, release=release) }}",
+                dataType: 'json',
+                success: function(response) {
+                    $.each(response, function(index, element) {
+                        refresh_smu_list_table();
+                        refresh_sp_list_table();
+                        refresh_tar_list_table();
+                    });
+                }
+            });
+        }
+
+        fetch_software_info();
 
         function open_ddts_url(url) {
             if (cco_lookup_enabled) {
