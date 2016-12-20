@@ -164,44 +164,39 @@ class SMUInfoLoader(object):
                     self.software[smu_info.name] = smu_info
 
     def get_smu_info_from_cco(self, platform, release):
-        same_as_db = False
+        save_to_db = True
         db_session = DBSession()
 
         try:
-            self.smu_meta = SMUMeta(platform_release=platform + '_' + release)
+            platform_release = platform + '_' + release
+            self.smu_meta = SMUMeta(platform_release=platform_release)
             # Load data from the SMU XML file
             self.load()
 
             # This can happen if the given platform and release is not valid.
-            # The load method calls get_smu_info_from_db and failed.
-            if self.smu_meta is None:
+            # The load() method calls get_smu_info_from_db and failed.
+            if not self.is_valid:
+                logger.error('get_smu_info_from_cco() hit exception, platform_release=' + platform_release)
                 return
 
-            db_smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+            db_smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform_release).first()
             if db_smu_meta:
                 if db_smu_meta.created_time == self.smu_meta.created_time:
-                    same_as_db = True
+                    save_to_db = False
                 else:
                     # Delete the existing smu_meta and smu_info for this platform and release
                     db_session.delete(db_smu_meta)
                     db_session.commit()
 
-            if not same_as_db:
+            if save_to_db:
                 db_session.add(self.smu_meta)
             else:
                 db_smu_meta.retrieval_time = datetime.datetime.utcnow()
 
-            # Use Flush to detect concurrent saving condition.  It is
-            # possible that another process may perform the same save.
-            # If this happens, Duplicate Key may result.
-            db_session.flush()
             db_session.commit()
 
-        except IntegrityError:
-            db_session.rollback()
         except Exception:
-            db_session.rollback()
-            logger.exception('get_smu_info_from_cco() hit exception')
+            logger.exception('get_smu_info_from_cco() hit exception, platform_release=' + platform_release)
 
     @property
     def is_valid(self):
