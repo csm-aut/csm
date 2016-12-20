@@ -121,12 +121,22 @@
         $('#managed-host-datatable').on( 'length.dt', function ( e, settings, len ) {
             write_page_length_to_cookie(len);
         });
+        function define_column_names(d) {
+            var column_names = [];
+            for(index = 0; index < d.columns.length; index++) {
+                column_names.push(d.columns[index].data)
+            }
+            d.column_names = column_names.join(',');
+        }
 
         // https://datatables.net/manual/server-side#Returned-data
         var host_table = $("#managed-host-datatable").dataTable({
             "serverSide": true,
             "ajax": {
                 "url": "/datatable/api/get_managed_hosts/region/" + get_region_from_cookie(),
+                "data": function (d) {
+                    define_column_names(d);
+                }
             },
             "columns": [
                 { "data": "hostname" },

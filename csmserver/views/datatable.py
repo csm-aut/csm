@@ -73,6 +73,10 @@ class DataTableParams(object):
         self.display_length = int(request.args.get('length'))
         self.sort_order = request.args.get('order[0][dir]')
         self.column_order = int(request.args.get('order[0][column]'))
+        if request.args.get('column_names'):
+            self.columns_on_display = set(request.args.get('column_names').split(','))
+        else:
+            self.columns_on_display = None
 
 
 @datatable.route('/api/get_managed_hosts/region/<int:region_id>', defaults={'chassis': None, 'filter_failed': 0})
@@ -122,13 +126,23 @@ def get_server_managed_hosts(region_id, chassis, filter_failed):
 
     filtered_count = query.count()
 
-    columns = [getattr(Host.hostname, dt_params.sort_order)(),
-               getattr(Region.name, dt_params.sort_order)(),
-               getattr(Host.location, dt_params.sort_order)(),
-               getattr(ConnectionParam.host_or_ip, dt_params.sort_order)(),
-               getattr(Host.platform, dt_params.sort_order)(),
-               getattr(Host.software_platform, dt_params.sort_order)(),
-               getattr(Host.software_version, dt_params.sort_order)()]
+    if dt_params.columns_on_display is None:
+        columns = [getattr(Host.hostname, dt_params.sort_order)(),
+                   getattr(Region.name, dt_params.sort_order)(),
+                   getattr(Host.location, dt_params.sort_order)(),
+                   getattr(ConnectionParam.host_or_ip, dt_params.sort_order)(),
+                   getattr(Host.platform, dt_params.sort_order)(),
+                   getattr(Host.software_platform, dt_params.sort_order)(),
+                   getattr(Host.software_version, dt_params.sort_order)()]
+    else:
+        columns = []
+        check_and_add_column(columns, 'hostname', Host.hostname, dt_params)
+        check_and_add_column(columns, 'region', Region.name, dt_params)
+        check_and_add_column(columns, 'location', Host.location, dt_params)
+        check_and_add_column(columns, 'host_or_ip', ConnectionParam.host_or_ip, dt_params)
+        check_and_add_column(columns, 'chassis', Host.platform, dt_params)
+        check_and_add_column(columns, 'platform', Host.software_platform, dt_params)
+        check_and_add_column(columns, 'software', Host.software_version, dt_params)
 
     hosts = query.order_by(columns[dt_params.column_order])\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
@@ -164,6 +178,11 @@ def get_server_managed_hosts(region_id, chassis, filter_failed):
     response['recordsFiltered'] = filtered_count
     response['data'] = rows
     return jsonify(**response)
+
+
+def check_and_add_column(columns, check_column_name, db_field, dt_params):
+    if check_column_name in dt_params.columns_on_display:
+        columns.append(getattr(db_field, dt_params.sort_order)())
 
 
 @datatable.route('/api/get_managed_host_details/region/<int:region_id>')
@@ -817,27 +836,46 @@ def handle_search_for_in_use_inventory(db_session, json_data, dt_params):
         clauses.append(HostInventory.description.like(criteria))
 
         clauses.append(Host.hostname.like(criteria))
+        clauses.append(ConnectionParam.host_or_ip.like(criteria))
         clauses.append(Host.platform.like(criteria))
         clauses.append(Host.software_platform.like(criteria))
         clauses.append(Host.software_version.like(criteria))
         clauses.append(Host.location.like(criteria))
         clauses.append(Region.name.like(criteria))
 
-        results = results.join(Region, Host.region_id == Region.id).filter(or_(*clauses))
+        results = results.join(Region, Host.region_id == Region.id) \
+            .join(ConnectionParam, ConnectionParam.host_id == Host.id)\
+            .filter(or_(*clauses))
         filtered_count = results.count()
     else:
         filtered_count = total_count
 
-    columns = [getattr(HostInventory.model_name, dt_params.sort_order)(),
-               getattr(HostInventory.name, dt_params.sort_order)(),
-               getattr(HostInventory.serial_number, dt_params.sort_order)(),
-               getattr(HostInventory.description, dt_params.sort_order)(),
-               getattr(Host.hostname, dt_params.sort_order)(),
-               getattr(Host.platform, dt_params.sort_order)(),
-               getattr(Host.software_platform, dt_params.sort_order)(),
-               getattr(Host.software_version, dt_params.sort_order)(),
-               getattr(Region.name, dt_params.sort_order)(),
-               getattr(Host.location, dt_params.sort_order)()]
+    if dt_params.columns_on_display is None:
+        columns = [getattr(HostInventory.model_name, dt_params.sort_order)(),
+                   getattr(HostInventory.name, dt_params.sort_order)(),
+                   getattr(HostInventory.serial_number, dt_params.sort_order)(),
+                   getattr(HostInventory.description, dt_params.sort_order)(),
+                   getattr(Host.hostname, dt_params.sort_order)(),
+                   getattr(ConnectionParam.host_or_ip, dt_params.sort_order)(),
+                   getattr(Host.platform, dt_params.sort_order)(),
+                   getattr(Host.software_platform, dt_params.sort_order)(),
+                   getattr(Host.software_version, dt_params.sort_order)(),
+                   getattr(Region.name, dt_params.sort_order)(),
+                   getattr(Host.location, dt_params.sort_order)(),
+                   '']
+    else:
+        columns = []
+        check_and_add_column(columns, 'model_name', HostInventory.model_name, dt_params)
+        check_and_add_column(columns, 'name', HostInventory.name, dt_params)
+        check_and_add_column(columns, 'serial_number', HostInventory.serial_number, dt_params)
+        check_and_add_column(columns, 'description', HostInventory.description, dt_params)
+        check_and_add_column(columns, 'hostname', Host.hostname, dt_params)
+        check_and_add_column(columns, 'host_or_ip', ConnectionParam.host_or_ip, dt_params)
+        check_and_add_column(columns, 'chassis', Host.platform, dt_params)
+        check_and_add_column(columns, 'platform', Host.software_platform, dt_params)
+        check_and_add_column(columns, 'software', Host.software_version, dt_params)
+        check_and_add_column(columns, 'region', Region.name, dt_params)
+        check_and_add_column(columns, 'location', Host.location, dt_params)
 
     results = results.order_by(columns[dt_params.column_order]) \
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length)

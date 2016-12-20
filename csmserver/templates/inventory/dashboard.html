@@ -133,7 +133,10 @@
         var hosts_with_failed_inventory_retrieval_table = $("#hosts-with-failed-inventory-retrieval-table").DataTable({
             "serverSide": true,
             "ajax": {
-                "url": "/datatable/api/get_managed_hosts/region/" + prepare_region_from_cookie_for_rest_api() + "/filter_failed/" + 1
+                "url": "/datatable/api/get_managed_hosts/region/" + prepare_region_from_cookie_for_rest_api() + "/filter_failed/" + 1,
+                "data": function (d) {
+                    define_column_names(d);
+                }
             },
             "columns": [
                 { "data": "hostname" },
@@ -247,6 +250,7 @@
                         }
                         d.serial_number = "";
                         d.hostname = hostname;
+                        define_column_names(d);
                     }
                 },
                 "columns": [
@@ -319,6 +323,7 @@
                             d.region_ids = region_id.toString();
                         }
                         d.serial_number = serial_number;
+                        define_column_names(d);
                     }
                 },
                 "columns": [
@@ -326,7 +331,7 @@
                     { "data": "name" },
                     { "data": "description" },
                     { "data": "hostname" },
-                    { "data": "host_or_ip" },
+                    { "data": "host_or_ip", "orderable": false },
                     { "data": "chassis" },
                     { "data": "platform" },
                     { "data": "software" },
@@ -407,6 +412,7 @@
                             d.region_ids = region_id.toString();
                         }
                         d.model_names = model_name;
+                        define_column_names(d);
                     }
                 },
                 "columns": [
@@ -414,7 +420,7 @@
                     { "data": "serial_number" },
                     { "data": "description" },
                     { "data": "hostname" },
-                    { "data": "host_or_ip" },
+                    { "data": "host_or_ip", "orderable": false},
                     { "data": "chassis" },
                     { "data": "platform" },
                     { "data": "software" },
@@ -483,12 +489,15 @@
                 "serverSide": true,
                 "ajax": {
                     "url": "/datatable/api/get_managed_hosts/region/" + prepare_region_from_cookie_for_rest_api() + "/chassis/" + chassis,
+                    "data": function (d) {
+                        define_column_names(d);
+                    }
                 },
                 "columns": [
                     { "data": "hostname" },
                     { "data": "region" },
                     { "data": "location" },
-                    { "data": "host_or_ip" },
+                    { "data": "host_or_ip"},
                     { "data": "platform" },
                     { "data": "software" },
                     { "data": "last_successful_retrieval", "orderable": false }
@@ -531,6 +540,14 @@
                 }]
             });
 
+        }
+
+        function define_column_names(d) {
+            var column_names = [];
+            for(index = 0; index < d.columns.length; index++) {
+                column_names.push(d.columns[index].data)
+            }
+            d.column_names = column_names.join(',');
         }
 
         $('#filter-region-selector').select2({

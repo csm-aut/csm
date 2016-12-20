@@ -48,6 +48,7 @@
                 "url": "{{ url_for('datatable.api_search_inventory') }}",
                 "data": function (d) {
                     prepare_filters_for_rest_api(d, true);
+                    define_column_names(d);
                 }
             },
             "columns": [
@@ -93,6 +94,7 @@
                 "url": "{{ url_for('datatable.api_search_inventory') }}",
                 "data": function (d) {
                     prepare_filters_for_rest_api(d, false);
+                    define_column_names(d);
 
                 }
             },
@@ -408,6 +410,14 @@
                 return $('#popover_email').html()
             }
         });
+
+        function define_column_names(d) {
+            var column_names = [];
+            for(index = 0; index < d.columns.length; index++) {
+                column_names.push(d.columns[index].data)
+            }
+            d.column_names = column_names.join(',');
+        }
 
     })
 
