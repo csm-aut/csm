@@ -45,7 +45,6 @@ The releases are expected to be in this format x.x.x (e.g. 5.3.0)
 
 from xml.dom import minidom
 
-from sqlalchemy.exc import IntegrityError
 from database import DBSession
 from models import SMUMeta
 from models import SMUInfo
@@ -166,9 +165,9 @@ class SMUInfoLoader(object):
     def get_smu_info_from_cco(self, platform, release):
         save_to_db = True
         db_session = DBSession()
+        platform_release = platform + '_' + release
 
         try:
-            platform_release = platform + '_' + release
             self.smu_meta = SMUMeta(platform_release=platform_release)
             # Load data from the SMU XML file
             self.load()
