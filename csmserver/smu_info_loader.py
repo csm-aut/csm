@@ -42,7 +42,6 @@ ncs6k_sysadmin
 
 The releases are expected to be in this format x.x.x (e.g. 5.3.0)
 """
-
 from xml.dom import minidom
 
 from database import DBSession
@@ -377,6 +376,19 @@ class SMUInfoLoader(object):
                 results.append(smu_info.ddts)
 
         return results
+
+    @classmethod
+    def get_cco_file_package_type(cls, db_session, name):
+        """
+        :param name: name can be a package name or cco file name
+        :return:
+        """
+        # Use the like filter in case of small discrepancy
+        smu_info = db_session.query(SMUInfo).filter(SMUInfo._cco_filename == name).first()
+        if smu_info:
+            return smu_info.package_type
+
+        return UNKNOWN
 
     @classmethod   
     def get_smu_meta_file(cls, platform, release):

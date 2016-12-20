@@ -32,6 +32,7 @@ from csm_exceptions.exceptions import OperationNotAllowed
 from constants import ServerType
 from constants import UserPrivilege
 from constants import InstallAction
+from constants import PackageType
 from constants import PackageState
 from constants import JobStatus
 
@@ -58,9 +59,6 @@ from database import DBSession
 
 from filters import get_datetime_string
 from filters import time_difference_UTC
-
-from smu_utils import SP_INDICATOR
-from smu_utils import TAR_INDICATOR
 
 from utils import is_empty
 from utils import get_datetime
@@ -681,14 +679,17 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
         for cco_filename in pending_downloads:
             # If the requested download_file is not in the download table, include it
             if not is_pending_on_download(db_session, cco_filename, server_id, server_directory):
-                # Unfortunately, the cco_filename may not conform to the SMU format (i.e. CSC).
-                # For example, for CRS, it is possible to have hfr-px-5.1.2.CRS-X-2.tar which contains
-                # multiple pie file. Thus, we check if it has a "sp" substring.
-                if SP_INDICATOR in cco_filename:
+                package_type = SMUInfoLoader.get_cco_file_package_type(db_session, cco_filename)
+
+                if package_type == PackageType.SERVICE_PACK:
                     software_type_id = smu_meta.sp_software_type_id
-                elif TAR_INDICATOR in cco_filename:
+                elif package_type == PackageType.SOFTWARE:
                     software_type_id = smu_meta.tar_software_type_id
+                elif package_type == PackageType.SMU:
+                    software_type_id = smu_meta.smu_software_type_id
                 else:
+                    # Best effort, it should not happen unless a SMU In-Transit is somehow get selected.
+                    # All Posted software should have a cco file name entry.
                     software_type_id = smu_meta.smu_software_type_id
 
                 download_job = DownloadJob(
@@ -702,8 +703,7 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
                     created_by=current_user.username)
 
                 db_session.add(download_job)
-
-            db_session.commit()
+                db_session.commit()
 
 
 def is_pending_on_download(db_session, filename, server_id, server_directory):
