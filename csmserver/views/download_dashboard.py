@@ -125,21 +125,31 @@ def api_delete_image_from_repository(image_name):
 
     tar_image_path = get_repository_directory() + image_name
     try:
+        # Remove the tar file contents
         file_list = get_tarfile_file_list(tar_image_path)
         for filename in file_list:
             try:
-                os.remove(get_repository_directory() + filename)
+                file_path = get_repository_directory() + filename
+                if os.path.exists(file_path):
+                    os.remove(file_path)
             except:
-                pass
+                logger.exception('api_delete_image_from_repository() hit exception filename=' + file_path)
     except ReadError:
         # In case, it is a partial downloaded TAR.
         pass
 
     try:
-        os.remove(tar_image_path)
-        os.remove(tar_image_path + '.size')
+        # Remove the actual tar file
+        file_path = tar_image_path
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        # Remove the auxiliary file for the tar file
+        file_path = tar_image_path + '.size'
+        if os.path.exists(file_path):
+            os.remove(file_path)
     except:
-        logger.exception('api_delete_image_from_repository() hit exception')
+        logger.exception('api_delete_image_from_repository() hit exception filename=' + file_path)
         return jsonify({'status': 'Failed'})
 
     return jsonify({'status': 'OK'})

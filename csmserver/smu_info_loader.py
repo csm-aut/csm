@@ -381,9 +381,8 @@ class SMUInfoLoader(object):
     def get_cco_file_package_type(cls, db_session, name):
         """
         :param name: name can be a package name or cco file name
-        :return:
+        :return: returns the package type of the cco file
         """
-        # Use the like filter in case of small discrepancy
         smu_info = db_session.query(SMUInfo).filter(SMUInfo._cco_filename == name).first()
         if smu_info:
             return smu_info.package_type
