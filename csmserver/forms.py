@@ -22,15 +22,18 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from wtforms import Form, validators
-from wtforms import RadioField
-from wtforms import TextAreaField, StringField, IntegerField, SelectField, PasswordField, HiddenField, SelectMultipleField
-from wtforms.validators import Length, required
+from wtforms import Form
+from wtforms import TextAreaField
+from wtforms import StringField
+from wtforms import SelectField
+from wtforms import PasswordField
+from wtforms import HiddenField
+from wtforms import SelectMultipleField
+from wtforms.validators import Length
+from wtforms.validators import required
 from constants import ConnectionType
 from constants import ServerType
 from constants import UserPrivilege
-from constants import SMTPSecureConnection
-from constants import DefaultHostAuthenticationChoice
 from constants import ExportInformationFormat
 
 
@@ -146,56 +149,6 @@ class ServerForm(Form):
 
 class RegionForm(Form):
     region_name = StringField('Region Name', [required()])
-
-
-class AdminConsoleForm(Form):
-    num_inventory_threads = IntegerField('Number of Software Inventory Processes', [validators.NumberRange(min=2, max=50)])
-    num_install_threads = IntegerField('Number of Install Processes', [validators.NumberRange(min=2, max=100)])
-    num_download_threads = IntegerField('Number of Software Download Processes', [validators.NumberRange(min=2, max=50)])
-    can_schedule = HiddenField("Allow Users to Schedule Install")
-    can_install = HiddenField("Allow Scheduled Installs to Run")
-    enable_email_notify = HiddenField("Enable Email Notification")
-    enable_inventory = HiddenField("Enable Software Inventory")
-    inventory_hour = SelectField('Hour to Perform Software Inventory', coerce=int, 
-                                 choices=[(0, '12:00 AM'), (1, '01:00 AM'), (2, '02:00 AM'),
-                                          (3, '03:00 AM'), (4, '04:00 AM'), (5, '05:00 AM'),
-                                          (6, '06:00 AM'), (7, '07:00 AM'), (8, '08:00 AM'),
-                                          (9, '09:00 AM'), (10, '10:00 AM'), (11, '11:00 AM'),
-                                          (12, '12:00 PM'), (13, '01:00 PM'), (14, '02:00 PM'),
-                                          (15, '03:00 PM'), (16, '04:00 PM'), (17, '05:00 PM'),
-                                          (18, '06:00 PM'), (19, '07:00 PM'), (20, '08:00 PM'),
-                                          (21, '09:00 PM'), (22, '10:00 PM'), (23, '11:00 PM')])
-    inventory_history_per_host = IntegerField('Software Inventory History Per Host', [validators.NumberRange(min=10, max=100)])
-    install_history_per_host = IntegerField('Install History Per Host', [validators.NumberRange(min=10, max=1000)])
-    download_history_per_user = IntegerField('SMU/SP Download History Per User', [validators.NumberRange(min=10, max=100)])
-    total_system_logs = IntegerField('Total System Logs', [validators.NumberRange(min=100, max=100000)])
-    enable_default_host_authentication = HiddenField("Use Default Host Authentication")
-    default_host_username = StringField('Default Host Username')
-    default_host_password = PasswordField('Default Host Password')
-    default_host_authentication_choice = \
-        RadioField('Apply To',
-                   choices=[(DefaultHostAuthenticationChoice.ALL_HOSTS, 'All Hosts'),
-                            (DefaultHostAuthenticationChoice.HOSTS_WITH_NO_SPECIFIED_USERNAME_AND_PASSWORD,
-                            'Hosts with no Specified Username and Password')])
-    enable_ldap_auth = HiddenField("Enable LDAP")
-    ldap_server_url = StringField('LDAP Server URL')
-    ldap_server_distinguished_names = StringField('Distinguished Names')
-    enable_cco_lookup = HiddenField("Enable CCO Connection")
-    cco_lookup_time = HiddenField("Last Retrieval")
-    enable_user_credential_for_host = HiddenField("Use CSM Server User Credential")
-    use_utc_timezone = HiddenField("Use UTC Time Zone")
-
-
-class SMTPForm(Form):
-    server = StringField('Outgoing SMTP Server')
-    server_port = StringField('SMTP Server Port')
-    sender = StringField('Sender Email Address')
-    use_authentication = HiddenField("Server uses Authentication")
-    username = StringField('Username')
-    password = PasswordField('Password')
-    secure_connection = SelectField('Secure Connection', coerce=str,
-                                    choices=[(SMTPSecureConnection.SSL, SMTPSecureConnection.SSL),
-                                             (SMTPSecureConnection.TLS, SMTPSecureConnection.TLS)])
 
 
 class BrowseServerDialogForm(Form):

@@ -42,8 +42,6 @@ from forms import UserForm
 from forms import RegionForm
 from forms import ServerForm 
 from forms import ScheduleInstallForm
-from forms import AdminConsoleForm
-from forms import SMTPForm
 from forms import BrowseServerDialogForm
 from forms import HostScheduleInstallForm
 
@@ -56,7 +54,6 @@ from models import InstallJobHistory
 from models import Region
 from models import User
 from models import Server
-from models import SMTPServer
 from models import SystemOption
 from models import System
 from models import Package
@@ -103,7 +100,6 @@ from common import get_region_list
 from common import delete_region
 from common import get_user
 from common import get_user_list
-from common import get_smtp_server
 from common import can_check_reachability
 from common import can_retrieve_software
 from common import can_install
@@ -127,8 +123,7 @@ from utils import get_file_list
 from utils import make_url
 from utils import trim_last_slash
 from utils import is_empty
-from utils import get_base_url 
-from utils import is_ldap_supported
+from utils import get_base_url
 from utils import remove_extra_spaces
 from utils import create_directory
 from utils import create_temp_user_directory
@@ -157,6 +152,7 @@ from views.datatable import datatable
 from views.host_dashboard import host_dashboard
 from views.install_dashboard import install_dashboard
 from views.download_dashboard import download_dashboard
+from views.admin_console import admin_console
 from views.cco import cco
 
 import os
@@ -181,6 +177,7 @@ app.register_blueprint(datatable)
 app.register_blueprint(host_dashboard)
 app.register_blueprint(install_dashboard)
 app.register_blueprint(download_dashboard)
+app.register_blueprint(admin_console)
 app.register_blueprint(cco)
 
 # Hook up the filters
@@ -1290,119 +1287,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url)
-
-@app.route('/admin_console/', methods=['GET','POST'])
-@login_required
-def admin_console():
-    if current_user.privilege != UserPrivilege.ADMIN:
-        abort(401)
-     
-    db_session = DBSession()   
-
-    smtp_form = SMTPForm(request.form)
-    admin_console_form = AdminConsoleForm(request.form)    
-    
-    smtp_server = get_smtp_server(db_session)
-    system_option = SystemOption.get(db_session)
-    
-    if request.method == 'POST' and \
-        smtp_form.validate() and \
-        admin_console_form.validate():
- 
-        if smtp_server is None:
-            smtp_server = SMTPServer()
-            db_session.add(smtp_server)
-      
-        smtp_server.server = smtp_form.server.data
-        smtp_server.server_port = smtp_form.server_port.data if len(smtp_form.server_port.data) > 0 else None
-        smtp_server.sender = smtp_form.sender.data
-        smtp_server.use_authentication = smtp_form.use_authentication.data
-        smtp_server.username = smtp_form.username.data
-        if len(smtp_form.password.data) > 0:
-            smtp_server.password = smtp_form.password.data
-        smtp_server.secure_connection = smtp_form.secure_connection.data
- 
-        system_option.inventory_threads = admin_console_form.num_inventory_threads.data
-        system_option.install_threads = admin_console_form.num_install_threads.data
-        system_option.download_threads = admin_console_form.num_download_threads.data
-        system_option.can_schedule = admin_console_form.can_schedule.data
-        system_option.can_install = admin_console_form.can_install.data  
-        system_option.enable_email_notify = admin_console_form.enable_email_notify.data 
-        system_option.enable_inventory = admin_console_form.enable_inventory.data
-        
-        # The LDAP UI may be hidden if it is not supported.
-        # In this case, the flag is not set.
-        if not is_empty(admin_console_form.enable_ldap_auth.data):
-            system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data 
-            system_option.ldap_server_url = admin_console_form.ldap_server_url.data 
-            system_option.ldap_server_distinguished_names = admin_console_form.ldap_server_distinguished_names.data.strip()
-        
-        system_option.inventory_hour = admin_console_form.inventory_hour.data 
-        system_option.inventory_history_per_host = admin_console_form.inventory_history_per_host.data 
-        system_option.download_history_per_user = admin_console_form.download_history_per_user.data
-        system_option.install_history_per_host = admin_console_form.install_history_per_host.data
-        system_option.total_system_logs = admin_console_form.total_system_logs.data
-        system_option.enable_default_host_authentication = admin_console_form.enable_default_host_authentication.data
-        system_option.default_host_authentication_choice = admin_console_form.default_host_authentication_choice.data
-        system_option.enable_cco_lookup = admin_console_form.enable_cco_lookup.data
-        system_option.use_utc_timezone = admin_console_form.use_utc_timezone.data
-        system_option.default_host_username = admin_console_form.default_host_username.data
-        
-        if len(admin_console_form.default_host_password.data) > 0: 
-            system_option.default_host_password = admin_console_form.default_host_password.data
-
-        system_option.enable_user_credential_for_host = admin_console_form.enable_user_credential_for_host.data
-         
-        db_session.commit()
-        
-        return redirect(url_for('home'))
-    else:
-        
-        admin_console_form.num_inventory_threads.data = system_option.inventory_threads
-        admin_console_form.num_install_threads.data = system_option.install_threads
-        admin_console_form.num_download_threads.data = system_option.download_threads
-        admin_console_form.can_schedule.data = system_option.can_schedule
-        admin_console_form.can_install.data = system_option.can_install
-        admin_console_form.enable_email_notify.data = system_option.enable_email_notify
-        admin_console_form.enable_ldap_auth.data = system_option.enable_ldap_auth
-        admin_console_form.ldap_server_url.data = system_option.ldap_server_url
-        admin_console_form.ldap_server_distinguished_names.data = system_option.ldap_server_distinguished_names
-        admin_console_form.enable_inventory.data = system_option.enable_inventory
-        admin_console_form.inventory_hour.data = system_option.inventory_hour 
-        admin_console_form.inventory_history_per_host.data = system_option.inventory_history_per_host
-        admin_console_form.download_history_per_user.data = system_option.download_history_per_user
-        admin_console_form.install_history_per_host.data = system_option.install_history_per_host
-        admin_console_form.total_system_logs.data = system_option.total_system_logs
-        admin_console_form.enable_default_host_authentication.data = system_option.enable_default_host_authentication
-        admin_console_form.default_host_authentication_choice.data = system_option.default_host_authentication_choice
-        admin_console_form.default_host_username.data = system_option.default_host_username
-        admin_console_form.enable_cco_lookup.data = system_option.enable_cco_lookup
-        admin_console_form.use_utc_timezone.data = system_option.use_utc_timezone
-        admin_console_form.cco_lookup_time.data = get_datetime_string(system_option.cco_lookup_time)
-        admin_console_form.enable_user_credential_for_host.data = system_option.enable_user_credential_for_host
-
-        if not is_empty(system_option.default_host_password):
-            admin_console_form.default_host_password_placeholder = 'Use Password on File'
-        else:
-            admin_console_form.default_host_password_placeholder = 'No Password Specified'
-
-        if smtp_server is not None:
-            smtp_form.server.data = smtp_server.server
-            smtp_form.server_port.data = smtp_server.server_port
-            smtp_form.sender.data = smtp_server.sender
-            smtp_form.use_authentication.data = smtp_server.use_authentication
-            smtp_form.username.data = smtp_server.username
-            smtp_form.secure_connection.data = smtp_server.secure_connection
-            if not is_empty(smtp_server.password):
-                smtp_form.password_placeholder = 'Use Password on File'
-            else:
-                smtp_form.password_placeholder = 'No Password Specified'
-
-        return render_template('admin/index.html',
-                               admin_console_form=admin_console_form,
-                               smtp_form=smtp_form,
-                               system_option=SystemOption.get(db_session),
-                               is_ldap_supported=is_ldap_supported())
 
 
 @app.route('/hosts/<hostname>/<table>/session_log/<int:id>/')

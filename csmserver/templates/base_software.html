@@ -39,7 +39,7 @@
 {% endmacro %}
 
 {% macro admin_tools_menu() %}
-    <li><a href="{{ url_for('admin_console') }}">Admin Console</a></li>
+    <li><a href="{{ url_for('admin_console.home') }}">Admin Console</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('host_import.import_hosts') }}">Import Hosts</a></li>
     <li class="divider"></li>
