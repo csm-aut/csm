@@ -366,7 +366,7 @@
                             if (result.email_notify_enabled) {
                                 submit_export_form();
                             } else {
-                                bootbox.alert("<img src='/static/error.png'>&nbsp;Please enable Email Notification at <a target='_blank' href='{{ url_for('admin_console') }}'>Tools > Admin Console > Notifications</a> in Software page.");
+                                bootbox.alert("<img src='/static/error.png'>&nbsp;Please enable Email Notification at <a target='_blank' href='{{ url_for('admin_console.home') }}'>Tools > Admin Console > Notifications</a> in Software page.");
                                 return false;
                             }
                         }
