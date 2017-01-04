@@ -592,7 +592,7 @@
                         <li class="divider"></li>
                         <li><a href="javascript://" id="retrieve-inventory" retrieve-inventory-url="{{ url_for('host_dashboard.get_inventory', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard.home', hostname = host.hostname) }}">Retrieve Latest Inventory</a></li>
                         <li class="divider"></li>
-                        <li><a href="{{ url_for('host_edit', hostname = host.hostname) }}?return_url=host_dashboard.home">Edit Host</a></li>
+                        <li><a href="{{ url_for('home.host_edit', hostname = host.hostname) }}?return_url=host_dashboard.home">Edit Host</a></li>
                     </ul>
                 </div>
             </div>

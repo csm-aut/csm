@@ -12,7 +12,7 @@
             placeholder: "Filter Hosts by Region",
             allowClear: true,
             ajax: {
-                url: "/api/get_regions/",
+                url: "/home/api/get_regions/",
                 dataType: 'json',
                 processResults: function(data, page) {
                     return {
@@ -110,7 +110,7 @@
                 "targets": 6,
                 "data": 'host_or_ip',
                 "render": function(data, type, row) {
-                    return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
+                    return '<a href="/home/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
                 }
             }, {
                 "targets": 7,
@@ -130,7 +130,7 @@
                 "render": function(data, type, row) {
                     return '<a class="host-delete-link" href="javascript://"  \
                 delete-host="' + data + '" \
-                data-delete-url="/hosts/' + data + '/delete/">Delete</a>';
+                data-delete-url="/home/hosts/' + data + '/delete/">Delete</a>';
                 }
             }, ],
         });
@@ -148,7 +148,7 @@
 
         function refresh_region_name() {
             $.ajax({
-                url: "/api/get_region_name/region/" + get_region_from_cookie(),
+                url: "/home/api/get_region_name/region/" + get_region_from_cookie(),
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {

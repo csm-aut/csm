@@ -389,5 +389,24 @@ def get_software_version(version):
     head, sep, tail = version.partition('[')
     return head
 
+
+def get_return_url(request, default_url=None):
+    """
+    Returns the return_url encoded in the parameters
+    """
+    url = request.args.get('return_url')
+    if url is None:
+        url = default_url
+    return url
+
+
+def get_build_date():
+    try:
+        return open('build_date', 'r').read()
+    except:
+        pass
+
+    return None
+
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))

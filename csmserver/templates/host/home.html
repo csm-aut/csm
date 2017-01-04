@@ -20,7 +20,7 @@
             placeholder: "Filter Hosts by Region",
             allowClear: true,
             ajax: {
-                url: "/api/get_regions/",
+                url: "/home/api/get_regions/",
                 dataType: 'json',
                 processResults: function(data, page) {
                     return {
@@ -83,7 +83,7 @@
                 "data": 'host_count',
             }],
             "ajax": {
-                "url": "/api/get_host_platform_version/region/" + get_region_from_cookie()
+                "url": "/home/api/get_host_platform_version/region/" + get_region_from_cookie()
             },
         });
 
@@ -161,7 +161,7 @@
                 "targets": 2,
                 "data": 'host_or_ip',
                 "render": function(data, type, row) {
-                    return '<a href="/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
+                    return '<a href="/home/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
                 }
             }, {
                 "targets": 3,
@@ -197,12 +197,12 @@
         });
 
         function refresh_host_platform_table() {
-             host_platform_table.api().ajax.url("/api/get_host_platform_version/region/" + get_region_from_cookie()).load();
+             host_platform_table.api().ajax.url("/home/api/get_host_platform_version/region/" + get_region_from_cookie()).load();
         }
 
         function refresh_region_name() {
             $.ajax({
-                url: "/api/get_region_name/region/" + get_region_from_cookie(),
+                url: "/home/api/get_region_name/region/" + get_region_from_cookie(),
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {
@@ -223,7 +223,7 @@
 
         function refresh_host_and_region_counts() {
             $.ajax({
-                url: "/api/get_host_and_region_counts",
+                url: "{{ url_for('home.get_host_and_region_counts') }}",
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {
@@ -266,7 +266,7 @@
 
         function get_server_time() {
             $.ajax({
-                url: "/api/get_server_time",
+                url: "/home/api/get_server_time",
                 dataType: 'json',
                 success: function(data) {
                     $.each(data, function(index, element) {
@@ -470,12 +470,12 @@
                 <li class="dropdown">
                     <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
                     <ul class="dropdown-menu">
-                        <li><a data-toggle="main-tab" href="{{ url_for('host_create') }}">Host</a></li>
-                        <li><a data-toggle="main-tab" href="{{ url_for('jump_host_create') }}">Jump Server</a></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('home.host_create') }}">Host</a></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('home.jump_host_create') }}">Jump Server</a></li>
                         <li class="divider"></li>
-                        <li><a data-toggle="main-tab" href="{{ url_for('region_create') }}">Region</a></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('home.region_create') }}">Region</a></li>
                         <!-- Required to be a privilege user -->
-                        <li><a data-toggle="main-tab" href="{{ url_for('server_create') }}">Server Repository</a></li>
+                        <li><a data-toggle="main-tab" href="{{ url_for('home.server_create') }}">Server Repository</a></li>
                     </ul>
                 </li>
             </ul>
@@ -511,7 +511,7 @@
                         <tbody>
                             {% for jump_host in jump_hosts %}
                             <tr>
-                                <td><a href="{{ url_for('jump_host_edit', hostname = jump_host.hostname) }}">{{ jump_host.hostname }}</a></td>
+                                <td><a href="{{ url_for('home.jump_host_edit', hostname = jump_host.hostname) }}">{{ jump_host.hostname }}</a></td>
                                 <td>{{ jump_host.host_or_ip }}</td>
                                 <td>{{ jump_host.username }}</td>
                                 <td>{{ jump_host.connection_type }}</td>
@@ -524,7 +524,7 @@
                                     <a class="host-delete-link" href="#"
                                         host-type="jump_host"
                                         delete-host="{{ jump_host.hostname }}"
-                                        delete-url="{{ url_for('jump_host_delete', hostname = jump_host.hostname) }}">Delete</a>
+                                        delete-url="{{ url_for('home.jump_host_delete', hostname = jump_host.hostname) }}">Delete</a>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -543,12 +543,12 @@
                         <tbody>
                             {% for region in regions %}
                             <tr>
-                                <td><a href="{{ url_for('region_edit', region_name = region.name) }}">{{ region.name }}</a></td>
+                                <td><a href="{{ url_for('home.region_edit', region_name = region.name) }}">{{ region.name }}</a></td>
                                 {% if region.servers %}
                                     <td>
                                         <ul style="list-style-type:square;margin:0;">
                                             {% for server in region.servers %}
-                                            <li><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></li>
+                                            <li><a href="{{ url_for('home.server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></li>
                                             {% endfor %}
                                         </ul>
                                     </td>
@@ -559,7 +559,7 @@
                                     <a class="host-delete-link" href="#"
                                         host-type="region"
                                         delete-host="{{ region.name }}"
-                                        delete-url="{{ url_for('region_delete', region_name = region.name) }}">Delete</a>
+                                        delete-url="{{ url_for('home.region_delete', region_name = region.name) }}">Delete</a>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -583,7 +583,7 @@
                         <tbody>
                             {% for server in servers %}
                             <tr>
-                                <td><a href="{{ url_for('server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></td>
+                                <td><a href="{{ url_for('home.server_edit', hostname = server.hostname) }}">{{ server.hostname }}</a></td>
                                 <td>{{ server.server_type }}</td>
                                 <td>
                                     <span style="color: Gray;"><b>URL:</b></span> {{ server.server_url }}<br/>
@@ -606,7 +606,7 @@
                                     <a class="host-delete-link" href="#"
                                         host-type="server"
                                         delete-host="{{ server.hostname }}"
-                                        delete-url="{{ url_for('server_delete', hostname = server.hostname) }}">Delete</a>
+                                        delete-url="{{ url_for('home.server_delete', hostname = server.hostname) }}">Delete</a>
                                 </td>
                             </tr>
                             {% endfor %}
