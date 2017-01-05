@@ -593,7 +593,7 @@
 
                                     {% if server.server_directory %}
                                         <span style="color: Gray;">
-                                        {% if server.server_type == "FTP" or server.server_type == "SFTP" %}
+                                        {% if server.server_type == "FTP" or server.server_type == "SFTP" or server.server_type == "SCP" %}
                                             <b>Home Directory:</b>
                                         {% else %}
                                             <b>File Directory:</b>
