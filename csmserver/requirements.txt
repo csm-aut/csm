@@ -15,5 +15,6 @@ requests==2.5.1
 paramiko==1.15.1
 pycrypto==2.6.1
 pysftp==0.2.8
+scp==0.10.2
 xlutils==1.7.1
 csmpe==0.1.3

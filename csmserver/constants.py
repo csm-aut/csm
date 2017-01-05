@@ -100,6 +100,7 @@ class ServerType:
     TFTP_SERVER = 'TFTP'
     FTP_SERVER = 'FTP'
     SFTP_SERVER = 'SFTP'
+    SCP_SERVER = 'SCP'
     LOCAL_SERVER = 'LOCAL'
 
 

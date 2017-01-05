@@ -139,6 +139,7 @@ class ServerForm(Form):
                               choices=[(ServerType.TFTP_SERVER, ServerType.TFTP_SERVER),
                                        (ServerType.FTP_SERVER, ServerType.FTP_SERVER),
                                        (ServerType.SFTP_SERVER, ServerType.SFTP_SERVER),
+                                       (ServerType.SCP_SERVER, ServerType.SCP_SERVER),
                                        (ServerType.LOCAL_SERVER, ServerType.LOCAL_SERVER)])
     server_url = StringField('Server URL (for device)', [required()])
     username = StringField('Username')

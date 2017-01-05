@@ -30,10 +30,25 @@ import ftplib
 import shutil
 
 from constants import ServerType
+
+from utils import is_empty
 from utils import get_file_list
-from utils import import_module
 from utils import concatenate_dirs
+
 from models import logger
+
+try:
+    import pysftp
+    SFTP_SUPPORTED = True
+except Exception:
+    SFTP_SUPPORTED = False
+
+try:
+    from paramiko import SSHClient
+    from scp import SCPClient
+    SCP_SUPPORTED = True
+except Exception:
+    SCP_SUPPORTED = False
 
 
 def get_server_impl(server):
@@ -43,6 +58,8 @@ def get_server_impl(server):
         return FTPServer(server)
     elif server.server_type == ServerType.SFTP_SERVER:
         return SFTPServer(server)
+    elif server.server_type == ServerType.SCP_SERVER:
+        return SCPServer(server)
     else:
         return None
 
@@ -78,53 +95,52 @@ class TFTPServer(ServerImpl):
         return get_file_list(self.server.server_directory)
     
     """
-    Return an array of dictionaries: {'filename': [file|directory]', is_directory: [False/True]}
+    Return an array of dictionaries: {'filename': [file|directory]', is_directory: [False|True]}
     """
     def get_file_and_directory_dict(self, sub_directory=None): 
         result_list = []
-        is_reachable = True
-        
-        try:
-            if sub_directory is None:
-                path = self.server.server_directory
-            else:
-                path = (self.server.server_directory + os.sep + sub_directory)
- 
+        is_reachable = False
+
+        if is_empty(sub_directory):
+            path = self.server.server_directory
+        else:
+            path = os.path.join(self.server.server_directory, sub_directory)
+
+        if os.path.exists(path):
             for name in os.listdir(path):
-                file = {}            
- 
+                file = dict()
+
                 if os.path.isfile(os.path.join(path, name)):
                     file['filename'] = name
                     file['is_directory'] = False
                 else:
-                    if sub_directory is None or len(sub_directory) == 0:
-                        file['filename'] = name
-                    else:
-                        file['filename'] = sub_directory + '/' + name
+                    file['filename'] = name if is_empty(sub_directory) else (sub_directory + os.sep + name)
                     file['is_directory'] = True
-            
+
                 result_list.append(file)
-        except:
-            is_reachable = False
-              
+
+            is_reachable = True
+
         return result_list, is_reachable
 
     def check_reachability(self):
-        try:
-            if os.path.isdir(self.server.server_directory):
-                return True
-        
-            return False
-        except:
-            return False
+        error = None
+        is_reachable = False
+
+        if os.path.isdir(self.server.server_directory):
+            is_reachable = True
+        else:
+            error = '{} is not a directory'.format(self.server.server_directory)
+
+        return is_reachable, error
         
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         if sub_directory is None:
             path = self.server.server_directory
         else:
-            path = (self.server.server_directory + os.sep + sub_directory)
+            path = os.path.join(self.server.server_directory, sub_directory)
             
-        shutil.copy(source_file_path, path + os.sep + dest_filename)
+        shutil.copy(source_file_path, os.path.join(path, dest_filename))
             
         
 class FTPServer(ServerImpl):
@@ -136,7 +152,7 @@ class FTPServer(ServerImpl):
                    enumerate(('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')))
         """
-        List the contents of the FTP opbject's cwd and return two tuples of
+        List the contents of the FTP object's cwd and return two tuples of
 
            (filename, size, mtime, mode, link)
 
@@ -202,7 +218,7 @@ class FTPServer(ServerImpl):
 
     def get_file_list(self):
         result_list = []
-        is_reachable = True
+        is_reachable = False
         try:
             ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
 
@@ -214,15 +230,16 @@ class FTPServer(ServerImpl):
             if nondirs is not None:
                 for file_tuple in nondirs:
                     result_list.append(file_tuple[0])
-        except:
-            logger.exception('FTPServer hit exception') 
-            is_reachable = False
+
+            is_reachable = True
+        except Exception as e:
+            logger.exception('FTPServer hit exception - ' + e.message)
 
         return result_list, is_reachable
     
     def get_file_and_directory_dict(self, sub_directory=None):
         result_list = []
-        is_reachable = True
+        is_reachable = False
   
         try:
             ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
@@ -234,34 +251,38 @@ class FTPServer(ServerImpl):
             dirs, nondirs = self.listdir(ftp)
     
             for file_tuple in nondirs:
-                result_list.append({'filename':file_tuple[0], 'is_directory':False})
+                result_list.append({'filename': file_tuple[0], 'is_directory': False})
                 
             for file_tuple in dirs:
                 if sub_directory is None or len(sub_directory) == 0:
-                    result_list.append({'filename':file_tuple[0], 'is_directory':True})
+                    result_list.append({'filename': file_tuple[0], 'is_directory': True})
                 else:
-                    result_list.append({'filename':sub_directory + '/' + file_tuple[0], 'is_directory':True})
-        except:
-            logger.exception('FTPServer hit exception') 
-            is_reachable = False
+                    result_list.append({'filename': os.path.join(sub_directory, file_tuple[0]), 'is_directory': True})
+
+            is_reachable = True
+        except Exception as e:
+            logger.exception('FTPServer hit exception - ' + e.message)
  
         return result_list, is_reachable
     
     def check_reachability(self):
-        try:
-            server = self.server
-            ftp = ftplib.FTP(server.server_url, user=server.username, passwd=server.password)
+        error = None
+        is_reachable = False
 
-            if server.server_directory is not None and len(server.server_directory) > 0:
-                ftp.cwd(server.server_directory)
+        try:
+            ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
+
+            if not is_empty(self.server.server_directory):
+                ftp.cwd(self.server.server_directory)
         
-            return True
-        except:
-            return False
+            is_reachable = True
+        except Exception as e:
+            error = e.message
+
+        return is_reachable, error
         
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
-        try:
-            file = open(source_file_path, 'rb')
+        with open(source_file_path, 'rb') as file:
             
             ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
                    
@@ -275,11 +296,6 @@ class FTPServer(ServerImpl):
             else:
                 ftp.storbinary('STOR ' + dest_filename, file)
             ftp.quit()
-            file.close()
-
-        finally:
-            if file is not None:
-                file.close()
 
     def delete_file(self, filename, sub_directory=None, callback=None):
         ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
@@ -293,91 +309,138 @@ class FTPServer(ServerImpl):
     def handler(self, block):
         pass
 
+
 class SFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
     
     def get_file_list(self):
         result_list = []
-        is_reachable = True
+        is_reachable = False
+
+        if not SFTP_SUPPORTED:
+            return result_list, is_reachable
         
         try:
-            sftp_module = import_module('pysftp')
-            if sftp_module is not None:
-                server = self.server
-                with sftp_module.Connection(server.server_url, username=server.username, password=server.password) as sftp:
-                    if server.server_directory is not None and len(server.server_directory) > 0:
-                        sftp.chdir(server.server_directory)
-        
-                    result_list = sftp.listdir()
-        except:
-            logger.exception('SFTPServer hit exception')
-            is_reachable = False
+            server = self.server
+            with pysftp.Connection(server.server_url, username=server.username, password=server.password) as sftp:
+                if server.server_directory is not None and len(server.server_directory) > 0:
+                    sftp.chdir(server.server_directory)
+
+                result_list = sftp.listdir()
+
+            is_reachable = True
+        except Exception as e:
+            logger.exception('SFTPServer hit exception - ' + e.message)
                    
         return result_list, is_reachable
 
     def get_file_and_directory_dict(self, sub_directory=None):
         result_list = []
-        is_reachable = True
+        is_reachable = False
+
+        if not SFTP_SUPPORTED:
+            return result_list, is_reachable
         
         try:
-            sftp_module = import_module('pysftp')
-            if sftp_module is not None:
-                with sftp_module.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
-                    remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
-                    if len(remote_directory) > 0:
-                        sftp.chdir(remote_directory)
-    
-                    file_info_list = sftp.listdir()
-                    for file_info in file_info_list:
-                        file = {}
-                        lstatout = str(sftp.lstat(file_info)).split()[0]
-                        if 'd' in lstatout:
-                            if sub_directory is None or len(sub_directory) == 0:
-                                file['filename'] = file_info
-                            else:
-                                file['filename'] = sub_directory + '/' + file_info
-                            file['is_directory'] = True 
-                        else:
-                            file['filename'] = file_info
-                            file['is_directory'] = False
+            with pysftp.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
+                remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
+                if len(remote_directory) > 0:
+                    sftp.chdir(remote_directory)
 
-                        result_list.append(file)
-        except:
-            logger.exception('SFTPServer hit exception')
-            is_reachable = False
+                file_info_list = sftp.listdir()
+                for file_info in file_info_list:
+                    file = {}
+                    lstatout = str(sftp.lstat(file_info)).split()[0]
+
+                    if 'd' in lstatout:
+                        if sub_directory is None or len(sub_directory) == 0:
+                            file['filename'] = file_info
+                        else:
+                            file['filename'] = sub_directory + '/' + file_info
+                        file['is_directory'] = True
+                    else:
+                        file['filename'] = file_info
+                        file['is_directory'] = False
+
+                    result_list.append(file)
+
+            is_reachable = True
+        except Exception as e:
+            logger.exception('SFTPServer hit exception - ' + e.message)
             
         return result_list, is_reachable
     
     def check_reachability(self):
-        try:
-            sftp_module = import_module('pysftp')
-            if sftp_module is not None:
-                server = self.server
-                with sftp_module.Connection(server.server_url, username=server.username, password=server.password) as sftp:
-                    if server.server_directory is not None and len(server.server_directory) > 0:
-                        sftp.chdir(server.server_directory)      
-                return True
-            else:
-                logger.exception('Unable to import pysftp module')
-                return False
-        except:
-            logger.exception('SFTPServer hit exception')
-            return False
+        error = None
+        is_reachable = False
+
+        if not SFTP_SUPPORTED:
+            error = 'SFTP supported libraries have not been installed.'
+        else:
+            try:
+                with pysftp.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
+                    if not is_empty(self.server.server_directory):
+                        sftp.chdir(self.server.server_directory)
+
+                is_reachable = True
+
+            except Exception as e:
+                error = e.strerror if is_empty(e.message) else e.message
+                logger.exception('SFTPServer hit exception - ' + error)
+
+        return is_reachable, error
         
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
-        sftp_module = import_module('pysftp')
+        if SFTP_SUPPORTED:
+            with pysftp.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
+                remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
+                if len(remote_directory) > 0:
+                    sftp.chdir(remote_directory)
 
-        with sftp_module.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
-            remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
-            if len(remote_directory) > 0:
-                sftp.chdir(remote_directory)
-            if callback:
-                sftp.put(source_file_path, remotepath=dest_filename, callback=callback)
-            else:
-                sftp.put(source_file_path, remotepath=dest_filename)
+                if callback:
+                    sftp.put(source_file_path, remotepath=dest_filename, callback=callback)
+                else:
+                    sftp.put(source_file_path, remotepath=dest_filename)
 
 
-if __name__ == '__main__':         
-    pass
+class SCPServer(ServerImpl):
+    def __init__(self, server):
+        ServerImpl.__init__(self, server)
+
+    def get_file_list(self):
+        return self.get_file_and_directory_dict()
+
+    def get_file_and_directory_dict(self, sub_directory=None):
+        is_reachable, error = self.check_reachability()
+        return [], is_reachable
+
+    def check_reachability(self):
+        if not SCP_SUPPORTED:
+            # https://pypi.python.org/pypi/scp
+            error = 'SCP supported libraries have not been installed.'
+            return False, error
+
+        try:
+            ssh = SSHClient()
+            ssh.load_system_host_keys()
+            ssh.connect(self.server.server_url, username=self.server.username, password=self.server.password)
+        except Exception as e:
+            logger.exception('SCPServer hit exception - %s' % e.message)
+            return False, e.message
+
+        return True, None
+
+    def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
+        try:
+            ssh = SSHClient()
+            ssh.load_system_host_keys()
+            ssh.connect(self.server.server_url, username=self.server.username, password=self.server.password)
+
+            with SCPClient(ssh.get_transport(), socket_timeout=15.0) as scp:
+                scp.put(source_file_path, os.path.join(self.server.server_directory, dest_filename))
+
+        except Exception as e:
+            logger.exception('SCPServer hit exception - %s' % e.message)
+
 

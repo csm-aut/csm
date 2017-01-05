@@ -688,11 +688,20 @@ def check_server_reachability():
                     username=username, password=password, server_directory=server_directory)
     # The form is in the edit mode and the user clicks Validate Reachability
     # If there is no password specified, try get it from the database.
-    if (server_type == ServerType.FTP_SERVER or server_type == ServerType.SFTP_SERVER) and password == '':
+    if (server_type == ServerType.FTP_SERVER or
+        server_type == ServerType.SFTP_SERVER or
+        server_type == ServerType.SCP_SERVER) and password == '':
+
         db_session = DBSession()
         server_in_db = get_server(db_session, hostname)
         if server_in_db is not None:
             server.password = server_in_db.password
 
     server_impl = get_server_impl(server)
-    return jsonify({'status': 'OK'}) if server_impl.check_reachability() else jsonify({'status': 'Failed'})
+
+    is_reachable, error = server_impl.check_reachability()
+
+    if is_reachable:
+        return jsonify({'status': 'OK'})
+    else:
+        return jsonify({'status': error})

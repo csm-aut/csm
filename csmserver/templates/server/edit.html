@@ -54,7 +54,7 @@
             if (server_type == "TFTP") {
                 $('#label_server_url').text('TFTP Server Path');
                 $('#label_server_directory').text('File Directory (Used by CSM Server)');
-            } else if (server_type == "FTP" || server_type == "SFTP") {
+            } else if (server_type == "FTP" || server_type == "SFTP" || server_type == "SCP") {
                 $('#authentiation-panel').show();
                 $('#label_server_url').text(server_type + ' Server Address');
                 $('#label_server_directory').text('Home Directory');
@@ -64,7 +64,7 @@
                 $('#directory-panel').hide();
             }
 
-            if (server_type == "LOCAL" || server_type == "SFTP") {
+            if (server_type == "LOCAL" || server_type == "SFTP" || server_type == "SCP") {
                 $('#vrf-panel').hide();
             }
         }
@@ -89,11 +89,11 @@
                     if (response.status == 'OK') {
                         display_success();
                     } else {
-                        display_error();
+                        display_error(response.status);
                     }
                 },
                 error: function(XMLHttpRequest, textStatus, errorThrown) {
-                    display_error();
+                    display_error(errorThrown);
                 }
             });
 
@@ -102,17 +102,16 @@
                 $('#verify-reachability').removeClass("btn-danger");
                 $('#verify-reachability').addClass("btn-primary");
 
-                bootbox.alert("<img src=\"{{ url_for('static', filename='green_check.png') }}\">CSM Server is able to reach the specified server.<br>" +
-                    "(Notice: This allows the CSM Server to browse files on the specified " +
-                    "server but does not guarantee that the host device will be able to do the same.)");
+                bootbox.alert("<img src=\"{{ url_for('static', filename='green_check.png') }}\">CSM Server is able to reach the server repository.<br>" +
+                    "(Notice: This may allow CSM Server to browse files but does not guarantee that the host device will be able to do the same.)");
             }
 
-            function display_error() {
+            function display_error(error) {
                 spinner.hide();
                 $('#verify-reachability').removeClass("btn-primary");
                 $('#verify-reachability').addClass("btn-danger");
 
-                bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">Unable to reach the specified server or you are not an authorized user.");
+                bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;Unable to reach the server repository - " + error);
             }
 
         });
