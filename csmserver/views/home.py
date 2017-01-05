@@ -705,3 +705,46 @@ def check_server_reachability():
         return jsonify({'status': 'OK'})
     else:
         return jsonify({'status': error})
+
+
+@home.route('/api/hosts/<hostname>/password', methods=['DELETE'])
+def api_remove_host_password(hostname):
+    return remove_host_password(hostname)
+
+
+@home.route('/api/hosts/<hostname>/enable_password', methods=['DELETE'])
+def api_remove_host_enable_password(hostname):
+    return remove_host_password(hostname, remove_enable_password=True)
+
+
+def remove_host_password(hostname, remove_enable_password=False):
+    if not can_create(current_user):
+        abort(401)
+
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
+    if host is not None:
+        if remove_enable_password:
+            host.connection_param[0].enable_password = ''
+        else:
+            host.connection_param[0].password = ''
+        db_session.commit()
+        return jsonify({'status': 'OK'})
+    else:
+        return jsonify({'status': 'Failed'})
+
+
+@home.route('/api/jump_hosts/<hostname>/password', methods=['DELETE'])
+@login_required
+def api_remove_jump_host_password(hostname):
+    if not can_create(current_user):
+        abort(401)
+
+    db_session = DBSession()
+    host = get_jump_host(db_session, hostname)
+    if host is not None:
+        host.password = ''
+        db_session.commit()
+        return jsonify({'status': 'OK'})
+    else:
+        return jsonify({'status': 'Failed'})

@@ -1268,49 +1268,6 @@ def api_get_hosts_by_region(region_id, role, software):
     return jsonify(**{'data': rows})
 
 
-@app.route('/api/hosts/<hostname>/password', methods=['DELETE'])
-def api_remove_host_password(hostname):
-    return remove_host_password(hostname)
-
-
-@app.route('/api/hosts/<hostname>/enable_password', methods=['DELETE'])
-def api_remove_host_enable_password(hostname):
-    return remove_host_password(hostname, remove_enable_password=True)
-
-
-def remove_host_password(hostname, remove_enable_password=False):
-    if not can_create(current_user):
-        abort(401)
-
-    db_session = DBSession()
-    host = get_host(db_session, hostname)
-    if host is not None:
-        if remove_enable_password:
-            host.connection_param[0].enable_password = ''
-        else:
-            host.connection_param[0].password = ''
-        db_session.commit()
-        return jsonify({'status': 'OK'})
-    else:
-        return jsonify({'status': 'Failed'})
-
-
-@app.route('/api/jump_hosts/<hostname>/password', methods=['DELETE'])
-@login_required   
-def api_remove_jump_host_password(hostname):
-    if not can_create(current_user):
-        abort(401)
-    
-    db_session = DBSession()
-    host = get_jump_host(db_session, hostname)
-    if host is not None:
-        host.password = ''
-        db_session.commit()
-        return jsonify({'status': 'OK'})
-    else:
-        return jsonify({'status': 'Failed'})
-
-
 @app.route('/api/get_software_package_upgrade_list/hosts/<hostname>/release/<target_release>')
 @login_required
 def get_software_package_upgrade_list(hostname, target_release):

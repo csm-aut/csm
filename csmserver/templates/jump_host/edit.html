@@ -38,7 +38,7 @@
             bootbox.confirm(message, function(result) {
                 if (result) {
                     $.ajax({
-                        "url": "{{ url_for('api_remove_jump_host_password', hostname=form.hostname.data) }}",
+                        "url": "{{ url_for('home.api_remove_jump_host_password', hostname=form.hostname.data) }}",
                         type: "DELETE",
                         success: function(response) {
                             if (response.status == 'OK') {
