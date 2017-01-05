@@ -23,7 +23,7 @@
 {% macro non_admin_tools_menu() %}
     <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('current_user_edit') }}">Edit User</a></li>
+    <li><a href="{{ url_for('authenticate.current_user_edit') }}">Edit User</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('cco.validate_software') }}">Validate Software</a></li>
     <li class="divider"></li>
@@ -43,9 +43,9 @@
     <li class="divider"></li>
     <li><a href="{{ url_for('host_import.import_hosts') }}">Import Hosts</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('user_create') }}">Create User</a></li>
+    <li><a href="{{ url_for('authenticate.user_create') }}">Create User</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('user_list') }}">List All Users</a></li>
+    <li><a href="{{ url_for('authenticate.user_list') }}">List All Users</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('logs') }}">System Logs</a></li>
 {% endmacro %}
@@ -163,7 +163,7 @@
                         {{ help_menu() }}
                     </ul>
                 </li>
-                <li><a href="{{ url_for('logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
+                <li><a href="{{ url_for('authenticate.logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 <li class="dropdown">

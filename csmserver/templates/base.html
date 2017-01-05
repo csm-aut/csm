@@ -54,7 +54,7 @@
             $('body').on("click mousemove keyup", _.debounce(function() {
                 // logout user here
                 {% if request.endpoint != 'login' %}
-                    window.location = "{{ url_for('logout') }}";
+                    window.location = "{{ url_for('authenticate.logout') }}";
                 {% endif %}
             }, 3600000)); // 60 minutes inactivity
 

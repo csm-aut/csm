@@ -24,7 +24,7 @@
                         type: 'DELETE',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                window.location = "{{ url_for('user_list') }}";
+                                window.location = "{{ url_for('authenticate.user_list') }}";
                             } else {
                                 bootbox.alert('Delete failed.');
                             }
@@ -65,7 +65,7 @@
         <tbody>
             {% for user in users %}
                 <tr>
-                    <td><a href="{{ url_for('user_edit', username = user.username) }}">{{ user.username }}</a></td>
+                    <td><a href="{{ url_for('authenticate.user_edit', username = user.username) }}">{{ user.username }}</a></td>
                     <td>{{ user.privilege }}</td>
                     <td>{{ user.fullname }}</td>
                     <td>{{ user.email }}</td>
@@ -75,7 +75,7 @@
                     <td>
                         <a class="user-delete-link" href="javascript://"
                            delete-user="{{ user.username }}"
-                           data-delete-url="{{ url_for('user_delete', username = user.username) }}">Delete</a>
+                           data-delete-url="{{ url_for('authenticate.user_delete', username = user.username) }}">Delete</a>
                     </td>
                 </tr>
             {% else %}

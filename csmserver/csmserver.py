@@ -34,22 +34,18 @@ from flask import redirect
 from flask import url_for
 from flask.ext.login import LoginManager
 from flask.ext.login import current_user
-from flask.ext.login import login_user
 from flask.ext.login import login_required
-from flask.ext.login import logout_user
+
 
 from werkzeug.contrib.fixers import ProxyFix
 
 from sqlalchemy import and_
 
 from database import DBSession
-from forms import LoginForm
-from forms import UserForm
 from forms import ScheduleInstallForm
 from forms import HostScheduleInstallForm
 
 from models import Host
-from models import InventoryJob
 from models import Log, logger 
 from models import InventoryJobHistory
 from models import InstallJob
@@ -79,20 +75,15 @@ from common import fill_regions
 from common import fill_custom_command_profiles
 from common import get_host
 from common import get_host_list
-from common import get_jump_host
 from common import get_jump_host_list
 from common import get_server_by_id
 from common import get_server_list
 from common import get_region
 from common import get_region_by_id
-from common import get_user
-from common import get_user_list
 from common import can_check_reachability
 from common import can_retrieve_software
 from common import can_install
 from common import can_edit_install
-from common import can_create_user
-from common import can_create
 from common import create_or_update_install_job
 from common import get_last_install_action
 from common import get_last_completed_install_job_for_install_action
@@ -102,7 +93,6 @@ from filters import get_datetime_string
 
 from utils import get_file_list
 from utils import is_empty
-from utils import get_base_url
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
@@ -110,7 +100,6 @@ from utils import get_return_url
 from utils import get_build_date
 
 from server_helper import get_server_impl
-from wtforms.validators import Required
 
 from smu_utils import get_missing_prerequisite_list
 from smu_utils import get_download_info_dict
@@ -124,6 +113,7 @@ from restful import restful_api
 
 from views.home import home
 from views.cco import cco
+from views.authenticate import authenticate
 from views.asr9k_64_migrate import asr9k_64_migrate
 from views.conformance import conformance
 from views.inventory import inventory, update_select2_options
@@ -148,6 +138,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
 app.register_blueprint(home)
+app.register_blueprint(authenticate)
 app.register_blueprint(restful_api)
 app.register_blueprint(asr9k_64_migrate)
 app.register_blueprint(conformance)
@@ -170,7 +161,7 @@ app.secret_key = 'CSMSERVER'
 # Use Flask-Login to track the current user in Flask's session.
 login_manager = LoginManager()
 login_manager.setup_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'authenticate.login'
 login_manager.login_message = 'Please log in.'
 
 
@@ -185,176 +176,6 @@ def load_user(user_id):
 @login_required
 def home():
     return redirect(url_for('home.dashboard'))
-
-
-@app.route('/users/create', methods=['GET','POST'])
-@login_required
-def user_create():
-    if not can_create_user(current_user):
-        abort(401)
-        
-    form = UserForm(request.form)
-    # Need to add the Required flag back as it is globally removed during user_edit()
-    add_validator(form.password, Required) 
-    
-    if request.method == 'POST' and form.validate():
-        db_session = DBSession()
-        user = get_user(db_session, form.username.data)
-
-        if user is not None:
-            return render_template('user/edit.html', form=form, duplicate_error=True)
-        
-        user = User(
-            username=form.username.data,
-            password=form.password.data,
-            privilege=form.privilege.data,
-            fullname=form.fullname.data,
-            email=form.email.data)
-        
-        user.preferences.append(Preferences())
-        db_session.add(user)
-        db_session.commit()
-            
-        return redirect(url_for('home'))
-    else:
-        # Default to Active
-        form.active.data = True
-        return render_template('user/edit.html', form=form)
-
-
-@app.route('/users/edit', methods=['GET','POST'])
-@login_required
-def current_user_edit(): 
-    return user_edit(current_user.username)
-
-
-@app.route('/users/<username>/edit', methods=['GET','POST'])
-@login_required
-def user_edit(username):
-    db_session = DBSession()
-    
-    user = get_user(db_session, username)
-    if user is None:
-        abort(404)
-        
-    form = UserForm(request.form)
-            
-    if request.method == 'POST' and form.validate():
-
-        if len(form.password.data) > 0:
-            user.password = form.password.data
-        
-        user.privilege = form.privilege.data
-        user.fullname = form.fullname.data
-        user.email = form.email.data
-        user.active = form.active.data
-        db_session.commit()
-        
-        return redirect(url_for('home'))
-    else:
-        form.username.data = user.username
-        # Remove the Required flag so validation won't fail.  In edit mode, it is okay
-        # not to provide the password.  In this case, the password on file is used.      
-        remove_validator(form.password, Required) 
-        
-        form.privilege.data = user.privilege             
-        form.fullname.data = user.fullname
-        form.email.data = user.email
-        form.active.data = user.active
-
-    return render_template('user/edit.html', form=form)
-
-
-@app.route('/users/')
-@login_required
-def user_list():
-    db_session = DBSession()
-
-    users = get_user_list(db_session)
-    if users is None:
-        abort(404)
-     
-    if current_user.privilege == UserPrivilege.ADMIN:    
-        return render_template('user/index.html', users=users, system_option=SystemOption.get(db_session))
-    
-    return render_template('user/not_authorized.html', user=current_user)
-
-
-@app.route('/users/<username>/delete/', methods=['DELETE'])
-@login_required
-def user_delete(username):
-    db_session = DBSession()
-
-    user = get_user(db_session, username)
-    if user is None:
-        abort(404)
-     
-    db_session.delete(user)
-    db_session.commit()
-        
-    return jsonify({'status': 'OK'})
-
-
-@app.route('/login/', methods=['GET', 'POST'])
-def login():
-    
-    form = LoginForm(request.form)
-    error_message = None
-    
-    if request.method == 'POST' and form.validate():
-        username = form.username.data.strip()
-        password = form.password.data.strip()
-        
-        db_session = DBSession()
-
-        user, authenticated = \
-            User.authenticate(db_session.query, username, password)
-            
-        if authenticated:
-            login_user(user)
-            
-            # record the base URL
-            try:
-                system_option = SystemOption.get(db_session)
-                system_option.base_url = get_base_url(request.url)
-                db_session.commit()
-            except:
-                logger.exception('login() hit exception')
-            
-            # Certain admin features (Admin Console/Create or Edit User require 
-            # re-authentication. The return_url indicates which admin feature the 
-            # user wants to access.
-            return_url = get_return_url(request)
-            if return_url is None:              
-                return redirect(request.args.get("next") or url_for('home'))
-            else:
-                return redirect(url_for(return_url))
-        else:
-            error_message = 'Your user name or password is incorrect.  \
-                             Re-enter them again or contact your system administrator.'
- 
-    # Fill the username if the user is still logged in.
-    username = get_username(current_user)
-    if username is not None:
-        form.username.data = username
-        
-    return render_template('user/login.html', form=form, error_message=error_message, username=username)
-
-
-def get_username(current_user):
-    """
-    Return the current username.  If the user already logged out, return None
-    """
-    try:
-        return current_user.username
-    except:
-        return None
-
-
-@app.route('/logout/')
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
 
 
 @app.route('/api/acknowledge_csm_message', methods=['POST'])
@@ -434,22 +255,6 @@ def jump_host_list():
         abort(404)
             
     return render_template('jump_host/index.html', hosts=hosts)
-
-
-def add_validator(field, validator_class):
-    validators = field.validators
-    for v in validators:
-        if isinstance(v, validator_class):
-            return
-        
-    validators.append(validator_class())
-
-
-def remove_validator(field, validator_class):
-    validators = field.validators
-    for v in validators:
-        if isinstance(v, validator_class):
-            validators.remove(v) 
 
 
 @app.route('/api/hosts/<hostname>/packages')
