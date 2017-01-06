@@ -54,7 +54,7 @@ $(function() {
         var hostname = $('#host_software_dialog_host').val();
         if (hostname != null && hostname.length > 0) {
             $.ajax({
-                url: '/api/get_inventory/' + hostname,
+                url: '/host_dashboard/api/get_inventory/' + hostname,
                 success: function(response) {
                     if (response.status == 'OK') {
                         refresh_host_software(hostname);
@@ -146,7 +146,7 @@ function display_host_software_dialog(region_id, hostname_list, filter, target_r
 function refresh_host_software(hostname) {
     // Update the last successful inventory elapsed time
     $.ajax({
-        url: '/api/hosts/' + hostname + '/last_successful_inventory_elapsed_time',  
+        url: '/install/api/hosts/' + hostname + '/last_successful_inventory_elapsed_time',
         dataType: 'json',
         success: function(data) {
             $.each(data, function(index, element) {
@@ -171,7 +171,7 @@ function refresh_host_software(hostname) {
     var host_software = [];
         
     $.ajax({
-        url: '/api/hosts/' + hostname + '/packages',
+        url: '/install/api/hosts/' + hostname + '/packages',
         dataType: 'json',
         data: { package_state: host_software_package_filter} ,
         success: function(data) {

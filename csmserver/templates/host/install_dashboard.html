@@ -180,7 +180,7 @@
                       if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
                         return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
                       } else {
-                        return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
+                        return '<a href="/install/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
                       }
                     }
                 }, {
@@ -325,7 +325,7 @@
                   if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
                     return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
                   } else {
-                    return '<a href="/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
+                    return '<a href="/install/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
 
                   }
                 }
@@ -566,7 +566,7 @@
                 <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li id="schedule-install-menu-item"><a href="{{ url_for('schedule_install') }}?return_url=install_dashboard.home">Schedule Batch Installs</a></li>
+                    <li id="schedule-install-menu-item"><a href="{{ url_for('install.batch_schedule_install') }}?return_url=install_dashboard.home">Schedule Batch Installs</a></li>
                     <li class="divider"></li>
                     <li><a href="javascript://" class="install-delete-all" status="scheduled" install-delete-url="{{ url_for('install_dashboard.api_delete_all_scheduled_installations') }}">Delete All Scheduled Installs</a></li>
                     <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('install_dashboard.api_delete_all_failed_installations') }}">Delete All Failed Installs</a></li>

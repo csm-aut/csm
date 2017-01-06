@@ -23,22 +23,22 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask import Blueprint
+from flask import abort
 from flask import jsonify, render_template, request
 from flask.ext.login import login_required, current_user
 
 from database import DBSession
 
-from models import Server
 from models import logger
 from models import CreateTarJob
+
+from common import get_jump_host_list
 
 from wtforms import Form
 from wtforms import StringField
 from wtforms.validators import Length, required
 
 from forms import SelectServerForm
-
-from server_helper import get_server_impl
 
 from utils import get_tarfile_file_list, get_file_list, untar, make_file_writable
 
@@ -48,17 +48,29 @@ from package_utils import is_external_file_a_smu
 from package_utils import is_external_file_a_release_software
 
 import os
-import shutil
-import errno
-import stat
-import datetime
-import tarfile
-import re
 
-tar_support = Blueprint('tools', __name__, url_prefix='/tools')
+tools = Blueprint('tools', __name__, url_prefix='/tools')
 
 
-@tar_support.route('/create_tar_file')
+@tools.route('/hosts/')
+@login_required
+def host_list():
+    return render_template('host/index.html')
+
+
+@tools.route('/jump_hosts/')
+@login_required
+def jump_host_list():
+    db_session = DBSession()
+
+    hosts = get_jump_host_list(db_session)
+    if hosts is None:
+        abort(404)
+
+    return render_template('jump_host/index.html', hosts=hosts)
+
+
+@tools.route('/create_tar_file')
 @login_required
 def create_tar_file():
     select_server_form = SelectServerForm(request.form)
@@ -68,7 +80,7 @@ def create_tar_file():
                            form=create_tar_form)
 
 
-@tar_support.route('/api/create_tar_job')
+@tools.route('/api/create_tar_job')
 @login_required
 def api_create_tar_job():
     db_session = DBSession()
@@ -83,14 +95,14 @@ def api_create_tar_job():
     new_tar_name = request.args.get('new_tar_name').replace('.tar', '')
 
     create_tar_job = CreateTarJob(
-        server_id = server_id,
-        server_directory = server_directory,
-        source_tars = (',').join(source_tars),
-        contents = (',').join(contents),
-        additional_packages = (',').join(additional_packages),
-        new_tar_name = new_tar_name,
-        created_by = current_user.username,
-        status = 'Job Submitted.')
+        server_id=server_id,
+        server_directory=server_directory,
+        source_tars=','.join(source_tars),
+        contents=','.join(contents),
+        additional_packages=','.join(additional_packages),
+        new_tar_name=new_tar_name,
+        created_by=current_user.username,
+        status='Job Submitted.')
 
     db_session.add(create_tar_job)
     db_session.commit()
@@ -99,7 +111,8 @@ def api_create_tar_job():
 
     return jsonify({'status': 'OK', 'job_id': job_id})
 
-@tar_support.route('/api/get_progress')
+
+@tools.route('/api/get_progress')
 @login_required
 def get_progress():
     db_session = DBSession()
@@ -110,10 +123,10 @@ def get_progress():
         logger.error('Unable to retrieve Create Tar Job: %s' % job_id)
         return jsonify(status='Unable to retrieve job')
 
-    return jsonify(status='OK',progress= tar_job.status)
+    return jsonify(status='OK', progress=tar_job.status)
 
 
-@tar_support.route('/api/get_tar_contents')
+@tools.route('/api/get_tar_contents')
 @login_required
 def get_tar_contents():
     files = request.args.getlist('files[]')
@@ -131,7 +144,8 @@ def get_tar_contents():
                 rows.append(row)
     return jsonify(**{'data': rows})
 
-@tar_support.route('/api/get_full_software_tar_files_from_csm_repository/')
+
+@tools.route('/api/get_full_software_tar_files_from_csm_repository/')
 @login_required
 def get_full_software_tar_files_from_csm_repository():
     rows = []
@@ -148,7 +162,7 @@ def get_full_software_tar_files_from_csm_repository():
     return jsonify(**{'data': rows})
 
 
-@tar_support.route('/api/get_sp_files_from_csm_repository/')
+@tools.route('/api/get_sp_files_from_csm_repository/')
 @login_required
 def get_sp_files_from_csm_repository():
     rows = []

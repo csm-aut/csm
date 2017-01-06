@@ -73,7 +73,7 @@ $(function() {
         select_server_spinner.show();
 
         $.ajax({
-            url: "/api/get_server_file_dict/" + server_id,
+            url: "/install/api/get_server_file_dict/" + server_id,
             dataType: 'json',
             data: {
                 server_directory: server_directory

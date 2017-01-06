@@ -117,7 +117,7 @@
             browse_spinner.show();
 
             $.ajax({
-                url: "{{ url_for('api_refresh_all_smu_info') }}",
+                url: "{{ url_for('cco.api_refresh_all_smu_info') }}",
                 dataType: 'json',
                 success: function(response) {
                     if (response.status == 'Failed') {
@@ -138,7 +138,7 @@
 
         function update_cco_lookup_time() {
             $.ajax({
-                url: "{{ url_for('api_get_cco_lookup_time') }}",
+                url: "{{ url_for('cco.api_get_cco_lookup_time') }}",
                 dataType: 'json',
                 success: function(response) {
                     if (response.status != 'Failed') {

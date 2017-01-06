@@ -462,7 +462,7 @@ function retrieve_file_list(server_id, server_directory_selector, server_directo
    cisco_software_dialog_spinner.show();
       
     $.ajax({
-        url: "/api/get_server_file_dict/" + server_id,
+        url: "/install/api/get_server_file_dict/" + server_id,
         dataType: 'json',
         data: {
             server_directory: server_directory

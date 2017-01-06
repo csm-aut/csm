@@ -198,7 +198,7 @@ $(function() {
 
     function populate_supported_install_actions(hostname) {
         $.ajax({
-            url: "/api/hosts/" + hostname + "/supported_install_actions",
+            url: "/install/api/hosts/" + hostname + "/supported_install_actions",
             dataType: 'json',
             success: function(data) {
                 $.each(data, function(index, element) {

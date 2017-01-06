@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask import Blueprint
+from flask import abort
 from flask import render_template
 from flask import request
 from flask import jsonify
@@ -51,6 +52,7 @@ from common import get_server_list
 from common import fill_servers
 from common import get_host_active_packages
 from common import create_download_jobs
+from common import can_check_reachability
 
 from forms import ServerDialogForm
 from forms import SoftwareProfileForm
@@ -65,6 +67,7 @@ from constants import ExportSoftwareInformationLayout
 
 from filters import beautify_platform
 from filters import time_difference_UTC
+from filters import get_datetime_string
 
 from smu_info_loader import SMUInfoLoader
 
@@ -82,6 +85,7 @@ from smu_utils import SMU_INDICATOR
 from smu_utils import get_validated_list
 
 from cisco_service.bug_service import BugServiceHandler
+from cisco_service.bsd_service import BSDServiceHandler
 
 cco = Blueprint('cco', __name__, url_prefix='/cco')
 
@@ -535,6 +539,47 @@ def is_smu_applicable(host_packages, required_package_bundles):
 def api_validate_software():
     smu_list = request.args.get('smu_list').split()
     return jsonify(**{'data': get_validated_list(smu_list)})
+
+
+@cco.route('/api/validate_cisco_user', methods=['POST'])
+@login_required
+def validate_cisco_user():
+    if not can_check_reachability(current_user):
+        abort(401)
+
+    try:
+        username = request.form['username']
+        password = request.form['password']
+
+        if len(password) == 0:
+            password = Preferences.get(DBSession(), current_user.id).cco_password
+
+        BSDServiceHandler.get_access_token(username, password)
+        return jsonify({'status': 'OK'})
+    except KeyError:
+        return jsonify({'status': 'Failed'})
+    except:
+        logger.exception('validate_cisco_user() hit exception')
+        return jsonify({'status': 'Failed'})
+
+
+@cco.route('/api/refresh_all_smu_info')
+@login_required
+def api_refresh_all_smu_info():
+    if SMUInfoLoader.refresh_all():
+        return jsonify({'status': 'OK'})
+    else:
+        return jsonify({'status': 'Failed'})
+
+
+@cco.route('/api/get_cco_lookup_time')
+@login_required
+def api_get_cco_lookup_time():
+    system_option = SystemOption.get(DBSession())
+    if system_option.cco_lookup_time is not None:
+        return jsonify(**{'data': [{'cco_lookup_time': get_datetime_string(system_option.cco_lookup_time)}]})
+    else:
+        return jsonify({'status': 'Failed'})
 
 
 class PreferencesForm(Form):

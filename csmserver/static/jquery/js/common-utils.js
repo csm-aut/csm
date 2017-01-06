@@ -196,7 +196,7 @@ function check_missing_prerequisite(validate_object) {
     // Only '.pie' or '.tar' files should be checked
 
     $.ajax({
-        url: "/api/get_missing_prerequisite_list",
+        url: "/install/api/get_missing_prerequisite_list",
         dataType: 'json',
         data: {
             smu_list: trim_lines(validate_object.software_packages),
@@ -237,7 +237,7 @@ function check_missing_prerequisite(validate_object) {
 
 function check_need_reload(validate_object) {
     $.ajax({
-        url: "/api/get_reload_list",
+        url: "/install/api/get_reload_list",
         dataType: 'json',
         data: {
             package_list: trim_lines(validate_object.software_packages)
@@ -413,7 +413,7 @@ function check_tars_downloadable(validate_object) {
     // Only '.pie' or '.tar' files should be checked
 
     $.ajax({
-        url: "/api/check_is_tar_downloadable",
+        url: "/install/api/check_is_tar_downloadable",
         dataType: 'json',
         data: {
             smu_list: trim_lines(validate_object.software_packages)

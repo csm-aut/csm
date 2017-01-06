@@ -14,7 +14,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
     var target_package_list = [];
 
     $.ajax({
-        url: "/api/get_software_package_upgrade_list/hosts/" + hostname + "/release/" + target_release,
+        url: "/install/api/get_software_package_upgrade_list/hosts/" + hostname + "/release/" + target_release,
         dataType: 'json',
         data: { match_internal_name: match_internal_name} ,
         success: function(data) {

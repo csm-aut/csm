@@ -21,7 +21,7 @@
 {% endmacro %}
 
 {% macro non_admin_tools_menu() %}
-    <li><a href="{{ url_for('host_list') }}">List Hosts</a></li>
+    <li><a href="{{ url_for('tools.host_list') }}">List Hosts</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('authenticate.current_user_edit') }}">Edit User</a></li>
     <li class="divider"></li>

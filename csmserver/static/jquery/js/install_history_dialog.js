@@ -83,7 +83,7 @@ function initialize_install_history_dialog() {
 }
 
 function refresh_install_history(hostname) {
-    install_history_table.api().ajax.url("/api/get_install_history/hosts/" + hostname).load();
+    install_history_table.api().ajax.url("/install/api/get_install_history/hosts/" + hostname).load();
 }
     
     

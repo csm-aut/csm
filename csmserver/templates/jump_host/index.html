@@ -18,7 +18,7 @@
                         type: 'DELETE',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                window.location = "{{ url_for('jump_host_list') }}";
+                                window.location = "{{ url_for('tools.jump_host_list') }}";
                             } else {
                                 bootbox.alert('Delete failed.');
                             }
