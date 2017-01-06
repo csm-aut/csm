@@ -102,11 +102,11 @@ $('#browse-cisco-button').on('click', function(e) {
                 This scheduled install failed on <span class="UTCDate">{{ install_job.status_time | datetime_string }}</span>
                
                 {% if install_job.session_log %}
-                    <a href="{{ url_for('host_session_log', hostname=host.hostname, table='install_job', id=install_job.id) }}?file_path={{ install_job.session_log }}">{{ log_icon('Session Log') }}</a>
+                    <a href="{{ url_for('log.host_session_log', hostname=host.hostname, table='install_job', id=install_job.id) }}?file_path={{ install_job.session_log }}">{{ log_icon('Session Log') }}</a>
                 {% endif %}
                 
                 {% if install_job.trace %} 
-                    <a href="{{ url_for('host_trace', hostname=host.hostname, table='install_job', id=install_job.id) }}">{{ trace_icon() }}</a>
+                    <a href="{{ url_for('log.host_trace', hostname=host.hostname, table='install_job', id=install_job.id) }}">{{ trace_icon() }}</a>
                 {% endif %}
             </div>
             {% endif %}

@@ -20,7 +20,7 @@
         function display_message_dialog() {
 
             $.ajax({
-                url: "{{ url_for('api_get_csm_message') }}",
+                url: "{{ url_for('authenticate.api_get_csm_message') }}",
                 dataType: 'json',
                 type: "POST",
                 data: {
@@ -52,7 +52,7 @@
 
         $("#on-acknowledge-submit").on("click", function() {
             $.ajax({
-                url: "{{ url_for('api_acknowledge_csm_message') }}",
+                url: "{{ url_for('authenticate.api_acknowledge_csm_message') }}",
                 dataType: 'json',
                 type: "POST",
                 data: {

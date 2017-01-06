@@ -33,8 +33,6 @@ from flask import send_file
 from flask.ext.login import login_required
 from flask.ext.login import current_user
 
-from sqlalchemy import and_
-
 from wtforms import Form
 from wtforms import StringField
 from wtforms import PasswordField
@@ -60,7 +58,6 @@ from forms import ExportInformationForm
 from forms import BrowseServerDialogForm
 
 from constants import UNKNOWN
-from constants import PackageType
 from constants import BUG_SEARCH_URL
 from constants import get_repository_directory
 from constants import ExportInformationFormat

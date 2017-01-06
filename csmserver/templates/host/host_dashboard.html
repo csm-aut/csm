@@ -30,12 +30,12 @@
                 data = "<center>";
 
                 if (session_log) {
-                    data += "<a href='/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
+                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
                     data += "<img src='/static/file.png' title='Session Log'></a>";
                 }
 
                 if (trace) {
-                    data += "<a href='/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
+                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
                     data += "<img src='/static/error.png' title='debug trace'></a>";
                 }
 
@@ -150,7 +150,7 @@
                     }
 
                     if (session_log) {
-                        icon_html = "<a href='/hosts/" + row['hostname'] + "/install_job/session_log/" + row['install_job_id'] + "?file_path=" + session_log + "'>" + icon_html + "</a>";
+                        icon_html = "<a href='/log/hosts/" + row['hostname'] + "/install_job/session_log/" + row['install_job_id'] + "?file_path=" + session_log + "'>" + icon_html + "</a>";
                     }
                     if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
                         return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit/">' + data + '</a>' + icon_html;

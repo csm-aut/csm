@@ -95,10 +95,6 @@ class CreateTarWorkUnit(WorkUnit):
 
                     server_impl = get_server_impl(server)
 
-                    # If the new file already exists on the remote host, delete it
-                    if new_tar_name in server_impl.get_file_list():
-                        server_impl.delete_file(new_tar_name)
-
                     statinfo = os.stat(tarname + '.tar')
                     self.new_tar_size = statinfo.st_size
                     self.chunk_list = self.get_chunks(self.new_tar_size, self.new_tar_size / 1048576)

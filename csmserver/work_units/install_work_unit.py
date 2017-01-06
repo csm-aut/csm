@@ -186,7 +186,7 @@ class InstallWorkUnit(WorkUnit):
 
     def create_email_notification(self, db_session, logger, host, install_job):
         try:
-            session_log_link = "hosts/{}/install_job_history/session_log/{}?file_path={}".format(
+            session_log_link = "log/hosts/{}/install_job_history/session_log/{}?file_path={}".format(
                 urllib.quote(host.hostname), install_job.id, install_job.session_log)
 
             message = '<html><head></head><body>'

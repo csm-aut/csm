@@ -46,6 +46,7 @@ from models import logger
 from models import Preferences
 from models import SystemOption
 from models import UserPrivilege
+from models import CSMMessage
 
 from forms import UserForm
 from forms import LoginForm
@@ -53,6 +54,10 @@ from wtforms.validators import Required
 
 from utils import get_base_url
 from utils import get_return_url
+
+from smu_info_loader import SMUInfoLoader
+
+import datetime
 
 authenticate = Blueprint('authenticate', __name__, url_prefix='/authenticate')
 
@@ -241,3 +246,65 @@ def remove_validator(field, validator_class):
     for v in validators:
         if isinstance(v, validator_class):
             validators.remove(v)
+
+
+@authenticate.route('/api/acknowledge_csm_message', methods=['POST'])
+def api_acknowledge_csm_message():
+    username = request.form['username']
+    password = request.form['password']
+
+    db_session = DBSession()
+
+    user, authenticated = \
+        User.authenticate(db_session.query, username, password)
+
+    if authenticated:
+        if len(user.csm_message) == 0:
+            user.csm_message.append(CSMMessage(acknowledgment_date=datetime.date.today() ))
+        else:
+            user.csm_message[0].acknowledgment_date=datetime.date.today()
+
+        db_session.commit()
+
+    return jsonify({'status': 'OK'})
+
+
+@authenticate.route('/api/get_csm_message', methods=['POST'])
+def api_get_csm_message():
+    rows = []
+
+    username = request.form['username']
+    password = request.form['password']
+
+    db_session = DBSession()
+
+    user, authenticated = \
+        User.authenticate(db_session.query, username, password)
+
+    if authenticated:
+        # if user.privilege == UserPrivilege.ADMIN:
+        csm_messages = SMUInfoLoader.get_cco_csm_messages()
+        if len(csm_messages) > 0:
+            acknowledgment_date = datetime.datetime(2000, 1, 1)
+            if len(user.csm_message) > 0:
+                acknowledgment_date = user.csm_message[0].acknowledgment_date
+
+            # csm_messages returns a dictionary keyed by a token (e.g. @12/01/01@Admin,Operator) and message
+            readers = [ UserPrivilege.ADMIN, UserPrivilege.NETWORK_ADMIN, UserPrivilege.OPERATOR, UserPrivilege.VIEWER]
+            for csm_message in csm_messages:
+                tokens = csm_message['token'].split('@')
+                date = tokens[0]
+                if len(tokens) == 2:
+                    readers = tokens[1].split(',')
+
+                if user.privilege in readers:
+                    message = csm_message['message']
+                    try:
+                        delta = datetime.datetime.strptime(date, "%Y/%m/%d") - acknowledgment_date
+                        if delta.days > 0:
+                            rows.append({'date': date, 'message': message.replace("\n", "<br>")})
+                    except:
+                        logger.exception('api_get_csm_message() hit exception')
+
+    return jsonify(**{'data': rows})
+

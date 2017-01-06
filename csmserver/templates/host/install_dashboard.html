@@ -385,12 +385,12 @@
                 data = "<center>";
 
                 if (session_log) {
-                    data += "<a href='/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
+                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
                     data += "<img src='/static/file.png' title='Session Log'></a>";
                 }
 
                 if (trace) {
-                    data += "<a href='/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
+                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
                     data += "<img src='/static/error.png' title='debug trace'></a>";
                 }
 

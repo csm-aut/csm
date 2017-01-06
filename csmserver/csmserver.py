@@ -27,7 +27,6 @@ from flask import Flask
 from flask import render_template
 from flask import jsonify
 from flask import abort
-from flask import send_file
 from flask import request
 from flask import Response
 from flask import redirect
@@ -46,8 +45,7 @@ from forms import ScheduleInstallForm
 from forms import HostScheduleInstallForm
 
 from models import Host
-from models import Log, logger 
-from models import InventoryJobHistory
+from models import logger
 from models import InstallJob
 from models import InstallJobHistory
 from models import Region
@@ -55,16 +53,12 @@ from models import User
 from models import Server
 from models import SystemOption
 from models import Package
-from models import DownloadJob
-from models import CSMMessage
 from models import Preferences
 
 from constants import InstallAction
 from constants import JobStatus
 from constants import ServerType
-from constants import UserPrivilege
 from constants import UNKNOWN
-from constants import get_log_directory
 from constants import PlatformFamily
 
 from common import get_host_active_packages 
@@ -87,15 +81,10 @@ from common import can_edit_install
 from common import create_or_update_install_job
 from common import get_last_install_action
 from common import get_last_completed_install_job_for_install_action
-from common import download_session_logs
 
 from filters import get_datetime_string
 
-from utils import get_file_list
 from utils import is_empty
-from utils import create_directory
-from utils import create_temp_user_directory
-from utils import make_file_writable
 from utils import get_return_url
 from utils import get_build_date
 
@@ -113,6 +102,7 @@ from restful import restful_api
 
 from views.home import home
 from views.cco import cco
+from views.log import log
 from views.authenticate import authenticate
 from views.asr9k_64_migrate import asr9k_64_migrate
 from views.conformance import conformance
@@ -126,18 +116,17 @@ from views.install_dashboard import install_dashboard
 from views.download_dashboard import download_dashboard
 from views.admin_console import admin_console
 
-import os
-import io
 import logging
 import datetime
 import filters
-import collections
 import initialize
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
 app.register_blueprint(home)
+app.register_blueprint(cco)
+app.register_blueprint(log)
 app.register_blueprint(authenticate)
 app.register_blueprint(restful_api)
 app.register_blueprint(asr9k_64_migrate)
@@ -151,7 +140,6 @@ app.register_blueprint(host_dashboard)
 app.register_blueprint(install_dashboard)
 app.register_blueprint(download_dashboard)
 app.register_blueprint(admin_console)
-app.register_blueprint(cco)
 
 # Hook up the filters
 filters.init(app)
@@ -176,67 +164,6 @@ def load_user(user_id):
 @login_required
 def home():
     return redirect(url_for('home.dashboard'))
-
-
-@app.route('/api/acknowledge_csm_message', methods=['POST'])
-def api_acknowledge_csm_message():
-    username = request.form['username']      
-    password = request.form['password']
-    
-    db_session = DBSession()
-     
-    user, authenticated = \
-        User.authenticate(db_session.query, username, password)
-            
-    if authenticated:  
-        if len(user.csm_message) == 0:
-            user.csm_message.append(CSMMessage(acknowledgment_date=datetime.date.today() ))
-        else:                
-            user.csm_message[0].acknowledgment_date=datetime.date.today() 
-                
-        db_session.commit()
-        
-    return jsonify({'status': 'OK'})
-
-
-@app.route('/api/get_csm_message', methods=['POST'])
-def api_get_csm_message():
-    rows = [] 
-
-    username = request.form['username']      
-    password = request.form['password']
-    
-    db_session = DBSession()
-     
-    user, authenticated = \
-        User.authenticate(db_session.query, username, password)
-            
-    if authenticated:  
-        # if user.privilege == UserPrivilege.ADMIN: 
-        csm_messages = SMUInfoLoader.get_cco_csm_messages()
-        if len(csm_messages) > 0:
-            acknowledgment_date = datetime.datetime(2000, 1, 1)                 
-            if len(user.csm_message) > 0:
-                acknowledgment_date = user.csm_message[0].acknowledgment_date
-                
-            # csm_messages returns a dictionary keyed by a token (e.g. @12/01/01@Admin,Operator) and message
-            readers = [ UserPrivilege.ADMIN, UserPrivilege.NETWORK_ADMIN, UserPrivilege.OPERATOR, UserPrivilege.VIEWER]
-            for csm_message in csm_messages:
-                tokens = csm_message['token'].split('@')
-                date = tokens[0]
-                if len(tokens) == 2:
-                    readers = tokens[1].split(',')
-                
-                if user.privilege in readers:
-                    message = csm_message['message']
-                    try:                       
-                        delta = datetime.datetime.strptime(date, "%Y/%m/%d") - acknowledgment_date                       
-                        if delta.days > 0:
-                            rows.append({'date': date, 'message': message.replace("\n", "<br>")})
-                    except:
-                        logger.exception('api_get_csm_message() hit exception')
-    
-    return jsonify(**{'data': rows})
 
 
 @app.route('/hosts/')
@@ -559,169 +486,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url)
-
-
-@app.route('/hosts/<hostname>/<table>/session_log/<int:id>/')
-@login_required
-def host_session_log(hostname, table, id):
-    """
-    This route is also used by mailer.py for email notification.
-    """
-    db_session = DBSession()
-    
-    record = None   
-    if table == 'install_job':
-        record = db_session.query(InstallJob).filter(InstallJob.id == id).first()
-    elif table == 'install_job_history':
-        record = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
-    elif table == 'inventory_job_history':
-        record = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
-    
-    if record is None:
-        abort(404)
-       
-    file_path = request.args.get('file_path')
-    log_file_path = get_log_directory() + file_path
-
-    if not(os.path.isdir(log_file_path) or os.path.isfile(log_file_path)):
-        abort(404)
-
-    file_pairs = {}
-    log_file_contents = ''
-
-    file_suffix = '.diff.html'
-    if os.path.isdir(log_file_path):
-        # Returns all files under the requested directory
-        log_file_list = get_file_list(log_file_path)
-        diff_file_list = [filename for filename in log_file_list if file_suffix in filename]
-
-        for filename in log_file_list:
-            diff_file_path = ''
-            if file_suffix not in filename:
-                if filename + file_suffix in diff_file_list:
-                    diff_file_path = os.path.join(file_path, filename + file_suffix)
-                file_pairs[os.path.join(file_path, filename)] = diff_file_path
-
-        file_pairs = collections.OrderedDict(sorted(file_pairs.items()))
-    else:        
-        with io.open(log_file_path, "rt", encoding='latin-1') as fo:
-            log_file_contents = fo.read()
-
-    return render_template('host/session_log.html', hostname=hostname, table=table,
-                           record_id=id, file_pairs=file_pairs, log_file_contents=log_file_contents,
-                           is_file=os.path.isfile(log_file_path))
-
-
-@app.route('/api/get_session_log_file_diff')
-@login_required
-def api_get_session_log_file_diff():
-    diff_file_path = request.args.get("diff_file_path")
-
-    if is_empty(diff_file_path):
-        return jsonify({'status': 'diff file is missing.'})
-
-    file_diff_contents = ''
-    with io.open(os.path.join(get_log_directory(), diff_file_path), "rt", encoding='latin-1') as fo:
-        file_diff_contents = fo.read()
-
-    data = [{'file_diff_contents': file_diff_contents}]
-
-    return jsonify(**{'data': data})
-
-
-@app.route('/api/get_session_logs/table/<table>')
-@login_required
-def api_get_session_logs(table):
-    id = request.args.get("record_id")
-
-    db_session = DBSession()
-    if table == 'install_job':
-        install_job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
-    elif table == 'install_job_history':
-        install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
-    elif table == 'inventory_job_history':
-        install_job = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
-
-    if install_job is None:
-        abort(404)
-
-    log_folder = install_job.session_log
-    file_path = os.path.join(get_log_directory(), log_folder)
-
-    if not os.path.isdir(file_path):
-        abort(404)
-
-    rows = []
-    log_file_list = get_file_list(file_path)
-    for file in log_file_list:
-        row = {}
-        row['filepath'] = os.path.join(file_path, file)
-        row['filename'] = file
-        rows.append(row)
-
-    return jsonify(**{'data': rows})
-
-
-@app.route('/hosts/<hostname>/<table>/trace/<int:id>/')
-@login_required
-def host_trace(hostname, table, id):
-    db_session = DBSession()
-    
-    trace = None
-    if table == 'inventory_job_history':
-        inventory_job = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first() 
-        trace = inventory_job.trace if inventory_job is not None else None
-    elif table == 'install_job':       
-        install_job = db_session.query(InstallJob).filter(InstallJob.id == id).first() 
-        trace = install_job.trace if install_job is not None else None
-    elif table == 'install_job_history':
-        install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
-        trace = install_job.trace if install_job is not None else None
-    elif table == 'download_job':
-        download_job = db_session.query(DownloadJob).filter(DownloadJob.id == id).first()
-        trace = download_job.trace if download_job is not None else None
-           
-    return render_template('host/trace.html', hostname=hostname, trace=trace)
-
-
-@app.route('/logs/')
-@login_required
-def logs():
-    return render_template('log.html', system_option=SystemOption.get(DBSession()))
-
-
-@app.route('/api/get_system_logs/')
-@login_required
-def api_get_system_logs():
-    db_session = DBSession()
-
-    # Only shows the ERROR
-    logs = db_session.query(Log).filter(Log.level == 'ERROR').order_by(Log.created_time.desc())
-
-    rows = []
-    for log in logs:
-        row = {}
-        row['id'] = log.id
-        row['severity'] = log.level
-        row['message'] = log.msg
-        row['created_time'] = log.created_time
-        rows.append(row)
-
-    return jsonify(**{'data': rows})
-
-
-@app.route('/api/logs/<int:log_id>/trace/')
-@login_required
-def api_get_log_trace(log_id):
-    """
-    Returns the log trace of a particular log record.
-    """
-    db_session = DBSession()
-    
-    log = db_session.query(Log).filter(Log.id == log_id).first()
-    return jsonify(**{'data': [
-        {'severity': log.level, 'message': log.msg, 'trace': log.trace, 'created_time': log.created_time}
-    ]})
 
 
 @app.route('/api/hosts/')
@@ -1088,9 +852,9 @@ def get_software_package_upgrade_list(hostname, target_release):
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
                                                        target_release, match_internal_name)
     for package in target_packages:
-        rows.append({'package' : package})
+        rows.append({'package': package})
 
-    return jsonify( **{'data':rows} )
+    return jsonify( **{'data': rows} )
 
 
 @app.route('/api/validate_cisco_user', methods=['POST'])
@@ -1337,46 +1101,6 @@ def host_packages_contains(host_packages, smu_name):
             return True
     return False
 
-
-# This route will prompt a file download
-@app.route('/download_session_log')
-@login_required
-def download_session_log():
-    return send_file(get_log_directory() + request.args.get('file_path'), as_attachment=True)
-
-
-@app.route('/api/download_session_logs', methods=['POST'])
-@login_required
-def api_download_session_logs():
-    file_list = request.args.getlist('file_list[]')[0].split(',')
-    return download_session_logs(file_list)
-
-
-@app.route('/download_system_logs')
-@login_required
-def download_system_logs():
-    db_session = DBSession()
-    logs = db_session.query(Log) \
-        .order_by(Log.created_time.desc())
-        
-    contents = ''
-    for log in logs:
-        contents += get_datetime_string(log.created_time) + ' UTC\n'
-        contents += log.level + ':' + log.msg + '\n'
-        if log.trace is not None:
-            contents += log.trace + '\n'
-        contents += '-' * 70 + '\n'
-        
-    # Create a file which contains the size of the image file.
-    temp_user_dir = create_temp_user_directory(current_user.username)
-    log_file_path = os.path.normpath(os.path.join(temp_user_dir, "system_logs"))
-    create_directory(log_file_path)
-    make_file_writable(log_file_path)
-    log_file = open(os.path.join(log_file_path, 'system_logs'), 'w')
-    log_file.write(contents)
-    log_file.close()
-
-    return send_file(os.path.join(log_file_path, 'system_logs'), as_attachment=True)
 
 if __name__ == '__main__':
     initialize.init()

@@ -45,7 +45,7 @@
         }
 
         $("#download-session-logs").on("click", function() {
-            session_logs_table.api().ajax.url("/api/get_session_logs/table/{{ table }}?record_id=" + {{ record_id }}).load();
+            session_logs_table.api().ajax.url("/log/api/get_session_logs/table/{{ table }}?record_id=" + {{ record_id }}).load();
             $('#session-logs-dialog').modal({show:true, backdrop:'static'});
         });
 
@@ -57,7 +57,7 @@
             spinner.show();
 
             $.ajax({
-                url: "{{ url_for('api_get_session_log_file_diff') }}",
+                url: "{{ url_for('log.api_get_session_log_file_diff') }}",
                 dataType: 'json',
                 data: { diff_file_path: diff_file_path } ,
                 success: function(response) {
@@ -67,7 +67,7 @@
                         $.each(response, function(index, element) {
 
                             $('#file-diff-results').html(element[0].file_diff_contents);
-                            $('#diff-download').attr("href", "{{ url_for('download_session_log') }}?file_path=" + diff_file_path);
+                            $('#diff-download').attr("href", "{{ url_for('log.download_session_log') }}?file_path=" + diff_file_path);
                             $('#file-diff-dialog').modal({show:true, backdrop:'static'});
                         });
                     }
@@ -89,7 +89,7 @@
                 bootbox.alert("No files were selected.");
                 return false;
             }
-            $('#download-session-logs-form').attr('action', "{{ url_for('api_download_session_logs') }}?file_list[]=" + file_list);
+            $('#download-session-logs-form').attr('action', "{{ url_for('log.api_download_session_logs') }}?file_list[]=" + file_list);
             $('#download-session-logs-form').submit();
         });
     });
@@ -133,7 +133,7 @@
 
 <div id="session-logs-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
-        <form id="download-session-logs-form" name="download-session-logs-form" method="post" class="form-horizontal" action="{{ url_for('api_download_session_logs') }}">
+        <form id="download-session-logs-form" name="download-session-logs-form" method="post" class="form-horizontal" action="{{ url_for('log.api_download_session_logs') }}">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal">x</button>
@@ -192,12 +192,12 @@
                         {% for entry, diff_file_path in file_pairs.iteritems() %}
                         <tr>
                             <td>
-                                <a href="{{ url_for('download_session_log') }}?file_path={{ entry }}">
+                                <a href="{{ url_for('log.download_session_log') }}?file_path={{ entry }}">
                                     <img title="Download File" src="{{ url_for('static', filename='download.png') }}">
                                 </a>
                             </td>
                             <td>
-                                <a href="{{ url_for('host_session_log', hostname=hostname, table=table, id=record_id) }}?file_path={{ entry }}" >{{ entry }}</a>
+                                <a href="{{ url_for('log.host_session_log', hostname=hostname, table=table, id=record_id) }}?file_path={{ entry }}" >{{ entry }}</a>
                             </td>
 
                             {% if diff_file_path | length > 0 %}

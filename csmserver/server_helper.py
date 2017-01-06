@@ -32,7 +32,6 @@ import shutil
 from constants import ServerType
 
 from utils import is_empty
-from utils import get_file_list
 from utils import concatenate_dirs
 
 from models import logger
@@ -67,10 +66,7 @@ def get_server_impl(server):
 class ServerImpl(object):
     def __init__(self, server):
         self.server = server
-        
-    def get_file_list(self):
-        raise NotImplementedError("Children must override get_file_list")
-    
+
     def get_file_and_directory_dict(self, sub_directory=None):
         raise NotImplementedError("Children must override get_file_list")
     
@@ -91,9 +87,6 @@ class TFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
 
-    def get_file_list(self):
-        return get_file_list(self.server.server_directory)
-    
     """
     Return an array of dictionaries: {'filename': [file|directory]', is_directory: [False|True]}
     """
@@ -215,27 +208,6 @@ class FTPServer(ServerImpl):
             else:
                 nondirs.append(entry)
         return dirs, nondirs
-
-    def get_file_list(self):
-        result_list = []
-        is_reachable = False
-        try:
-            ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
-
-            if self.server.server_directory is not None and len(self.server.server_directory) > 0:
-                ftp.cwd(self.server.server_directory)
-            
-            dirs, nondirs = self.listdir(ftp)
-    
-            if nondirs is not None:
-                for file_tuple in nondirs:
-                    result_list.append(file_tuple[0])
-
-            is_reachable = True
-        except Exception as e:
-            logger.exception('FTPServer hit exception - ' + e.message)
-
-        return result_list, is_reachable
     
     def get_file_and_directory_dict(self, sub_directory=None):
         result_list = []
@@ -297,43 +269,10 @@ class FTPServer(ServerImpl):
                 ftp.storbinary('STOR ' + dest_filename, file)
             ftp.quit()
 
-    def delete_file(self, filename, sub_directory=None, callback=None):
-        ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
-
-        remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
-        if len(remote_directory) > 0:
-            ftp.cwd(remote_directory)
-
-        ftp.delete(filename)
-
-    def handler(self, block):
-        pass
-
 
 class SFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
-    
-    def get_file_list(self):
-        result_list = []
-        is_reachable = False
-
-        if not SFTP_SUPPORTED:
-            return result_list, is_reachable
-        
-        try:
-            server = self.server
-            with pysftp.Connection(server.server_url, username=server.username, password=server.password) as sftp:
-                if server.server_directory is not None and len(server.server_directory) > 0:
-                    sftp.chdir(server.server_directory)
-
-                result_list = sftp.listdir()
-
-            is_reachable = True
-        except Exception as e:
-            logger.exception('SFTPServer hit exception - ' + e.message)
-                   
-        return result_list, is_reachable
 
     def get_file_and_directory_dict(self, sub_directory=None):
         result_list = []
@@ -407,9 +346,6 @@ class SFTPServer(ServerImpl):
 class SCPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
-
-    def get_file_list(self):
-        return self.get_file_and_directory_dict()
 
     def get_file_and_directory_dict(self, sub_directory=None):
         is_reachable, error = self.check_reachability()
