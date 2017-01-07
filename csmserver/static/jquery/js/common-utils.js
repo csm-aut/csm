@@ -357,7 +357,7 @@ function check_missing_files_on_server(validate_object) {
     // Only '.pie' or '.tar' files should be checked
 
     $.ajax({
-        url: "/api/get_missing_files_on_server/" + validate_object.server_id,
+        url: "/install/api/get_missing_files_on_server/" + validate_object.server_id,
         dataType: 'json',
         data: {
             smu_list: trim_lines(validate_object.software_packages),
