@@ -113,7 +113,9 @@ def get_database_settings():
     else:
         db_dict['username'] = username.replace(PREFIX, '')
         db_dict['password'] = password.replace(PREFIX, '')
-        
+
+    db_dict['query'] = {'charset': 'latin1'}
+
     ENABLE_DEBUG = config.getboolean('Debug', 'debug')
     return db_dict
 
@@ -123,7 +125,7 @@ create_database_if_not_exists(db_settings)
 DATABASE_CONNECTION_INFO = URL(**db_settings)
 # Create the database engine
 engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600,
-                       convert_unicode=True, echo=ENABLE_DEBUG)
+                       convert_unicode=True, encoding='latin1', echo=ENABLE_DEBUG)
 
 DBSession = scoped_session(sessionmaker(autocommit=False,
                                         autoflush=False,

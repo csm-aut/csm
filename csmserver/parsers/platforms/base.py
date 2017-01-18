@@ -189,6 +189,7 @@ class BaseInventoryParser(object):
         for inventory in existing_host_inventory_query.all():
             if inventory.id not in updated_inventory_ids:
                 inventory.delete(db_session)
+
         db_session.commit()
 
     def store_new_inventory(self, db_session, inventory_data, host_id, chassis_idx):

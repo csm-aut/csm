@@ -78,7 +78,7 @@
 
             if (hostname != null && hostname.length > 0) {
                 $.ajax({
-                    url: '/api/get_inventory/' + hostname,
+                    url: '/host_dashboard/api/get_inventory/' + hostname,
                     success: function(response) {
                         if (response.status == 'OK') {
                             clearInterval(refresh_host_inventory_retrieval_interval);

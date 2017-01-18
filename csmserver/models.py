@@ -72,13 +72,13 @@ class JSONEncodedDict(TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         if value is not None:
-            value = json.dumps(value)
+            value = json.dumps(value, encoding='latin1')
         return value
 
     def process_result_value(self, value, dialect):
         if value is not None:
             try:
-                value = json.loads(value)
+                value = json.loads(value, encoding='latin1')
             except ValueError:
                 # nothing we can do if this happens.
                 value = {}
@@ -475,7 +475,16 @@ class BaseInventoryModel(Base):
     def update(self, db_session, **new_data):
         for key, value in new_data.iteritems():
             if hasattr(self, key):
-                setattr(self, key, value)
+                if isinstance(value, str):
+                    try:
+                        setattr(self, key, unicode(value, encoding='latin1'))
+                    except (UnicodeEncodeError, UnicodeDecodeError):
+                        logger.exception(
+                            "hit exception when attempting to decode data value to unicode" +
+                            " with latin1 encoding. Continue without decoding...")
+                        setattr(self, key, value)
+                else:
+                    setattr(self, key, value)
             else:
                 continue
         return
@@ -604,7 +613,11 @@ class Inventory(BaseInventoryModel):
         """Check if current attributes have the same value in the input data dictionary"""
         for key, value in data.iteritems():
             if hasattr(self, key):
-                if getattr(self, key) != value:
+                if isinstance(getattr(self, key), unicode) and isinstance(value, str):
+                    # won't be able to decode non-ascii under 256 if not specify latin1 encoding
+                    if getattr(self, key) != unicode(value, encoding='latin1'):
+                        return False
+                elif getattr(self, key) != value:
                     return False
             else:
                 continue

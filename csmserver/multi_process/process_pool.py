@@ -49,7 +49,7 @@ class PoolWorker(Process):
         DATABASE_CONNECTION_INFO = URL(**db_settings)
         # Create the database engine
         engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600,
-                               convert_unicode=True, echo=ENABLE_DEBUG)
+                               convert_unicode=True, encoding='latin1', echo=ENABLE_DEBUG)
         self.db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=False,
                                          bind=engine))()

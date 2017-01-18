@@ -317,7 +317,10 @@ def query_in_use_inventory(db_session, json_data):
                                                                      json_data.get('model_names'),
                                                                      json_data.get('partial_model_names'),
                                                                      HostInventory, filter_clauses)
-    results = db_session.query(HostInventory).filter(*filter_clauses)
+    if len(filter_clauses) > 0:
+        results = db_session.query(HostInventory).filter(*filter_clauses)
+    else:
+        results = db_session.query(HostInventory)
 
     join_filter_clauses = []
     if json_data.get('hostname') is not None:
