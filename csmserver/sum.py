@@ -63,7 +63,7 @@ class SoftwareManager(JobManager):
                 return
                 
             install_jobs = db_session.query(InstallJob).filter(
-                InstallJob.scheduled_time <= datetime.datetime.utcnow()).all()
+                InstallJob.scheduled_time <= datetime.datetime.utcnow()).order_by(InstallJob.scheduled_time.asc()).all()
             download_job_key_dict = get_download_job_key_dict()
 
             if len(install_jobs) > 0:

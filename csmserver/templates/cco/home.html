@@ -384,7 +384,7 @@
                 },
                 success: function(response) {
                     if (response.status == 'Failed') {
-                        bootbox.alert("Unable to proceed.  Either the server repository is not reachable or server directory does not exist.");
+                        bootbox.alert("The server repository is not browsable by CSM Server.");
                     } else {
                         // Remember the selections
                         $.cookie('server_id', server_id);

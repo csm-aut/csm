@@ -117,6 +117,9 @@ class HostScheduleInstallForm(ServerDialogForm):
     cisco_dialog_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])
     server_modal_dialog_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
 
+    # For SCP server repository support
+    destination_path_on_device = StringField('Destination Path on Device (e.g. harddisk:/file)')
+
     hidden_selected_hosts = HiddenField('')
     hidden_server = HiddenField('')   
     hidden_server_name = HiddenField('')   
@@ -146,6 +149,7 @@ class ServerForm(Form):
     password = PasswordField('Password')
     server_directory = StringField('Home Directory')
     vrf = StringField('VRF')
+    destination_on_host = StringField('Destination on Host (e.g. /harddisk:)')
 
 
 class RegionForm(Form):

@@ -348,7 +348,7 @@ class SCPServer(ServerImpl):
         ServerImpl.__init__(self, server)
 
     def get_file_and_directory_dict(self, sub_directory=None):
-        is_reachable, error = self.check_reachability()
+        is_reachable = False
         return [], is_reachable
 
     def check_reachability(self):

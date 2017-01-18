@@ -478,12 +478,12 @@ def delete_region(db_session, name):
 
 
 def create_or_update_custom_command_profile(db_session, profile_name, command_list, custom_command_profile=None):
-    '''
+    """
     :param db_session:
     :param profile_name:
     :param custom_command_profile:
     :return:
-    '''
+    """
     if custom_command_profile is None:
         custom_command_profile = CustomCommandProfile()
         db_session.add(custom_command_profile)
@@ -510,8 +510,8 @@ def delete_custom_command_profile(db_session, profile_name):
 
 
 def create_or_update_jump_host(db_session, hostname, connection_type, host_or_ip,
-                                port_number, username, password='', jumphost=None):
-    if jumphost == None:
+                               port_number, username, password, jumphost=None):
+    if jumphost is None:
         jumphost = JumpHost()
         db_session.add(jumphost)
 
@@ -542,10 +542,9 @@ def delete_jump_host(db_session, hostname):
 
 
 def create_or_update_server_repository(db_session, hostname, server_type, server_url, username, vrf,
-                                       server_directory, password='', server=None):
+                                       server_directory, password, destination_on_host, server=None):
     if server is None:
         server = Server()
-        server.hostname = hostname
         db_session.add(server)
 
     if hasattr(current_user, 'username'):
@@ -561,6 +560,7 @@ def create_or_update_server_repository(db_session, hostname, server_type, server
     server.vrf = vrf if (server_type == ServerType.TFTP_SERVER or
                          server_type == ServerType.FTP_SERVER) else ''
     server.server_directory = server_directory
+    server.destination_on_host = destination_on_host if server_type == ServerType.SCP_SERVER else ''
 
     db_session.commit()
 

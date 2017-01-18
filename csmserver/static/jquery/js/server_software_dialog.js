@@ -122,7 +122,7 @@ function server_software_retrieve_file_list(server_id, server_directory_selector
         },
         success: function(response) {
             if (response.status == 'Failed') {
-                bootbox.alert("Either the server repository is not reachable or server directory does not exist.");
+                bootbox.alert("NOTE: The selected server repository is not browsable by CSM Server.");
             } else {
                 $.each(response, function(index, element) {
                     server_software_populate_file_list(element, server_directory_selector, server_directory);

@@ -30,6 +30,7 @@ sql_statements = [
     'alter table smu_info add smu_category VARCHAR(20)',
     'alter table system_option add ldap_server_distinguished_names VARCHAR(100)',
     'alter table system_option add use_utc_timezone BOOLEAN default 0',
+    'alter table server add destination_on_host VARCHAR(50)',
     'alter table email_job add attachment_file_paths VARCHAR(300)'
     ]
 
