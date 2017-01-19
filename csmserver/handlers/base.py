@@ -68,17 +68,6 @@ class BaseHandler(object):
             if isinstance(ctx, ConnectionContext):
                 logger = get_db_session_logger(ctx.db_session)
                 logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
-        finally:
-            # Remove the server repository password regardless whether the install job is successful or not
-            if isinstance(ctx, InstallContext) and (ctx.requested_action == InstallAction.INSTALL_ADD or
-                                                    ctx.requested_action == InstallAction.PRE_MIGRATE):
-                server_repository_url = ctx.server_repository_url
-                if server_repository_url:
-                    if server_repository_url.startswith("ftp://"):
-                        self.remove_server_repository_password_from_log_files(ctx)
-                    # For Pre-Migrate, sftp upload is done differently, no password mangling needed
-                    elif server_repository_url.startswith("sftp://") and ctx.requested_action == InstallAction.INSTALL_ADD:
-                        self.remove_server_repository_password_from_log_files(ctx)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
@@ -106,31 +95,6 @@ class BaseHandler(object):
                     msg = 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
 
-    def remove_server_repository_password_from_log_files(self, ctx):
-        self.remove_server_repository_password_from_log_file(ctx, filename='condoor.log')
-        self.remove_server_repository_password_from_log_file(ctx, filename='session.log')
-
-    def remove_server_repository_password_from_log_file(self, ctx, filename):
-        in_file = os.path.join(ctx.log_directory, filename)
-        out_file = in_file + '.bak'
-
-        try:
-            password_pattern = re.compile("ftp://(.*):(?P<PASSWORD>(.*))@")
-            with open(in_file) as infile, open(out_file, 'w') as outfile:
-                for line in infile:
-                    if 'ftp' in line:
-                        result = re.search(password_pattern, line)
-                        if result:
-                            password = result.group("PASSWORD")
-                            mangled_password = ('*' * (len(password)))
-                            line = line.replace(password, mangled_password)
-
-                    outfile.write(line)
-
-            shutil.move(out_file, in_file)
-        except Exception:
-            logger = get_db_session_logger(ctx.db_session)
-            logger.exception('remove_server_repository_password_from_session_log hit exception.')
 
     def update_device_info(self, ctx):
         device_info_dict = ctx.load_data('device_info')

@@ -46,7 +46,8 @@
         });
 
         function toggle_server(server_type) {
-            $('#authentiation-panel').hide();
+            $('#authentication-panel').hide();
+            $('#destination-on-host-panel').hide();
             $('#directory-panel').show();
             $('#vrf-panel').show();
             $('#verify-reachability').show();
@@ -55,9 +56,13 @@
                 $('#label_server_url').text('TFTP Server Path');
                 $('#label_server_directory').text('File Directory (Used by CSM Server)');
             } else if (server_type == "FTP" || server_type == "SFTP" || server_type == "SCP") {
-                $('#authentiation-panel').show();
+                $('#authentication-panel').show();
                 $('#label_server_url').text(server_type + ' Server Address');
                 $('#label_server_directory').text('Home Directory');
+
+                if (server_type == "SCP") {
+                    $('#destination-on-host-panel').show();
+                }
             } else if (server_type == "LOCAL") {
                 $('#label_server_url').text('Device Path (disk0:, harddisk:)');
                 $('#verify-reachability').hide();
@@ -116,18 +121,45 @@
 
         });
 
-        $('#form').submit(function() {
-            var server_type = $('#server_type').val();
-            var server_directory = $('#server_directory').val();
-
-            if (server_type == "TFTP" && server_directory.length == 0) {
-                bootbox.alert("File Directory has not been specified.");
-                return false;
-            } else if ((server_type == "FTP" || server_type == "SFTP") && server_directory.length == 0) {
-                bootbox.alert("Home Directory has not been specified.");
+        function check_server_directory(server_type, server_directory) {
+            if (server_directory.length == 0) {
+                if (server_type == "TFTP") {
+                    bootbox.alert("File Directory has not been specified.");
+                } else {
+                    // For FTP/SFTP/SCP
+                    bootbox.alert("Home Directory has not been specified.");
+                }
                 return false;
             }
-            console.log("server_directory " + server_directory + ",");
+            return true;
+        }
+
+        function check_destination_on_host(destination) {
+            if (destination.length == 0) {
+                bootbox.alert("Destination on Host has not been specified.");
+                return false;
+            }
+            return true;
+        }
+
+        $('#form').submit(function() {
+            var result = true;
+            var server_type = $('#server_type').val();
+            var server_directory = $('#server_directory').val();
+            var destination_on_host = $('#destination_on_host').val();
+
+            if (server_type == "TFTP") {
+                result = check_server_directory(server_type, server_directory);
+            } else if (server_type == "FTP" || server_type == "SFTP")  {
+                result = check_server_directory(server_type, server_directory);
+            } else if (server_type == "SCP") {
+                result = check_destination_on_host(destination_on_host);
+                if (result) {
+                    result = check_server_directory(server_type, server_directory);
+                }
+            }
+
+            if (!result) return result;
 
             var hostname = $('#hostname').val();
             var acceptable_string = get_acceptable_string(hostname);
@@ -196,7 +228,7 @@
                 {{ edit_field(form.server_directory, maxlength=100, class="form-control", extra_field=extra_field,
                     placeholder="Use Absolute File Path") }}
             </div>
-            <div id="authentiation-panel">
+            <div id="authentication-panel">
 
                 {% if isEdit %}
                     {% set extra_field ='<a href="javascript://" id="modify-password">
@@ -209,11 +241,14 @@
                 <div id="password-panel">
                     {% if isEdit %}
                         {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control",
-                        placeholder="Use Password on File") }}
+                        placeholder=form.password_placeholder) }}
                     {% else %}
                         {{ edit_field(form.password, autocomplete="off", field_width="col-sm-4", maxlength=100, class="form-control") }}
                     {% endif %}
                 </div>
+            </div>
+            <div id="destination-on-host-panel">
+                {{ edit_field(form.destination_on_host, maxlength=50, class="form-control") }}
             </div>
             <div class="form-actions">
                 <div class="btn col-sm-offset-4">

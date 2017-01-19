@@ -279,6 +279,10 @@ class InstallContext(ConnectionContext):
                     url = url + "/{}".format(remote_directory)
 
                 return url
+            elif server_type == ServerType.SCP_SERVER:
+                # scp root:password@10.77.132.122:/home_directory destination_on_host
+                return "scp {}:{}@{}:{} {}".format(server.username, server.password, server.server_url,
+                                                   server.server_directory, server.destination_on_host)
             elif server_type == ServerType.LOCAL_SERVER:
                 return server.server_url
         

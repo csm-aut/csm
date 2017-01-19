@@ -283,11 +283,11 @@ def jump_host_create():
 def jump_host_edit(hostname):
     db_session = DBSession()
 
-    host = get_jump_host(db_session, hostname)
-    if host is None:
+    jump_host = get_jump_host(db_session, hostname)
+    if jump_host is None:
         abort(404)
 
-    form = JumpHostForm(request.form, host)
+    form = JumpHostForm(request.form, jump_host)
 
     if request.method == 'POST' and form.validate():
         if not can_edit(current_user):
@@ -300,20 +300,20 @@ def jump_host_edit(hostname):
                                    hostname=form.hostname.data,
                                    host_or_ip=form.host_or_ip.data,
                                    username=form.username.data,
-                                   password='' if len(form.password.data) <= 0 else form.password.data,
+                                   password=form.password.data if len(form.password.data) > 0 else jump_host.password,
                                    connection_type=form.connection_type.data,
                                    port_number=form.port_number.data,
-                                   jumphost=get_jump_host(db_session, hostname))
+                                   jumphost=jump_host)
 
         return redirect(url_for('home'))
     else:
         # Assign the values to form fields
-        form.hostname.data = host.hostname
-        form.host_or_ip.data = host.host_or_ip
-        form.username.data = host.username
-        form.connection_type.data = host.connection_type
-        form.port_number.data = host.port_number
-        if not is_empty(host.password):
+        form.hostname.data = jump_host.hostname
+        form.host_or_ip.data = jump_host.host_or_ip
+        form.username.data = jump_host.username
+        form.connection_type.data = jump_host.connection_type
+        form.port_number.data = jump_host.port_number
+        if not is_empty(jump_host.password):
             form.password_placeholder = 'Use Password on File'
         else:
             form.password_placeholder = 'No Password Specified'
@@ -357,8 +357,9 @@ def server_create():
                                            username=form.username.data,
                                            password=form.password.data,
                                            vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
-                                                form.server_type.data == ServerType.FTP_SERVER else '',
-                                           server_directory=trim_last_slash(form.server_directory.data))
+                                                                form.server_type.data == ServerType.FTP_SERVER else '',
+                                           server_directory=trim_last_slash(form.server_directory.data),
+                                           destination_on_host=form.destination_on_host.data)
 
         return redirect(url_for('home'))
 
@@ -388,11 +389,12 @@ def server_edit(hostname):
                                            server_type=form.server_type.data,
                                            server_url=trim_last_slash(form.server_url.data),
                                            username=form.username.data,
-                                           password='' if len(form.password.data) <= 0 else form.password.data,
+                                           password=form.password.data if len(form.password.data) > 0 else server.password,
                                            vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
                                                                 form.server_type.data == ServerType.FTP_SERVER else '',
                                            server_directory=trim_last_slash(form.server_directory.data),
-                                           server=get_server(db_session, hostname))
+                                           destination_on_host=form.destination_on_host.data,
+                                           server=server)
 
         return redirect(url_for('home'))
     else:
@@ -402,8 +404,13 @@ def server_edit(hostname):
         form.server_url.data = server.server_url
         form.username.data = server.username
         form.vrf.data = server.vrf
-        # In Edit mode, make the password field not required
         form.server_directory.data = server.server_directory
+        form.destination_on_host.data = server.destination_on_host
+
+        if not is_empty(server.password):
+            form.password_placeholder = 'Use Password on File'
+        else:
+            form.password_placeholder = 'No Password Specified'
 
         return render_template('server/edit.html', form=form)
 

@@ -38,7 +38,7 @@ function retrieve_directory_and_file_list(browse_spinner, server_id, server_dire
                 if (file_list_table != null) {
                     file_list_table.api().clear().draw();
                 }
-                bootbox.alert("Either the server repository is not reachable or server directory does not exist.");
+                bootbox.alert("NOTE: The selected server repository is not browsable by CSM Server.");
             } else {
                 $.each(response, function(index, element) {
                     for (i = 0; i < element.length; i++) {

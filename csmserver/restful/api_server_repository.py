@@ -120,6 +120,7 @@ def api_create_server_repositories(request):
         if status_message is None and row == {}:
             try:
                 hostname = get_acceptable_string(data['hostname'])
+                # FIXME: Fix destination_on_host when SCP is supported
                 server_repository = create_or_update_server_repository(db_session,
                                        hostname=hostname,
                                        server_type=data['server_type'],
@@ -128,6 +129,7 @@ def api_create_server_repositories(request):
                                        password='' if 'password' not in data.keys() else data['password'],
                                        vrf='' if 'vrf' not in data.keys() else data['vrf'],
                                        server_directory='' if data['server_type'] == "LOCAL" else data[server_directory[data['server_type']]],
+                                       destination_on_host='',
                                        server=get_server(db_session, hostname))
                 row[STATUS] = APIStatus.SUCCESS
                 row['hostname'] = server_repository.hostname
@@ -185,6 +187,7 @@ def api_edit_server_repositories(db_session, repo, data):
     server_directory = repo.server_directory if server_directories[server_type] not in data.keys() else data[server_directories[server_type]]
 
     try:
+        # FIXME: Fix destination_on_host when SCP is supported
         repo = create_or_update_server_repository(db_session,
                                         hostname=repo.hostname,
                                         server_type=server_type,
@@ -196,7 +199,8 @@ def api_edit_server_repositories(db_session, repo, data):
                                         server_directory=server_directory,
                                         password=repo.server_type if 'password' not in data.keys()
                                             else data['password'],
-                                        server=repo)
+                                        server=repo,
+                                        destination_on_host='')
         row[STATUS] = APIStatus.SUCCESS
         row['hostname'] = repo.hostname
         success = APIStatus.SUCCESS
