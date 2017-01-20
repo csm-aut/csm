@@ -27,7 +27,8 @@ $(function() {
     });
 
     var datetimepicker = $(".form_datetime").datetimepicker({
-        format: "mm/dd/yyyy HH:ii P",
+        //format: "mm/dd/yyyy HH:ii P",
+        format: "yyyy-mm-dd hh:ii:ss",
         showMeridian: true,
         autoclose: true,
         todayBtn: true,

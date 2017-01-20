@@ -596,7 +596,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     else:
         install_job.pending_downloads = ''
 
-    install_job.scheduled_time = get_datetime(scheduled_time, "%m/%d/%Y %I:%M %p")
+    install_job.scheduled_time = get_datetime(scheduled_time)
 
     # Only Install Add and Pre-Migrate should have server_id and server_directory
     if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE:

@@ -88,12 +88,23 @@ def remove_extra_spaces(str):
     return str
 
 
-def get_datetime(date_string, format):
+def get_datetime(date_string, format=None):
     """
     Converts a datetime string to internal python datetime.
     Returns None if the string is not a valid date time.
     """
     try:
+        if not format:
+            # 2016-12-12 13:07:32
+            match = re.search('\d+-\d+-\d+ \d+:\d+:\d+', date_string)
+            if match:
+                format = '%Y-%m-%d %H:%M:%S'
+            else:
+                # 01/17/2017 11:10 PM
+                match = re.search('\d+/\d+/\d+ \d+:\d+ [A|P]M', date_string)
+                if match:
+                    format = "%m/%d/%Y %I:%M %p"
+
         return datetime.datetime.strptime(date_string, format)
     except:
         return None
@@ -119,7 +130,8 @@ def datetime_from_local_to_utc(local_datetime):
     :param local_datetime: Python datetime object
     :return: UTC datetime string
     """
-    return time.strftime("%m/%d/%Y %I:%M %p", time.gmtime(time.mktime(local_datetime.timetuple())))
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.mktime(local_datetime.timetuple())))
+
 
 def make_file_writable(file_path):
     if os.path.isfile(file_path):
