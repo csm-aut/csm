@@ -999,6 +999,8 @@ def api_get_conformance_report(id):
         clauses.append(ConformanceReportEntry.platform.like(criteria))
         clauses.append(ConformanceReportEntry.software.like(criteria))
         clauses.append(ConformanceReportEntry.conformed.like(criteria))
+        clauses.append(ConformanceReportEntry.host_packages.like(criteria))
+        clauses.append(ConformanceReportEntry.missing_packages.like(criteria))
 
     query = db_session.query(ConformanceReportEntry)
     total_count = query.filter(ConformanceReportEntry.conformance_report_id == id).count()
