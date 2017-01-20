@@ -714,11 +714,11 @@ def get_model_name_summary_query_results(db_session, region_id):
             rows.append({'model_name': in_use_model_name, 'in_use_count': in_use_count, 'available_count': 0})
             in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
 
-    while available_model_name:
+    while available_model_name is not None:
         rows.append({'model_name': available_model_name, 'in_use_count': 0, 'available_count': available_count})
         available_model_name, available_count = next(available_model_name_summary_iter, (None, None))
 
-    while in_use_model_name:
+    while in_use_model_name is not None:
         rows.append({'model_name': in_use_model_name, 'in_use_count': in_use_count, 'available_count': 0})
         in_use_model_name, in_use_count = next(in_use_model_name_summary_iter, (None, None))
 
