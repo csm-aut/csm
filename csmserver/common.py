@@ -43,6 +43,7 @@ from models import Region
 from models import User
 from models import SMTPServer
 from models import logger
+from models import ConformanceReport
 
 from models import Package
 from models import InstallJob
@@ -754,3 +755,7 @@ def get_last_completed_install_job_for_install_action(db_session, host_id, insta
 
 def get_download_job_key(user_id, filename, server_id, server_directory):
     return "{}{}{}{}".format(user_id, filename, server_id, server_directory)
+
+
+def get_conformance_report_by_id(db_session, id):
+    return db_session.query(ConformanceReport).filter(ConformanceReport.id == id).first()

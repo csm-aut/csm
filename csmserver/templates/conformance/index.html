@@ -187,10 +187,19 @@
         }
 
         var conformance_report_table = $("#conformance-report-table").dataTable({
+            "serverSide": true,
             "order": [
                 [0, "asc"]
             ],
             "pageLength": 100,
+            "columns": [
+                { "data": "hostname" },
+                { "data": "software_platform" },
+                { "data": "software_version" },
+                { "data": "host_packages", "orderable": false },
+                { "data": "missing_packages", "orderable": false },
+                { "data": "conformed" },
+            ],
             "columnDefs": [{
                 "targets": 0,
                 "data": 'hostname',
@@ -199,12 +208,12 @@
                 }
             }, {
                 "targets": 1,
-                "data": 'software_platform',
-                "render": function(data, type, row) {
-                    return data + ' (' + row['software_version'] + ')';
-                }
+                "data": 'software_platform'
             }, {
                 "targets": 2,
+                "data": 'software_version'
+            }, {
+                "targets": 3,
                 "data": 'host_packages',
                 "render": function(data, type, row) {
                     if (data.length > 0) {
@@ -224,7 +233,7 @@
 
                 }
             }, {
-                "targets": 3,
+                "targets": 4,
                 "data": 'missing_packages',
                 "render": function(data, type, row) {                   
                     if (data.length > 0) {
@@ -234,13 +243,13 @@
                     }
                 }
             }, {
-                "targets": 4,
+                "targets": 5,
                 "data": 'conformed',
                 "render": function(data, type, row) {
                     return data + ' ' + row['comments'];
                 }
             }, {
-                "targets": 5,
+                "targets": 6,
                 "data": 'conformed',
                 "render": function(data, type, row) {
                     return '<button type="button" style="line-height: 10px;" class="btn btn-default make-conform-button" ' +
@@ -250,7 +259,10 @@
                         'data-missing-packages="' + row['missing_packages'] + '"' +
                         '>Make Conform</button>';
                 }
-            }]
+            }],
+            "ajax": {
+                "url": "/datatable/api/get_conformance_report/report/0",
+            }
         });
 
         get_conformance_reports();
@@ -285,7 +297,7 @@
         function display_conformance_report(id) {
             $.cookie('conformance-report-id', id); 
 
-            conformance_report_table.api().ajax.url("/conformance/api/get_conformance_report/report/" + id).load();
+            conformance_report_table.api().ajax.url("/datatable/api/get_conformance_report/report/" + id).load();
             display_conformance_report_summary(id);
             display_conformance_report_software_profile_packages(id)
         }
@@ -697,6 +709,7 @@
                                 <thead>
                                     <tr>
                                         <th>Hostname</th>
+                                        <th>Platform</th>
                                         <th>Software</th>
                                         <th id="header-host-packages">Host Packages</th>
                                         <th>Missing Packages</th>

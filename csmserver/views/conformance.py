@@ -53,6 +53,7 @@ from common import fill_custom_command_profiles
 from common import can_delete
 from common import can_create
 from common import can_install
+from common import get_conformance_report_by_id
 
 from database import DBSession
 
@@ -315,10 +316,6 @@ def software_profile_delete(profile_name):
     return jsonify({'status': 'OK'})
 
 
-def get_conformance_report_by_id(db_session, id):
-    return db_session.query(ConformanceReport).filter(ConformanceReport.id == id).first()
-
-
 @conformance.route('/api/rerun_conformance_report/report/<int:id>')
 @login_required
 def api_rerun_conformance_report(id):
@@ -518,29 +515,6 @@ def api_get_conformance_report_datetime(id):
     return jsonify(**{'data': [
         {'conformance_report_datetime': conformance_report_datetime}
     ]})
-
-
-@conformance.route('/api/get_conformance_report/report/<int:id>')
-@login_required
-def api_get_conformance_report(id):
-    rows = []
-    db_session = DBSession()
-
-    conformance_report = get_conformance_report_by_id(db_session, id)
-    if conformance_report is not None:
-        entries = conformance_report.entries
-        for entry in entries:
-            row = {'hostname': entry.hostname,
-                   'software_platform': entry.platform,
-                   'software_version': entry.software,
-                   'missing_packages': entry.missing_packages,
-                   'host_packages': entry.host_packages,
-                   'conformed': entry.conformed,
-                   'comments': entry.comments}
-
-            rows.append(row)
-
-    return jsonify(**{'data': rows})
 
 
 @conformance.route('/api/get_conformance_report_software_profile_packages/report/<int:id>')

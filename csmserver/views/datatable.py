@@ -50,8 +50,11 @@ from models import InstallJob
 from models import InstallJobHistory
 from models import DownloadJob
 from models import DownloadJobHistory
+from models import ConformanceReport
+from models import ConformanceReportEntry
 
 from common import get_host
+from common import get_conformance_report_by_id
 from common import get_last_successful_inventory_elapsed_time
 
 from constants import UNKNOWN
@@ -963,6 +966,66 @@ def api_get_inventory_with_duplicate_serial_number(region_id):
         rows.append({'serial_number': serial_number, 'count': count})
 
     db_session.close()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response['data'] = rows
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_conformance_report/report/<int:id>')
+@login_required
+def api_get_conformance_report(id):
+    rows = []
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    conformance_report = get_conformance_report_by_id(db_session, id)
+    if not conformance_report:
+        response = dict()
+        response['draw'] = dt_params.draw
+        response['recordsTotal'] = 0
+        response['recordsFiltered'] = 0
+        response['data'] = rows
+        return jsonify(**response)
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(ConformanceReportEntry.hostname.like(criteria))
+        clauses.append(ConformanceReportEntry.platform.like(criteria))
+        clauses.append(ConformanceReportEntry.software.like(criteria))
+        clauses.append(ConformanceReportEntry.conformed.like(criteria))
+
+    query = db_session.query(ConformanceReportEntry)
+    total_count = query.filter(ConformanceReportEntry.conformance_report_id == id).count()
+    filtered_count = query.filter(and_(ConformanceReportEntry.conformance_report_id == id), or_(*clauses)).count()
+
+    columns = [getattr(ConformanceReportEntry.hostname, dt_params.sort_order)(),
+               getattr(ConformanceReportEntry.platform, dt_params.sort_order)(),
+               getattr(ConformanceReportEntry.software, dt_params.sort_order)(),
+               '',
+               '',
+               getattr(ConformanceReportEntry.conformed, dt_params.sort_order)()]
+
+    entries = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(ConformanceReportEntry.conformance_report_id == id), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    for entry in entries:
+        row = dict()
+        row['hostname'] = entry.hostname
+        row['software_platform'] = entry.platform
+        row['software_version'] = entry.software
+        row['missing_packages'] = entry.missing_packages
+        row['host_packages'] = entry.host_packages
+        row['conformed'] = entry.conformed
+        row['comments'] = entry.comments
+
+        rows.append(row)
 
     response = dict()
     response['draw'] = dt_params.draw
