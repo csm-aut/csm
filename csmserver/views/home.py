@@ -59,6 +59,7 @@ from common import get_server_by_id
 from common import get_region_by_id
 from common import can_check_reachability
 from common import get_jump_host_by_id
+from common import fill_software_profiles
 
 from utils import remove_extra_spaces
 from utils import is_empty
@@ -138,8 +139,10 @@ def host_create():
 
     form = HostForm(request.form)
 
-    fill_jump_hosts(form.jump_host.choices)
-    fill_regions(form.region.choices)
+    db_session = DBSession()
+    fill_jump_hosts(db_session, form.jump_host.choices)
+    fill_regions(db_session, form.region.choices)
+    fill_software_profiles(db_session, form.software_profile.choices)
 
     if request.method == 'POST' and form.validate():
         db_session = DBSession()
@@ -150,6 +153,7 @@ def host_create():
 
             host = create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
                                          location=form.location.data, roles=form.roles.data,
+                                         software_profile_id=form.software_profile.data,
                                          connection_type=form.connection_type.data,
                                          host_or_ip=form.host_or_ip.data, username=form.username.data,
                                          password=form.password.data, enable_password=form.enable_password.data,
@@ -174,8 +178,9 @@ def host_edit(hostname):
         abort(404)
 
     form = HostForm(request.form)
-    fill_jump_hosts(form.jump_host.choices)
-    fill_regions(form.region.choices)
+    fill_jump_hosts(db_session, form.jump_host.choices)
+    fill_regions(db_session, form.region.choices)
+    fill_software_profiles(db_session, form.software_profile.choices)
 
     if request.method == 'POST' and form.validate():
         if not can_edit(current_user):
@@ -186,6 +191,7 @@ def host_edit(hostname):
 
         host.hostname = form.hostname.data
         host.region_id = form.region.data if form.region.data > 0 else None
+        host.software_profile_id = form.software_profile.data if form.software_profile.data > 0 else None
         host.location = remove_extra_spaces(form.location.data)
         host.roles = remove_extra_spaces(form.roles.data)
 
@@ -214,6 +220,7 @@ def host_edit(hostname):
         # Assign the values to form fields
         form.hostname.data = host.hostname
         form.region.data = host.region_id
+        form.software_profile.data = host.software_profile_id
         form.location.data = host.location
         form.roles.data = host.roles
         form.host_or_ip.data = host.connection_param[0].host_or_ip

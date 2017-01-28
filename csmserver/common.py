@@ -43,6 +43,7 @@ from models import Region
 from models import User
 from models import SMTPServer
 from models import logger
+from models import SoftwareProfile
 from models import ConformanceReport
 
 from models import Package
@@ -122,13 +123,11 @@ def delete_install_job_dependencies(db_session, id):
     return deleted
 
 
-def fill_jump_hosts(choices):
+def fill_jump_hosts(db_session, choices):
     # Remove all the existing entries
     del choices[:]
     choices.append((-1, 'None'))
-    
-    # do not close session as the caller will do it
-    db_session = DBSession()
+
     try:
         hosts = get_jump_host_list(db_session)
         if hosts is not None:
@@ -138,13 +137,11 @@ def fill_jump_hosts(choices):
         logger.exception('fill_jump_hosts() hit exception')
 
 
-def fill_regions(choices):
+def fill_regions(db_session, choices):
     # Remove all the existing entries
     del choices[:]
     choices.append((-1, ''))
-    
-    # do not close session as the caller will do it
-    db_session = DBSession()
+
     try:
         regions = get_region_list(db_session)
         if regions is not None:
@@ -152,6 +149,20 @@ def fill_regions(choices):
                 choices.append((region.id, region.name))
     except:
         logger.exception('fill_regions() hit exception')
+
+
+def fill_software_profiles(db_session, choices):
+    # Remove all the existing entries
+    del choices[:]
+    choices.append((-1, ''))
+
+    try:
+        software_profiles = get_software_profile_list(db_session)
+        if software_profiles is not None:
+            for software_profile in software_profiles:
+                choices.append((software_profile.id, software_profile.name))
+    except:
+        logger.exception('fill_software_profiles() hit exception')
 
 
 def fill_default_region(choices, region):
@@ -165,10 +176,9 @@ def fill_default_region(choices, region):
         logger.exception('fill_default_region() hits exception')
 
 
-def fill_custom_command_profiles(choices):
+def fill_custom_command_profiles(db_session, choices):
     del choices[:]
 
-    db_session = DBSession()
     try:
         profiles = get_custom_command_profiles_list(db_session)
 
@@ -287,6 +297,18 @@ def get_region_list(db_session):
     return db_session.query(Region).order_by(Region.name.asc()).all()
 
 
+def get_software_profile_list(db_session):
+    return db_session.query(SoftwareProfile).order_by(SoftwareProfile.name.asc()).all()
+
+
+def get_software_profile(db_session, profile_name):
+    return db_session.query(SoftwareProfile).filter(SoftwareProfile.name == profile_name).first()
+
+
+def get_hosts_by_software_profile_id(db_session, profile_id):
+    return db_session.query(Host).filter(Host.software_profile_id == profile_id).order_by(Host.hostname.asc()).all()
+
+
 def get_custom_command_profiles_list(db_session):
     return db_session.query(CustomCommandProfile).order_by(CustomCommandProfile.profile_name.asc()).all()
 
@@ -392,7 +414,7 @@ def get_install_job_dependency_completed(db_session, install_action, host_id):
                                                            InstallJobHistory.status == JobStatus.COMPLETED)).all()
 
 
-def create_or_update_host(db_session, hostname, region_id, location, roles, connection_type, host_or_ip,
+def create_or_update_host(db_session, hostname, region_id, location, roles, software_profile_id, connection_type, host_or_ip,
                           username, password, enable_password, port_number, jump_host_id, created_by, host=None):
     """ Create a new host in the Database """
     if host is None:
@@ -402,6 +424,7 @@ def create_or_update_host(db_session, hostname, region_id, location, roles, conn
         db_session.add(host)
 
     host.region_id = region_id if region_id > 0 else None
+    host.software_profile_id = software_profile_id if software_profile_id > 0 else None
     host.location = '' if location is None else remove_extra_spaces(location)
     host.roles = '' if roles is None else remove_extra_spaces(roles)
     host.connection_param = [ConnectionParam(
@@ -418,6 +441,45 @@ def create_or_update_host(db_session, hostname, region_id, location, roles, conn
     db_session.commit()
 
     return host
+
+
+def get_host_list_by(platform, software_versions, region_ids, roles):
+    """
+    :param platform: Host platform
+    :param software_versions: a list of software versions or 'ALL'
+    :param region_ids: a list of region ids or 'ALL'
+    :param roles: a list of roles or 'ALL'
+    :return: a list of hosts that satisfied the criteria.
+    """
+    clauses = []
+    db_session = DBSession()
+
+    clauses.append(Host.software_platform == platform)
+
+    if 'ALL' not in software_versions:
+        clauses.append(Host.software_version.in_(software_versions))
+
+    if 'ALL' not in region_ids:
+        clauses.append(Host.region_id.in_(region_ids))
+
+    roles_list = [] if 'ALL' in roles else roles
+
+    # Retrieve relevant hosts
+    hosts = db_session.query(Host).filter(and_(*clauses)).order_by(Host.hostname.asc()).all()
+
+    host_list = []
+    for host in hosts:
+        # Match on selected roles given by the user
+        if not is_empty(roles_list):
+            if not is_empty(host.roles):
+                for role in host.roles.split(','):
+                    if role in roles_list:
+                        host_list.append(host)
+                        break
+        else:
+            host_list.append(host)
+
+    return host_list
 
 
 def delete_host(db_session, hostname):
@@ -459,6 +521,25 @@ def create_or_update_region(db_session, name, server_repositories, region=None):
     db_session.commit()
 
     return region
+
+
+def delete_software_profile(db_session, profile_name):
+
+    software_profile = get_software_profile(db_session, profile_name)
+    if software_profile is None:
+        raise ValueNotFound("Unable to locate software profile '%s'" % profile_name)
+
+    count = db_session.query(Host).filter(
+        Host.software_profile_id == software_profile.id).count()
+
+    # Older version of db does not perform check on
+    # foreign key constrain, so do it programmatically here.
+    if count > 0:
+        raise OperationNotAllowed("Unable to delete software profile '%s'. " +
+                                  "Verify that it is not used by other hosts." % profile_name)
+
+    db_session.delete(software_profile)
+    db_session.commit()
 
 
 def delete_region(db_session, name):

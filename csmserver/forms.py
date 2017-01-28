@@ -69,6 +69,7 @@ class HostForm(Form):
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     location = StringField('Location', [Length(max=100)])
     roles = StringField('Roles')
+    software_profile = SelectField('Software Profile', coerce=int, choices=[(-1, '')])
     host_or_ip = StringField('Terminal Server or Mgmt. IP', [required(), Length(max=30)])
     username = StringField('Username')
     password = PasswordField('Password')

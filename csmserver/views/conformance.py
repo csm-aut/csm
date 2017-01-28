@@ -54,6 +54,11 @@ from common import can_delete
 from common import can_create
 from common import can_install
 from common import get_conformance_report_by_id
+from common import get_software_profile
+from common import get_software_profile_list
+from common import delete_software_profile
+from common import get_host_list_by
+from common import get_hosts_by_software_profile_id
 
 from database import DBSession
 
@@ -70,6 +75,7 @@ from smu_info_loader import SMUInfoLoader
 from forms import ServerDialogForm
 from forms import SelectServerForm
 
+from utils import is_empty
 from utils import create_temp_user_directory
 from utils import create_directory
 from utils import make_file_writable
@@ -157,10 +163,12 @@ def home():
             flash(msg, 'import_feedback')
             return redirect(url_for(".home"))
 
+    db_session = DBSession()
     conformance_form = ConformanceForm(request.form)
+    assign_software_profile_to_hosts_form = AssignSoftwareProfileToHostsForm(request.form)
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
     make_conform_dialog_form = MakeConformDialogForm(request.form)
-    fill_custom_command_profiles(make_conform_dialog_form.custom_command_profile.choices)
+    fill_custom_command_profiles(db_session, make_conform_dialog_form.custom_command_profile.choices)
     select_server_form = SelectServerForm(request.form)
 
     export_conformance_report_form = ExportConformanceReportForm(request.form)
@@ -168,6 +176,7 @@ def home():
 
     return render_template('conformance/index.html',
                            conformance_form=conformance_form,
+                           assign_software_profile_to_hosts_form=assign_software_profile_to_hosts_form,
                            conformance_report_dialog_form=conformance_report_dialog_form,
                            install_actions=[InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                                             InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
@@ -306,14 +315,12 @@ def software_profile_delete(profile_name):
 
     db_session = DBSession()
 
-    software_profile = get_software_profile(db_session, profile_name)
-    if software_profile is None:
-        abort(404)
-
-    db_session.delete(software_profile)
-    db_session.commit()
-
-    return jsonify({'status': 'OK'})
+    try:
+        delete_software_profile(db_session, profile_name)
+        return jsonify({'status': 'OK'})
+    except:
+        return jsonify({'status': 'Unable to delete software profile "' +
+                                  profile_name + '".  Verify that it is not used by other hosts.'})
 
 
 @conformance.route('/api/rerun_conformance_report/report/<int:id>')
@@ -323,101 +330,128 @@ def api_rerun_conformance_report(id):
 
     conformance_report = get_conformance_report_by_id(db_session, id)
     if conformance_report is not None:
-        return run_conformance_report(conformance_report.software_profile,
-                                      conformance_report.match_criteria, conformance_report.hostnames)
+        software_profile = get_software_profile(db_session, conformance_report.software_profile)
+        if software_profile:
+            return run_conformance_report(db_session, software_profile,
+                                          conformance_report.match_criteria,
+                                          conformance_report.hostnames.split(','))
+        else:
+            jsonify({'status': 'Unable to locate the software_profile with id = %s' % conformance_report.software_profile})
     else:
         jsonify({'status': 'Unable to locate the conformance report with id = %d' % id})
 
     return jsonify({'status': 'OK'})
 
 
-@conformance.route('/api/run_conformance_report')
+@conformance.route('/api/run_conformance_report', methods=['POST'])
 @login_required
 def api_run_conformance_report():
-    profile_name = request.args.get('software_profile_name')
-    match_criteria = request.args.get('match_criteria')
-    hostnames = request.args.get('selected_hosts')
+    db_session = DBSession()
+    profile_name = request.form['software_profile_name']
+    match_criteria = request.form['match_criteria']
+    hostnames = request.form.getlist('selected_hosts[]')
 
-    return run_conformance_report(profile_name, match_criteria, hostnames)
+    software_profile = get_software_profile(db_session, profile_name)
+    if not software_profile:
+        return jsonify({'status': 'Unable to locate the software profile %s' % profile_name})
+
+    return run_conformance_report(db_session, software_profile, match_criteria, hostnames)
 
 
-def run_conformance_report(profile_name, match_criteria, hostnames):
+@conformance.route('/api/run_conformance_report_that_match_host_software_profile', methods=['POST'])
+@login_required
+def api_run_conformance_report_that_match_host_software_profile():
+    db_session = DBSession()
+    profile_name = request.form['software_profile_name']
+    match_criteria = request.form['match_criteria']
+
+    software_profile = get_software_profile(db_session, profile_name)
+    if not software_profile:
+        return jsonify({'status': 'Unable to locate the software profile %s' % profile_name})
+
+    hostnames = []
+    hosts = get_hosts_by_software_profile_id(db_session, software_profile.id)
+    for host in hosts:
+        hostnames.append(host.hostname)
+
+    return run_conformance_report(db_session, software_profile, match_criteria, hostnames)
+
+
+def run_conformance_report(db_session, software_profile, match_criteria, hostnames):
+    """
+    software_profile: SoftwareProfile instance
+    hostnames: a list of hostnames
+    """
     host_not_in_conformance = 0
     host_out_dated_inventory = 0
 
-    db_session = DBSession()
+    software_profile_packages = software_profile.packages.split(',')
 
-    software_profile = get_software_profile(db_session, profile_name)
-    if software_profile is not None:
-        software_profile_packages = software_profile.packages.split(',')
+    conformance_report = ConformanceReport(
+        software_profile=software_profile.name,
+        software_profile_packages=','.join(sorted(software_profile_packages)),
+        match_criteria=match_criteria,
+        hostnames=','.join(hostnames),
+        user_id=current_user.id,
+        created_by=current_user.username)
 
-        conformance_report = ConformanceReport(
-            software_profile=software_profile.name,
-            software_profile_packages=','.join(sorted(software_profile_packages)),
-            match_criteria=match_criteria,
-            hostnames=hostnames,
-            user_id=current_user.id,
-            created_by=current_user.username)
+    for hostname in hostnames:
+        host = get_host(db_session, hostname)
+        if host:
+            packages_to_match = [strip_smu_file_extension(software_profile_package)
+                                 for software_profile_package in software_profile_packages]
 
-        for hostname in hostnames.split(','):
-            host = get_host(db_session, hostname)
-            if host:
-                packages_to_match = [strip_smu_file_extension(software_profile_package)
-                                     for software_profile_package in software_profile_packages]
+            inventory_job = host.inventory_job[0]
 
-                inventory_job = host.inventory_job[0]
+            comments = ''
+            if inventory_job is not None and inventory_job.last_successful_time is not None:
+                comments = '(' + get_last_successful_inventory_elapsed_time(host) + ')'
 
-                comments = ''
-                if inventory_job is not None and inventory_job.last_successful_time is not None:
-                    comments = '(' + get_last_successful_inventory_elapsed_time(host) + ')'
-
-                if inventory_job.status != JobStatus.COMPLETED:
-                    comments += ' *'
-                    host_out_dated_inventory += 1
-
-                host_packages = []
-                if match_criteria == 'inactive':
-                    host_packages = get_host_inactive_packages(hostname)
-                elif match_criteria == 'active':
-                    host_packages = get_host_active_packages(hostname)
-
-                missing_packages = get_missing_packages(host_packages, software_profile_packages)
-                if missing_packages:
-                    host_not_in_conformance += 1
-
-                conformed = False
-                if len(host_packages) > 0 and len(missing_packages) == 0:
-                    conformed = True
-
-                conformance_report_entry = ConformanceReportEntry(
-                    hostname=hostname,
-                    platform=UNKNOWN if host.software_platform is None else host.software_platform,
-                    software=UNKNOWN if host.software_version is None else host.software_version,
-                    conformed='Yes' if conformed else 'No',
-                    comments=comments,
-                    host_packages=','.join(sorted(match_packages(host_packages, packages_to_match))),
-                    missing_packages=','.join(sorted(missing_packages)))
-            else:
-                # Flag host not found condition
+            if inventory_job.status != JobStatus.COMPLETED:
+                comments += ' *'
                 host_out_dated_inventory += 1
+
+            host_packages = []
+            if match_criteria == 'inactive':
+                host_packages = get_host_inactive_packages(hostname)
+            elif match_criteria == 'active':
+                host_packages = get_host_active_packages(hostname)
+
+            missing_packages = get_missing_packages(host_packages, software_profile_packages)
+            if missing_packages:
                 host_not_in_conformance += 1
 
-                conformance_report_entry = ConformanceReportEntry(
-                    hostname=hostname,
-                    platform='MISSING',
-                    software='MISSING',
-                    host_packages='MISSING',
-                    missing_packages='MISSING')
+            conformed = False
+            if len(host_packages) > 0 and len(missing_packages) == 0:
+                conformed = True
 
-            conformance_report.entries.append(conformance_report_entry)
+            conformance_report_entry = ConformanceReportEntry(
+                hostname=hostname,
+                platform=UNKNOWN if host.software_platform is None else host.software_platform,
+                software=UNKNOWN if host.software_version is None else host.software_version,
+                conformed='Yes' if conformed else 'No',
+                comments=comments,
+                host_packages=','.join(sorted(match_packages(host_packages, packages_to_match))),
+                missing_packages=','.join(sorted(missing_packages)))
+        else:
+            # Flag host not found condition
+            host_out_dated_inventory += 1
+            host_not_in_conformance += 1
 
-        conformance_report.host_not_in_conformance = host_not_in_conformance
-        conformance_report.host_out_dated_inventory = host_out_dated_inventory
+            conformance_report_entry = ConformanceReportEntry(
+                hostname=hostname,
+                platform='MISSING',
+                software='MISSING',
+                host_packages='MISSING',
+                missing_packages='MISSING')
 
-        db_session.add(conformance_report)
-        db_session.commit()
-    else:
-        return jsonify({'status': 'Unable to locate the software profile %s' % profile_name})
+        conformance_report.entries.append(conformance_report_entry)
+
+    conformance_report.host_not_in_conformance = host_not_in_conformance
+    conformance_report.host_out_dated_inventory = host_out_dated_inventory
+
+    db_session.add(conformance_report)
+    db_session.commit()
 
     purge_old_conformance_reports(db_session)
 
@@ -491,9 +525,10 @@ def api_export_conformance_report(id):
 def api_get_conformance_report_summary(id):
     db_session = DBSession()
     conformance_report = get_conformance_report_by_id(db_session, id)
+
     if conformance_report is not None:
         return jsonify(**{'data': [
-            {'total_hosts': len(conformance_report.hostnames.split(',')),
+            {'total_hosts': 0 if is_empty(conformance_report.hostnames) else len(conformance_report.hostnames.split(',')),
              'host_not_in_conformance': conformance_report.host_not_in_conformance,
              'host_out_dated_inventory': conformance_report.host_out_dated_inventory,
              'match_criteria': (conformance_report.match_criteria + ' Packages').title()}
@@ -576,10 +611,10 @@ def api_get_software_profile_names():
     rows = []
     db_session = DBSession()
 
-    software_profile_names = get_software_profile_names(db_session)
-    if len(software_profile_names) > 0:
-        for software_profile_name in software_profile_names:
-            rows.append({'software_profile_name': software_profile_name})
+    software_profiles = get_software_profile_list(db_session)
+    if software_profiles is not None:
+        for software_profile in software_profiles:
+            rows.append({'software_profile_name': software_profile.name})
 
     return jsonify(**{'data': rows})
 
@@ -645,12 +680,33 @@ def export_software_profiles():
     return send_file(os.path.join(software_profile_export_temp_path, 'software_profiles.json'), as_attachment=True)
 
 
-def get_software_profile(db_session, profile_name):
-    return db_session.query(SoftwareProfile).filter(SoftwareProfile.name == profile_name).first()
+@conformance.route('/api/assign_software_profile_to_hosts', methods=['POST'])
+@login_required
+def api_assign_software_profile_to_hosts():
+    platform = request.form['platform']
+    software_versions = request.form.getlist('software_versions[]')
+    region_ids = request.form.getlist('region_ids[]')
+    roles = request.form.getlist('roles[]')
+    profile_name = request.form['software_profile']
 
+    db_session = DBSession()
+    software_profile = get_software_profile(db_session, profile_name)
+    if software_profile is None:
+        return jsonify({'status': 'Unable to assign Software Profile "' +
+                                  profile_name + '" to Hosts.  It does not exist.'})
 
-def get_software_profile_names(db_session):
-    return db_session.query(SoftwareProfile.name).order_by(SoftwareProfile.name.asc()).all()
+    hosts = get_host_list_by(platform, software_versions, region_ids, roles)
+    message = 'No host fits the selection criteria'
+    if hosts:
+        try:
+            for host in hosts:
+                host.software_profile_id = software_profile.id
+            db_session.commit()
+            message = str(len(hosts)) + ' hosts has been updated.'
+        except Exception as e:
+            return jsonify({'status': e.message})
+
+    return jsonify({'status': 'OK', 'message': message})
 
 
 def allowed_file(filename):
@@ -667,11 +723,22 @@ class ConformanceForm(Form):
     conformance_reports = SelectField('Previously Run Reports', coerce=int, choices=[(-1, '')])
 
 
+class AssignSoftwareProfileToHostsForm(Form):
+    platform_2 = SelectField('Platform', coerce=str, choices=[('', '')])
+    software_2 = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
+    region_2 = SelectField('Region', coerce=int, choices=[(-1, 'ALL')])
+    role_2 = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
+    software_profile_2 = SelectField('Software Profile', coerce=str, choices=[('', '')])
+
+
 class ConformanceReportDialogForm(Form):
     software_profile = SelectField('Software Profile', coerce=str, choices=[('', '')])
     match_criteria = RadioField('Match Criteria',
-                                choices=[('inactive', 'Packages that have not been activated'),
-                                         ('active', 'Packages that are currently in active state')], default='active')
+                                choices=[('inactive', 'Software packages that are in inactive state'),
+                                         ('active', 'Software packages that are in active state')], default='active')
+    host_selection_criteria = RadioField('Host Selection Criteria',
+                                         choices=[('auto', 'Select hosts that match the selected software profile'),
+                                                  ('manual', 'Select hosts manually')], default='auto')
 
     platform = SelectField('Platform', coerce=str, choices=[('', '')])
     software = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])

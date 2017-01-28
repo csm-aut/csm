@@ -102,6 +102,8 @@ def api_create_hosts(request):
                 host = get_host(db_session, hostname)
 
                 region = get_region(db_session, data.get('region'))
+                # FIXME: FOR NOW UNTIL IT IS SUPPORTED
+                software_profile_id = -1
                 if region is None:
                     status_message = 'Region %s does not exist' % data.get('region')
                 else:
@@ -127,7 +129,9 @@ def api_create_hosts(request):
 
                         if status_message is None:
                             create_or_update_host(db_session=db_session, hostname=hostname, region_id=region.id,
-                                                  location=location, roles=roles, connection_type=connection_type,
+                                                  location=location, roles=roles,
+                                                  software_profile_id=software_profile_id,
+                                                  connection_type=connection_type,
                                                   host_or_ip=host_or_ip, username=username,
                                                   password=password, enable_password=enable_password, port_number=port_number,
                                                   jump_host_id=jump_host_id, created_by=user, host=host)

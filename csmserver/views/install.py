@@ -140,7 +140,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     fill_servers(form.cisco_dialog_server.choices, region_servers, False)
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs,
                                            (-1 if install_job is None else install_job.id))
-    fill_custom_command_profiles(form.custom_command_profile.choices)
+    fill_custom_command_profiles(db_session, form.custom_command_profile.choices)
 
     if request.method == 'POST':
         if install_job is not None:
@@ -241,9 +241,9 @@ def batch_schedule_install():
     form = ScheduleInstallForm(request.form)
 
     # Fills the selections
-    fill_regions(form.region.choices)
+    fill_regions(db_session, form.region.choices)
     fill_dependencies(form.dependency.choices)
-    fill_custom_command_profiles(form.custom_command_profile.choices)
+    fill_custom_command_profiles(db_session, form.custom_command_profile.choices)
 
     return_url = get_return_url(request, 'home')
 

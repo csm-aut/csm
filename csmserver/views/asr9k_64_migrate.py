@@ -415,10 +415,12 @@ def init_schedule_form(db_session, http_request, get=False):
     if hosts is None:
         abort(404)
 
+    db_session = DBSession()
+
     schedule_form = ScheduleMigrationForm(http_request.form)
-    fill_regions(schedule_form.region.choices)
+    fill_regions(db_session, schedule_form.region.choices)
     fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
-    fill_custom_command_profiles(schedule_form.custom_command_profile.choices)
+    fill_custom_command_profiles(db_session, schedule_form.custom_command_profile.choices)
 
     if get:
         # Initialize the hidden fields
@@ -477,7 +479,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
     # Fills the selections
     fill_servers(schedule_form.server_dialog_server.choices, host.region.servers, include_local=False)
-    fill_custom_command_profiles(schedule_form.custom_command_profile.choices)
+    fill_custom_command_profiles(db_session, schedule_form.custom_command_profile.choices)
     fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
 
     if request.method == 'POST':

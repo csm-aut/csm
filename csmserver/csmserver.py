@@ -52,6 +52,7 @@ from common import get_host_list
 from common import get_server_list
 from common import get_region
 from common import get_region_by_id
+from common import get_host_list_by
 
 from utils import is_empty
 from utils import get_build_date
@@ -345,32 +346,12 @@ def api_get_distinct_host_roles(platform, software_versions, region_ids):
 @app.route('/api/get_hosts/platform/<platform>/software_versions/<software_versions>/region_ids/<region_ids>/roles/<roles>')
 @login_required
 def api_get_hosts_by_platform(platform, software_versions, region_ids, roles):
-    clauses = []
-    db_session = DBSession()
-
-    clauses.append(Host.software_platform == platform)
-    if 'ALL' not in software_versions:
-        clauses.append(Host.software_version.in_(software_versions.split(',')))
-
-    if 'ALL' not in region_ids:
-        clauses.append(Host.region_id.in_(region_ids.split(',')))
-
-    # Retrieve relevant hosts
-    hosts = db_session.query(Host).filter(and_(*clauses)).all()
-
-    roles_list = [] if 'ALL' in roles else roles.split(',')
-
     rows = []
+
+    hosts = get_host_list_by(platform, software_versions, region_ids, roles)
+
     for host in hosts:
-        # Match on selected roles given by the user
-        if not is_empty(roles_list):
-            if not is_empty(host.roles):
-                for role in host.roles.split(','):
-                    if role in roles_list:
-                        rows.append({'hostname': host.hostname})
-                        break
-        else:
-            rows.append({'hostname': host.hostname})
+        rows.append({'hostname': host.hostname})
 
     return jsonify(**{'data': rows})
 

@@ -429,7 +429,7 @@
                         bootbox.alert("Unable to create download jobs.");
                     } else {
                         var download_dashboard_url = "{{ url_for('download_dashboard.home') }}";
-                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>CCO Download Dashboard</a> to view the download status.<br><br>");
+                        bootbox.alert("Requested download has been submitted. Click <a href='" + download_dashboard_url + "'>Download Dashboard</a> to view the download status.<br><br>");
                     }
                 } else {
                     bootbox.alert("on_finish_validate() Error=" + xhr.statusText);

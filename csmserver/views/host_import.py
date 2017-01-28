@@ -77,10 +77,10 @@ def import_hosts():
     if not can_create(current_user):
         abort(401)
 
+    db_session = DBSession()
     form = HostImportForm(request.form)
-    fill_regions(form.region.choices)
+    fill_regions(db_session, form.region.choices)
     ip_range_dialog_form = IPRangeForm(request.form)
-    #fill_regions(ip_range_dialog_form.region2.choices)
 
     return render_template('host/import_hosts.html', form=form,
                            ip_range_dialog_form=ip_range_dialog_form)

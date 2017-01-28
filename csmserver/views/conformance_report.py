@@ -27,6 +27,7 @@ import xlwt
 from filters import get_datetime_string
 from smu_info_loader import SMUInfoLoader
 
+from utils import is_empty
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
@@ -89,8 +90,11 @@ class ConformanceReportWriter(ReportWriter):
         self.ws.write(1, 2, report_datetime, self.style_center )
         
         self.ws.write(4, 0, 'Summary: ', self.style_bold)
-        self.ws.write(6, 0, 'Total Hosts: %d' % len(self.conformance_report.hostnames.split(',')),
-                      self.style_summary)
+
+        total_hosts = 0 if is_empty(self.conformance_report.hostnames) else \
+            len(self.conformance_report.hostnames.split(','))
+
+        self.ws.write(6, 0, 'Total Hosts: %d' % total_hosts, self.style_summary)
         self.ws.write(7, 0, 'Match Criteria: ' + (self.conformance_report.match_criteria + ' packages').title(),
                       self.style_summary)
         self.ws.write(8, 0, 'Results:', self.style_summary)

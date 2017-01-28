@@ -271,6 +271,7 @@ class Host(Base):
     location = Column(String(100))
     roles = Column(String(100))
     region_id = Column(Integer, ForeignKey('region.id'))
+    software_profile_id = Column(Integer, ForeignKey('software_profile.id'))
     proxy_agent = Column(String(30), default=ProxyAgent.CSM_SERVER)
     can_schedule = Column(Boolean, default=True)
     can_install = Column(Boolean, default=True)

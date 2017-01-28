@@ -9,82 +9,43 @@ var host_selector;
 
 $(function() {
 
-    $("#software").select2();
-    $("#region").select2();
-    $("#role").select2();
+    var platform_ui = $('#platform');
+    var software_ui = $("#software").select2();
+    var region_ui = $("#region").select2();
+    var roles_ui = $("#role").select2();
 
     host_selector = $('#host-selector').DualListBox();
-    populate_host_platforms();
 
-    function populate_host_platforms() {
-        $('#platform').find('option').remove();
-        $('#platform').append('<option value=""></option>');
-        $.ajax({
-            url: "/api/get_distinct_host_platforms",
-            dataType: 'json',
-            success: function(data) {
-                $.each(data, function(index, element) {
-                    for (i = 0; i < element.length; i++) {
-                        var platform = element[i].platform;
-                        if (platform != 'Unknown') {
-                            $('#platform').append('<option value="' + platform + '">' + platform + '</option>');
-                        }
-                    }
-                });
-            }
-        });
-    }
+    populate_host_platforms(platform_ui);
 
-    function populate_host_software_versions(platform) {
-        $('#software').find('option').remove();
-        $('#software').append('<option value="ALL">ALL</option>');
-        $.ajax({
-            url: "/api/get_distinct_host_software_versions/platform/" + platform,
-            dataType: 'json',
-            success: function(data) {
-                $.each(data, function(index, element) {
-                    for (i = 0; i < element.length; i++) {
-                        var software_version = element[i].software_version;
-                        $('#software').append('<option value="' + software_version + '">' + software_version + '</option>');;
-                    }
-                });
-            }
-        });
-    }
+    platform_ui.on('change', function(e) {
+        if ($(this).val().length > 0) {
+            initialize_select2(software_ui);
+            initialize_select2(region_ui);
+            initialize_select2(roles_ui);
+            populate_host_software_versions(platform_ui, software_ui);
+        }
+    });
 
-    function populate_host_regions(platform, software_versions) {
-        $('#region').find('option').remove();
-        $('#region').append('<option value="ALL">ALL</option>');
-        $.ajax({
-            url: "/api/get_distinct_host_regions/platform/" + platform +
-                 "/software_versions/" + (software_versions == null ? 'ALL' : software_versions),
-            dataType: 'json',
-            success: function(data) {
-                $.each(data, function(index, element) {
-                    for (i = 0; i < element.length; i++) {
-                        $('#region').append('<option value="' + element[i].region_id + '">' + element[i].region_name + '</option>');;
-                    }
-                });
-            }
-        });
-    }
+    software_ui.on('change', function(e) {
+        if ($(this).val() != null) {
+            initialize_select2(region_ui);
+            initialize_select2(roles_ui);
+            populate_host_regions(platform_ui, software_ui, region_ui);
+        }
+    });
 
-    function populate_host_roles(platform, software_versions, region_ids) {
-        $('#role').find('option').remove();
-        $('#role').append('<option value="ALL">ALL</option>');
-        $.ajax({
-            url: "/api/get_distinct_host_roles/platform/" + platform +
-                 "/software_versions/" + (software_versions == null ? 'ALL' : software_versions) +
-                 "/region_ids/" +  ((region_ids == null || region_ids == -1) ? 'ALL' : region_ids),
-            dataType: 'json',
-            success: function(data) {
-                $.each(data, function(index, element) {
-                    for (i = 0; i < element.length; i++) {
-                        $('#role').append('<option value="' + element[i].role + '">' + element[i].role + '</option>');;
-                    }
-                });
-            }
-        });
+    region_ui.on('change', function(e) {
+        if ($(this).val() != null) {
+            initialize_select2(roles_ui);
+            populate_host_roles(platform_ui, software_ui, region_ui, roles_ui);
+        }
+    });
+
+    function initialize_select2(select2_ui) {
+        if (select2_ui.val() != null) {
+            select2_ui.select2('val', '');
+        }
     }
 
     $('#retrieve-hosts-by-platform').on('click', function(e) {
@@ -119,53 +80,6 @@ $(function() {
                 host_selector.initialize(available_hosts);
             }
         });
-
     }
-
-    $('#region').on('change', function(e) {
-        var platform = $('#platform option:selected').val();
-        var software_versions = $('#software').val();
-        var region_ids = $('#region').val();
-
-        if (region_ids != null) {
-            if ($('#role').val() != null) {
-                $('#role').select2('val','');
-            }
-            populate_host_roles(platform, software_versions, region_ids);
-        }
-    });
-
-    $('#software').on('change', function(e) {
-        var platform = $('#platform option:selected').val();
-        var software_versions = $('#software').val();
-
-        if (software_versions != null) {
-            if ($('#region').val() != null) {
-                $('#region').select2('val','');
-            }
-            if ($('#role').val() != null) {
-                $('#role').select2('val','');
-            }
-            populate_host_regions(platform, software_versions);
-        }
-    });
-
-    $('#platform').on('change', function(e) {
-        var platform = $('#platform option:selected').val();
-
-        if (platform.length > 0) {
-            // Remove the selections from Select2
-            if ($('#software').val() != null) {
-                $('#software').select2('val','');
-            }
-            if ($('#region').val() != null) {
-                $('#region').select2('val','');
-            }
-            if ($('#role').val() != null) {
-                $('#role').select2('val','');
-            }
-            populate_host_software_versions(platform);
-        }
-    });
 
 });

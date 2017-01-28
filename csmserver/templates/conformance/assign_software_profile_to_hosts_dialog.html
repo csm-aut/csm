@@ -1,0 +1,122 @@
+
+<script>
+
+    $(function() {
+
+        var platform_ui = $('#platform_2');
+        var software_ui = $("#software_2").select2();
+        var region_ui = $("#region_2").select2();
+        var roles_ui = $("#role_2").select2();
+        var software_profile_ui = $('#software_profile_2');
+
+        populate_host_platforms(platform_ui);
+        populate_software_profiles(software_profile_ui, false);
+
+        platform_ui.on('change', function(e) {
+            if ($(this).val().length > 0) {
+                initialize_select2(software_ui);
+                initialize_select2(region_ui);
+                initialize_select2(roles_ui);
+                populate_host_software_versions(platform_ui, software_ui);
+            }
+        });
+
+        software_ui.on('change', function(e) {
+            if ($(this).val() != null) {
+                initialize_select2(region_ui);
+                initialize_select2(roles_ui);
+                populate_host_regions(platform_ui, software_ui, region_ui);
+            }
+        });
+
+        region_ui.on('change', function(e) {
+            if ($(this).val() != null) {
+                initialize_select2(roles_ui);
+                populate_host_roles(platform_ui, software_ui, region_ui, roles_ui);
+            }
+        });
+
+        function initialize_select2(select2_ui) {
+            if (select2_ui.val() != null) {
+                select2_ui.select2('val', '');
+            }
+        }
+
+        $('#on-assign-software-profile-to-hosts-submit').on('click', function(e) {
+            var platform = platform_ui.val();
+            var software_versions = software_ui.val();
+            var region_ids = region_ui.val();
+            var roles = roles_ui.val();
+            var software_profile = software_profile_ui.val()
+
+            if (platform_ui.val().length == 0) {
+                bootbox.alert('Platform has not been specified.');
+                return false;
+            }
+
+            if (software_profile_ui.val().length == 0) {
+                bootbox.alert('Software Profile has not been specified.');
+                return false;
+            }
+
+            assign_software_profile_to_hosts(platform, software_versions, region_ids, roles, software_profile);
+        });
+
+        function assign_software_profile_to_hosts(platform, software_versions, region_ids, roles, software_profile) {
+            $.ajax({
+                url: "{{ url_for('conformance.api_assign_software_profile_to_hosts') }}",
+                type: "POST",
+                data: { platform: platform,
+                        software_versions: (software_versions == null ? ['ALL'] : software_versions),
+                        region_ids: ((region_ids == null || region_ids == -1) ? ['ALL'] : region_ids),
+                        roles: (roles == null ? ['ALL'] : roles),
+                        software_profile: software_profile },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status == 'OK') {
+                        bootbox.alert(response.message);
+                    } else {
+                        display_error(response.status);
+                    }
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    display_error(errorThrown);
+                }
+            });
+        }
+
+        function display_error(message) {
+            bootbox.alert("<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;" + message);
+        }
+
+    });
+
+</script>
+
+<div id="assign-software-profile-to-hosts-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Assign Software Profile to Hosts</h4>
+                </div>
+                <div class="modal-body">
+                    {{ edit_field(assign_software_profile_to_hosts_form.platform_2, field_width="col-sm-5", class="form-control") }}
+                    {{ edit_field(assign_software_profile_to_hosts_form.software_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+                    {{ edit_field(assign_software_profile_to_hosts_form.region_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+                    {{ edit_field(assign_software_profile_to_hosts_form.role_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+                    {{ edit_field(assign_software_profile_to_hosts_form.software_profile_2, style="width: 100%", field_width="col-sm-5", class="form-control") }}
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-assign-software-profile-to-hosts-submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

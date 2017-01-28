@@ -42,6 +42,14 @@ $(function() {
                     bootbox.alert("Software Profile has not been specified.");
                     return false;
                 }
+                var val = $("input[name=host_selection_criteria]:checked").val();
+                if (val == 'auto') {
+                    $('#manual-select-hosts-panel').hide();
+                    $('#auto-select-hosts-panel').show();
+                } else {
+                    $('#auto-select-hosts-panel').hide();
+                    $('#manual-select-hosts-panel').show();
+                }
             }
         },
         onTabClick : function(tab, navigation, index){
@@ -79,26 +87,5 @@ function display_conformance_report_dialog() {
         backdrop: 'static'
     });
     
-    get_software_profiles();
-}
-
-function get_software_profiles() {
-    software_profile_selector.empty().append('<option value=""></option>');
-    
-    $.ajax({
-        url: "/conformance/api/get_software_profile_names",
-        dataType: 'json',
-        success: function(response) {
-            $.each(response, function(index, element) {
-                for (i = 0; i < element.length; i++) {
-                    var software_profile = element[i].software_profile_name;
-                    software_profile_selector.append('<option value="' + software_profile + '">' + software_profile + '</option>');
-                }
-            });
-            
-            if (saved_software_profile) {
-                software_profile_selector.val(saved_software_profile);
-            }
-        }
-    });
+    populate_software_profiles(software_profile_selector, saved_software_profile);
 }

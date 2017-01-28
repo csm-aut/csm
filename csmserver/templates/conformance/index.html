@@ -68,14 +68,26 @@
                             if (result.status == 'OK') {
                                 software_profile_table.api().ajax.reload();
                             } else {
-                                bootbox.alert('Delete failed.');
+                                bootbox.alert(result.status);
                             }
                         }
                     });
                 }
             });
         });
-        
+
+
+        $('#assign-software-profile-to-hosts').on('click', function(e) {
+            $('#assign-software-profile-to-hosts-dialog').modal({
+                show: true
+            });
+        });
+
+        $('#view-host-software-profile').on('click', function(e) {
+            alert('DD');
+        });
+
+
         $('#export').on('click', function(e) {
             id = $('#conformance_reports').val();
             if (id == -1 || id == undefined) {
@@ -123,14 +135,20 @@
 
         $('#on-conformance-report-dialog-submit').on('click', function(e) {
             var match_criteria = $("input[name=match_criteria]:checked").val();
+            var host_selection_criteria = $("input[name=host_selection_criteria]:checked").val();
             var software_profile_name = software_profile_selector.val();
             var selected_hosts = host_selector.get_selected_items();
-            if (selected_hosts.length == 0) {
+
+            if (host_selection_criteria != "auto" && selected_hosts.length == 0) {
                 bootbox.alert("Host has not been specified.");
                 return false;
             }
 
-            run_conformance_report(software_profile_name, match_criteria, selected_hosts);
+            if (host_selection_criteria == "auto") {
+                run_conformance_report_that_match_host_software_profile(software_profile_name, match_criteria);
+            } else {
+                run_conformance_report(software_profile_name, match_criteria, selected_hosts);
+            }
         });
 
         $('#run-conformance-report').on('click', function(e) {
@@ -363,12 +381,32 @@
                 }
             });
         }
+
+        function run_conformance_report_that_match_host_software_profile(software_profile_name, match_criteria) {
+            $.ajax({
+                url: "/conformance/api/run_conformance_report_that_match_host_software_profile",
+                type: "POST",
+                dataType: 'json',
+                data: { software_profile_name: software_profile_name, match_criteria: match_criteria },
+                success: function(response) {
+                    if (response.status == 'OK') {
+                        get_conformance_reports();
+                    } else {
+                        bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;' + response.status);
+                    }
+                }
+            });
+        }
         
         function run_conformance_report(software_profile_name, match_criteria, selected_hosts) {
             $.ajax({
-                url: "/conformance/api/run_conformance_report",
+                url: "{{ url_for('conformance.api_run_conformance_report') }}",
+                type: "POST",
                 dataType: 'json',
-                data: { software_profile_name: software_profile_name, match_criteria: match_criteria, selected_hosts: selected_hosts.join()} ,
+                data: { software_profile_name: software_profile_name,
+                        match_criteria: match_criteria,
+                        selected_hosts: selected_hosts
+                      },
                 success: function(response) {
                     if (response.status == 'OK') {
                         get_conformance_reports();
@@ -513,6 +551,29 @@
         });
 
     });
+
+    //--------------------  External Functions --------------------//
+
+    function populate_software_profiles(selector_ui, default_software_profile) {
+        selector_ui.empty().append('<option value=""></option>');
+
+        $.ajax({
+            url: "/conformance/api/get_software_profile_names",
+            dataType: 'json',
+            success: function(response) {
+                $.each(response, function(index, element) {
+                    for (i = 0; i < element.length; i++) {
+                        var software_profile = element[i].software_profile_name;
+                        selector_ui.append('<option value="' + software_profile + '">' + software_profile + '</option>');
+                    }
+                });
+
+                if (default_software_profile) {
+                    software_profile_selector.val(default_software_profile);
+                }
+            }
+        });
+    }
     
 </script>
 
@@ -553,6 +614,9 @@
     server_time, install_actions, make_conform_dialog_form.software_packages, make_conform_dialog_form.custom_command_profile, make_conform_dialog_form.scheduled_time,
     make_conform_dialog_form.scheduled_time_UTC) }}
 
+
+{% include 'conformance/assign_software_profile_to_hosts_dialog.html' %}
+
 <div id="export-conformance-report-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" class="form-horizontal">
@@ -585,6 +649,7 @@
         </form>
     </div>
 </div>
+
 <div id="export-sw-profiles-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
         <form id="export-sw-profiles-form" name="sw-export-profiles-form" method="post" action="">
@@ -654,6 +719,23 @@
 </div>
 <!-- Main -->
 <div class="container">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="btn-group pull-right">
+                <button type="button"  class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                Action
+                <span class="glyphicon glyphicon-link"></span>
+                <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="javascript://" id="assign-software-profile-to-hosts">Assign Software Profile to Hosts</a></li>
+                    <li class="divider"></li>
+                    <li><a href="javascript://" id="view-host-software-profile">View Host Software Profile</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-sm-12">
             <ul class="nav nav-tabs" id="conformance-tab">

@@ -581,3 +581,92 @@ function validate_package_count_restriction(software_platform, software_version,
     }
     return true;
 }
+
+/**
+ * platform_ui is just a regular selector
+ */
+function populate_host_platforms(platform_ui) {
+    platform_ui.find('option').remove();
+    platform_ui.append('<option value=""></option>');
+    $.ajax({
+        url: "/api/get_distinct_host_platforms",
+        dataType: 'json',
+        success: function(data) {
+            $.each(data, function(index, element) {
+                for (i = 0; i < element.length; i++) {
+                    var platform = element[i].platform;
+                    if (platform != 'Unknown') {
+                        platform_ui.append('<option value="' + platform + '">' + platform + '</option>');
+                    }
+                }
+            });
+        }
+    });
+}
+
+/**
+ * platform_ui is just a regular selector
+ * software_ui is a Select2 selector
+ */
+function populate_host_software_versions(platform_ui, software_ui) {
+    software_ui.find('option').remove();
+    software_ui.append('<option value="ALL">ALL</option>');
+    $.ajax({
+        url: "/api/get_distinct_host_software_versions/platform/" + platform_ui.val(),
+        dataType: 'json',
+        success: function(data) {
+            $.each(data, function(index, element) {
+                for (i = 0; i < element.length; i++) {
+                    var software_version = element[i].software_version;
+                    software_ui.append('<option value="' + software_version + '">' + software_version + '</option>');;
+                }
+            });
+        }
+    });
+}
+
+/**
+ * platform_ui is just a regular selector
+ * software_ui is a Select2 selector
+ * region_ui is a Select2 selector
+ */
+function populate_host_regions(platform_ui, software_ui, region_ui) {
+    region_ui.find('option').remove();
+    region_ui.append('<option value="ALL">ALL</option>');
+    $.ajax({
+        url: "/api/get_distinct_host_regions/platform/" + platform_ui.val() +
+             "/software_versions/" + (software_ui.val() == null ? 'ALL' : software_ui.val()),
+        dataType: 'json',
+        success: function(data) {
+            $.each(data, function(index, element) {
+                for (i = 0; i < element.length; i++) {
+                    region_ui.append('<option value="' + element[i].region_id + '">' + element[i].region_name + '</option>');;
+                }
+            });
+        }
+    });
+}
+
+/**
+ * platform_ui is just a regular selector
+ * software_ui is a Select2 selector
+ * region_ui is a Select2 selector
+ * roles_ui is a Select2 selector
+ */
+function populate_host_roles(platform_ui, software_ui, region_ui, roles_ui) {
+    roles_ui.find('option').remove();
+    roles_ui.append('<option value="ALL">ALL</option>');
+    $.ajax({
+        url: "/api/get_distinct_host_roles/platform/" + platform_ui.val() +
+             "/software_versions/" + (software_ui.val() == null ? 'ALL' : software_ui.val()) +
+             "/region_ids/" +  ((region_ui.val() == null || region_ui.val() == -1) ? 'ALL' : region_ui.val()),
+        dataType: 'json',
+        success: function(data) {
+            $.each(data, function(index, element) {
+                for (i = 0; i < element.length; i++) {
+                    roles_ui.append('<option value="' + element[i].role + '">' + element[i].role + '</option>');;
+                }
+            });
+        }
+    });
+}
