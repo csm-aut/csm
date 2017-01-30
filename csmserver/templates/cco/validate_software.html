@@ -99,7 +99,7 @@
             }
 
             // Initialize the variables
-            $('#profile_name').val('');
+            $('#software_profile_name').val('');
 
             $('#create-software-profile-dialog').modal({
                 show: true,
@@ -109,35 +109,35 @@
         });
 
         $('#on-create-software-profile-submit').click(function(e) {
-            var profile_name = $('#profile_name').val().trim();
-            if (profile_name.length == 0) {
+            var software_profile_name = $('#software_profile_name').val().trim();
+            if (software_profile_name.length == 0) {
                 bootbox.alert('Software profile name has not been specified.');
                 return false;
             }
 
-            var acceptable_string = get_acceptable_string(profile_name);
+            var acceptable_string = get_acceptable_string(software_profile_name);
 
-            if (acceptable_string != profile_name) {
-                var message = get_acceptable_string_message('Profile name', profile_name, acceptable_string);
+            if (acceptable_string != software_profile_name) {
+                var message = get_acceptable_string_message('Software Profile name', software_profile_name, acceptable_string);
                 bootbox.confirm(message, function(result) {
                     if (result) {
-                        $('#profile_name').val(acceptable_string);
+                        $('#software_profile_name').val(acceptable_string);
                     }
                 });
             } else {
-                create_software_profile(profile_name, $('#validate_results').val());
+                create_software_profile(software_profile_name, $('#validate_results').val());
             }
 
             return false;
         });
 
-        function create_software_profile(profile_name, software_packages) {
+        function create_software_profile(software_profile_name, software_packages) {
             $.ajax({
                 url: "/conformance/api/create_software_profile",
                 dataType: 'json',
                 type: "POST",
                 data: {
-                    profile_name: profile_name,
+                    software_profile_name: software_profile_name,
                     software_packages: trim_lines(software_packages),
                 },
                 success: function(data) {
@@ -186,7 +186,7 @@
                     <h4>Create Software Profile</h4>
                 </div>
                 <div class="modal-body">
-                    {{ edit_field(software_profile_form.profile_name, field_width="col-sm-6", class="form-control") }}
+                    {{ edit_field(software_profile_form.software_profile_name, field_width="col-sm-6", class="form-control") }}
                 </div>
                 <div class="modal-footer">
                     <div class="form-actions">

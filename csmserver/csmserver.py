@@ -347,8 +347,9 @@ def api_get_distinct_host_roles(platform, software_versions, region_ids):
 @login_required
 def api_get_hosts_by_platform(platform, software_versions, region_ids, roles):
     rows = []
+    db_session = DBSession()
 
-    hosts = get_host_list_by(platform, software_versions, region_ids, roles)
+    hosts = get_host_list_by(db_session, platform, software_versions, region_ids, roles)
 
     for host in hosts:
         rows.append({'hostname': host.hostname})

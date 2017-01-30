@@ -35,6 +35,7 @@ from sqlalchemy import and_
 from database import DBSession
 
 from common import get_host
+from common import get_software_profile_by_id
 from common import can_delete_install
 from common import can_retrieve_software
 from common import delete_install_job_dependencies
@@ -92,6 +93,7 @@ def api_get_host_dashboard_cookie(hostname):
 
     rows = []
     if host is not None:
+        software_profile = get_software_profile_by_id(db_session, host.software_profile_id)
         system_option = SystemOption.get(db_session)
         row = {}
         connection_param = host.connection_param[0]
@@ -107,6 +109,7 @@ def api_get_host_dashboard_cookie(hostname):
         row['connection'] = connection_param.connection_type
         row['port_number'] = connection_param.port_number
         row['created_by'] = host.created_by
+        row['software_profile_name'] = '' if software_profile is None else software_profile.name
 
         if connection_param.jump_host is not None:
             row['jump_host'] = connection_param.jump_host.hostname

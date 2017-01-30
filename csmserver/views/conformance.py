@@ -56,6 +56,7 @@ from common import can_install
 from common import get_conformance_report_by_id
 from common import get_software_profile
 from common import get_software_profile_list
+from common import get_software_profile_by_id
 from common import delete_software_profile
 from common import get_host_list_by
 from common import get_hosts_by_software_profile_id
@@ -123,29 +124,29 @@ def home():
                         profiles = [p for (p,) in DBSession().query(SoftwareProfile.name).all()]
                         d = s["CSM Server:Software Profile"]
 
-                        for profile_name in d.keys():
+                        for software_profile_name in d.keys():
                             name = ''
-                            if profile_name in profiles:
-                                name = profile_name
+                            if software_profile_name in profiles:
+                                name = software_profile_name
                                 # Will keep appending ' - copy' until it hits a unique name
                                 while name in profiles:
                                     name += " - copy"
-                                msg += profile_name + ' -> ' + name + '\n'
+                                msg += software_profile_name + ' -> ' + name + '\n'
                                 profiles.append(name)
 
-                            if len(name) < 100 and len(profile_name) < 100:
+                            if len(name) < 100 and len(software_profile_name) < 100:
                                 try:
                                     profile = SoftwareProfile(
-                                        name=name if name else profile_name,
-                                        packages=d[profile_name],
+                                        name=name if name else software_profile_name,
+                                        packages=d[software_profile_name],
                                         created_by=current_user.username
                                     )
                                     db_session.add(profile)
                                     db_session.commit()
                                 except:
-                                    failed += profile_name + '\n'
+                                    failed += software_profile_name + '\n'
                             else:
-                                failed += profile_name + ' (name too long)\n'
+                                failed += software_profile_name + ' (name too long)\n'
 
                         if msg:
                             msg = "The following profiles already exist and will try to be imported under modified " \
@@ -166,6 +167,7 @@ def home():
     db_session = DBSession()
     conformance_form = ConformanceForm(request.form)
     assign_software_profile_to_hosts_form = AssignSoftwareProfileToHostsForm(request.form)
+    view_host_software_profile_form = ViewHostSoftwareProfileForm(request.form)
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
     make_conform_dialog_form = MakeConformDialogForm(request.form)
     fill_custom_command_profiles(db_session, make_conform_dialog_form.custom_command_profile.choices)
@@ -177,6 +179,7 @@ def home():
     return render_template('conformance/index.html',
                            conformance_form=conformance_form,
                            assign_software_profile_to_hosts_form=assign_software_profile_to_hosts_form,
+                           view_host_software_profile_form=view_host_software_profile_form,
                            conformance_report_dialog_form=conformance_report_dialog_form,
                            install_actions=[InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                                             InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
@@ -203,14 +206,14 @@ def software_profile_create():
 
     if request.method == 'POST' and form.validate():
 
-        software_profile = get_software_profile(db_session, form.profile_name.data)
+        software_profile = get_software_profile(db_session, form.software_profile_name.data)
 
         if software_profile is not None:
-            return render_template('conformance/profile_edit.html',
+            return render_template('conformance/software_profile_edit.html',
                                    form=form, system_option=SystemOption.get(db_session), duplicate_error=True)
 
         software_profile = SoftwareProfile(
-            name=form.profile_name.data,
+            name=form.software_profile_name.data,
             packages=','.join([l for l in form.software_packages.data.splitlines() if l]),
             created_by=current_user.username)
 
@@ -220,17 +223,17 @@ def software_profile_create():
         return redirect(url_for('conformance.home'))
     else:
 
-        return render_template('conformance/profile_edit.html',
+        return render_template('conformance/software_profile_edit.html',
                                form=form, server_dialog_form=server_dialog_form,
                                system_option=SystemOption.get(db_session))
 
 
-@conformance.route('/software_profile/<profile_name>/edit', methods=['GET', 'POST'])
+@conformance.route('/software_profile/<software_profile_name>/edit', methods=['GET', 'POST'])
 @login_required
-def software_profile_edit(profile_name):
+def software_profile_edit(software_profile_name):
     db_session = DBSession()
 
-    software_profile = get_software_profile(db_session, profile_name)
+    software_profile = get_software_profile(db_session, software_profile_name)
     if software_profile is None:
         abort(404)
 
@@ -239,24 +242,24 @@ def software_profile_edit(profile_name):
     fill_servers(server_dialog_form.server_dialog_server.choices, get_server_list(db_session), False)
 
     if request.method == 'POST' and form.validate():
-        if profile_name != form.profile_name.data and \
-                        get_software_profile(db_session, form.profile_name.data) is not None:
+        if software_profile_name != form.software_profile_name.data and \
+                        get_software_profile(db_session, form.software_profile_name.data) is not None:
             return render_template('conformance/profile_edit.html',
                                    form=form, server_dialog_form=server_dialog_form,
                                    system_option=SystemOption.get(db_session), duplicate_error=True)
 
-        software_profile.name = form.profile_name.data
+        software_profile.name = form.software_profile_name.data
         software_profile.packages = ','.join([l for l in form.software_packages.data.splitlines() if l]),
 
         db_session.commit()
 
         return redirect(url_for('conformance.home'))
     else:
-        form.profile_name.data = software_profile.name
+        form.software_profile_name.data = software_profile.name
         if software_profile.packages is not None:
             form.software_packages.data = '\n'.join(software_profile.packages.split(','))
 
-    return render_template('conformance/profile_edit.html',
+    return render_template('conformance/software_profile_edit.html',
                            form=form, server_dialog_form=server_dialog_form,
                            system_option=SystemOption.get(db_session))
 
@@ -267,10 +270,10 @@ def api_get_software_profiles():
     rows = []
     db_session = DBSession()
 
-    software_profiles = db_session.query(SoftwareProfile)
+    software_profiles = get_software_profile_list(db_session)
     for software_profile in software_profiles:
-        row = {'id': software_profile.id,
-               'profile_name': software_profile.name,
+        row = {'software_profile_id': software_profile.id,
+               'software_profile_name': software_profile.name,
                'packages': software_profile.packages,
                'created_by': software_profile.created_by}
 
@@ -285,19 +288,19 @@ def api_create_software_profile():
     if not can_create(current_user):
         abort(401)
 
-    profile_name = request.form['profile_name']
+    software_profile_name = request.form['software_profile_name']
     software_packages = request.form['software_packages']
 
     db_session = DBSession()
 
-    software_profile = get_software_profile(db_session, profile_name)
+    software_profile = get_software_profile(db_session, software_profile_name)
 
     if software_profile is not None:
-        return jsonify({'status': 'Software profile "' + profile_name +
+        return jsonify({'status': 'Software profile "' + software_profile_name +
                         '" already exists.  Use a different name instead.'})
 
     software_profile = SoftwareProfile(
-        name=profile_name,
+        name=software_profile_name,
         packages=','.join([l for l in software_packages.splitlines() if l]),
         created_by=current_user.username)
 
@@ -307,20 +310,20 @@ def api_create_software_profile():
     return jsonify({'status': 'OK'})
 
 
-@conformance.route('/software_profile/<profile_name>/delete', methods=['DELETE'])
+@conformance.route('/software_profile/<software_profile_name>/delete', methods=['DELETE'])
 @login_required
-def software_profile_delete(profile_name):
+def software_profile_delete(software_profile_name):
     if not can_delete(current_user):
         abort(401)
 
     db_session = DBSession()
 
     try:
-        delete_software_profile(db_session, profile_name)
+        delete_software_profile(db_session, software_profile_name)
         return jsonify({'status': 'OK'})
     except:
         return jsonify({'status': 'Unable to delete software profile "' +
-                                  profile_name + '".  Verify that it is not used by other hosts.'})
+                                  software_profile_name + '".  Verify that it is not used by other hosts.'})
 
 
 @conformance.route('/api/rerun_conformance_report/report/<int:id>')
@@ -347,13 +350,13 @@ def api_rerun_conformance_report(id):
 @login_required
 def api_run_conformance_report():
     db_session = DBSession()
-    profile_name = request.form['software_profile_name']
+    software_profile_id = request.form['software_profile_id']
     match_criteria = request.form['match_criteria']
     hostnames = request.form.getlist('selected_hosts[]')
 
-    software_profile = get_software_profile(db_session, profile_name)
+    software_profile = get_software_profile_by_id(db_session, software_profile_id)
     if not software_profile:
-        return jsonify({'status': 'Unable to locate the software profile %s' % profile_name})
+        return jsonify({'status': 'Unable to locate the software profile %d' % software_profile_id})
 
     return run_conformance_report(db_session, software_profile, match_criteria, hostnames)
 
@@ -362,12 +365,12 @@ def api_run_conformance_report():
 @login_required
 def api_run_conformance_report_that_match_host_software_profile():
     db_session = DBSession()
-    profile_name = request.form['software_profile_name']
+    software_profile_id = request.form['software_profile_id']
     match_criteria = request.form['match_criteria']
 
-    software_profile = get_software_profile(db_session, profile_name)
+    software_profile = get_software_profile_by_id(db_session, software_profile_id)
     if not software_profile:
-        return jsonify({'status': 'Unable to locate the software profile %s' % profile_name})
+        return jsonify({'status': 'Unable to locate the software profile %d' % software_profile_id})
 
     hostnames = []
     hosts = get_hosts_by_software_profile_id(db_session, software_profile.id)
@@ -427,8 +430,8 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
 
             conformance_report_entry = ConformanceReportEntry(
                 hostname=hostname,
-                platform=UNKNOWN if host.software_platform is None else host.software_platform,
-                software=UNKNOWN if host.software_version is None else host.software_version,
+                software_platform=UNKNOWN if host.software_platform is None else host.software_platform,
+                software_version=UNKNOWN if host.software_version is None else host.software_version,
                 conformed='Yes' if conformed else 'No',
                 comments=comments,
                 host_packages=','.join(sorted(match_packages(host_packages, packages_to_match))),
@@ -440,8 +443,8 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
 
             conformance_report_entry = ConformanceReportEntry(
                 hostname=hostname,
-                platform='MISSING',
-                software='MISSING',
+                software_platform='MISSING',
+                software_version='MISSING',
                 host_packages='MISSING',
                 missing_packages='MISSING')
 
@@ -605,20 +608,6 @@ def get_conformance_report_by_user(db_session, username):
         ConformanceReport.created_time.desc()).all()
 
 
-@conformance.route('/api/get_software_profile_names')
-@login_required
-def api_get_software_profile_names():
-    rows = []
-    db_session = DBSession()
-
-    software_profiles = get_software_profile_list(db_session)
-    if software_profiles is not None:
-        for software_profile in software_profiles:
-            rows.append({'software_profile_name': software_profile.name})
-
-    return jsonify(**{'data': rows})
-
-
 @conformance.route('/api/create_install_jobs', methods=['POST'])
 @login_required
 def api_create_install_jobs():
@@ -661,13 +650,14 @@ def api_create_install_jobs():
 @login_required
 def export_software_profiles():
     db_session = DBSession()
-    profiles_list = request.args.getlist('sw_profiles_list[]')[0].split(",")
-    db_profiles = db_session.query(SoftwareProfile).all()
+
+    software_profile_list = request.args.getlist('software_profile_list[]')[0].split(",")
+    software_profiles = get_software_profile_list(db_session)
     d = {"CSM Server:Software Profile": {}}
 
-    for profile in db_profiles:
-        if profile.name in profiles_list:
-            d["CSM Server:Software Profile"][profile.name] = profile.packages
+    for software_profile in software_profiles:
+        if software_profile.name in software_profile_list:
+            d["CSM Server:Software Profile"][software_profile.name] = software_profile.packages
 
     temp_user_dir = create_temp_user_directory(current_user.username)
     software_profile_export_temp_path = os.path.normpath(os.path.join(temp_user_dir, "software_profile_export"))
@@ -687,20 +677,15 @@ def api_assign_software_profile_to_hosts():
     software_versions = request.form.getlist('software_versions[]')
     region_ids = request.form.getlist('region_ids[]')
     roles = request.form.getlist('roles[]')
-    profile_name = request.form['software_profile']
+    software_profile_id = int(request.form['software_profile'])
 
     db_session = DBSession()
-    software_profile = get_software_profile(db_session, profile_name)
-    if software_profile is None:
-        return jsonify({'status': 'Unable to assign Software Profile "' +
-                                  profile_name + '" to Hosts.  It does not exist.'})
-
-    hosts = get_host_list_by(platform, software_versions, region_ids, roles)
+    hosts = get_host_list_by(db_session, platform, software_versions, region_ids, roles)
     message = 'No host fits the selection criteria'
     if hosts:
         try:
             for host in hosts:
-                host.software_profile_id = software_profile.id
+                host.software_profile_id = software_profile_id
             db_session.commit()
             message = str(len(hosts)) + ' hosts has been updated.'
         except Exception as e:
@@ -715,7 +700,7 @@ def allowed_file(filename):
 
 
 class SoftwareProfileForm(Form):
-    profile_name = StringField('Profile Name', [required(), Length(max=30)])
+    software_profile_name = StringField('Software Profile Name', [required(), Length(max=30)])
     software_packages = TextAreaField('Software Packages', [required()])
 
 
@@ -728,11 +713,15 @@ class AssignSoftwareProfileToHostsForm(Form):
     software_2 = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
     region_2 = SelectField('Region', coerce=int, choices=[(-1, 'ALL')])
     role_2 = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
-    software_profile_2 = SelectField('Software Profile', coerce=str, choices=[('', '')])
+    software_profile_2 = SelectField('Software Profile', coerce=str, choices=[(-1, '')])
+
+
+class ViewHostSoftwareProfileForm(Form):
+    software_profile_3 = SelectField('Software Profile', coerce=str, choices=[(-1, '')])
 
 
 class ConformanceReportDialogForm(Form):
-    software_profile = SelectField('Software Profile', coerce=str, choices=[('', '')])
+    software_profile = SelectField('Software Profile', coerce=str, choices=[(-1, '')])
     match_criteria = RadioField('Match Criteria',
                                 choices=[('inactive', 'Software packages that are in inactive state'),
                                          ('active', 'Software packages that are in active state')], default='active')

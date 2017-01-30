@@ -31,10 +31,8 @@
             $('#scheduled-time').val(current_time);
         });
 
-        $('#imp-exp-btn-gr').hide();
-
-        var msg = $('#sw-profiles-import-form').data("msg");
-            if( msg != '' ){
+        var msg = $('#import-software-profile-form').data("msg");
+            if( msg != '' ) {
                 bootbox.alert(msg);
         }
 
@@ -43,13 +41,6 @@
 
         $('#conformance-tab').on('shown.bs.tab', function (e) {
             $.cookie('conformance-tab', $('.nav-tabs .active > a').attr('href'));
-
-            var target = $(e.target).attr("href")
-            if( target == '#software-profiles' ){
-                $('#imp-exp-btn-gr').show();
-            } else {
-                $('#imp-exp-btn-gr').hide();
-            }
         });
 
         var conformance_report_id = $.cookie('conformance-report-id');
@@ -57,9 +48,9 @@
         // Use delegate pattern for event
         $("#software-profile-table").on("click", ".data-delete-link", function() {
             var delete_url = $(this).attr('data-delete-url');
-            var profile_name = $(this).attr('data-delete-profile-name');
+            var software_profile_name = $(this).attr('data-delete-profile-name');
 
-            bootbox.confirm("You are about to delete software profile \'" + profile_name + "\'.  OK to proceed?", function(result) {
+            bootbox.confirm("You are about to delete software profile \'" + software_profile_name + "\'.  OK to proceed?", function(result) {
                 if (result) {
                     $.ajax({
                         url: delete_url,
@@ -84,7 +75,9 @@
         });
 
         $('#view-host-software-profile').on('click', function(e) {
-            alert('DD');
+            $('#view-host-software-profile-dialog').modal({
+                show: true
+            });
         });
 
 
@@ -136,7 +129,7 @@
         $('#on-conformance-report-dialog-submit').on('click', function(e) {
             var match_criteria = $("input[name=match_criteria]:checked").val();
             var host_selection_criteria = $("input[name=host_selection_criteria]:checked").val();
-            var software_profile_name = software_profile_selector.val();
+            var software_profile_id = software_profile_selector.val();
             var selected_hosts = host_selector.get_selected_items();
 
             if (host_selection_criteria != "auto" && selected_hosts.length == 0) {
@@ -145,9 +138,9 @@
             }
 
             if (host_selection_criteria == "auto") {
-                run_conformance_report_that_match_host_software_profile(software_profile_name, match_criteria);
+                run_conformance_report_that_match_host_software_profile(software_profile_id, match_criteria);
             } else {
-                run_conformance_report(software_profile_name, match_criteria, selected_hosts);
+                run_conformance_report(software_profile_id, match_criteria, selected_hosts);
             }
         });
 
@@ -161,7 +154,7 @@
             ],
             "columnDefs": [{
                 "targets": 0,
-                "data": 'profile_name',
+                "data": 'software_profile_name',
                 "render": function(data, type, row) {
                     return '<a href="/conformance/software_profile/' + data + '/edit">' + data + '</a>';
                 }
@@ -169,14 +162,14 @@
                 "targets": 1,
                 "data": 'packages',
                 "render": function(data, type, row) {
-                    return insert_slider(comma2br(data), row['id']);
+                    return insert_slider(comma2br(data), row['software_profile_id']);
                 }
             }, {
                 "targets": 2,
                 "data": 'created_by',
             }, {
                 "targets": 3,
-                "data": 'profile_name',
+                "data": 'software_profile_name',
                 "render": function(data, type, row) {
                     return '<a class="data-delete-link" href="javascript://"  \
                 data-delete-profile-name="' + data + '" \
@@ -382,12 +375,12 @@
             });
         }
 
-        function run_conformance_report_that_match_host_software_profile(software_profile_name, match_criteria) {
+        function run_conformance_report_that_match_host_software_profile(software_profile_id, match_criteria) {
             $.ajax({
                 url: "/conformance/api/run_conformance_report_that_match_host_software_profile",
                 type: "POST",
                 dataType: 'json',
-                data: { software_profile_name: software_profile_name, match_criteria: match_criteria },
+                data: { software_profile_id: software_profile_id, match_criteria: match_criteria },
                 success: function(response) {
                     if (response.status == 'OK') {
                         get_conformance_reports();
@@ -398,12 +391,12 @@
             });
         }
         
-        function run_conformance_report(software_profile_name, match_criteria, selected_hosts) {
+        function run_conformance_report(software_profile_id, match_criteria, selected_hosts) {
             $.ajax({
                 url: "{{ url_for('conformance.api_run_conformance_report') }}",
                 type: "POST",
                 dataType: 'json',
-                data: { software_profile_name: software_profile_name,
+                data: { software_profile_id: software_profile_id,
                         match_criteria: match_criteria,
                         selected_hosts: selected_hosts
                       },
@@ -466,9 +459,9 @@
             display_make_conform_dialog(hostname, software_platform, software_version, missing_packages);
         });
 
-        $('#export-sw-profiles-button').on("click", function(){
+        $('#export-software-profile').on("click", function(){
             export_sw_profiles_table.api().ajax.url("/conformance/api/get_software_profiles").load();
-            $('#export-sw-profiles-dialog').modal({show:true, backdrop:'static'});
+            $('#export-software-profile-dialog').modal({show:true, backdrop:'static'});
         });
 
         $('#export-sw-profiles-check-all').click(function () {
@@ -491,39 +484,39 @@
             "columnDefs": [{
                 "sortable": false,
                 "targets": 0,
-                "data": 'profile_name',
+                "data": 'software_profile_name',
                 "render": function ( data, type, row ) {
                     return '<center><input type="checkbox" value="' + data + '" class="check" name="profile_names"></center>';
                 }
             }, {
                 "targets": 1,
-                "data" : 'profile_name'
+                "data" : 'software_profile_name'
             }, {
                 "targets": 2,
                 "data": 'packages',
                 "render": function(data, type, row) {
-                    return insert_slider(comma2br(data), 'export-row' + row['id']);
+                    return insert_slider(comma2br(data), 'export-row' + row['software_profile_id']);
                 }
             } ]
         });
 
-        $('#export-sw-profiles-done').on('click', function(e) {
-            var sw_profiles_list = [];
+        $('#on-export-software-profile-submit').on('click', function(e) {
+            var software_profile_list = [];
             $('.check').each(function(index) {
                 if (this.checked) {
-                    sw_profiles_list.push($(this).val());
+                    software_profile_list.push($(this).val());
                 }
             });
-            if (sw_profiles_list == []) {
+            if (software_profile_list == []) {
                 return false;
             }
 
-            $('#export-sw-profiles-form').attr('action', "{{ url_for('conformance.export_software_profiles') }}?sw_profiles_list[]=" + sw_profiles_list);
-            $('#export-sw-profiles-form').submit();
+            $('#export-software-profile-form').attr('action', "{{ url_for('conformance.export_software_profiles') }}?software_profile_list[]=" + software_profile_list);
+            $('#export-software-profile-form').submit();
         });
 
-        $("#import-sw-profiles-button").on("click", function() {
-            $('#sw-profiles-import-dialog').modal({show:true, backdrop:'static'});
+        $("#import-software-profile").on("click", function() {
+            $('#import-software-profile-dialog').modal({show:true, backdrop:'static'});
         });
 
         $(document).on('change', '.btn-file :file', function() {
@@ -542,12 +535,12 @@
             }
         });
 
-        $('#software-profiles-import-submit').on('click', function() {
+        $('#on-import-software-profile-submit').on('click', function() {
             if($('.btn-file :file').val() == ''){
                 bootbox.alert("Please choose a file to import.");
                 return false;
             }
-            $('#sw-profiles-import-form').submit();
+            $('#import-software-profile-form').submit();
         });
 
     });
@@ -558,13 +551,14 @@
         selector_ui.empty().append('<option value=""></option>');
 
         $.ajax({
-            url: "/conformance/api/get_software_profile_names",
+            url: "{{ url_for('conformance.api_get_software_profiles') }}",
             dataType: 'json',
             success: function(response) {
                 $.each(response, function(index, element) {
                     for (i = 0; i < element.length; i++) {
-                        var software_profile = element[i].software_profile_name;
-                        selector_ui.append('<option value="' + software_profile + '">' + software_profile + '</option>');
+                        selector_ui.append('<option value="' +
+                            element[i].software_profile_id + '">' +
+                            element[i].software_profile_name + '</option>');
                     }
                 });
 
@@ -616,6 +610,7 @@
 
 
 {% include 'conformance/assign_software_profile_to_hosts_dialog.html' %}
+{% include 'conformance/view_host_software_profile_dialog.html' %}
 
 <div id="export-conformance-report-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -650,9 +645,9 @@
     </div>
 </div>
 
-<div id="export-sw-profiles-dialog" class="modal" role="dialog">
+<div id="export-software-profile-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
-        <form id="export-sw-profiles-form" name="sw-export-profiles-form" method="post" action="">
+        <form id="export-software-profile-form" method="post" action="">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal">x</button>
@@ -672,7 +667,7 @@
                     </table>
                     <div class="wizard-footer">
                         <div align="center">
-                            <input id='export-sw-profiles-done' data-dismiss="modal" type='submit' class='btn btn-fill btn-primary btn-wd btn-sm' name='sw-profile-export-done' value='Export' />
+                            <input id='on-export-software-profile-submit' data-dismiss="modal" type='submit' class='btn btn-fill btn-primary btn-wd btn-sm' value='Export' />
                             <input type="button" id="cancel" class="btn btn-fill btn-wd btn-sm" data-dismiss="modal" value="Cancel" />
                         </div>
                         <div class="clearfix"></div>
@@ -683,9 +678,9 @@
     </div>
 </div>
 
-<div id="sw-profiles-import-dialog" class="modal" role="dialog">
+<div id="import-software-profile-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
-        <form id="sw-profiles-import-form" method="post" class="form-horizontal" enctype="multipart/form-data" data-msg="{{ get_flashed_messages(category_filter=['import_feedback'])[0] | nl2br }}">
+        <form id="import-software-profile-form" method="post" class="form-horizontal" enctype="multipart/form-data" data-msg="{{ get_flashed_messages(category_filter=['import_feedback'])[0] | nl2br }}">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal">x</button>
@@ -709,7 +704,7 @@
                 <div class="modal-footer">
                     <div class="form-actions">
                         <div class="btn col-sm-offset-4">
-                            <input class="btn btn-primary form-control" id="software-profiles-import-submit" type=submit value=Import>
+                            <input class="btn btn-primary form-control" id="on-import-software-profile-submit" type=submit value=Import>
                         </div>
                     </div>
                 </div>
@@ -729,8 +724,10 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li><a href="javascript://" id="assign-software-profile-to-hosts">Assign Software Profile to Hosts</a></li>
-                    <li class="divider"></li>
                     <li><a href="javascript://" id="view-host-software-profile">View Host Software Profile</a></li>
+                    <li class="divider"></li>
+                    <li><a href="javascript://" id="export-software-profile">Export Software Profiles</a></li>
+                    <li><a href="javascript://" id="import-software-profile">Import Software Profiles</a></li>
                 </ul>
             </div>
         </div>
@@ -747,10 +744,6 @@
                         <li><a data-toggle="main-tab" href="{{ url_for('conformance.software_profile_create') }}">Software Profile</a></li>
                     </ul>
                 </li>
-                <div class="btn-group pull-right" id="imp-exp-btn-gr">
-                        <button id="import-sw-profiles-button" type="button" class="btn btn-default">Import</button>
-                        <button id="export-sw-profiles-button" type="button" class="btn btn-default">Export</button>
-                    </div><br>&nbsp;
             </ul>
             <div class="tab-content" style="margin-top:10px;">
                 <div id="conformance" class="tab-pane fade">

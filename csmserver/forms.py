@@ -167,7 +167,7 @@ class SelectServerForm(Form):
 
 
 class SoftwareProfileForm(Form):
-    profile_name = StringField('Profile Name', [required(), Length(max=30)])
+    software_profile_name = StringField('Software Profile Name', [required(), Length(max=30)])
 
 
 class ExportInformationForm(Form):

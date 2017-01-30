@@ -33,6 +33,8 @@ sql_statements = [
     'alter table server add destination_on_host VARCHAR(50)',
     'alter table email_job add attachment_file_paths VARCHAR(300)',
     'alter table host add software_profile_id INTEGER',
+    'alter table conformance_report_entry change platform software_platform VARCHAR(20)',
+    'alter table conformance_report_entry change software software_version VARCHAR(20)'
     ]
 
 

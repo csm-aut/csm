@@ -25,15 +25,15 @@
 
         $('#form').submit(function() {
             var current_form = this;
-            var profile_name = $('#profile_name').val();
-            var acceptable_string = get_acceptable_string(profile_name);
+            var software_profile_name = $('#software_profile_name').val();
+            var acceptable_string = get_acceptable_string(software_profile_name);
             $('#software_packages').val(trim_lines($('#software_packages').val()));
 
-            if (acceptable_string != profile_name) {
-                var message = get_acceptable_string_message('Profile name', profile_name, acceptable_string);
+            if (acceptable_string != software_profile_name) {
+                var message = get_acceptable_string_message('Software Profile name', software_profile_name, acceptable_string);
                 bootbox.confirm(message, function(result) {
                     if (result) {
-                        $('#profile_name').val(acceptable_string);
+                        $('#software_profile_name').val(acceptable_string);
                     }
                 });
             } else {
@@ -139,8 +139,8 @@
         <form id="form" method=post class="form-horizontal">
             <legend>{% if isEdit %}Edit Software Profile{% else %}Create Software Profile{% endif %}</legend>
             
-            {{ alert_duplicate(form.profile_name.data, duplicate_error) }}
-            {{ edit_field(form.profile_name, class="form-control") }}
+            {{ alert_duplicate(form.software_profile_name.data, duplicate_error) }}
+            {{ edit_field(form.software_profile_name, class="form-control") }}
             
             <div class="form-group ">
                 <label class="col-sm-4 control-label">Select From</label>  

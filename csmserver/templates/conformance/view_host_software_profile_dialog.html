@@ -1,0 +1,83 @@
+<script>
+
+    $(function() {
+        var software_profile_ui = $('#software_profile_3');
+
+        populate_software_profiles(software_profile_ui, false);
+
+        var host_software_profile_table_url = "/datatable/api/get_host_software_profile_list/software_profile/";
+        var host_software_profile_table = $("#host-software-profile-table").dataTable({
+            "serverSide": true,
+            "order": [
+                [0, "asc"]
+            ],
+            "pageLength": 10,
+            "columns": [
+                { "data": "hostname" },
+                { "data": "region" },
+                { "data": "roles" },
+                { "data": "platform" },
+                { "data": "software_platform" },
+                { "data": "software_version" }
+            ],
+            "columnDefs": [
+            {
+                "targets": 0,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'region'
+            }, {
+                "targets": 2,
+                "data": 'roles'
+            }, {
+                "targets": 3,
+                "data": 'platform'
+            }, {
+                "targets": 4,
+                "data": 'software_platform'
+            }, {
+                "targets": 5,
+                "data": 'software_version'
+            }],
+            "ajax": {
+                "url": host_software_profile_table_url + "0",
+            }
+        });
+
+        software_profile_ui.on('change', function(e) {
+            host_software_profile_table.api().ajax.url(host_software_profile_table_url + $(this).val()).load();
+        });
+
+    });
+
+</script>
+
+<div id="view-host-software-profile-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    {{ edit_field(view_host_software_profile_form.software_profile_3, field_width="col-sm-5", class="form-control") }}
+
+                    <table class="display table" id="host-software-profile-table">
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>Region</th>
+                                <th>Roles</th>
+                                <th>Chassis</th>
+                                <th>Platform</th>
+                                <th>Software</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

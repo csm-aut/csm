@@ -55,6 +55,7 @@ from models import ConformanceReportEntry
 
 from common import get_host
 from common import get_conformance_report_by_id
+from common import get_software_profile_by_id
 from common import get_last_successful_inventory_elapsed_time
 
 from constants import UNKNOWN
@@ -996,8 +997,8 @@ def api_get_conformance_report(id):
     if len(dt_params.search_value):
         criteria = '%' + dt_params.search_value + '%'
         clauses.append(ConformanceReportEntry.hostname.like(criteria))
-        clauses.append(ConformanceReportEntry.platform.like(criteria))
-        clauses.append(ConformanceReportEntry.software.like(criteria))
+        clauses.append(ConformanceReportEntry.software_platform.like(criteria))
+        clauses.append(ConformanceReportEntry.software_version.like(criteria))
         clauses.append(ConformanceReportEntry.conformed.like(criteria))
         clauses.append(ConformanceReportEntry.host_packages.like(criteria))
         clauses.append(ConformanceReportEntry.missing_packages.like(criteria))
@@ -1007,8 +1008,8 @@ def api_get_conformance_report(id):
     filtered_count = query.filter(and_(ConformanceReportEntry.conformance_report_id == id), or_(*clauses)).count()
 
     columns = [getattr(ConformanceReportEntry.hostname, dt_params.sort_order)(),
-               getattr(ConformanceReportEntry.platform, dt_params.sort_order)(),
-               getattr(ConformanceReportEntry.software, dt_params.sort_order)(),
+               getattr(ConformanceReportEntry.software_platform, dt_params.sort_order)(),
+               getattr(ConformanceReportEntry.software_version, dt_params.sort_order)(),
                '',
                '',
                getattr(ConformanceReportEntry.conformed, dt_params.sort_order)()]
@@ -1020,12 +1021,73 @@ def api_get_conformance_report(id):
     for entry in entries:
         row = dict()
         row['hostname'] = entry.hostname
-        row['software_platform'] = entry.platform
-        row['software_version'] = entry.software
+        row['software_platform'] = entry.software_platform
+        row['software_version'] = entry.software_version
         row['missing_packages'] = entry.missing_packages
         row['host_packages'] = entry.host_packages
         row['conformed'] = entry.conformed
         row['comments'] = entry.comments
+
+        rows.append(row)
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response['data'] = rows
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_host_software_profile_list/software_profile/<int:id>')
+@login_required
+def api_get_host_software_profile_list(id):
+    rows = []
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    software_profile = get_software_profile_by_id(db_session, id)
+    if not software_profile:
+        response = dict()
+        response['draw'] = dt_params.draw
+        response['recordsTotal'] = 0
+        response['recordsFiltered'] = 0
+        response['data'] = rows
+        return jsonify(**response)
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(Host.hostname.like(criteria))
+        clauses.append(Region.name.like(criteria))
+        clauses.append(Host.roles.like(criteria))
+        clauses.append(Host.platform.like(criteria))
+        clauses.append(Host.software_platform.like(criteria))
+        clauses.append(Host.software_version.like(criteria))
+
+    query = db_session.query(Host).join(Region, Host.region_id == Region.id)
+    total_count = query.filter(Host.software_profile_id == id).count()
+    filtered_count = query.filter(and_(Host.software_profile_id == id), or_(*clauses)).count()
+
+    columns = [getattr(Host.hostname, dt_params.sort_order)(),
+               getattr(Region.name, dt_params.sort_order)(),
+               getattr(Host.roles, dt_params.sort_order)(),
+               getattr(Host.platform, dt_params.sort_order)(),
+               getattr(Host.software_platform, dt_params.sort_order)(),
+               getattr(Host.software_version, dt_params.sort_order)()]
+
+    hosts = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(Host.software_profile_id == id), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    for host in hosts:
+        row = dict()
+        row['hostname'] = host.hostname
+        row['region'] = '' if host.region is None else host.region.name
+        row['roles'] = host.roles
+        row['platform'] = host.platform
+        row['software_platform'] = host.software_platform
+        row['software_version'] = host.software_version
 
         rows.append(row)
 

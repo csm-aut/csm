@@ -305,6 +305,10 @@ def get_software_profile(db_session, profile_name):
     return db_session.query(SoftwareProfile).filter(SoftwareProfile.name == profile_name).first()
 
 
+def get_software_profile_by_id(db_session, id):
+    return db_session.query(SoftwareProfile).filter(SoftwareProfile.id == id).first()
+
+
 def get_hosts_by_software_profile_id(db_session, profile_id):
     return db_session.query(Host).filter(Host.software_profile_id == profile_id).order_by(Host.hostname.asc()).all()
 
@@ -443,7 +447,7 @@ def create_or_update_host(db_session, hostname, region_id, location, roles, soft
     return host
 
 
-def get_host_list_by(platform, software_versions, region_ids, roles):
+def get_host_list_by(db_session, platform, software_versions, region_ids, roles):
     """
     :param platform: Host platform
     :param software_versions: a list of software versions or 'ALL'
@@ -452,7 +456,6 @@ def get_host_list_by(platform, software_versions, region_ids, roles):
     :return: a list of hosts that satisfied the criteria.
     """
     clauses = []
-    db_session = DBSession()
 
     clauses.append(Host.software_platform == platform)
 

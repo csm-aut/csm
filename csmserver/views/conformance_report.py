@@ -163,7 +163,7 @@ class ConformanceReportWriter(ReportWriter):
             for line in range(lines):
                 if line == 0:
                     self.ws.write(self.row, 0, entry.hostname)
-                    self.ws.write(self.row, 1, entry.platform + ' ' + entry.software)
+                    self.ws.write(self.row, 1, entry.software_platform + ' ' + entry.software_version)
 
                     conformed_with_comments = entry.conformed + ' ' + entry.comments
                     # Update the Conform column
