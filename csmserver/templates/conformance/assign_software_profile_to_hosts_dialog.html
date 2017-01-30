@@ -6,7 +6,7 @@
         var platform_ui = $('#platform_2');
         var software_ui = $("#software_2").select2();
         var region_ui = $("#region_2").select2();
-        var roles_ui = $("#role_2").select2();
+        var roles_ui = $("#roles_2").select2();
         var software_profile_ui = $('#software_profile_2');
 
         populate_host_platforms(platform_ui);
@@ -105,7 +105,7 @@
                     {{ edit_field(assign_software_profile_to_hosts_form.platform_2, field_width="col-sm-5", class="form-control") }}
                     {{ edit_field(assign_software_profile_to_hosts_form.software_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
                     {{ edit_field(assign_software_profile_to_hosts_form.region_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
-                    {{ edit_field(assign_software_profile_to_hosts_form.role_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+                    {{ edit_field(assign_software_profile_to_hosts_form.roles_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
                     {{ edit_field(assign_software_profile_to_hosts_form.software_profile_2, style="width: 100%", field_width="col-sm-5", class="form-control") }}
                 </div>
                 <div class="modal-footer">
