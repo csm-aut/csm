@@ -349,7 +349,7 @@ def api_get_hosts_by_platform(platform, software_versions, region_ids, roles):
     rows = []
     db_session = DBSession()
 
-    hosts = get_host_list_by(db_session, platform, software_versions, region_ids, roles)
+    hosts = get_host_list_by(db_session, platform, software_versions.split(','), region_ids.split(','), roles.split(','))
 
     for host in hosts:
         rows.append({'hostname': host.hostname})

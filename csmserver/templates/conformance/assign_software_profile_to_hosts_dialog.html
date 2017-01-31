@@ -6,7 +6,7 @@
         var platform_ui = $('#platform_2');
         var software_ui = $("#software_2").select2();
         var region_ui = $("#region_2").select2();
-        var roles_ui = $("#roles_2").select2();
+        var role_ui = $("#role_2").select2();
         var software_profile_ui = $('#software_profile_2');
 
         populate_host_platforms(platform_ui);
@@ -16,7 +16,7 @@
             if ($(this).val().length > 0) {
                 initialize_select2(software_ui);
                 initialize_select2(region_ui);
-                initialize_select2(roles_ui);
+                initialize_select2(role_ui);
                 populate_host_software_versions(platform_ui, software_ui);
             }
         });
@@ -24,15 +24,15 @@
         software_ui.on('change', function(e) {
             if ($(this).val() != null) {
                 initialize_select2(region_ui);
-                initialize_select2(roles_ui);
+                initialize_select2(role_ui);
                 populate_host_regions(platform_ui, software_ui, region_ui);
             }
         });
 
         region_ui.on('change', function(e) {
             if ($(this).val() != null) {
-                initialize_select2(roles_ui);
-                populate_host_roles(platform_ui, software_ui, region_ui, roles_ui);
+                initialize_select2(role_ui);
+                populate_host_roles(platform_ui, software_ui, region_ui, role_ui);
             }
         });
 
@@ -46,7 +46,7 @@
             var platform = platform_ui.val();
             var software_versions = software_ui.val();
             var region_ids = region_ui.val();
-            var roles = roles_ui.val();
+            var roles = role_ui.val();
             var software_profile = software_profile_ui.val()
 
             if (platform_ui.val().length == 0) {
@@ -105,7 +105,7 @@
                     {{ edit_field(assign_software_profile_to_hosts_form.platform_2, field_width="col-sm-5", class="form-control") }}
                     {{ edit_field(assign_software_profile_to_hosts_form.software_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
                     {{ edit_field(assign_software_profile_to_hosts_form.region_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
-                    {{ edit_field(assign_software_profile_to_hosts_form.roles_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
+                    {{ edit_field(assign_software_profile_to_hosts_form.role_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
                     {{ edit_field(assign_software_profile_to_hosts_form.software_profile_2, style="width: 100%", field_width="col-sm-5", class="form-control") }}
                 </div>
                 <div class="modal-footer">

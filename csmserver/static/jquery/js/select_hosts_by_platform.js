@@ -12,7 +12,7 @@ $(function() {
     var platform_ui = $('#platform');
     var software_ui = $("#software").select2();
     var region_ui = $("#region").select2();
-    var roles_ui = $("#role").select2();
+    var role_ui = $("#role").select2();
 
     host_selector = $('#host-selector').DualListBox();
 
@@ -22,7 +22,7 @@ $(function() {
         if ($(this).val().length > 0) {
             initialize_select2(software_ui);
             initialize_select2(region_ui);
-            initialize_select2(roles_ui);
+            initialize_select2(role_ui);
             populate_host_software_versions(platform_ui, software_ui);
         }
     });
@@ -30,15 +30,15 @@ $(function() {
     software_ui.on('change', function(e) {
         if ($(this).val() != null) {
             initialize_select2(region_ui);
-            initialize_select2(roles_ui);
+            initialize_select2(role_ui);
             populate_host_regions(platform_ui, software_ui, region_ui);
         }
     });
 
     region_ui.on('change', function(e) {
         if ($(this).val() != null) {
-            initialize_select2(roles_ui);
-            populate_host_roles(platform_ui, software_ui, region_ui, roles_ui);
+            initialize_select2(role_ui);
+            populate_host_roles(platform_ui, software_ui, region_ui, role_ui);
         }
     });
 

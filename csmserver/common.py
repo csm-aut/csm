@@ -456,7 +456,6 @@ def get_host_list_by(db_session, platform, software_versions, region_ids, roles)
     :return: a list of hosts that satisfied the criteria.
     """
     clauses = []
-
     clauses.append(Host.software_platform == platform)
 
     if 'ALL' not in software_versions:
@@ -469,7 +468,7 @@ def get_host_list_by(db_session, platform, software_versions, region_ids, roles)
 
     # Retrieve relevant hosts
     hosts = db_session.query(Host).filter(and_(*clauses)).order_by(Host.hostname.asc()).all()
-
+ 
     host_list = []
     for host in hosts:
         # Match on selected roles given by the user

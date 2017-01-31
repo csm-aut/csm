@@ -712,7 +712,7 @@ class AssignSoftwareProfileToHostsForm(Form):
     platform_2 = SelectField('Platform', coerce=str, choices=[('', '')])
     software_2 = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
     region_2 = SelectField('Region', coerce=int, choices=[(-1, 'ALL')])
-    roles_2 = SelectField('Roles', coerce=str, choices=[('ALL', 'ALL')])
+    role_2 = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
     software_profile_2 = SelectField('Software Profile', coerce=str, choices=[(-1, '')])
 
 
@@ -732,7 +732,7 @@ class ConformanceReportDialogForm(Form):
     platform = SelectField('Platform', coerce=str, choices=[('', '')])
     software = SelectField('Software Version', coerce=str, choices=[('ALL', 'ALL')])
     region = SelectField('Region', coerce=int, choices=[(-1, 'ALL')])
-    roles = SelectField('Roles', coerce=str, choices=[('ALL', 'ALL')])
+    role = SelectField('Role', coerce=str, choices=[('ALL', 'ALL')])
 
 
 class ExportConformanceReportForm(Form):
