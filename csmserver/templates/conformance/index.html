@@ -74,10 +74,8 @@
             });
         });
 
-        $('#view-host-software-profile').on('click', function(e) {
-            $('#view-host-software-profile-dialog').modal({
-                show: true
-            });
+        $('#view-software-profile-assignments').on('click', function(e) {
+            display_software_profile_assignments();
         });
 
 
@@ -610,7 +608,7 @@
 
 
 {% include 'conformance/assign_software_profile_to_hosts_dialog.html' %}
-{% include 'conformance/view_host_software_profile_dialog.html' %}
+{% include 'conformance/view_software_profile_assignments_dialog.html' %}
 
 <div id="export-conformance-report-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -724,7 +722,7 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li><a href="javascript://" id="assign-software-profile-to-hosts">Assign Software Profile to Hosts</a></li>
-                    <li><a href="javascript://" id="view-host-software-profile">View Software Profile Assignments</a></li>
+                    <li><a href="javascript://" id="view-software-profile-assignments">View Software Profile Assignments</a></li>
                     <li class="divider"></li>
                     <li><a href="javascript://" id="export-software-profile">Export Software Profiles</a></li>
                     <li><a href="javascript://" id="import-software-profile">Import Software Profiles</a></li>

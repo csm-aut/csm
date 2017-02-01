@@ -78,19 +78,24 @@
             });
         });
 
-        function refresh_host_table(software_profile) {
-            host_software_profile_table.api().ajax.url(host_software_profile_table_url + software_profile).load();
+        function refresh_host_table(software_profile_id) {
+            host_software_profile_table.api().ajax.url(host_software_profile_table_url + software_profile_id).load();
         }
 
         software_profile_ui.on('change', function(e) {
             refresh_host_table($(this).val());
         });
-
     });
+
+    function display_software_profile_assignments() {
+        $('#view-software-profile-assignments-dialog').modal({
+            show: true
+        });
+    }
 
 </script>
 
-<div id="view-host-software-profile-dialog" class="modal" role="dialog">
+<div id="view-software-profile-assignments-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" class="form-horizontal">
             <div class="modal-content">
