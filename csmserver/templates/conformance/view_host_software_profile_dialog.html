@@ -25,7 +25,7 @@
                 "targets": 0,
                 "data": 'hostname',
                 "render": function(data, type, row) {
-                    return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
+                    return '<a href="/host_dashboard/hosts/' + data + '/" target="_blank">' + data + '</a>';
                 }
             }, {
                 "targets": 1,
@@ -41,15 +41,49 @@
                 "data": 'software_platform'
             }, {
                 "targets": 5,
-                "data": 'software_version'
+                "data": 'software_platform'
+            }, {
+                "targets": 6,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a class="host-remove-link" href="javascript://"  \
+                        remove-host="' + data + '" \
+                        data-remove-url="/conformance/api/hosts/' + data + '/software_profile/delete">Remove</a>';
+                }
             }],
             "ajax": {
                 "url": host_software_profile_table_url + "0",
             }
         });
 
+        // Use delegate pattern for event
+        host_software_profile_table.on("click", ".host-remove-link", function() {
+            var remove_url = $(this).attr('data-remove-url');
+            var remove_host = $(this).attr('remove-host');
+
+            bootbox.confirm("You are about to remove the Software Profile assigned to host \'" + remove_host + "\'.  OK to proceed?", function(result) {
+                if (result) {
+                    $.ajax({
+                        url: remove_url,
+                        type: 'DELETE',
+                        success: function(result) {
+                            if (result.status == 'OK') {
+                                refresh_host_table(software_profile_ui.val());
+                            } else {
+                                bootbox.alert('Delete failed.');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        function refresh_host_table(software_profile) {
+            host_software_profile_table.api().ajax.url(host_software_profile_table_url + software_profile).load();
+        }
+
         software_profile_ui.on('change', function(e) {
-            host_software_profile_table.api().ajax.url(host_software_profile_table_url + $(this).val()).load();
+            refresh_host_table($(this).val());
         });
 
     });
@@ -73,6 +107,7 @@
                                 <th>Chassis</th>
                                 <th>Platform</th>
                                 <th>Software</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                     </table>

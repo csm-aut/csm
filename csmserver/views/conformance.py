@@ -694,6 +694,22 @@ def api_assign_software_profile_to_hosts():
     return jsonify({'status': 'OK', 'message': message})
 
 
+@conformance.route('/api/hosts/<hostname>/software_profile/delete', methods=['DELETE'])
+@login_required
+def api_remove_software_profile_for_host(hostname):
+    if not can_create(current_user):
+        abort(401)
+
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
+    if host:
+        host.software_profile_id = None
+        db_session.commit()
+        return jsonify({'status': 'OK'})
+    else:
+        return jsonify({'status': 'Failed'})
+
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ['json']
