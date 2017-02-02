@@ -5,7 +5,7 @@
 {% from 'share/cisco_software_dialog.html' import cisco_software_dialog %}
 
 {% block head %}
-<script src="/static/jquery/js/validate_software.js"></script>
+<script src="/static/jquery/js/optimize_software.js"></script>
 <script src="/static/jquery/js/smu_info_dialog.js"></script>
 <script src="/static/jquery/js/cisco_software_dialog.js"></script>
 <script src="/static/jquery/js/server_software_dialog.js"></script>
@@ -16,12 +16,12 @@
         var spinner = $('#spinner');
         spinner.hide();
 
-        $('#validate-software').on("click", function() {
+        $('#optimize-software').on("click", function() {
             if ($('#software_packages').val().length == 0) {
                 bootbox.alert("No software packages was specified.");
                 return;
             }
-            validate_software($('#software_packages'), $('#validate_results'), spinner);
+            optimize_software($('#software_packages'), $('#optimize_results'), spinner);
         });
 
         $('#browse-server-button').on('click', function(e) {
@@ -92,7 +92,7 @@
         }
 
         $('#save-as-software-profile').click(function(e) {
-            var software_packages = trim_lines($('#validate_results').val());
+            var software_packages = trim_lines($('#optimize_results').val());
             if (software_packages.length == 0) {
                 bootbox.alert('Software packages has not been specified.');
                 return;
@@ -125,7 +125,7 @@
                     }
                 });
             } else {
-                create_software_profile(software_profile_name, $('#validate_results').val());
+                create_software_profile(software_profile_name, $('#optimize_results').val());
             }
 
             return false;
@@ -207,7 +207,7 @@
         <div class="row">
             <!-- upper section -->
             <div class="container col-sm-6">
-                <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Validate Software</strong></span>
+                <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Optimize Software</strong></span>
                 <hr>
                 <div class="panel panel-default">
                     <div class="panel-heading">
@@ -221,8 +221,8 @@
                             </a>
                         </span>
                         <span class="pull-right">
-                            <a id="validate-software" href="javascript://">
-                                Validate<img title="Click to validate software" src="{{ url_for('static', filename='blue_right_arrow.png') }}">
+                            <a id="optimize-software" href="javascript://">
+                                Optimize<img title="Click to optimize software" src="{{ url_for('static', filename='blue_right_arrow.png') }}">
                             </a>
                         </span>
                     </div>
@@ -237,12 +237,12 @@
                 <hr>
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        Validated Software Packages
+                        Optimized Software Packages
                         <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                     </div>
                     <div class="panel-body">
                         &nbsp;
-                        <textarea spellcheck="false" class="form-control" rows="18" id="validate_results"></textarea>
+                        <textarea spellcheck="false" class="form-control" rows="18" id="optimize_results"></textarea>
                         <p>
                         <div class="pull-right">
                             <input type='button' class='btn btn-primary' id="save-as-software-profile" value='Save as Software Profile' />

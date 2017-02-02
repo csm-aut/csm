@@ -14,7 +14,7 @@
 {% block head %}
 
 <script src="/static/jquery/js/smu_info_dialog.js"></script>
-<script src="/static/jquery/js/validate_software.js"></script>
+<script src="/static/jquery/js/optimize_software.js"></script>
 <script src="/static/jquery/js/server_software_dialog.js"></script>
 <script src="/static/jquery/js/cisco_software_dialog.js"></script>
 
@@ -95,12 +95,12 @@
             }
         }
 
-        $('#validate-software').click(function(e) {
-            validate_software_packages();
+        $('#optimize-software').click(function(e) {
+            optimize_software_packages();
         });
 
-        function validate_software_packages() {
-            validate_software($('#software_packages'), $('#software_packages'), spinner);
+        function optimize_software_packages() {
+            optimize_software($('#software_packages'), $('#software_packages'), spinner);
         }
         
         $('#browse-server-button').on('click', function(e) {                  
@@ -160,7 +160,7 @@
             
             <div class="form-actions">
                 <div class="btn col-sm-offset-5">
-                    <button id="validate-software" type="button" class="btn btn-default">Validate</button>
+                    <button id="optimize-software" type="button" class="btn btn-default">Optimize</button>
                     <button type="submit" class="btn btn-primary">Save</button>
                     <button type="button" onClick="location.href='{{ url_for('conformance.home') }}'" class="btn btn-default">Cancel</button>
                     <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">

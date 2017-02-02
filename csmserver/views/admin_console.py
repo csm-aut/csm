@@ -178,8 +178,8 @@ def home():
 
 
 class AdminConsoleForm(Form):
-    num_inventory_threads = IntegerField('Number of Software Inventory Processes', [validators.NumberRange(min=2, max=50)])
-    num_install_threads = IntegerField('Number of Install Processes', [validators.NumberRange(min=2, max=100)])
+    num_inventory_threads = IntegerField('Number of Inventory Processes', [validators.NumberRange(min=2, max=50)])
+    num_install_threads = IntegerField('Number of Installation Processes', [validators.NumberRange(min=2, max=100)])
     num_download_threads = IntegerField('Number of Software Download Processes', [validators.NumberRange(min=2, max=50)])
     can_schedule = HiddenField("Allow Users to Schedule Install")
     can_install = HiddenField("Allow Scheduled Installs to Run")
@@ -194,9 +194,9 @@ class AdminConsoleForm(Form):
                                           (15, '03:00 PM'), (16, '04:00 PM'), (17, '05:00 PM'),
                                           (18, '06:00 PM'), (19, '07:00 PM'), (20, '08:00 PM'),
                                           (21, '09:00 PM'), (22, '10:00 PM'), (23, '11:00 PM')])
-    inventory_history_per_host = IntegerField('Software Inventory History Per Host', [validators.NumberRange(min=10, max=100)])
-    install_history_per_host = IntegerField('Install History Per Host', [validators.NumberRange(min=10, max=1000)])
-    download_history_per_user = IntegerField('SMU/SP Download History Per User', [validators.NumberRange(min=10, max=100)])
+    inventory_history_per_host = IntegerField('Retrieval History Per Host', [validators.NumberRange(min=10, max=100)])
+    install_history_per_host = IntegerField('Installation History Per Host', [validators.NumberRange(min=10, max=1000)])
+    download_history_per_user = IntegerField('Software Download History Per User', [validators.NumberRange(min=10, max=100)])
     total_system_logs = IntegerField('Total System Logs', [validators.NumberRange(min=100, max=100000)])
     enable_default_host_authentication = HiddenField("Use Default Host Authentication")
     default_host_username = StringField('Default Host Username')

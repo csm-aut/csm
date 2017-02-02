@@ -167,7 +167,7 @@ def get_download_info_dict(smu_list):
     return download_info_dict, smu_loader
 
 
-def get_validated_list(smu_list):
+def get_optimized_list(smu_list):
     """
     Returns the validated list given the SMU/SP list.
     A smu_list may contain packages, SMUs, SPs, or junk texts.
