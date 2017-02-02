@@ -203,6 +203,15 @@
             }
         }
 
+        $('[data-toggle="popover_software_profile"]').popover({
+            trigger : 'click',
+            placement : 'left',
+            html : true,
+            content : function() {
+                return $('#popover_software_profile').html()
+            }
+        });
+
     });
 </script>
 
@@ -214,6 +223,15 @@
 {% endblock %}
 
 {% block main %}
+
+<div id="popover_software_profile" style="display: none">
+  <pre>
+      Software Profile is used by the Conformance Report.
+      It is defined under the Conformance menu and may
+      be assigned to the host at a later time.
+  </pre>
+</div>
+
 
 <div id="verify-reachability-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -251,14 +269,20 @@
     <div class="well col-sm-offset-2 col-sm-8">
         <form id="form" method="post" class="form-horizontal">
             <legend>{% if isEdit %}Edit Host{% else %}Create Host{% endif %}</legend>
+
             {{ alert_duplicate(form.hostname.data, duplicate_error) }}
             {{ edit_field(form.hostname, maxlength=30, field_width="col-sm-4", class="form-control",
                 placeholder="Unique Name on CSM Server") }}
             {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
             {{ edit_field(form.location, field_width="col-sm-4", class="form-control") }}
             {{ edit_field(form.roles, field_width="col-sm-4", class="form-control",
-            placeholder="Use Comma to Separate Roles") }}
-            {{ edit_field(form.software_profile, field_width="col-sm-4", class="form-control") }}
+                placeholder="Use Comma to Separate Roles") }}
+
+            {% set extra_field ='<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue"
+                           aria-hidden="true" data-toggle="popover_software_profile"></span></a>' %}
+
+            {{ edit_field(form.software_profile, field_width="col-sm-4", class="form-control", extra_field=extra_field) }}
+
             <fieldset>
                 <legend>Connection Parameters</legend>
                 {{ edit_field(form.connection_type, field_width="col-sm-4", class="form-control") }}

@@ -69,13 +69,11 @@
 
 
         $('#assign-software-profile-to-hosts').on('click', function(e) {
-            $('#assign-software-profile-to-hosts-dialog').modal({
-                show: true
-            });
+            display_assign_software_profile_dialog();
         });
 
         $('#view-software-profile-assignments').on('click', function(e) {
-            display_software_profile_assignments();
+            display_software_profile_assignments_dialog();
         });
 
 

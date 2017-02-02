@@ -282,6 +282,20 @@ def api_get_software_profiles():
     return jsonify(**{'data': rows})
 
 
+@conformance.route('/api/get_software_profile/software_profile/<int:id>')
+@login_required
+def api_get_software_profile(id):
+    rows = []
+    db_session = DBSession()
+
+    software_profile = get_software_profile_by_id(db_session, id)
+    if software_profile:
+        for package in software_profile.packages.split(','):
+            rows.append({'package': package})
+
+    return jsonify(**{'data': rows})
+
+
 @conformance.route('/api/create_software_profile', methods=['POST'])
 @login_required
 def api_create_software_profile():
@@ -677,7 +691,7 @@ def api_assign_software_profile_to_hosts():
     software_versions = request.form.getlist('software_versions[]')
     region_ids = request.form.getlist('region_ids[]')
     roles = request.form.getlist('roles[]')
-    software_profile_id = int(request.form['software_profile'])
+    software_profile_id = int(request.form['software_profile_id'])
 
     db_session = DBSession()
     hosts = get_host_list_by(db_session, platform, software_versions, region_ids, roles)
@@ -742,7 +756,7 @@ class ConformanceReportDialogForm(Form):
                                 choices=[('inactive', 'Software packages that are in inactive state'),
                                          ('active', 'Software packages that are in active state')], default='active')
     host_selection_criteria = RadioField('Host Selection Criteria',
-                                         choices=[('auto', 'Select hosts that match the selected software profile'),
+                                         choices=[('auto', 'Select all hosts that match the selected software profile'),
                                                   ('manual', 'Select hosts manually')], default='auto')
 
     platform = SelectField('Platform', coerce=str, choices=[('', '')])

@@ -1,12 +1,14 @@
 <script>
+    var software_profile_ui;
+    var host_software_profile_table;
+    var host_software_profile_table_url = "/datatable/api/get_host_software_profile_list/software_profile/";
 
     $(function() {
-        var software_profile_ui = $('#software_profile_3');
+        software_profile_ui = $('#software_profile_3');
 
         populate_software_profiles(software_profile_ui, false);
 
-        var host_software_profile_table_url = "/datatable/api/get_host_software_profile_list/software_profile/";
-        var host_software_profile_table = $("#host-software-profile-table").dataTable({
+        host_software_profile_table = $("#host-software-profile-table").dataTable({
             "serverSide": true,
             "order": [
                 [0, "asc"]
@@ -87,10 +89,16 @@
         });
     });
 
-    function display_software_profile_assignments() {
-        $('#view-software-profile-assignments-dialog').modal({
-            show: true
-        });
+    function display_software_profile_assignments_dialog(software_profile_id) {
+
+        if (software_profile_id == undefined) {
+            software_profile_id = 0;
+        }
+
+        software_profile_ui.val(software_profile_id);
+        host_software_profile_table.api().ajax.url(host_software_profile_table_url + software_profile_id).load();
+
+        $('#view-software-profile-assignments-dialog').modal({show: true, backdrop: 'static'});
     }
 
 </script>
