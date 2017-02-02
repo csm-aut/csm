@@ -304,10 +304,11 @@
                                         <input class="form-control" id="{{ admin_console_form.enable_ldap_auth.id }}" name="{{ admin_console_form.enable_ldap_auth.id }}" type="hidden" value="{{ admin_console_form.enable_ldap_auth.data }}">
                                     </div>
                                     {{ edit_field(admin_console_form.ldap_server_url, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
+                                    {{ edit_field(admin_console_form.ldap_default_user_privilege, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
                                     <hr>
                                     To restrict access to certain user group, define the Active Directory Distinguished Names below.  An example may be<br><br>
                                     CN={},OU=Employees,OU=Cisco Users,DC=cisco,DC=com<br><br>
-                                    '{}' will be replaced with the user login name.<p></p>
+                                    '{}' is a placeholder string and will be replaced with the user login name.<p></p>
 
                                     {{ edit_field(admin_console_form.ldap_server_distinguished_names, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control", placeholder="Optional") }}
                                 </div>

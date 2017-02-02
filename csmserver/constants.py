@@ -148,6 +148,9 @@ class UserPrivilege:
     VIEWER = 'Viewer'
 
 
+def get_user_privilege_list():
+    return [UserPrivilege.ADMIN, UserPrivilege.NETWORK_ADMIN, UserPrivilege.OPERATOR, UserPrivilege.VIEWER]
+
 class SMTPSecureConnection:
     SSL = 'SSL'
     TLS = 'TLS'

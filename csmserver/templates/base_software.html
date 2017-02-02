@@ -23,7 +23,7 @@
 {% macro non_admin_tools_menu() %}
     <li><a href="{{ url_for('tools.host_list') }}">List Hosts</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('authenticate.current_user_edit') }}">Edit User</a></li>
+    <li><a href="{{ url_for('authenticate.current_user_edit') }}">Edit Current User</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('cco.validate_software') }}">Validate Software</a></li>
     <li class="divider"></li>
@@ -45,7 +45,7 @@
     <li class="divider"></li>
     <li><a href="{{ url_for('authenticate.user_create') }}">Create User</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('authenticate.user_list') }}">List All Users</a></li>
+    <li><a href="{{ url_for('authenticate.user_list') }}">List/Edit All Users</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('log.logs') }}">System Logs</a></li>
 {% endmacro %}

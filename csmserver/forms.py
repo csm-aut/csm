@@ -33,35 +33,7 @@ from wtforms.validators import Length
 from wtforms.validators import required
 from constants import ConnectionType
 from constants import ServerType
-from constants import UserPrivilege
 from constants import ExportInformationFormat
-
-
-class LoginForm(Form):
-    """
-    Render HTML input for user login form.
-    Authentication (i.e. password verification) happens in the view function.
-    """
-    username = StringField('Username', [required()])
-    password = PasswordField('Password', [required()])
-
-
-class UserForm(Form):
-    """
-    Render HTML input for user registration form.
-    Authentication (i.e. password verification) happens in the view function.
-    """
-    username = StringField('Username', [required()])
-    password = PasswordField('Password', [required()])
-    privilege = SelectField('Privilege', [required()], coerce=str,
-                            choices=[('', ''),
-                                     (UserPrivilege.ADMIN, UserPrivilege.ADMIN),
-                                     (UserPrivilege.NETWORK_ADMIN, UserPrivilege.NETWORK_ADMIN),
-                                     (UserPrivilege.OPERATOR, UserPrivilege.OPERATOR),
-                                     (UserPrivilege.VIEWER, UserPrivilege.VIEWER)])
-    active = HiddenField("Active")
-    fullname = StringField('Full Name', [required()])
-    email = StringField('Email Address', [required()])
 
 
 class HostForm(Form):

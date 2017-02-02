@@ -35,11 +35,19 @@ from flask.ext.login import current_user
 from flask.ext.login import login_user
 from flask.ext.login import logout_user
 
+from wtforms import Form
+from wtforms import StringField
+from wtforms import SelectField
+from wtforms import PasswordField
+from wtforms import HiddenField
+from wtforms.validators import required
+
 from database import DBSession
 
 from common import can_create_user
 from common import get_user_list
 from common import get_user
+from common import fill_user_privileges
 
 from models import User
 from models import logger
@@ -48,8 +56,6 @@ from models import SystemOption
 from models import UserPrivilege
 from models import CSMMessage
 
-from forms import UserForm
-from forms import LoginForm
 from wtforms.validators import Required
 
 from utils import get_base_url
@@ -134,6 +140,8 @@ def user_create():
     # Need to add the Required flag back as it is globally removed during user_edit()
     add_validator(form.password, Required)
 
+    fill_user_privileges(form.privilege.choices)
+
     if request.method == 'POST' and form.validate():
         db_session = DBSession()
         user = get_user(db_session, form.username.data)
@@ -169,6 +177,7 @@ def user_edit(username):
         abort(404)
 
     form = UserForm(request.form)
+    fill_user_privileges(form.privilege.choices)
 
     if request.method == 'POST' and form.validate():
 
@@ -307,4 +316,26 @@ def api_get_csm_message():
                         logger.exception('api_get_csm_message() hit exception')
 
     return jsonify(**{'data': rows})
+
+
+class LoginForm(Form):
+    """
+    Render HTML input for user login form.
+    Authentication (i.e. password verification) happens in the view function.
+    """
+    username = StringField('Username', [required()])
+    password = PasswordField('Password', [required()])
+
+
+class UserForm(Form):
+    """
+    Render HTML input for user registration form.
+    Authentication (i.e. password verification) happens in the view function.
+    """
+    username = StringField('Username', [required()])
+    password = PasswordField('Password', [required()])
+    privilege = SelectField('Privilege', [required()], coerce=str, choices=[('', '')])
+    active = HiddenField("Active")
+    fullname = StringField('Full Name', [required()])
+    email = StringField('Email Address', [required()])
 

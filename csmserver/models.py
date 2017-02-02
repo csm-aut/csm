@@ -43,6 +43,7 @@ from constants import JobStatus
 from constants import UserPrivilege
 from constants import ProxyAgent
 from constants import get_log_directory
+from constants import get_user_privilege_list
 
 import datetime
 import logging
@@ -192,8 +193,14 @@ class User(Base):
         user = query(cls).filter(cls.username == username).first()
         if ldap_authenticated:
             if user is None:
-                # Create a LDAP user with Network Administrator privilege
-                user = create_user(db_session, username, password, UserPrivilege.NETWORK_ADMIN, username, username)
+                # Create a LDAP user with initial granted privilege
+                user_privilege_list = get_user_privilege_list()
+                if system_option.ldap_default_user_privilege in user_privilege_list:
+                    user_privilege = system_option.ldap_default_user_privilege
+                else:
+                    user_privilege = UserPrivilege.VIEWER
+
+                user = create_user(db_session, username, password, user_privilege, username, username)
                 return user, True
             else:
                 # Update the password
@@ -1000,6 +1007,7 @@ class SystemOption(Base):
     enable_ldap_auth = Column(Boolean, default=False)
     enable_ldap_host_auth = Column(Boolean, default=False)
     ldap_server_url = Column(String(100))
+    ldap_default_user_privilege = Column(String(20), default=UserPrivilege.VIEWER)
     ldap_server_distinguished_names = Column(String(100))
     enable_cco_lookup = Column(Boolean, default=True)
     cco_lookup_time = Column(DateTime)

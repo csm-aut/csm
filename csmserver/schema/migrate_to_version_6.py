@@ -24,6 +24,7 @@
 # =============================================================================
 from schema.base import BaseMigrate
 from database import DBSession
+from constants import UserPrivilege
 
 sql_statements = [
     'alter table host add location VARCHAR(100)',
@@ -34,7 +35,8 @@ sql_statements = [
     'alter table email_job add attachment_file_paths VARCHAR(300)',
     'alter table host add software_profile_id INTEGER',
     'alter table conformance_report_entry change platform software_platform VARCHAR(20)',
-    'alter table conformance_report_entry change software software_version VARCHAR(20)'
+    'alter table conformance_report_entry change software software_version VARCHAR(20)',
+    'alter table system_option add ldap_default_user_privilege VARCHAR(20) default "Viewer"'
     ]
 
 

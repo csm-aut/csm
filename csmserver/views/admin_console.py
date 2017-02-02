@@ -37,10 +37,12 @@ from wtforms import IntegerField
 from wtforms import SelectField
 from wtforms import PasswordField
 from wtforms import HiddenField
+from wtforms.validators import required
 
 from database import DBSession
 
 from common import get_smtp_server
+from common import fill_user_privileges
 
 from constants import UserPrivilege
 from constants import SMTPSecureConnection
@@ -70,6 +72,8 @@ def home():
 
     smtp_server = get_smtp_server(db_session)
     system_option = SystemOption.get(db_session)
+
+    fill_user_privileges(admin_console_form.ldap_default_user_privilege.choices)
 
     if request.method == 'POST' and \
         smtp_form.validate() and \
@@ -101,6 +105,7 @@ def home():
         if not is_empty(admin_console_form.enable_ldap_auth.data):
             system_option.enable_ldap_auth = admin_console_form.enable_ldap_auth.data
             system_option.ldap_server_url = admin_console_form.ldap_server_url.data
+            system_option.ldap_default_user_privilege = admin_console_form.ldap_default_user_privilege.data
             system_option.ldap_server_distinguished_names = admin_console_form.ldap_server_distinguished_names.data.strip()
 
         system_option.inventory_hour = admin_console_form.inventory_hour.data
@@ -132,6 +137,7 @@ def home():
         admin_console_form.enable_email_notify.data = system_option.enable_email_notify
         admin_console_form.enable_ldap_auth.data = system_option.enable_ldap_auth
         admin_console_form.ldap_server_url.data = system_option.ldap_server_url
+        admin_console_form.ldap_default_user_privilege.data = system_option.ldap_default_user_privilege
         admin_console_form.ldap_server_distinguished_names.data = system_option.ldap_server_distinguished_names
         admin_console_form.enable_inventory.data = system_option.enable_inventory
         admin_console_form.inventory_hour.data = system_option.inventory_hour
@@ -171,7 +177,6 @@ def home():
                                is_ldap_supported=is_ldap_supported())
 
 
-
 class AdminConsoleForm(Form):
     num_inventory_threads = IntegerField('Number of Software Inventory Processes', [validators.NumberRange(min=2, max=50)])
     num_install_threads = IntegerField('Number of Install Processes', [validators.NumberRange(min=2, max=100)])
@@ -203,6 +208,7 @@ class AdminConsoleForm(Form):
                             'Hosts with no Specified Username and Password')])
     enable_ldap_auth = HiddenField("Enable LDAP")
     ldap_server_url = StringField('LDAP Server URL')
+    ldap_default_user_privilege = SelectField('Grant User Privilege', [required()], coerce=str, choices=[('', '')])
     ldap_server_distinguished_names = StringField('Distinguished Names')
     enable_cco_lookup = HiddenField("Enable CCO Connection")
     cco_lookup_time = HiddenField("Last Retrieval")

@@ -35,6 +35,7 @@ from constants import InstallAction
 from constants import PackageType
 from constants import PackageState
 from constants import JobStatus
+from constants import get_user_privilege_list
 
 from models import Server
 from models import Host
@@ -149,6 +150,16 @@ def fill_regions(db_session, choices):
                 choices.append((region.id, region.name))
     except:
         logger.exception('fill_regions() hit exception')
+
+
+def fill_user_privileges(choices):
+    # Remove all the existing entries
+    del choices[:]
+
+    choices.append(('', ''))
+    user_privileges = get_user_privilege_list()
+    for user_privilege in user_privileges:
+        choices.append((user_privilege, user_privilege))
 
 
 def fill_software_profiles(db_session, choices):
