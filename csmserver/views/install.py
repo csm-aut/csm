@@ -258,6 +258,8 @@ def batch_schedule_install():
         hostnames = form.hidden_selected_hosts.data.split(',')
         install_action = form.install_action.data
 
+        custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
+
         if hostnames is not None:
 
             for hostname in hostnames:
@@ -281,6 +283,7 @@ def batch_schedule_install():
                                 dependency = prerequisite_install_job.id
                         create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                      install_action=install_action[0],
+                                                     custom_command_profile=custom_command_profile,
                                                      scheduled_time=scheduled_time, software_packages=software_packages,
                                                      server=server, server_directory=server_directory,
                                                      pending_downloads=pending_downloads, dependency=dependency)
@@ -293,6 +296,7 @@ def batch_schedule_install():
                             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                                            install_action=one_install_action,
                                                                            scheduled_time=scheduled_time,
+                                                                           custom_command_profile=custom_command_profile,
                                                                            software_packages=software_packages,
                                                                            server=server,
                                                                            server_directory=server_directory,
