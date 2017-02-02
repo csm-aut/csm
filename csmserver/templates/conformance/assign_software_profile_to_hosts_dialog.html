@@ -55,9 +55,16 @@
             }
         });
 
+        function refresh_assign_software_profile_table(software_profile_id) {
+            assign_software_profile_table.api().ajax.url("/conformance/api/get_software_profile/software_profile/" + software_profile_id).load();
+        }
+
         software_profile_ui.on('change', function(e) {
             var software_profile_id = $(this).val();
-            assign_software_profile_table.api().ajax.url("/conformance/api/get_software_profile/software_profile/" + software_profile_id).load();
+            if (!($.isNumeric(software_profile_id))) {
+                software_profile_id = 0;
+            }
+            refresh_assign_software_profile_table(software_profile_id);
         });
 
         populate_host_platforms(platform_ui);
@@ -212,6 +219,7 @@
                                 </div>
                             </div>
                             <div class="tab-pane" id="assign_software_profile_dialog_select_hosts">
+                                <h4 class="info-text">Use the filters below to select hosts</h4>
                                 {{ edit_field(assign_software_profile_to_hosts_form.platform_2, field_width="col-sm-5", class="form-control") }}
                                 {{ edit_field(assign_software_profile_to_hosts_form.software_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
                                 {{ edit_field(assign_software_profile_to_hosts_form.region_2, multiple="multiple", style="width: 100%", field_width="col-sm-5", class="form-control") }}
