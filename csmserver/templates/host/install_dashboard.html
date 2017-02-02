@@ -566,10 +566,10 @@
                 <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li id="schedule-install-menu-item"><a href="{{ url_for('install.batch_schedule_install') }}?return_url=install_dashboard.home">Schedule Batch Installs</a></li>
+                    <li id="schedule-install-menu-item"><a href="{{ url_for('install.batch_schedule_install') }}?return_url=install_dashboard.home">Schedule Batch Installations</a></li>
                     <li class="divider"></li>
-                    <li><a href="javascript://" class="install-delete-all" status="scheduled" install-delete-url="{{ url_for('install_dashboard.api_delete_all_scheduled_installations') }}">Delete All Scheduled Installs</a></li>
-                    <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('install_dashboard.api_delete_all_failed_installations') }}">Delete All Failed Installs</a></li>
+                    <li><a href="javascript://" class="install-delete-all" status="scheduled" install-delete-url="{{ url_for('install_dashboard.api_delete_all_scheduled_installations') }}">Delete All Scheduled Installations</a></li>
+                    <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('install_dashboard.api_delete_all_failed_installations') }}">Delete All Failed Installations</a></li>
                 </ul>
             </div>
         </div>

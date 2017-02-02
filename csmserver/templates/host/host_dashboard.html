@@ -586,10 +586,10 @@
                     <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li id="schedule-install-menu-item"><a href="{{ url_for('install.host_schedule_install', hostname = host.hostname) }}?return_url=host_dashboard.home">Schedule an Install</a></li>
+                        <li id="schedule-install-menu-item"><a href="{{ url_for('install.host_schedule_install', hostname = host.hostname) }}?return_url=host_dashboard.home">Schedule an Installation</a></li>
                         <li class="divider"></li>
-                        <li><a href="javascript://" class="install-delete-all" status="scheduled" install-delete-url="{{ url_for('host_dashboard.delete_all_scheduled_installations_for_host', hostname = host.hostname) }}">Delete All Scheduled Installs</a></li>
-                        <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('host_dashboard.delete_all_failed_installations_for_host', hostname = host.hostname) }}">Delete All Failed Installs</a></li>
+                        <li><a href="javascript://" class="install-delete-all" status="scheduled" install-delete-url="{{ url_for('host_dashboard.delete_all_scheduled_installations_for_host', hostname = host.hostname) }}">Delete All Scheduled Installations</a></li>
+                        <li><a href="javascript://" class="install-delete-all" status="failed" install-delete-url="{{ url_for('host_dashboard.delete_all_failed_installations_for_host', hostname = host.hostname) }}">Delete All Failed Installations</a></li>
                         <li class="divider"></li>
                         <li><a href="javascript://" id="retrieve-inventory" retrieve-inventory-url="{{ url_for('host_dashboard.get_inventory', hostname = host.hostname) }}" return-url="{{ url_for('host_dashboard.home', hostname = host.hostname) }}">Retrieve Latest Inventory</a></li>
                         <li class="divider"></li>
