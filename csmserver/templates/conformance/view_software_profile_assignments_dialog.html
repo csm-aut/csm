@@ -85,7 +85,11 @@
         }
 
         software_profile_ui.on('change', function(e) {
-            refresh_host_table($(this).val());
+            var software_profile_id = $(this).val();
+            if (!($.isNumeric(software_profile_id))) {
+                software_profile_id = 0;
+            }
+            refresh_host_table(software_profile_id);
         });
     });
 
