@@ -34,7 +34,7 @@
                     }
                 }
             },
-            onTabClick : function(tab, navigation, index){
+            onTabClick: function(tab, navigation, index) {
                 // Disable the possibility to click on tabs
                 return false;
             },
@@ -117,8 +117,17 @@
             }
 
             var software_profile_name = $("#software_profile_2 option:selected").text();
-            assign_software_profile_to_hosts(platform, software_versions, region_ids,
-                                             roles, software_profile_id, software_profile_name);
+            var message = 'Apply Software Profile "' + software_profile_name + '" to hosts that match the filters\' criteria, OK?';
+            bootbox.confirm(message, function(result) {
+                if (result) {
+                    $('#assign-software-profile-dialog').modal('toggle');
+                    assign_software_profile_to_hosts(platform, software_versions, region_ids,
+                                                     roles, software_profile_id, software_profile_name);
+                }
+            });
+
+            // prevent the wizard closing
+            return false;
         });
 
         function assign_software_profile_to_hosts(platform, software_versions, region_ids,
