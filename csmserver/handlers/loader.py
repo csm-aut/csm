@@ -25,15 +25,23 @@
 from utils import import_class
 from utils import get_software_platform
 from utils import get_software_version
+from utils import create_log_directory
+
 from models import logger
 from constants import UNKNOWN
+
 import condoor
 import logging
 
 
 def discover_platform_info(ctx):
+    try:
+        log_dir = create_log_directory(ctx.host.connection_param[0].host_or_ip)
+    except Exception:
+        log_dir = None
+
     """Discover platform when added to CSM."""
-    conn = condoor.Connection(name=ctx.hostname, urls=ctx.host_urls, log_level=logging.CRITICAL)
+    conn = condoor.Connection(name=ctx.hostname, urls=ctx.host_urls, log_level=logging.CRITICAL, log_dir=log_dir)
     try:
         conn.connect(force_discovery=True)
         ctx.host.family = conn.family

@@ -58,10 +58,10 @@ def import_module(module, path=None):
         return None
 
 
-def create_log_directory(host_or_ip, id):
+def create_log_directory(host_or_ip, id=None):
     host = host_or_ip.strip().replace('.', '_').replace(' ', '_')
     date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
-    directory = get_log_directory() + host + '-' + date_string + '-' + str(id)
+    directory = get_log_directory() + host + '-' + date_string + (('-' + str(id)) if id else "")
 
     if not path.exists(directory):
         makedirs(directory)
