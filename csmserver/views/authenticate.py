@@ -167,7 +167,7 @@ def user_create():
         return render_template('user/edit.html', form=form)
 
 
-@authenticate.route('/users/<username>/edit', methods=['GET','POST'])
+@authenticate.route('/users/<username>/edit', methods=['GET', 'POST'])
 @login_required
 def user_edit(username):
     db_session = DBSession()
@@ -177,6 +177,11 @@ def user_edit(username):
         abort(404)
 
     form = UserForm(request.form)
+
+    # Remove the Required flag so validation won't fail.  In edit mode, it is okay
+    # not to provide the password.  In this case, the password on file is used.
+    remove_validator(form.password, Required)
+
     fill_user_privileges(form.privilege.choices)
 
     if request.method == 'POST' and form.validate():
@@ -193,16 +198,14 @@ def user_edit(username):
         return redirect(url_for('home'))
     else:
         form.username.data = user.username
-        # Remove the Required flag so validation won't fail.  In edit mode, it is okay
-        # not to provide the password.  In this case, the password on file is used.
-        remove_validator(form.password, Required)
+
 
         form.privilege.data = user.privilege
         form.fullname.data = user.fullname
         form.email.data = user.email
         form.active.data = user.active
 
-    return render_template('user/edit.html', form=form)
+        return render_template('user/edit.html', form=form)
 
 
 @authenticate.route('/users/edit', methods=['GET','POST'])
