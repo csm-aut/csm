@@ -36,6 +36,7 @@ import time
 import datetime 
 import importlib
 import tarfile
+import urllib
 import re
 
 from constants import get_log_directory, get_temp_directory
@@ -221,12 +222,12 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
     no_host_password = False
 
     if not is_empty(host_username):
-        url += '{}'.format(host_username)
+        url += '{}'.format(urllib.quote(host_username))
     else:
         no_host_username = True
 
     if not is_empty(host_password):
-        url += ':{}'.format(host_password)
+        url += ':{}'.format(urllib.quote(host_password))
     else:
         no_host_password = True
 
@@ -239,7 +240,7 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
         url += ':{}'.format(port_number)
 
     if not is_empty(enable_password):
-        url += '/{}'.format(enable_password)
+        url += '/{}'.format(urllib.quote(enable_password))
 
     return url
 
@@ -422,3 +423,4 @@ def get_build_date():
 
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))
+
