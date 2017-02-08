@@ -222,12 +222,12 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
     no_host_password = False
 
     if not is_empty(host_username):
-        url += '{}'.format(urllib.quote(host_username))
+        url += '{}'.format(urllib.quote(host_username, safe=""))
     else:
         no_host_username = True
 
     if not is_empty(host_password):
-        url += ':{}'.format(urllib.quote(host_password))
+        url += ':{}'.format(urllib.quote(host_password, safe=""))
     else:
         no_host_password = True
 
@@ -240,7 +240,7 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
         url += ':{}'.format(port_number)
 
     if not is_empty(enable_password):
-        url += '/{}'.format(urllib.quote(enable_password))
+        url += '/{}'.format(urllib.quote(enable_password, safe=""))
 
     return url
 
