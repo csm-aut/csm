@@ -41,7 +41,7 @@
                         type: 'DELETE',
                         success: function(result) {
                             if (result.status == 'OK') {
-                                refresh_host_table();
+                                refresh_host_table(false);
                             } else {
                                 bootbox.alert('Delete failed.');
                             }
@@ -138,12 +138,17 @@
         $('#search-region-selector').on('change', function(e) {
             write_region_to_cookie( $(this).val());
             refresh_region_name();
-            refresh_host_table();
+            refresh_host_table(true);
         });
 
-        function refresh_host_table() {
-            host_table.api().ajax.url("/datatable/api/get_managed_host_details/region/" +
-                get_region_from_cookie()).load();
+        function refresh_host_table(reset_page) {
+            if (reset_page) {
+                host_table.api().ajax.url("/datatable/api/get_managed_host_details/region/" +
+                    get_region_from_cookie()).load();
+            } else {
+                host_table.api().ajax.url("/datatable/api/get_managed_host_details/region/" +
+                    get_region_from_cookie()).load(null, false);
+            }
         }
 
         function refresh_region_name() {
