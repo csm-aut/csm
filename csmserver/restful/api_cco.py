@@ -29,6 +29,9 @@ from api_utils import ENVELOPE
 from api_utils import check_parameters
 from api_utils import failed_response
 
+from api_constants import HTTP_BAD_REQUEST
+from api_constants import HTTP_NOT_FOUND
+
 import datetime
 
 
@@ -45,7 +48,7 @@ def api_get_cco_software(request):
     """
     ok, response = check_parameters(request.args.keys(), ['platform', 'release', 'date'])
     if not ok:
-        return response, 400
+        return response, HTTP_BAD_REQUEST
 
     platform = request.args.get('platform')
     release = request.args.get('release')
@@ -92,7 +95,7 @@ def api_get_cco_software_entry(request, name_or_id):
     """
     ok, response = check_parameters(request.args.keys(), ['platform', 'release'])
     if not ok:
-        return response, 400
+        return response, HTTP_BAD_REQUEST
 
     platform = request.args.get('platform')
     release = request.args.get('release')
@@ -108,7 +111,7 @@ def api_get_cco_software_entry(request, name_or_id):
             if smu_info:
                 return jsonify(**{ENVELOPE: get_smu_info(smu_info)})
 
-    return failed_response('Unable to locate %s' % name_or_id, return_code=404)
+    return failed_response('Unable to locate %s' % name_or_id, return_code=HTTP_NOT_FOUND)
 
 
 def get_smu_info(smu_info):

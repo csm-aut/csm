@@ -127,7 +127,7 @@ def delete_install_job_dependencies(db_session, id):
 def fill_jump_hosts(db_session, choices):
     # Remove all the existing entries
     del choices[:]
-    choices.append((-1, 'None'))
+    choices.append((-1, ''))
 
     try:
         hosts = get_jump_host_list(db_session)
@@ -152,11 +152,71 @@ def fill_regions(db_session, choices):
         logger.exception('fill_regions() hit exception')
 
 
+def get_region_id_to_name_dict(db_session):
+    results = dict()
+
+    regions = get_region_list(db_session)
+    for region in regions:
+        results[region.id] = region.name
+
+    return results
+
+
+def get_region_name_to_id_dict(db_session):
+    results = dict()
+
+    regions = get_region_list(db_session)
+    for region in regions:
+        results[region.name] = region.id
+
+    return results
+
+
+def get_jump_host_id_to_name_dict(db_session):
+    results = dict()
+
+    jump_hosts = get_jump_host_list(db_session)
+    for jump_host in jump_hosts:
+        results[jump_host.id] = jump_host.hostname
+
+    return results
+
+
+def get_jump_host_name_to_id_dict(db_session):
+    results = dict()
+
+    jump_hosts = get_jump_host_list(db_session)
+    for jump_host in jump_hosts:
+        results[jump_host.hostname] = jump_host.id
+
+    return results
+
+
+def get_software_profile_id_to_name_dict(db_session):
+    results = dict()
+
+    software_profiles = get_software_profile_list(db_session)
+    for software_profile in software_profiles:
+        results[software_profile.id] = software_profile.name
+
+    return results
+
+
+def get_software_profile_name_to_id_dict(db_session):
+    results = dict()
+
+    software_profiles = get_software_profile_list(db_session)
+    for software_profile in software_profiles:
+        results[software_profile.name] = software_profile.id
+
+    return results
+
+
 def fill_user_privileges(choices):
     # Remove all the existing entries
     del choices[:]
-
     choices.append(('', ''))
+
     user_privileges = get_user_privilege_list()
     for user_privilege in user_privileges:
         choices.append((user_privilege, user_privilege))
@@ -429,8 +489,9 @@ def get_install_job_dependency_completed(db_session, install_action, host_id):
                                                            InstallJobHistory.status == JobStatus.COMPLETED)).all()
 
 
-def create_or_update_host(db_session, hostname, region_id, location, roles, software_profile_id, connection_type, host_or_ip,
-                          username, password, enable_password, port_number, jump_host_id, created_by, host=None):
+def create_or_update_host(db_session, hostname, region_id, location, roles, software_profile_id, connection_type,
+                          host_or_ip, username, password, enable_password, port_number, jump_host_id, created_by,
+                          host=None):
     """ Create a new host in the Database """
     if host is None:
         host = Host(hostname=hostname, created_by=created_by)

@@ -23,7 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask import Blueprint
-from flask import jsonify, render_template, redirect, url_for
+from flask import render_template
 from flask.ext.login import current_user
 from flask.ext.login import login_required
 from flask import request
@@ -35,24 +35,27 @@ from wtforms import StringField
 from wtforms import SelectField
 from wtforms import IntegerField
 from wtforms import PasswordField
-from wtforms.validators import Length, required
+from wtforms.validators import required
+
+from database import DBSession
 
 from constants import ConnectionType
 
 from common import can_create
 from common import fill_regions
-from common import get_region
+from common import fill_software_profiles
+from common import fill_jump_hosts
 from common import get_region_by_id
+from common import get_jump_host_by_id
+from common import get_software_profile_by_id
 from common import get_host
+from common import create_or_update_host
+from common import get_region_name_to_id_dict
 
-from models import InventoryJob
-from models import Host
-from models import ConnectionParam
 from models import Region
-from models import HostContext
+from models import logger
 
-from database import DBSession
-
+from utils import is_empty
 from utils import remove_extra_spaces
 from utils import get_acceptable_string
 from utils import generate_ip_range
@@ -63,12 +66,19 @@ host_import = Blueprint('host_import', __name__, url_prefix='/host_import')
 
 HEADER_FIELD_HOSTNAME = 'hostname'
 HEADER_FIELD_REGION = 'region'
+HEADER_FIELD_LOCATION = 'location'
 HEADER_FIELD_ROLES = 'roles'
 HEADER_FIELD_IP = 'ip'
 HEADER_FIELD_USERNAME = 'username'
 HEADER_FIELD_PASSWORD = 'password'
 HEADER_FIELD_CONNECTION = 'connection'
 HEADER_FIELD_PORT = 'port'
+HEADER_FIELD_ENABLE_PASSWORD = 'enable_password'
+
+HEADER_FIELDS = [HEADER_FIELD_HOSTNAME, HEADER_FIELD_REGION, HEADER_FIELD_LOCATION,
+                 HEADER_FIELD_ROLES, HEADER_FIELD_IP, HEADER_FIELD_USERNAME,
+                 HEADER_FIELD_PASSWORD, HEADER_FIELD_CONNECTION, HEADER_FIELD_PORT,
+                 HEADER_FIELD_ENABLE_PASSWORD]
 
 
 @host_import.route('/')
@@ -78,9 +88,13 @@ def import_hosts():
         abort(401)
 
     db_session = DBSession()
+
     form = HostImportForm(request.form)
-    fill_regions(db_session, form.region.choices)
     ip_range_dialog_form = IPRangeForm(request.form)
+
+    fill_regions(db_session, form.region.choices)
+    fill_jump_hosts(db_session, form.jump_host.choices)
+    fill_software_profiles(db_session, form.software_profile.choices)
 
     return render_template('host/import_hosts.html', form=form,
                            ip_range_dialog_form=ip_range_dialog_form)
@@ -95,17 +109,16 @@ def api_generate_ip_range():
         'endIP':      request.form['endIP'],
         'step':       request.form.get('step'),
         'region':     request.form.get('region2'),
-        'roles':       request.form.get('role'),
+        'roles':      request.form.get('role'),
         'connection': request.form['connection'],
         'username':   request.form.get('username'),
         'password':   request.form.get('password'),
     }
     #input_data['region'] = get_region_by_id(DBSession(), input_data['region']).name
     input_data['step'] = int(input_data['step'])
-    allowed_headers = ['hostname', 'region', 'roles', 'ip', 'username', 'password', 'connection', 'port']
     input_header = ['hostname', 'ip']
 
-    for i in allowed_headers:
+    for i in HEADER_FIELDS:
         if i in input_data.keys() and input_data[i]:
             input_header.append(i)
 
@@ -122,9 +135,8 @@ def api_generate_ip_range():
     if not is_valid:
         return jsonify({'status': 'The current header line is not valid with the ip range input.'})
     elif not data_list:
-        output = (',').join(header)
+        output = ','.join(header)
     else:
-        #output = data_list
         output = ''
 
     # build the rest of the text after the header
@@ -139,9 +151,7 @@ def api_generate_ip_range():
                     line.append(input_data[column])
                 else:
                     line.append('')
-            output += '\n' + (',').join(line)
-
-    print output
+            output += '\n' + ','.join(line)
 
     return jsonify({'status': 'OK', 'data_list': output})
 
@@ -153,24 +163,47 @@ def get_column_number(header, column_name):
         return -1
 
 
+def get_row_data(row_data, header, column_name):
+    col = get_column_number(header, column_name)
+    if col >= 0:
+        return remove_extra_spaces(row_data[col].strip())
+    return None
+
+
 @host_import.route('/api/import_hosts', methods=['POST'])
 @login_required
 def api_import_hosts():
-    importable_header = [HEADER_FIELD_HOSTNAME, HEADER_FIELD_REGION, HEADER_FIELD_ROLES, HEADER_FIELD_IP,
-                         HEADER_FIELD_USERNAME, HEADER_FIELD_PASSWORD, HEADER_FIELD_CONNECTION, HEADER_FIELD_PORT]
-    region_id = request.form['region']
+    region_id = int(request.form['region_id'])
+    jump_host_id = int(request.form['jump_host_id'])
+    software_profile_id = int(request.form['software_profile_id'])
     data_list = request.form['data_list']
 
     db_session = DBSession()
-    selected_region = get_region_by_id(db_session, region_id)
-    if selected_region is None:
-        return jsonify({'status': 'Region is no longer exists in the database.'})
 
-    # Check mandatory data fields
+    if region_id == -1:
+        return jsonify({'status': 'Region has not been specified.'})
+
+    if region_id > 0:
+        region = get_region_by_id(db_session, region_id)
+        if region is None:
+            return jsonify({'status': 'Region is no longer exists in the database.'})
+
+    if jump_host_id > 0:
+        jump_host = get_jump_host_by_id(db_session, jump_host_id)
+        if jump_host is None:
+            return jsonify({'status': 'Jump Host is no longer exists in the database.'})
+
+    if software_profile_id > 0:
+        software_profile = get_software_profile_by_id(db_session, software_profile_id)
+        if software_profile is None:
+            return jsonify({'status': 'Software Profile is no longer exists in the database.'})
+
     error = []
     reader = csv.reader(data_list.splitlines(), delimiter=',')
     header_row = next(reader)
 
+    # header_row: ['hostname', 'location', 'roles', 'ip', 'username', 'password', 'connection', 'port']
+    # Check mandatory data fields
     if HEADER_FIELD_HOSTNAME not in header_row:
         error.append('"hostname" is missing in the header.')
 
@@ -181,136 +214,134 @@ def api_import_hosts():
         error.append('"connection" is missing in the header.')
 
     for header_field in header_row:
-        if header_field not in importable_header:
+        if header_field not in HEADER_FIELDS:
             error.append('"' + header_field + '" is not a correct header field.')
 
     if error:
-        return jsonify({'status': ','.join(error)})
+        return jsonify({'status': '\n'.join(error)})
 
-    # Check if each row has the same number of data fields as the header
     error = []
     data_list = list(reader)
 
+    region_dict = get_region_name_to_id_dict(db_session)
+
+    # Check if each row has the same number of data fields as the header
     row = 2
-    COLUMN_CONNECTION = get_column_number(header_row, HEADER_FIELD_CONNECTION)
-    COLUMN_REGION = get_column_number(header_row, HEADER_FIELD_REGION)
-
     for row_data in data_list:
-        if len(row_data) > 0:
-            if len(row_data) != len(header_row):
-                error.append('line %d has wrong number of data fields.' % row)
-            else:
-                if COLUMN_CONNECTION >= 0:
-                    # Validate the connection type
-                    data_field = row_data[COLUMN_CONNECTION]
-                    if data_field != ConnectionType.TELNET and data_field != ConnectionType.SSH:
-                        error.append('line %d has a wrong connection type (should either be "telnet" or "ssh").' % row)
-                if COLUMN_REGION >= 0:
-                    # Create a region if necessary
-                    data_field = get_acceptable_string(row_data[COLUMN_REGION])
-                    region = get_region(db_session, data_field)
-                    if region is None and data_field:
-                        try:
-                            db_session.add(Region(name=data_field,
-                                                  created_by=current_user.username))
-                            db_session.commit()
-                        except Exception:
-                            db_session.rollback()
-                            error.append('Unable to create region %s.' % data_field)
+        if len(row_data) != len(header_row):
+            error.append('line {} has wrong number of data fields - {}.'.format(row, row_data))
+        else:
+            hostname = get_acceptable_string(get_row_data(row_data, header_row, HEADER_FIELD_HOSTNAME))
+            if is_empty(hostname):
+                error.append('line {} has invalid hostname - {}.'.format(row, row_data))
 
+            # Validate the connection type
+            connection_type = get_row_data(row_data, header_row, HEADER_FIELD_CONNECTION)
+            if is_empty(connection_type) or connection_type not in [ConnectionType.TELNET, ConnectionType.SSH]:
+                error.append('line {} has a wrong connection type (should either be "telnet" or "ssh") - {}.'.format(row, row_data))
+
+            region_name = get_acceptable_string(get_row_data(row_data, header_row, HEADER_FIELD_REGION))
+            if region_name is not None:
+                # No blank region is allowed
+                if len(region_name) == 0:
+                    error.append('line {} has no region specified - {}.'.format(row, row_data))
+                else:
+                    if region_name not in region_dict.keys():
+                        # Create the new region
+                        try:
+                            region = Region(name=region_name, created_by=current_user.username)
+                            db_session.add(region)
+                            db_session.commit()
+
+                            # Add to region dictionary for caching purpose.
+                            region_dict[region_name] = region.id
+                        except Exception as e:
+                            logger.exception('api_import_hosts() hit exception')
+                            error.append('Unable to create region {} - {}.'.format(region_name, e.message))
         row += 1
 
     if error:
-        return jsonify({'status': ','.join(error)})
+        return jsonify({'status': '\n'.join(error)})
 
     # Import the data
-    error = []
-    im_regions = {}
+    row = 2
+    for row_data in data_list:
+        try:
+            created_by = current_user.username
+            hostname = get_acceptable_string(get_row_data(row_data, header_row, HEADER_FIELD_HOSTNAME))
 
-    for data in data_list:
-        if len(data) == 0:
-            continue
+            # Check if the host already exists in the database.
+            host = get_host(db_session, hostname)
 
-        db_host = None
-        im_host = Host()
-        im_host.region_id = selected_region.id
-        im_host.created_by = current_user.username
-        im_host.inventory_job.append(InventoryJob())
-        im_host.context.append(HostContext())
-        im_host.connection_param.append(ConnectionParam())
-        im_host.connection_param[0].username = ''
-        im_host.connection_param[0].password = ''
-        im_host.connection_param[0].port_number = ''
+            region_name = get_acceptable_string(get_row_data(row_data, header_row, HEADER_FIELD_REGION))
+            if region_name is None:
+                alternate_region_id = region_id
+            else:
+                alternate_region_id = region_dict[region_name]
 
-        for column in range(len(header_row)):
+            location = get_row_data(row_data, header_row, HEADER_FIELD_LOCATION)
+            if host and location is None:
+                location = host.location
 
-            header_field = header_row[column]
-            data_field = data[column].strip()
+            roles = get_row_data(row_data, header_row, HEADER_FIELD_ROLES)
+            if host and roles is None:
+                roles = host.roles
 
-            if header_field == HEADER_FIELD_HOSTNAME:
-                hostname = get_acceptable_string(data_field)
-                db_host = get_host(db_session, hostname)
-                im_host.hostname = hostname
-            elif header_field == HEADER_FIELD_REGION:
-                region_name = get_acceptable_string(data_field)
-                if region_name in im_regions:
-                    im_host.region_id = im_regions[region_name]
-                else:
-                    region = get_region(db_session, region_name)
-                    if region is not None:
-                        im_host.region_id = region.id
-                        # Saved for later lookup
-                        im_regions[region_name] = region.id
-            elif header_field == HEADER_FIELD_ROLES:
-                im_host.roles = remove_extra_spaces(data_field)
-            elif header_field == HEADER_FIELD_IP:
-                im_host.connection_param[0].host_or_ip = remove_extra_spaces(data_field)
-            elif header_field == HEADER_FIELD_USERNAME:
-                username = get_acceptable_string(data_field)
-                im_host.connection_param[0].username = username
-            elif header_field == HEADER_FIELD_PASSWORD:
-                im_host.connection_param[0].password = data_field
-            elif header_field == HEADER_FIELD_CONNECTION:
-                im_host.connection_param[0].connection_type = data_field
-            elif header_field == HEADER_FIELD_PORT:
-                im_host.connection_param[0].port_number = remove_extra_spaces(data_field)
+            host_or_ip = get_row_data(row_data, header_row, HEADER_FIELD_IP)
+            if host and host_or_ip is None:
+                host_or_ip = host.connection_param[0].host_or_ip
 
-        # Import host already exists in the database, just update it
-        if db_host is not None:
-            db_host.created_by = im_host.created_by
-            db_host.region_id = im_host.region_id
+            connection_type = get_row_data(row_data, header_row, HEADER_FIELD_CONNECTION)
+            if host and connection_type is None:
+                connection_type = host.connection_param[0].connection_type
 
-            if HEADER_FIELD_ROLES in header_row:
-                db_host.roles = im_host.roles
+            username = get_row_data(row_data, header_row, HEADER_FIELD_USERNAME)
+            if host and username is None:
+                username = host.connection_param[0].username
 
-            if HEADER_FIELD_IP in header_row:
-                db_host.connection_param[0].host_or_ip = im_host.connection_param[0].host_or_ip
+            password = get_row_data(row_data, header_row, HEADER_FIELD_PASSWORD)
+            if host and password is None:
+                password = host.connection_param[0].password
 
-            if HEADER_FIELD_USERNAME in header_row:
-                db_host.connection_param[0].username = im_host.connection_param[0].username
+            enable_password = get_row_data(row_data, header_row, HEADER_FIELD_ENABLE_PASSWORD)
+            if host and enable_password is None:
+                enable_password = host.connection_param[0].enable_password
 
-            if HEADER_FIELD_PASSWORD in header_row:
-                db_host.connection_param[0].password = im_host.connection_param[0].password
+            port_number = get_row_data(row_data, header_row, HEADER_FIELD_PORT)
+            if host and port_number is None:
+                port_number = host.connection_param[0].port_number
 
-            if HEADER_FIELD_CONNECTION in header_row:
-                db_host.connection_param[0].connection_type = im_host.connection_param[0].connection_type
+            # If no software profile is selected, retain the existing one instead of overwriting it.
+            if host and (software_profile_id is None or software_profile_id <= 0):
+                alternate_software_profile_id = host.software_profile_id
+            else:
+                alternate_software_profile_id = software_profile_id
 
-            if HEADER_FIELD_PORT in header_row:
-                db_host.connection_param[0].port_number = im_host.connection_param[0].port_number
-        else:
-            # Add the import host
-            db_session.add(im_host)
+            # If no jump host is selected, retain the existing one instead of overwriting it.
+            if host and (jump_host_id is None or jump_host_id <= 0):
+                alternate_jump_host_id = host.connection_param[0].jump_host_id
+            else:
+                alternate_jump_host_id = jump_host_id
 
-    if error:
-        return jsonify({'status': error})
-    else:
-        db_session.commit()
-        return jsonify({'status': 'OK'})
+            create_or_update_host(db_session, hostname, alternate_region_id, location, roles,
+                                  alternate_software_profile_id, connection_type, host_or_ip,
+                                  username, password, enable_password, port_number,
+                                  alternate_jump_host_id, created_by, host)
+
+        except Exception as e:
+            return jsonify({'status': 'Line {} - {} - {}.'.format(row, e.message, row_data)})
+
+        row += 1
+
+    return jsonify({'status': 'OK'})
 
 
 class HostImportForm(Form):
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
+    jump_host = SelectField('Jump Host', coerce=int, choices=[(-1, '')])
+    software_profile = SelectField('Software Profile', coerce=int, choices=[(-1, '')])
     data_list = TextAreaField('')
+    import_errors = TextAreaField('')
 
 
 class IPRangeForm(Form):

@@ -77,6 +77,8 @@
             "columns": [
                 { "data": "hostname" },
                 { "data": "region" },
+                { "data": "location" },
+                { "data": "roles" },
                 { "data": "chassis" },
                 { "data": "platform" },
                 { "data": "software" },
@@ -86,6 +88,7 @@
                 { "data": "username" },
                 { "data": "jump_host" }
             ],
+            scrollX: true,
             "pageLength": get_page_length_from_cookie(),
             "columnDefs": [{
                 "targets": 0,
@@ -98,36 +101,45 @@
                 "data": 'region'
             }, {
                 "targets": 2,
-                "data": 'chassis'
-            },{
+                "data": 'location'
+            }, {
                 "targets": 3,
-                "data": 'platform'
+                "data": 'roles',
+                "render": function(data, type, row) {
+                    return comma2br(data);
+                }
             }, {
                 "targets": 4,
-                "data": 'software'
-            }, {
+                "data": 'chassis'
+            },{
                 "targets": 5,
-                "data": 'connection'
+                "data": 'platform'
             }, {
                 "targets": 6,
+                "data": 'software'
+            }, {
+                "targets": 7,
+                "data": 'connection'
+            }, {
+                "targets": 8,
                 "data": 'host_or_ip',
                 "render": function(data, type, row) {
                     return '<a href="/home/hosts/' + row['hostname'] + '/edit/">' + comma2br(data) + '</a>';
                 }
             }, {
-                "targets": 7,
+                "targets": 9,
                 "data": 'port_number',
                 "render": function(data, type, row) {
                     return comma2br(data);
                 }
             }, {
-                "targets": 8,
+                "targets": 10,
                 "data": 'username',
             }, {
-                "targets": 9,
+                "targets": 11,
                 "data": 'jump_host'
             }, {
-                "targets": 10,
+                "targets": 12,
                 "data": 'hostname',
                 "render": function(data, type, row) {
                     return '<a class="host-delete-link" href="javascript://"  \
@@ -194,6 +206,8 @@
                 <tr>
                     <th>Hostname</th>
                     <th>Region</th>
+                    <th>Location</th>
+                    <th>roles</th>
                     <th>Chassis</th>
                     <th>Platform</th>
                     <th>Software</th>

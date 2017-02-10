@@ -7,6 +7,7 @@
 <script>
 
 $(function() {
+
     $('#on-finish-submit').on('click', function(e) {
         var trimmed_data = trim_lines($('#data_list').val());
         if (!trimmed_data) {
@@ -18,16 +19,22 @@ $(function() {
             type: "POST",
             dataType: 'json',
             data: {
-                region: $('#region').val(),
+                region_id: $('#region').val(),
+                jump_host_id: $('#jump_host').val(),
+                software_profile_id: $('#software_profile').val(),
                 data_list: trimmed_data
             },
             success: function(data) {
+                // re-initialize
+                $('#import_errors').val('');
+
                 if (data.status == 'OK') {
                     bootbox.alert("Data has been imported successfully!", function() {
                         window.location = "{{ url_for('host_import.import_hosts') }}";
                     });
                 } else {
-                    bootbox.alert('<img src="/static/error.png">&nbsp;Following errors were encountered: <br><br>' + comma2br(data.status));
+                    $('#import_errors').val(data.status);
+                    display_view_import_error_dialog();
                 }
             },
             error: function(XMLHttpRequest, textStatus, errorThrown) {
@@ -37,6 +44,10 @@ $(function() {
 
         return false;
     });
+
+    function display_view_import_error_dialog() {
+        $('#view-import-error-dialog').modal({show: true, backdrop: 'static'});
+    }
 
     $('#import_range').on('click', function(e) {
         //display_ip_range_dialog();
@@ -69,7 +80,7 @@ $(function() {
         onNext: function(tab, navigation, index){
             if (index == 1) {
                 if ($('#region option:selected').val() == -1) {
-                    bootbox.alert("Region has not been specified.");
+                    bootbox.alert("Region is mandatory, but it has not been specified.");
                     return false;
                 }
             } //etc.
@@ -185,11 +196,33 @@ $(function() {
 });
 
 </script>
+
+<style>
+    .modal-dialog {
+        width: 850px;
+    }
+</style>
+
 {% endblock %}
 
 {% block main %}
 
 {{ ip_range_dialog(ip_range_dialog_form) }}
+
+<div id="view-import-error-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <center><img src="/static/error.png">&nbsp;<strong>Followings are detected import errors</strong></center><br>
+                    {{ edit_field(form.import_errors, rows="15", style="width: 100%; white-space: nowrap;", field_width="col-sm-12", class="form-control") }}
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 
 <div class="row">
     <div class="col-sm-8 col-sm-offset-2">
@@ -209,35 +242,41 @@ $(function() {
                     <div class="tab-content">
                         <div class="tab-pane" id="general">
                             <div class="row">
-                                <h4 class="info-text">If the import data does not contain a region, the region selected below will be used.</h4>
+                                <h4 class="info-text">
+                                    If the import data does not contain a region, the region selected below will be used.<br>
+                                    The jump host and software profile are optional.</h4>
                                 {{ edit_field(form.region, field_width="col-sm-4", class="form-control") }}
+                                {{ edit_field(form.jump_host, field_width="col-sm-4", class="form-control") }}
+                                {{ edit_field(form.software_profile, field_width="col-sm-4", class="form-control", placeholder="Optional") }}
                             </div>
                         </div>
                         <div class="tab-pane" id="import_data">
                             <div class="row">
                                 <a class="btn btn-sm btn-default pull-right" data-toggle="collapse" href="#import-instructions" style="margin-right: 10px;">Import Instructions <b class="caret"></b></a>
+                                <h4 class="info-text">Click Import Instructions for more information.</h4>
                                 <div class="collapse" id="import-instructions">
                                     <div class="col-sm-12">
                                         <ul>
                                             <li>Paste the import data onto the text window below.</li>
-                                            <li>The first data line must be a header line.</li>
-                                            <li>The data fields must be comma delimited.</li>
+                                            <li>The first row is the header which identifies the data being imported.</li>
+                                            <li>Mandatory header fields are hostname, ip, and connection (acceptable values: 'telnet' or 'ssh').</li>
+                                            <li>Acceptable header fields are hostname, region, location, roles, ip, username, password, connection, port, and enable_password.</li>
+                                            <li>The second row onwards are import data which must match the header and the data fields must be comma delimited.</li>
                                             <li>The following data fields roles, ip, and port may contain multiple values.</li>
                                             <li>If a data field contains multiple values, they must be separated by comma(s) and the data field must be double-quoted.</li>
                                             <li>If a data field does not contain any value, leave it blank.</li>
                                             <li>If no username and password is specified, the default host username and password defined on CSM Server will be used.</li>
-                                            <li>Acceptable header fields are hostname, region, roles, ip, username, password, connection, and port.</li>
-                                            <li>Mandatory header fields are hostname, ip, and connection (either 'telnet' or 'ssh').</li>
-                                            <li>Acceptable characters for hostname, region, and username are a-z, A-Z, 0-9, and (). -_</li>
+                                            <li>The enable_password field is only needed for IOS and IOS XE devices.</li>
+                                            <li>Acceptable characters for hostname and region are a-z, A-Z, 0-9, and (). -_</li>
                                         </ul>
                                     </div>
                                 </div>
                             </div>
                             <hr>
                             <div class="col-sm-12" style="font-family: monospace;font-size:medium">
-                                <b>hostname,region,roles,ip,username,password,connection,port</b>&nbsp;<- header (some fields are optional)<br>
-                                myhost1,blg 20,,172.27.22.34,johnsmith,password,telnet,&nbsp; <- leave blank for an empty field<br>
-                                myhost2,blg 20,PE,172.27.22.35,davidsmith,password,ssh,"2033,2034"
+                                <b>hostname,region,location,roles,ip,username,password,connection,port,enable_password</b> <- header<br>
+                                myhost1,California USA,blg 20,,172.27.22.34,johnsmith,john123,telnet,, <- blank for empty fields<br>
+                                myhost2,California USA,blg 20,PE,172.27.22.35,davidsmith,david123,ssh,"2033,2034",
                             </div>
                             {{ edit_field(form.data_list, field_width="col-sm-12", spellcheck="false", rows="10", class="form-control") }}
                         </div>
