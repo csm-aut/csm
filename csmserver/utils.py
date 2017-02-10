@@ -240,7 +240,7 @@ def make_url(connection_type, host_username, host_password, host_or_ip, port_num
         url += ':{}'.format(port_number)
 
     if not is_empty(enable_password):
-        url += '/{}'.format(urllib.quote(enable_password, safe=""))
+        url += '?enable_password={}'.format(urllib.quote(enable_password, safe=""))
 
     return url
 
@@ -297,8 +297,11 @@ def get_acceptable_string(input_string):
     """
     Strips all unwanted characters except a-z, A-Z, 0-9, and '(). -_'
     """
-    temp = re.sub("[^a-z0-9()-_.\s]",'', input_string, flags=re.I)
-    return re.sub("\s+", " ", temp).strip()
+    if input_string is not None:
+        temp = re.sub("[^a-z0-9()-_.\s]", '', input_string, flags=re.I)
+        return re.sub("\s+", " ", temp).strip()
+    else:
+        return None
 
 
 def comma_delimited_str_to_list(comma_delimited_str):
@@ -423,4 +426,3 @@ def get_build_date():
 
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))
-
