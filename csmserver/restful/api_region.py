@@ -95,7 +95,7 @@ def api_create_regions(request):
         if status_message is None and row == {}:
             try:
                 region = create_or_update_region(db_session,
-                             name=data['name'],
+                             region_name=data['name'],
                              server_repositories=data['server_repositories'],
                              region=get_region(db_session, data['name']))
                 row[STATUS] = APIStatus.SUCCESS
@@ -126,7 +126,7 @@ def api_edit_region(db_session, region, data):
 
     try:
         region = create_or_update_region(db_session,
-                             name=region.name if 'name' not in data.keys() else data['name'],
+                             region_name=region.name if 'name' not in data.keys() else data['name'],
                              server_repositories=region.server_repositories if 'server_repositories' not in data.keys()
                                 else data['server_repositories'],
                              region=region)

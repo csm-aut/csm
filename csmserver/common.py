@@ -69,6 +69,7 @@ from utils import remove_extra_spaces
 from utils import create_directory
 from utils import create_temp_user_directory
 from utils import make_file_writable
+from utils import check_acceptable_string
 
 from smu_info_loader import SMUInfoLoader
 from package_utils import is_file_acceptable_for_install_add
@@ -251,7 +252,7 @@ def fill_custom_command_profiles(db_session, choices):
     del choices[:]
 
     try:
-        profiles = get_custom_command_profiles_list(db_session)
+        profiles = get_custom_command_profile_list(db_session)
 
         for profile in profiles:
             choices.append((profile.id, profile.profile_name))
@@ -344,12 +345,12 @@ def get_server_by_id(db_session, id):
     return db_session.query(Server).filter(Server.id == id).first()
 
 
-def get_custom_command_profile_by_id(db_session, id):
-    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == id).first()
+def get_custom_command_profile_by_id(db_session, profile_id):
+    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == profile_id).first()
 
 
-def get_custom_command_profile(db_session, name):
-    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.profile_name == name).first()
+def get_custom_command_profile(db_session, profile_name):
+    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.profile_name == profile_name).first()
 
 
 def get_custom_command_profile_list(db_session):
@@ -382,10 +383,6 @@ def get_software_profile_by_id(db_session, id):
 
 def get_hosts_by_software_profile_id(db_session, profile_id):
     return db_session.query(Host).filter(Host.software_profile_id == profile_id).order_by(Host.hostname.asc()).all()
-
-
-def get_custom_command_profiles_list(db_session):
-    return db_session.query(CustomCommandProfile).order_by(CustomCommandProfile.profile_name.asc()).all()
 
 
 def get_user(db_session, username):
@@ -492,13 +489,16 @@ def get_install_job_dependency_completed(db_session, install_action, host_id):
 def create_or_update_host(db_session, hostname, region_id, location, roles, software_profile_id, connection_type,
                           host_or_ip, username, password, enable_password, port_number, jump_host_id, created_by,
                           host=None):
+
+    hostname = check_acceptable_string(hostname)
     """ Create a new host in the Database """
     if host is None:
-        host = Host(hostname=hostname, created_by=created_by)
+        host = Host(created_by=created_by)
         host.inventory_job.append(InventoryJob())
         host.context.append(HostContext())
         db_session.add(host)
 
+    host.hostname = hostname
     host.region_id = region_id if region_id > 0 else None
     host.software_profile_id = software_profile_id if software_profile_id > 0 else None
     host.location = '' if location is None else remove_extra_spaces(location)
@@ -506,9 +506,9 @@ def create_or_update_host(db_session, hostname, region_id, location, roles, soft
     host.connection_param = [ConnectionParam(
         # could have multiple IPs, separated by comma
         host_or_ip='' if host_or_ip is None else remove_extra_spaces(host_or_ip),
-        username='' if username is None else username,
-        password='' if password is None else password,
-        enable_password='' if enable_password is None else enable_password,
+        username='' if username is None else remove_extra_spaces(username),
+        password='' if password is None else remove_extra_spaces(password),
+        enable_password='' if enable_password is None else remove_extra_spaces(enable_password),
         jump_host_id=jump_host_id if jump_host_id > 0 else None,
         connection_type=connection_type,
         # could have multiple ports, separated by comma
@@ -564,7 +564,7 @@ def delete_host(db_session, hostname):
     host.delete(db_session)
 
 
-def create_or_update_region(db_session, name, server_repositories, region=None):
+def create_or_update_region(db_session, region_name, server_repositories, created_by, region=None):
     """
     :param db_session:
     :param name:
@@ -573,17 +573,12 @@ def create_or_update_region(db_session, name, server_repositories, region=None):
     :param region:
     :return:
     """
+    region_name = check_acceptable_string(region_name)
     if region is None:
-        region = Region()
-        region.name = name
+        region = Region(created_by=created_by)
         db_session.add(region)
 
-    if hasattr(current_user, 'username'):
-        region.created_by = current_user.username
-    else:
-        region.created_by = g.api_user.username
-
-    region.name = name
+    region.name = region_name
     region.servers = []
     if server_repositories is not '':
         for server in server_repositories.split(','):
@@ -633,21 +628,11 @@ def delete_region(db_session, name):
     db_session.commit()
 
 
-def create_or_update_custom_command_profile(db_session, profile_name, command_list, custom_command_profile=None):
-    """
-    :param db_session:
-    :param profile_name:
-    :param custom_command_profile:
-    :return:
-    """
+def create_or_update_custom_command_profile(db_session, profile_name, command_list, created_by, custom_command_profile=None):
+    profile_name = check_acceptable_string(profile_name)
     if custom_command_profile is None:
-        custom_command_profile = CustomCommandProfile()
+        custom_command_profile = CustomCommandProfile(created_by=created_by)
         db_session.add(custom_command_profile)
-
-    if hasattr(current_user, 'username'):
-        custom_command_profile.created_by = current_user.username
-    else:
-        custom_command_profile.created_by = g.api_user.username
 
     custom_command_profile.profile_name = profile_name
     custom_command_profile.command_list = command_list
@@ -666,15 +651,13 @@ def delete_custom_command_profile(db_session, profile_name):
 
 
 def create_or_update_jump_host(db_session, hostname, connection_type, host_or_ip,
-                               port_number, username, password, jumphost=None):
-    if jumphost is None:
-        jumphost = JumpHost()
-        db_session.add(jumphost)
+                               port_number, username, password, created_by, jumphost=None):
 
-    if hasattr(current_user, 'username'):
-        jumphost.created_by = current_user.username
-    else:
-        jumphost.created_by = g.api_user.username
+    hostname = check_acceptable_string(hostname)
+
+    if jumphost is None:
+        jumphost = JumpHost(created_by=created_by)
+        db_session.add(jumphost)
 
     jumphost.hostname = hostname
     jumphost.host_or_ip = host_or_ip
@@ -698,15 +681,13 @@ def delete_jump_host(db_session, hostname):
 
 
 def create_or_update_server_repository(db_session, hostname, server_type, server_url, username, vrf,
-                                       server_directory, password, destination_on_host, server=None):
-    if server is None:
-        server = Server()
-        db_session.add(server)
+                                       server_directory, password, destination_on_host, created_by, server=None):
 
-    if hasattr(current_user, 'username'):
-        server.created_by = current_user.username
-    else:
-        server.created_by = g.api_user.username
+    hostname = check_acceptable_string(hostname)
+
+    if server is None:
+        server = Server(created_by=created_by)
+        db_session.add(server)
 
     server.hostname = hostname
     server.server_type = server_type

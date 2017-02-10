@@ -23,8 +23,16 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask import Blueprint
-from flask import jsonify, render_template, request, redirect, url_for, abort, send_file, flash
-from flask.ext.login import login_required, current_user
+from flask import jsonify
+from flask import render_template
+from flask import request
+from flask import redirect
+from flask import url_for
+from flask import abort
+from flask import send_file
+from flask import flash
+from flask.ext.login import login_required
+from flask.ext.login import current_user
 
 from database import DBSession
 
@@ -41,7 +49,7 @@ from utils import create_directory
 from utils import make_file_writable
 
 from common import create_or_update_custom_command_profile
-from common import delete_custom_command_profile as delete_ccp
+from common import delete_custom_command_profile
 from common import get_custom_command_profile
 
 import os
@@ -150,32 +158,23 @@ def command_profile_create():
     form = CustomCommandProfileForm(request.form)
 
     if request.method == 'POST' and form.validate():
-        command_profile = get_command_profile(db_session, form.profile_name.data)
+        command_profile = get_custom_command_profile(db_session, form.profile_name.data)
 
         if command_profile is not None:
             return render_template('custom_command/command_profile_edit.html',
                                    form=form, duplicate_error=True)
 
-        #command_profile = CustomCommandProfile(
-        #    profile_name=form.profile_name.data,
-        #    command_list=','.join([l for l in form.command_list.data.splitlines() if l]),
-        #    created_by=current_user.username
-        #)
-
-        command_profile = create_or_update_custom_command_profile(
+        create_or_update_custom_command_profile(
             db_session=db_session,
             profile_name=form.profile_name.data,
-            command_list=','.join([l for l in form.command_list.data.splitlines() if l])
+            command_list=','.join([l for l in form.command_list.data.splitlines() if l]),
+            created_by=current_user.username
         )
-
-        #db_session.add(command_profile)
-        #db_session.commit()
 
         return redirect(url_for('custom_command.home'))
     else:
 
-        return render_template('custom_command/command_profile_edit.html',
-                               form=form)
+        return render_template('custom_command/command_profile_edit.html', form=form)
 
 
 @custom_command.route('/command_profile/<profile_name>/edit', methods=['GET', 'POST'])
@@ -183,7 +182,7 @@ def command_profile_create():
 def command_profile_edit(profile_name):
     db_session = DBSession()
 
-    command_profile = get_command_profile(db_session, profile_name)
+    command_profile = get_custom_command_profile(db_session, profile_name)
     if command_profile is None:
         abort(404)
 
@@ -191,19 +190,15 @@ def command_profile_edit(profile_name):
 
     if request.method == 'POST' and form.validate():
         if profile_name != form.profile_name.data and \
-                        get_command_profile(db_session, form.profile_name.data) is not None:
-            return render_template('custom_commad/command_profile_edit.html',
+                        get_custom_command_profile(db_session, form.profile_name.data) is not None:
+            return render_template('custom_command/command_profile_edit.html',
                                    form=form, duplicate_error=True)
 
-        #command_profile.profile_name = form.profile_name.data
-        #command_profile.command_list = ','.join([l for l in form.command_list.data.splitlines() if l]),
-
-        #db_session.commit()
-
-        command_profile = create_or_update_custom_command_profile(
+        create_or_update_custom_command_profile(
             db_session=db_session,
             profile_name=form.profile_name.data,
             command_list=','.join([l for l in form.command_list.data.splitlines() if l]),
+            created_by=current_user.username,
             custom_command_profile=get_custom_command_profile(db_session, profile_name)
         )
 
@@ -213,8 +208,7 @@ def command_profile_edit(profile_name):
         if command_profile.command_list is not None:
             form.command_list.data = '\n'.join(command_profile.command_list.split(','))
 
-    return render_template('custom_command/command_profile_edit.html',
-                           form=form)
+    return render_template('custom_command/command_profile_edit.html', form=form)
 
 
 @custom_command.route('/command_profile/<profile_name>/delete', methods=['DELETE'])
@@ -222,26 +216,11 @@ def command_profile_edit(profile_name):
 def delete_custom_command_profile(profile_name):
     db_session = DBSession()
 
-    #command_profile = get_command_profile(db_session, profile_name)
-    #if command_profile is None:
-    #    abort(404)
-
-    #db_session.delete(command_profile)
-    #db_session.commit()
-
     try:
-        delete_ccp(db_session, profile_name)
+        delete_custom_command_profile(db_session, profile_name)
         return jsonify({'status': 'OK'})
     except:
         abort(404)
-
-
-def get_command_profile(db_session, profile_name):
-    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.profile_name == profile_name).first()
-
-
-def get_command_profile_by_id(db_session, profile_id):
-    return db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == profile_id).first()
 
 
 @custom_command.route('/export_command_profiles', methods=['POST'])

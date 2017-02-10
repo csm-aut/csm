@@ -151,14 +151,14 @@ def host_create():
             if host is not None:
                 return render_template('host/edit.html', form=form, duplicate_error=True)
 
-            host = create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
-                                         location=form.location.data, roles=form.roles.data,
-                                         software_profile_id=form.software_profile.data,
-                                         connection_type=form.connection_type.data,
-                                         host_or_ip=form.host_or_ip.data, username=form.username.data,
-                                         password=form.password.data, enable_password=form.enable_password.data,
-                                         port_number=form.port_number.data, jump_host_id=form.jump_host.data,
-                                         created_by=current_user.username)
+            create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
+                                  location=form.location.data, roles=form.roles.data,
+                                  software_profile_id=form.software_profile.data,
+                                  connection_type=form.connection_type.data,
+                                  host_or_ip=form.host_or_ip.data, username=form.username.data,
+                                  password=form.password.data, enable_password=form.enable_password.data,
+                                  port_number=form.port_number.data, jump_host_id=form.jump_host.data,
+                                  created_by=current_user.username)
 
         finally:
             db_session.rollback()
@@ -186,32 +186,24 @@ def host_edit(hostname):
         if not can_edit(current_user):
             abort(401)
 
+        # Editing a hostname which has already existed in the database.
         if hostname != form.hostname.data and get_host(db_session, form.hostname.data) is not None:
             return render_template('host/edit.html', form=form, duplicate_error=True)
 
-        host.hostname = form.hostname.data
-        host.region_id = form.region.data if form.region.data > 0 else None
-        host.software_profile_id = form.software_profile.data if form.software_profile.data > 0 else None
-        host.location = remove_extra_spaces(form.location.data)
-        host.roles = remove_extra_spaces(form.roles.data)
-
-        connection_param = host.connection_param[0]
-        # could have multiple IPs, separated by comma
-        connection_param.host_or_ip = remove_extra_spaces(form.host_or_ip.data)
-        connection_param.username = form.username.data
-        if len(form.password.data) > 0:
-            connection_param.password = form.password.data
-
-        if len(form.enable_password.data) > 0:
-            connection_param.enable_password = form.enable_password.data
-
-        connection_param.jump_host_id = form.jump_host.data if form.jump_host.data > 0 else None
-        connection_param.connection_type = form.connection_type.data
-        # could have multiple ports, separated by comma
-        connection_param.port_number = remove_extra_spaces(form.port_number.data)
-        db_session.commit()
+        create_or_update_host(db_session=db_session, hostname=form.hostname.data, region_id=form.region.data,
+                              location=form.location.data, roles=form.roles.data,
+                              software_profile_id=form.software_profile.data,
+                              connection_type=form.connection_type.data,
+                              host_or_ip=form.host_or_ip.data, username=form.username.data,
+                              password=form.password.data
+                              if len(form.password.data) > 0 else host.connection_param[0].password,
+                              enable_password=form.enable_password.data
+                              if len(form.enable_password.data) > 0 else host.connection_param[0].enable_password,
+                              port_number=form.port_number.data, jump_host_id=form.jump_host.data,
+                              created_by=current_user.username, host=host)
 
         return_url = get_return_url(request, 'home')
+
         if return_url is None:
             return redirect(url_for('home'))
         else:
@@ -278,7 +270,8 @@ def jump_host_create():
                                    username=form.username.data,
                                    password=form.password.data,
                                    connection_type=form.connection_type.data,
-                                   port_number=form.port_number.data)
+                                   port_number=form.port_number.data,
+                                   created_by=current_user.username)
 
         return redirect(url_for('home'))
 
@@ -310,6 +303,7 @@ def jump_host_edit(hostname):
                                    password=form.password.data if len(form.password.data) > 0 else jump_host.password,
                                    connection_type=form.connection_type.data,
                                    port_number=form.port_number.data,
+                                   created_by=current_user.username,
                                    jumphost=jump_host)
 
         return redirect(url_for('home'))
@@ -366,7 +360,8 @@ def server_create():
                                            vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
                                                                 form.server_type.data == ServerType.FTP_SERVER else '',
                                            server_directory=trim_last_slash(form.server_directory.data),
-                                           destination_on_host=form.destination_on_host.data)
+                                           destination_on_host=form.destination_on_host.data,
+                                           created_by=current_user.username)
 
         return redirect(url_for('home'))
 
@@ -401,6 +396,7 @@ def server_edit(hostname):
                                                                 form.server_type.data == ServerType.FTP_SERVER else '',
                                            server_directory=trim_last_slash(form.server_directory.data),
                                            destination_on_host=form.destination_on_host.data,
+                                           created_by=current_user.username,
                                            server=server)
 
         return redirect(url_for('home'))
@@ -457,8 +453,9 @@ def region_create():
 
         try:
             create_or_update_region(db_session=db_session,
-                                    name=form.region_name.data,
-                                    server_repositories=",".join(server_names))
+                                    region_name=form.region_name.data,
+                                    server_repositories=",".join(server_names),
+                                    created_by=current_user.username)
         except Exception as e:
             db_session.rollback()
             logger.exception("region_create() encountered an exception: " + e.message)
@@ -491,8 +488,9 @@ def region_edit(region_name):
 
         try:
             create_or_update_region(db_session=db_session,
-                                    name= form.region_name.data,
-                                    server_repositories=",".join(server_names),
+                                    region_name=form.region_name.data,
+                                    server_repositories=','.join(server_names),
+                                    created_by=current_user.username,
                                     region=get_region(db_session, region_name))
         except Exception as e:
             db_session.rollback()
@@ -728,21 +726,36 @@ def api_remove_host_password(hostname):
 
 @home.route('/api/hosts/<hostname>/enable_password', methods=['DELETE'])
 def api_remove_host_enable_password(hostname):
-    return remove_host_password(hostname, remove_enable_password=True)
+    return remove_host_enable_password(hostname)
 
 
-def remove_host_password(hostname, remove_enable_password=False):
+def remove_host_password(hostname):
     if not can_create(current_user):
         abort(401)
 
     db_session = DBSession()
     host = get_host(db_session, hostname)
+
     if host is not None:
-        if remove_enable_password:
-            host.connection_param[0].enable_password = ''
-        else:
-            host.connection_param[0].password = ''
+        host.connection_param[0].password = ''
         db_session.commit()
+
+        return jsonify({'status': 'OK'})
+    else:
+        return jsonify({'status': 'Failed'})
+
+
+def remove_host_enable_password(hostname):
+    if not can_create(current_user):
+        abort(401)
+
+    db_session = DBSession()
+    host = get_host(db_session, hostname)
+
+    if host is not None:
+        host.connection_param[0].enable_password = ''
+        db_session.commit()
+
         return jsonify({'status': 'OK'})
     else:
         return jsonify({'status': 'Failed'})
@@ -756,9 +769,11 @@ def api_remove_jump_host_password(hostname):
 
     db_session = DBSession()
     host = get_jump_host(db_session, hostname)
+
     if host is not None:
         host.password = ''
         db_session.commit()
+
         return jsonify({'status': 'OK'})
     else:
         return jsonify({'status': 'Failed'})

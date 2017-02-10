@@ -29,8 +29,6 @@ from api_utils import ENVELOPE
 from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
 from api_utils import APIStatus
-from api_utils import RECORDS_PER_PAGE
-from api_utils import get_total_pages
 from api_utils import check_parameters
 from api_utils import failed_response
 
@@ -52,8 +50,8 @@ from common import get_server_by_id
 from common import get_host
 from common import get_host_by_id
 from common import download_session_logs
-
-from views.custom_command import get_command_profile, get_command_profile_by_id
+from common import get_custom_command_profile
+from common import get_custom_command_profile_by_id
 
 from datetime import datetime, timedelta
 from operator import itemgetter
@@ -261,7 +259,7 @@ def api_create_install_request(request):
         else:
             utc_scheduled_time = install_request['utc_scheduled_time'].strftime("%m/%d/%Y %I:%M %p")
             if 'command_profile' in install_request.keys():
-                command_profile = get_command_profile(db_session, install_request['command_profile']).id
+                command_profile = get_custom_command_profile(db_session, install_request['command_profile']).id
             else:
                 command_profile = -1
             if 'server_repository' in install_request.keys():
@@ -463,8 +461,8 @@ def api_get_install_request(request):
         row['hostname'] = get_host_by_id(db_session, install_job.host_id).hostname
 
         if not is_empty(install_job.custom_command_profile_id) and int(install_job.custom_command_profile_id) > 0:
-            row['custom_command_profile'] = get_command_profile_by_id(db_session,
-                                                                  install_job.custom_command_profile_id).profile_name
+            row['custom_command_profile'] = get_custom_command_profile_by_id(db_session,
+                                                                             install_job.custom_command_profile_id).profile_name
         else:
             row['custom_command_profile'] = ""
 
@@ -698,7 +696,7 @@ def validate_install_request(db_session, install_request):
         return False, "Invalid value for server_repository."
 
     if 'command_profile' in install_request.keys():
-        if not get_command_profile(db_session, install_request['command_profile']):
+        if not get_custom_command_profile(db_session, install_request['command_profile']):
             return False, "Invalid value for command_profile; profile must exist."
 
     if 'software_packages' in requirements[install_request['install_action']] and \

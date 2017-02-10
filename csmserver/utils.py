@@ -304,6 +304,16 @@ def get_acceptable_string(input_string):
         return None
 
 
+def check_acceptable_string(input_string):
+    """ Will throw exception if the result string is blank or None. """
+    orig_input_string = input_string
+    input_string = get_acceptable_string(input_string)
+    if input_string is None or len(input_string) == 0:
+        raise ValueError('"' + orig_input_string +
+                         '" contains invalid characters. It should only contain a-z, A-Z, 0-9, (). -_')
+    return input_string
+
+
 def comma_delimited_str_to_list(comma_delimited_str):
     if is_empty(comma_delimited_str):
         return []
