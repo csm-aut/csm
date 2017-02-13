@@ -33,7 +33,9 @@ from utils import create_temp_user_directory
 from utils import make_file_writable
 
 from report_writer import ReportWriter
+
 from constants import UNKNOWN
+from constants import HostConformanceStatus
 
 import os
 
@@ -50,6 +52,7 @@ class ConformanceReportWriter(ReportWriter):
         self.conformance_report = kwargs.pop('conformance_report')
         self.locale_datetime = kwargs.pop('locale_datetime')
         self.include_host_packages = kwargs.pop('include_host_packages')
+        self.exclude_conformance_hosts = kwargs.pop('exclude_conformance_hosts')
 
         self.wb = xlwt.Workbook()
         self.ws = self.wb.add_sheet('Conformance Report')
@@ -87,8 +90,8 @@ class ConformanceReportWriter(ReportWriter):
         report_datetime = get_datetime_string(self.conformance_report.created_time) + \
             ' UTC' if self.locale_datetime is None else self.locale_datetime
             
-        self.ws.write(1, 2, report_datetime, self.style_center )
-        
+        self.ws.write(1, 2, report_datetime, self.style_center)
+
         self.ws.write(4, 0, 'Summary: ', self.style_bold)
 
         total_hosts = 0 if is_empty(self.conformance_report.hostnames) else \
@@ -137,7 +140,11 @@ class ConformanceReportWriter(ReportWriter):
         
     def write_host_info(self):
         entries = self.conformance_report.entries
-    
+
+        if self.exclude_conformance_hosts:
+            self.ws.write(self.row, 2, '(Only Non-conformance Hosts are Listed)', self.style_bold)
+            self.row += 2
+
         self.ws.write(self.row, 0, 'Hostname', self.style_bold)
         self.ws.write(self.row, 1, 'Software', self.style_bold)
         
@@ -153,7 +160,10 @@ class ConformanceReportWriter(ReportWriter):
         self.row += 2
 
         host_packages = []
-        for entry in entries:    
+        for entry in entries:
+            if self.exclude_conformance_hosts and entry.conformed == HostConformanceStatus.CONFORM:
+                continue
+
             if self.include_host_packages:        
                 host_packages = entry.host_packages.split(',')
 

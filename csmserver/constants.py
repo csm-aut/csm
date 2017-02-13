@@ -148,6 +148,11 @@ class UserPrivilege:
     VIEWER = 'Viewer'
 
 
+class HostConformanceStatus:
+    CONFORM = 'Yes'
+    NON_CONFORM = 'No'
+
+
 def get_user_privilege_list():
     return [UserPrivilege.ADMIN, UserPrivilege.NETWORK_ADMIN, UserPrivilege.OPERATOR, UserPrivilege.VIEWER]
 

@@ -90,10 +90,12 @@
         $('#on-export-conformance-report-submit').on('click', function(e) {
             var id = $('#conformance_reports').val();
             var include_host_packages = $("#include-host-packages-yes-or-no .active").data("value");
-            export_conformance_report(id, include_host_packages);
+            var exclude_conformance_hosts = $("#exclude-conformance-hosts-yes-or-no .active").data("value");
+
+            export_conformance_report(id, include_host_packages, exclude_conformance_hosts);
         });
         
-        function export_conformance_report(id, include_host_packages) {
+        function export_conformance_report(id, include_host_packages, exclude_conformance_hosts) {
             $.ajax({
                 url: "/conformance/api/get_conformance_report_datetime/report/" + id,
                 dataType: 'json',
@@ -101,7 +103,8 @@
                     $.each(response, function(index, element) {
                         window.location.href = '/conformance/api/export_conformance_report/report/' + id + '?locale_datetime=' +
                             getDateStringfromUTCString(element[0].conformance_report_datetime, use_utc_timezone) +
-                            '&include_host_packages=' + include_host_packages;
+                            '&include_host_packages=' + include_host_packages +
+                            '&exclude_conformance_hosts=' + exclude_conformance_hosts;
                     });
                 }
             });
@@ -430,11 +433,18 @@
             $(this).find('.btn').toggleClass('btn-default');       
         });
         
-        $('#include_host_packages').val(function() {      
+        $('#include_host_packages').val(function() {
             render_switch(
                 $('#include_host_packages'),
                 $('#include-host-packages-yes-button'),
                 $('#include-host-packages-no-button'));
+        });
+
+        $('#exclude_conformance_hosts').val(function() {
+            render_switch(
+                $('#exclude_conformance_hosts'),
+                $('#exclude-conformance-hosts-yes-button'),
+                $('#exclude-conformance-hosts-no-button'));
         });
 
         function render_switch(control, yes_button, no_button) {
@@ -618,7 +628,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-group ">
-                        <label class="col-sm-7 control-label" for="{{ export_conformance_report_form.include_host_packages.id }}">{{ export_conformance_report_form.include_host_packages.label.text }}</label>
+                        <label class="col-sm-7 control-label">{{ export_conformance_report_form.include_host_packages.label.text }}</label>
                         <div class=col-sm-5>
                             <div class="btn-group btn-toggle" id="include-host-packages-yes-or-no">
                                 <button type="button" id="include-host-packages-yes-button" class="btn" data-value=1>Yes</button>
@@ -626,6 +636,17 @@
                             </div>
                         </div>
                         <input class="form-control" id="{{ export_conformance_report_form.include_host_packages.id }}" name="{{ export_conformance_report_form.include_host_packages.id }}" type="hidden" value="{{ export_conformance_report_form.include_host_packages.data }}">
+                    </div>
+
+                    <div class="form-group ">
+                        <label class="col-sm-7 control-label">{{ export_conformance_report_form.exclude_conformance_hosts.label.text }}</label>
+                        <div class=col-sm-5>
+                            <div class="btn-group btn-toggle" id="exclude-conformance-hosts-yes-or-no">
+                                <button type="button" id="exclude-conformance-hosts-yes-button" class="btn" data-value=1>Yes</button>
+                                <button type="button" id="exclude-conformance-hosts-no-button" class="btn" data-value=0>No</button>
+                            </div>
+                        </div>
+                        <input class="form-control" id="{{ export_conformance_report_form.exclude_conformance_hosts.id }}" name="{{ export_conformance_report_form.exclude_conformance_hosts.id }}" type="hidden" value="{{ export_conformance_report_form.exclude_conformance_hosts.data }}">
                     </div>
                 </div>
                 <div class="modal-footer">

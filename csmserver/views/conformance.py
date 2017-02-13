@@ -64,6 +64,7 @@ from common import get_hosts_by_software_profile_id
 from database import DBSession
 
 from constants import UNKNOWN
+from constants import HostConformanceStatus
 from constants import InstallAction
 from constants import JobStatus
 from constants import get_temp_directory
@@ -175,6 +176,7 @@ def home():
 
     export_conformance_report_form = ExportConformanceReportForm(request.form)
     export_conformance_report_form.include_host_packages.data = True
+    export_conformance_report_form.exclude_conformance_hosts.data = True
 
     return render_template('conformance/index.html',
                            conformance_form=conformance_form,
@@ -412,12 +414,11 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
         user_id=current_user.id,
         created_by=current_user.username)
 
+    software_profile_package_dict = fixup_software_profile_packages(software_profile_packages)
+
     for hostname in hostnames:
         host = get_host(db_session, hostname)
         if host:
-            packages_to_match = [strip_smu_file_extension(software_profile_package)
-                                 for software_profile_package in software_profile_packages]
-
             inventory_job = host.inventory_job[0]
 
             comments = ''
@@ -434,7 +435,8 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
             elif match_criteria == 'active':
                 host_packages = get_host_active_packages(hostname)
 
-            missing_packages = get_missing_packages(host_packages, software_profile_packages)
+            missing_packages = get_missing_packages(host_packages, software_profile_package_dict)
+
             if missing_packages:
                 host_not_in_conformance += 1
 
@@ -446,9 +448,10 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
                 hostname=hostname,
                 software_platform=UNKNOWN if host.software_platform is None else host.software_platform,
                 software_version=UNKNOWN if host.software_version is None else host.software_version,
-                conformed='Yes' if conformed else 'No',
+                conformed=HostConformanceStatus.CONFORM if conformed else HostConformanceStatus.NON_CONFORM,
                 comments=comments,
-                host_packages=','.join(sorted(match_packages(host_packages, packages_to_match))),
+                host_packages=','.join(sorted(get_match_result(host_packages,
+                                                               software_profile_package_dict.values()))),
                 missing_packages=','.join(sorted(missing_packages)))
         else:
             # Flag host not found condition
@@ -486,29 +489,28 @@ def purge_old_conformance_reports(db_session):
             logger.exception('purge_old_conformance_reports() hit exception')
 
 
-def match_packages(host_packages, packages_to_match):
-    result_packages = []
+def get_match_result(host_packages, software_profile_packages):
+    match_result = []
 
     for host_package in host_packages:
-        for match_package in packages_to_match:
+        for software_profile_package in software_profile_packages:
             matched = False
-            if re.search(match_package, host_package) is not None:
+            if re.search(software_profile_package, host_package) is not None:
                 matched = True
                 break
 
-        result_packages.append(host_package + ' (matched)' if matched else host_package)
+        match_result.append(host_package + ' (matched)' if matched else host_package)
 
-    return result_packages
+    return match_result
 
 
-def get_missing_packages(host_packages, software_profile_packages):
+def get_missing_packages(host_packages, software_profile_package_dict):
     missing_packages = []
 
-    for software_profile_package in software_profile_packages:
-        match_package = strip_smu_file_extension(software_profile_package)
+    for software_profile_package, package_name_to_match in software_profile_package_dict.iteritems():
         matched = False
         for host_package in host_packages:
-            if re.search(match_package, host_package) is not None:
+            if re.search(package_name_to_match, host_package) is not None:
                 matched = True
                 break
 
@@ -518,11 +520,38 @@ def get_missing_packages(host_packages, software_profile_packages):
     return missing_packages
 
 
+def fixup_software_profile_packages(software_profile_packages):
+    """
+    Unfortunately, some of the software packages have different external name and internal name (after activation)
+    External Name: asr9k-asr9000v-nV-px.pie-6.1.2
+    Internal Name: asr9k-9000v-nV-px-6.1.2
+
+    External Name: asr9k-services-infra-px.pie-5.3.4
+    Internal Name: asr9k-services-infra.pie-5.3.4
+
+    Returns dictionary with key = software_profile_package, value = package_name_to_match
+    """
+    result_dict = dict()
+
+    for software_profile_package in software_profile_packages:
+        package_name_to_match = strip_smu_file_extension(software_profile_package)
+
+        if 'asr9000v' in package_name_to_match:
+            package_name_to_match = package_name_to_match.replace('asr9000v', '9000v')
+        elif 'services-infra-px' in package_name_to_match:
+            package_name_to_match = package_name_to_match.replace('-px', '')
+
+        result_dict[software_profile_package] = package_name_to_match
+
+    return result_dict
+
+
 @conformance.route('/api/export_conformance_report/report/<int:id>')
 @login_required
 def api_export_conformance_report(id):
     locale_datetime = request.args.get('locale_datetime')
     include_host_packages = request.args.get('include_host_packages')
+    exclude_conformance_hosts = request.args.get('exclude_conformance_hosts')
     db_session = DBSession()
 
     conformance_report = get_conformance_report_by_id(db_session, id)
@@ -531,7 +560,8 @@ def api_export_conformance_report(id):
         writer = ConformanceReportWriter(user=current_user,
                                          conformance_report=conformance_report,
                                          locale_datetime=locale_datetime,
-                                         include_host_packages=bool(int(include_host_packages)))
+                                         include_host_packages=bool(int(include_host_packages)),
+                                         exclude_conformance_hosts=bool(int(exclude_conformance_hosts)))
         file_path = writer.write_report()
 
     return send_file(file_path, as_attachment=True)
@@ -766,7 +796,8 @@ class ConformanceReportDialogForm(Form):
 
 
 class ExportConformanceReportForm(Form):
-    include_host_packages = HiddenField("Include Host packages on the report")
+    include_host_packages = HiddenField("Include Host Packages on the Report")
+    exclude_conformance_hosts = HiddenField("Exclude Conformance Hosts on the Report")
 
 
 class MakeConformDialogForm(Form):
