@@ -29,14 +29,17 @@ from utils import create_log_directory
 
 from models import logger
 from constants import UNKNOWN
+from constants import get_log_directory
 
 import condoor
 import logging
 
+import os
+
 
 def discover_platform_info(ctx):
     try:
-        log_dir = create_log_directory(ctx.host.connection_param[0].host_or_ip)
+        log_dir = os.path.join(get_log_directory(), create_log_directory(ctx.host.connection_param[0].host_or_ip))
     except Exception:
         log_dir = None
 
