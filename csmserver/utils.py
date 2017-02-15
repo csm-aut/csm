@@ -60,14 +60,15 @@ def import_module(module, path=None):
 
 
 def create_log_directory(host_or_ip, id=None):
-    host = host_or_ip.strip().replace('.', '_').replace(' ', '_')
+    job_id = (('-' + str(id)) if id else "")
+    host_ip = host_or_ip.strip().replace('.', '_').replace(' ', '_')
     date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S")
-    directory = get_log_directory() + host + '-' + date_string + (('-' + str(id)) if id else "")
+    directory = get_log_directory() + host_ip + '-' + date_string + job_id
 
     if not path.exists(directory):
         makedirs(directory)
-            
-    return host + '-' + date_string + '-' + str(id)
+
+    return host_ip + '-' + date_string + job_id
 
 
 def create_directory(directory):
@@ -424,6 +425,10 @@ def get_return_url(request, default_url=None):
     if url is None:
         url = default_url
     return url
+
+
+def create_list(arg):
+    return arg if type(arg) is list else [arg]
 
 
 def get_build_date():
