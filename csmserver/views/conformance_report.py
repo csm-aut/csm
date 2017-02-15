@@ -52,7 +52,7 @@ class ConformanceReportWriter(ReportWriter):
         self.conformance_report = kwargs.pop('conformance_report')
         self.locale_datetime = kwargs.pop('locale_datetime')
         self.include_host_packages = kwargs.pop('include_host_packages')
-        self.exclude_conformance_hosts = kwargs.pop('exclude_conformance_hosts')
+        self.exclude_conforming_hosts = kwargs.pop('exclude_conforming_hosts')
 
         self.wb = xlwt.Workbook()
         self.ws = self.wb.add_sheet('Conformance Report')
@@ -141,8 +141,8 @@ class ConformanceReportWriter(ReportWriter):
     def write_host_info(self):
         entries = self.conformance_report.entries
 
-        if self.exclude_conformance_hosts:
-            self.ws.write(self.row, 2, '(Only Non-conformance Hosts are Listed)', self.style_bold)
+        if self.exclude_conforming_hosts:
+            self.ws.write(self.row, 2, '(Only Non-conforming Hosts are Listed)', self.style_bold)
             self.row += 2
 
         self.ws.write(self.row, 0, 'Hostname', self.style_bold)
@@ -161,7 +161,7 @@ class ConformanceReportWriter(ReportWriter):
 
         host_packages = []
         for entry in entries:
-            if self.exclude_conformance_hosts and entry.conformed == HostConformanceStatus.CONFORM:
+            if self.exclude_conforming_hosts and entry.conformed == HostConformanceStatus.CONFORM:
                 continue
 
             if self.include_host_packages:        

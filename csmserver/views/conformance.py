@@ -176,7 +176,7 @@ def home():
 
     export_conformance_report_form = ExportConformanceReportForm(request.form)
     export_conformance_report_form.include_host_packages.data = True
-    export_conformance_report_form.exclude_conformance_hosts.data = True
+    export_conformance_report_form.exclude_conforming_hosts.data = True
 
     return render_template('conformance/index.html',
                            conformance_form=conformance_form,
@@ -551,7 +551,7 @@ def fixup_software_profile_packages(software_profile_packages):
 def api_export_conformance_report(id):
     locale_datetime = request.args.get('locale_datetime')
     include_host_packages = request.args.get('include_host_packages')
-    exclude_conformance_hosts = request.args.get('exclude_conformance_hosts')
+    exclude_conforming_hosts = request.args.get('exclude_conforming_hosts')
     db_session = DBSession()
 
     conformance_report = get_conformance_report_by_id(db_session, id)
@@ -561,7 +561,7 @@ def api_export_conformance_report(id):
                                          conformance_report=conformance_report,
                                          locale_datetime=locale_datetime,
                                          include_host_packages=bool(int(include_host_packages)),
-                                         exclude_conformance_hosts=bool(int(exclude_conformance_hosts)))
+                                         exclude_conforming_hosts=bool(int(exclude_conforming_hosts)))
         file_path = writer.write_report()
 
     return send_file(file_path, as_attachment=True)
@@ -797,7 +797,7 @@ class ConformanceReportDialogForm(Form):
 
 class ExportConformanceReportForm(Form):
     include_host_packages = HiddenField("Include Host Packages on the Report")
-    exclude_conformance_hosts = HiddenField("Exclude Conformance Hosts on the Report")
+    exclude_conforming_hosts = HiddenField("Exclude Conforming Hosts on the Report")
 
 
 class MakeConformDialogForm(Form):

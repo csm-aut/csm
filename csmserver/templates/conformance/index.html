@@ -11,10 +11,14 @@
 <script src="/static/jquery/js/make_conform_dialog.js"></script>
 <script src="/static/jquery/js/select_hosts_by_platform.js"></script>
   
-<script charset="utf-8">
+<script>
 
     var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
+
     $(function() {
+        var conformance_report_spinner = $('#conformance-report-spinner');
+        conformance_report_spinner.hide();
+
         if (use_utc_timezone) {
             $('#label_scheduled_time').text('Scheduled Time (UTC)');
         } else {
@@ -90,12 +94,12 @@
         $('#on-export-conformance-report-submit').on('click', function(e) {
             var id = $('#conformance_reports').val();
             var include_host_packages = $("#include-host-packages-yes-or-no .active").data("value");
-            var exclude_conformance_hosts = $("#exclude-conformance-hosts-yes-or-no .active").data("value");
+            var exclude_conforming_hosts = $("#exclude-conforming-hosts-yes-or-no .active").data("value");
 
-            export_conformance_report(id, include_host_packages, exclude_conformance_hosts);
+            export_conformance_report(id, include_host_packages, exclude_conforming_hosts);
         });
         
-        function export_conformance_report(id, include_host_packages, exclude_conformance_hosts) {
+        function export_conformance_report(id, include_host_packages, exclude_conforming_hosts) {
             $.ajax({
                 url: "/conformance/api/get_conformance_report_datetime/report/" + id,
                 dataType: 'json',
@@ -104,7 +108,7 @@
                         window.location.href = '/conformance/api/export_conformance_report/report/' + id + '?locale_datetime=' +
                             getDateStringfromUTCString(element[0].conformance_report_datetime, use_utc_timezone) +
                             '&include_host_packages=' + include_host_packages +
-                            '&exclude_conformance_hosts=' + exclude_conformance_hosts;
+                            '&exclude_conforming_hosts=' + exclude_conforming_hosts;
                     });
                 }
             });
@@ -375,6 +379,7 @@
         }
 
         function run_conformance_report_that_match_host_software_profile(software_profile_id, match_criteria) {
+            conformance_report_spinner.show();
             $.ajax({
                 url: "/conformance/api/run_conformance_report_that_match_host_software_profile",
                 type: "POST",
@@ -386,11 +391,14 @@
                     } else {
                         bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;' + response.status);
                     }
+                    conformance_report_spinner.hide();
+                    bootbox.alert("The Conformance Report has been generated.");
                 }
             });
         }
         
         function run_conformance_report(software_profile_id, match_criteria, selected_hosts) {
+            conformance_report_spinner.show();
             $.ajax({
                 url: "{{ url_for('conformance.api_run_conformance_report') }}",
                 type: "POST",
@@ -405,11 +413,14 @@
                     } else {
                         bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;' + response.status);
                     }
+                    conformance_report_spinner.hide();
+                    bootbox.alert("The Conformance Report has been generated.");
                 }
             });
         }
         
         function rerun_conformance_report(id) {
+            conformance_report_spinner.show();
             $.ajax({
                 url: "/conformance/api/rerun_conformance_report/report/" + id,
                 dataType: 'json',
@@ -419,6 +430,8 @@
                     } else {
                         bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">&nbsp;' + response.status);
                     }
+                    conformance_report_spinner.hide();
+                    bootbox.alert("The Conformance Report has been generated.");
                 }
             });
         }
@@ -440,11 +453,11 @@
                 $('#include-host-packages-no-button'));
         });
 
-        $('#exclude_conformance_hosts').val(function() {
+        $('#exclude_conforming_hosts').val(function() {
             render_switch(
-                $('#exclude_conformance_hosts'),
-                $('#exclude-conformance-hosts-yes-button'),
-                $('#exclude-conformance-hosts-no-button'));
+                $('#exclude_conforming_hosts'),
+                $('#exclude-conforming-hosts-yes-button'),
+                $('#exclude-conforming-hosts-no-button'));
         });
 
         function render_switch(control, yes_button, no_button) {
@@ -639,14 +652,14 @@
                     </div>
 
                     <div class="form-group ">
-                        <label class="col-sm-7 control-label">{{ export_conformance_report_form.exclude_conformance_hosts.label.text }}</label>
+                        <label class="col-sm-7 control-label">{{ export_conformance_report_form.exclude_conforming_hosts.label.text }}</label>
                         <div class=col-sm-5>
-                            <div class="btn-group btn-toggle" id="exclude-conformance-hosts-yes-or-no">
-                                <button type="button" id="exclude-conformance-hosts-yes-button" class="btn" data-value=1>Yes</button>
-                                <button type="button" id="exclude-conformance-hosts-no-button" class="btn" data-value=0>No</button>
+                            <div class="btn-group btn-toggle" id="exclude-conforming-hosts-yes-or-no">
+                                <button type="button" id="exclude-conforming-hosts-yes-button" class="btn" data-value=1>Yes</button>
+                                <button type="button" id="exclude-conforming-hosts-no-button" class="btn" data-value=0>No</button>
                             </div>
                         </div>
-                        <input class="form-control" id="{{ export_conformance_report_form.exclude_conformance_hosts.id }}" name="{{ export_conformance_report_form.exclude_conformance_hosts.id }}" type="hidden" value="{{ export_conformance_report_form.exclude_conformance_hosts.data }}">
+                        <input class="form-control" id="{{ export_conformance_report_form.exclude_conforming_hosts.id }}" name="{{ export_conformance_report_form.exclude_conforming_hosts.id }}" type="hidden" value="{{ export_conformance_report_form.exclude_conforming_hosts.data }}">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -739,6 +752,7 @@
                 <span class="glyphicon glyphicon-link"></span>
                 <span class="caret"></span>
                 </button>
+
                 <ul class="dropdown-menu">
                     <li><a href="javascript://" id="assign-software-profile-to-hosts">Assign Software Profile to Hosts</a></li>
                     <li><a href="javascript://" id="view-software-profile-assignments">View Software Profile Assignments</a></li>
@@ -768,7 +782,7 @@
                         <div>
                         {{ edit_field(conformance_form.conformance_reports, label_field_width="col-sm-2", field_width="col-sm-5", class="form-control") }}
                         </div>
-                        <div class="btn-group pull-right">      
+                        <div class="btn-group pull-right">
                             <button id="export" type="button" class="btn btn-default">        
                                 Export
                             </button>
@@ -778,6 +792,7 @@
                             <button id="run-conformance-report" type="button" class="btn btn-primary">        
                                 Run Report
                             </button>
+                            <img id="conformance-report-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                         </div>
                     </div>
 
