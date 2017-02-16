@@ -39,6 +39,10 @@
                 json_data.model_names = search_filters['model_names']
             }
 
+            if (search_filters['vid']) {
+                json_data.vid = search_filters['vid'];
+            }
+
             return json_data;
         }
 
@@ -54,6 +58,7 @@
             "columns": [
                 { "data": "model_name" },
                 { "data": "serial_number" },
+                { "data": "vid" },
                 { "data": "description" },
                 { "data": "notes"}
             ],
@@ -69,9 +74,12 @@
                 "data": 'serial_number'
             }, {
                 "targets": 2,
-                "data": 'description'
+                "data": 'vid'
             }, {
                 "targets": 3,
+                "data": 'description'
+            }, {
+                "targets": 4,
                 "data": 'notes'
             }]
         }).on('draw.dt', function(e, settings, json) {
@@ -102,6 +110,7 @@
                 { "data": "model_name" },
                 { "data": "name" },
                 { "data": "serial_number" },
+                { "data": "vid" },
                 { "data": "description" },
                 { "data": "hostname" },
                 { "data": "chassis" },
@@ -112,7 +121,7 @@
                 { "data": "last_successful_retrieval", "orderable": false }
             ],
             "order": [
-                [4, "asc"]
+                [5, "asc"]
             ],
             "pageLength": 100,
             "columnDefs": [{
@@ -126,30 +135,33 @@
                 "data": 'serial_number'
             }, {
                 "targets": 3,
-                "data": 'description'
+                "data": 'vid'
             }, {
                 "targets": 4,
+                "data": 'description'
+            }, {
+                "targets": 5,
                 "data": 'hostname',
                 "render": function(data, type, row) {
                     return '<a target="_blank" href="/host_dashboard/hosts/' + row['hostname'] + '/">' + row['hostname'] + '</a>';
                 }
             },  {
-                "targets": 5,
+                "targets": 6,
                 "data": 'chassis'
             }, {
-                "targets": 6,
+                "targets": 7,
                 "data": 'platform'
             }, {
-                "targets": 7,
+                "targets": 8,
                 "data": 'software'
             }, {
-                "targets": 8,
+                "targets": 9,
                 "data": 'region'
             }, {
-                "targets": 9,
+                "targets": 10,
                 "data": 'location'
             }, {
-                "targets": 10,
+                "targets": 11,
                 "data": 'last_successful_retrieval',
                 "render": function(data, type, row) {
                     if (row['inventory_status'] == 'failed') {
@@ -200,6 +212,12 @@
             } else {
                 search_filters['partial_model_names'] = null;
                 assign_search_filter($('#model-name-selector'), 'model_names');
+            }
+
+            if ($('#vid').val() == "") {
+                search_filters['vid'] = null;
+            } else {
+                search_filters['vid'] = $('#vid').val();
             }
         }
 
@@ -397,6 +415,8 @@
                 $('#hidden_partial_model_names').val('');
             }
 
+            $('#hidden_vid').val($('#vid').val());
+
             $('#export-inventory-information-form').attr('action', "{{ url_for('inventory.export_inventory_information') }}");
             $('#export-inventory-information-dialog').modal('hide');
             $('#export-inventory-information-form').submit();
@@ -489,6 +509,7 @@ comma-delimited email address(es) here.</pre>
                 <input id="hidden_software_versions" name="{{ export_results_form.hidden_software_versions.name }}" value="{{ export_results_form.hidden_software_versions.data }}" type="hidden">
                 <input id="hidden_model_names" name="{{ export_results_form.hidden_model_names.name }}" value="{{ export_results_form.hidden_model_names.data }}" type="hidden">
                 <input id="hidden_partial_model_names" name="{{ export_results_form.hidden_partial_model_names.name }}" value="{{ export_results_form.hidden_partial_model_names.data }}" type="hidden">
+                <input id="hidden_vid" name="{{ export_results_form.hidden_vid.name }}" value="{{ export_results_form.hidden_vid.data }}" type="hidden">
             </div>
         </form>
     </div>
@@ -517,7 +538,12 @@ comma-delimited email address(es) here.</pre>
             <label class="col-sm-2 control-label" id="label_model_name" style="margin-left: 50px;">OR</label>
             {{ search_inventory_form.partial_model_names(class="form-control", placeholder="Comma-delimited Partial or Full PID(s)", style="width: 28.2%;display:inline;border: 1px solid #aaa;") }}
 
-            <span id="search_spinner" style="margin-left:10%; display:inline-block;">
+        </div>
+
+        <div class="row custom-margin">
+            {{ custom_edit_field(search_inventory_form.vid, placeholder="Optional") }}
+
+             <span id="search_spinner" style="margin-left:10%; display:inline-block;">
                 <img src="{{ url_for('static', filename='spinner.gif') }}">
             </span>
             <button id="search" type="button" class="btn btn-primary">
@@ -526,7 +552,6 @@ comma-delimited email address(es) here.</pre>
             <button type="button" id="export" class="btn btn-primary">
                 Export
             </button>
-
         </div>
 
 
@@ -547,6 +572,7 @@ comma-delimited email address(es) here.</pre>
                                     <tr>
                                         <th>Model Name</th>
                                         <th>Serial Number</th>
+                                        <th>VID</th>
                                         <th>Description</th>
                                         <th>Notes</th>
                                     </tr>
@@ -560,6 +586,7 @@ comma-delimited email address(es) here.</pre>
                                         <th>Model Name</th>
                                         <th>Name</th>
                                         <th>Serial Number</th>
+                                        <th>VID</th>
                                         <th>Description</th>
                                         <th>Hostname</th>
                                         <th>Chassis</th>

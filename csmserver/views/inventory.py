@@ -284,7 +284,7 @@ def search_inventory():
                            export_results_form=export_results_form, current_user=current_user)
 
 
-def query_available_inventory(db_session, serial_number, model_names, partial_model_names):
+def query_available_inventory(db_session, serial_number, model_names, partial_model_names, vid):
     """
     Search for the available inventories matching the selected filters. Only serial number, model name(s),
     or partial model name(s) apply to this search.
@@ -292,14 +292,16 @@ def query_available_inventory(db_session, serial_number, model_names, partial_mo
     :param serial_number: a string containing serial number
     :param model_names: an array of strings - selected model names - to filter inventories with
     :param partial_model_names: an array of strings - partial model names - to filter inventories with
+    :param vid: a string containing vid or hardware revision
     :return: query object/iterator that contains the result of the available inventories matching
             the search criteria.
     """
     filter_clauses = [Inventory.host_id == None]
-    get_filter_clauses_for_serial_number_model_name(serial_number,
-                                                    model_names,
-                                                    partial_model_names,
-                                                    Inventory, filter_clauses)
+    get_filter_clauses_for_sn_pid_vid(serial_number,
+                                      model_names,
+                                      partial_model_names,
+                                      vid,
+                                      Inventory, filter_clauses)
 
     return db_session.query(Inventory).filter(*filter_clauses)
 
@@ -313,10 +315,11 @@ def query_in_use_inventory(db_session, json_data):
             the search criteria.
     """
     filter_clauses = []
-    filter_clauses = get_filter_clauses_for_serial_number_model_name(json_data.get('serial_number'),
-                                                                     json_data.get('model_names'),
-                                                                     json_data.get('partial_model_names'),
-                                                                     HostInventory, filter_clauses)
+    filter_clauses = get_filter_clauses_for_sn_pid_vid(json_data.get('serial_number'),
+                                                       json_data.get('model_names'),
+                                                       json_data.get('partial_model_names'),
+                                                       json_data.get('vid'),
+                                                       HostInventory, filter_clauses)
     if len(filter_clauses) > 0:
         results = db_session.query(HostInventory).filter(*filter_clauses)
     else:
@@ -338,12 +341,12 @@ def query_in_use_inventory(db_session, json_data):
     return results.join(Host, HostInventory.host_id == Host.id).filter(*join_filter_clauses)
 
 
-def get_filter_clauses_for_serial_number_model_name(serial_number, model_names, partial_model_names,
-                                                    filter_table, filter_clauses):
+def get_filter_clauses_for_sn_pid_vid(serial_number, model_names, partial_model_names,
+                                      vid, filter_table, filter_clauses):
     """
-    helper function to api_search_inventory, create filter clauses for selected
-    serial number and an array of selected model names or an array of entered
-    partial model names.
+    helper function to api_search_inventory, create filter clauses for input
+    serial number, an array of selected model names or an array of entered
+    partial model names and input vid
     """
     if serial_number is not None:
         filter_clauses.append(filter_table.serial_number == serial_number)
@@ -358,6 +361,10 @@ def get_filter_clauses_for_serial_number_model_name(serial_number, model_names, 
         # raises an exception if called in a boolean context
         if filter_clause is not None:
             filter_clauses.append(filter_clause)
+
+    if vid is not None:
+        filter_clauses.append(filter_table.hardware_revision == vid)
+
     return filter_clauses
 
 
@@ -400,6 +407,8 @@ def export_inventory_information():
         if export_results_form.hidden_model_names.data else []
     export_data['partial_model_names'] = export_results_form.hidden_partial_model_names.data.split(',') \
         if export_results_form.hidden_partial_model_names.data else []
+    export_data['vid'] = export_results_form.hidden_vid.data \
+        if export_results_form.hidden_vid.data != "" else None
 
     if export_data['region_ids']:
         region_names = db_session.query(Region.name).filter(
@@ -412,7 +421,8 @@ def export_inventory_information():
     export_data['available_inventory_iter'] = query_available_inventory(db_session,
                                                                         export_data.get('serial_number'),
                                                                         export_data.get('model_names'),
-                                                                        export_data.get('partial_model_names'))
+                                                                        export_data.get('partial_model_names'),
+                                                                        export_data.get('vid'))
 
     export_data['in_use_inventory_iter'] = query_in_use_inventory(db_session, export_data)
 
@@ -854,6 +864,7 @@ class ExportInventoryInformationForm(BasicExportInventoryInformationForm):
     hidden_software_versions = HiddenField('')
     hidden_model_names = HiddenField('')
     hidden_partial_model_names = HiddenField('')
+    hidden_vid = HiddenField('')
 
 
 class ExportInventoryDashboardForm(BasicExportInventoryInformationForm):
@@ -876,6 +887,7 @@ class UpdateInventoryForm(Form):
 class SearchInventoryForm(Form):
     serial_number = StringField('Serial Number', [Length(max=50)])
     partial_model_names = StringField('Model Name (PID)')
+    vid = StringField('VID', [Length(max=50)])
 
 
 class ImportInventoryForm(Form):

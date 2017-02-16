@@ -340,6 +340,7 @@ class ExportInventoryInfoWriter(ReportWriter):
         self.software_versions = kwargs.pop('software_versions')
         self.model_names = kwargs.pop('model_names')
         self.partial_model_names = kwargs.pop('partial_model_names')
+        self.vid = kwargs.pop('vid')
 
         self.available_inventory_iter = kwargs.pop('available_inventory_iter')
         self.in_use_inventory_iter = kwargs.pop('in_use_inventory_iter')
@@ -389,6 +390,7 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
                         '<tr>' + \
                         '<th><b>Model Name</b></th>' + \
                         '<th><b>Serial Number</b></th>' + \
+                        '<th><b>VID</b></th>' + \
                         '<th><b>Description</b></th>' + \
                         '<th><b>Notes</b></th>' + \
                         '</tr>'
@@ -397,6 +399,7 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
                 content += '<tr>' + \
                     '<td>' + (inventory.model_name if inventory.model_name else '') + '</td>' + \
                     '<td>' + (inventory.serial_number if inventory.serial_number else '') + '</td>' + \
+                    '<td>' + (inventory.hardware_revision if inventory.hardware_revision else '') + '</td>' + \
                     '<td>' + (inventory.description if inventory.description else '') + '</td>' + \
                     '<td>' + (inventory.notes if inventory.notes else '') + '</td>' + \
                     '</tr>'
@@ -413,6 +416,7 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
                        '<th><b>Model Name</b></th>' + \
                        '<th><b>Name</b></th>' + \
                        '<th><b>Serial Number</b></th>' + \
+                       '<th><b>VID</b></th>' + \
                        '<th><b>Description</b></th>' + \
                        '<th><b>Hostname</b></th>' + \
                        '<th><b>Chassis</b></th>' + \
@@ -428,6 +432,7 @@ class ExportInventoryInfoHTMLWriter(ExportInventoryInfoWriter):
                            '<td>' + (inventory.model_name if inventory.model_name else '') + '</td>' + \
                            '<td>' + (inventory.name if inventory.name else '') + '</td>' + \
                            '<td>' + (inventory.serial_number if inventory.serial_number else '') + '</td>' + \
+                           '<td>' + (inventory.hardware_revision if inventory.hardware_revision else '') + '</td>' + \
                            '<td>' + (inventory.description if inventory.description else '') + '</td>'
 
                 host = inventory.host
@@ -464,6 +469,7 @@ def get_search_filter_in_html(filters_dict):
     html += check_and_add_search_filter('Software', filters_dict.get('software_versions'))
     html += check_and_add_search_filter('Model Name', filters_dict.get('model_names'))
     html += check_and_add_search_filter('Partial Model Name', filters_dict.get('partial_model_names'))
+    html += check_and_add_search_filter('VID', filters_dict.get('vid'))
     if html:
         return '<ul>' + html + '</ul>'
 
@@ -523,6 +529,9 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
         if self.partial_model_names:
             self.ws.write(self.row, 1, 'Partial Model Name: ' + ', '.join(self.partial_model_names), self.style_title)
             self.next_row()
+        if self.vid:
+            self.ws.write(self.row, 1, 'VID: ' + self.vid, self.style_title)
+            self.next_row()
 
         return
 
@@ -541,14 +550,15 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
         self.ws.col(0).width = 5000
         self.ws.col(1).width = 8500
         self.ws.col(2).width = 4000
-        self.ws.col(3).width = 13000
-        self.ws.col(4).width = 4000
+        self.ws.col(3).width = 4000
+        self.ws.col(4).width = 13000
         self.ws.col(5).width = 4000
         self.ws.col(6).width = 4000
         self.ws.col(7).width = 4000
-        self.ws.col(8).width = 5000
+        self.ws.col(8).width = 4000
         self.ws.col(9).width = 5000
         self.ws.col(10).width = 5000
+        self.ws.col(11).width = 5000
 
         self.write_in_use_inventory_table_content()
         self.next_row()
@@ -565,15 +575,17 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
             self.next_row()
             self.ws.write(self.row, 0, 'Model Name', self.style_bold)
             self.ws.write(self.row, 1, 'Serial Number', self.style_bold)
-            self.ws.write(self.row, 2, 'Description', self.style_bold)
-            self.ws.write(self.row, 3, 'Notes', self.style_bold)
+            self.ws.write(self.row, 2, 'VID', self.style_bold)
+            self.ws.write(self.row, 3, 'Description', self.style_bold)
+            self.ws.write(self.row, 4, 'Notes', self.style_bold)
 
             for inventory in self.available_inventory_iter:
                 self.next_row()
                 self.ws.write(self.row, 0, (inventory.model_name if inventory.model_name else ''))
                 self.ws.write(self.row, 1, (inventory.serial_number if inventory.serial_number else ''))
-                self.ws.write(self.row, 2, (inventory.description if inventory.description else ''))
-                self.ws.write(self.row, 3, (inventory.notes if inventory.notes else ''))
+                self.ws.write(self.row, 2, (inventory.hardware_revision if inventory.hardware_revision else ''))
+                self.ws.write(self.row, 3, (inventory.description if inventory.description else ''))
+                self.ws.write(self.row, 4, (inventory.notes if inventory.notes else ''))
 
         return
 
@@ -585,21 +597,23 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
             self.ws.write(self.row, 0, 'Model Name', self.style_bold)
             self.ws.write(self.row, 1, 'Name', self.style_bold)
             self.ws.write(self.row, 2, 'Serial Number', self.style_bold)
-            self.ws.write(self.row, 3, 'Description', self.style_bold)
-            self.ws.write(self.row, 4, 'Hostname', self.style_bold)
-            self.ws.write(self.row, 5, 'Chassis', self.style_bold)
-            self.ws.write(self.row, 6, 'Platform', self.style_bold)
-            self.ws.write(self.row, 7, 'Software', self.style_bold)
-            self.ws.write(self.row, 8, 'Region', self.style_bold)
-            self.ws.write(self.row, 9, 'Location', self.style_bold)
-            self.ws.write(self.row, 10, 'Last Successful Retrieval', self.style_bold)
+            self.ws.write(self.row, 3, 'VID', self.style_bold)
+            self.ws.write(self.row, 4, 'Description', self.style_bold)
+            self.ws.write(self.row, 5, 'Hostname', self.style_bold)
+            self.ws.write(self.row, 6, 'Chassis', self.style_bold)
+            self.ws.write(self.row, 7, 'Platform', self.style_bold)
+            self.ws.write(self.row, 8, 'Software', self.style_bold)
+            self.ws.write(self.row, 9, 'Region', self.style_bold)
+            self.ws.write(self.row, 10, 'Location', self.style_bold)
+            self.ws.write(self.row, 11, 'Last Successful Retrieval', self.style_bold)
 
             for inventory in self.in_use_inventory_iter:
                 self.next_row()
                 self.ws.write(self.row, 0, (inventory.model_name if inventory.model_name else ''))
                 self.ws.write(self.row, 1, (inventory.name if inventory.name else ''))
                 self.ws.write(self.row, 2, (inventory.serial_number if inventory.serial_number else ''))
-                self.ws.write(self.row, 3, (inventory.description if inventory.description else ''))
+                self.ws.write(self.row, 3, (inventory.hardware_revision if inventory.hardware_revision else ''))
+                self.ws.write(self.row, 4, (inventory.description if inventory.description else ''))
 
                 host = inventory.host
                 if host:
@@ -608,13 +622,13 @@ class ExportInventoryInfoExcelWriter(ExportInventoryInfoWriter):
                         last_successful_retrieval = get_last_successful_inventory_elapsed_time(host)
                     else:
                         last_successful_retrieval = ''
-                    self.ws.write(self.row, 4, (host.hostname if host.hostname else ''))
-                    self.ws.write(self.row, 5, (host.platform if host.platform else ''))
-                    self.ws.write(self.row, 6, (host.software_platform if host.software_platform else ''))
-                    self.ws.write(self.row, 7, (host.software_version if host.software_version else ''))
-                    self.ws.write(self.row, 8, (host.region.name if host.region.name else ''))
-                    self.ws.write(self.row, 9, (host.location if host.location else ''))
-                    self.ws.write(self.row, 10, last_successful_retrieval)
+                    self.ws.write(self.row, 5, (host.hostname if host.hostname else ''))
+                    self.ws.write(self.row, 6, (host.platform if host.platform else ''))
+                    self.ws.write(self.row, 7, (host.software_platform if host.software_platform else ''))
+                    self.ws.write(self.row, 8, (host.software_version if host.software_version else ''))
+                    self.ws.write(self.row, 9, (host.region.name if host.region.name else ''))
+                    self.ws.write(self.row, 10, (host.location if host.location else ''))
+                    self.ws.write(self.row, 11, last_successful_retrieval)
 
         return
 
@@ -644,6 +658,8 @@ class ExportInventoryInfoCSVWriter(ExportInventoryInfoWriter):
             prepare_row.append(('Model Name: ' + ', '.join(self.model_names)))
         if self.partial_model_names:
             prepare_row.append(('Partial Model Name: ' + ', '.join(self.partial_model_names)))
+        if self.vid:
+            prepare_row.append(('VID: ' + self.vid))
 
         csv_writer.writerow(prepare_row)
         return
@@ -670,11 +686,12 @@ class ExportInventoryInfoCSVWriter(ExportInventoryInfoWriter):
 
         if self.available_inventory_iter.count() > 0:
 
-            csv_writer.writerow(['Model Name', 'Serial Number', 'Description', 'Notes'])
+            csv_writer.writerow(['Model Name', 'Serial Number', 'VID', 'Description', 'Notes'])
 
             for inventory in self.available_inventory_iter:
                 csv_writer.writerow([(inventory.model_name if inventory.model_name else ''),
                                      (inventory.serial_number if inventory.serial_number else ''),
+                                     (inventory.hardware_revision if inventory.hardware_revision else ''),
                                      (inventory.description if inventory.description else ''),
                                      (inventory.notes if inventory.notes else '')])
 
@@ -684,13 +701,14 @@ class ExportInventoryInfoCSVWriter(ExportInventoryInfoWriter):
         csv_writer.writerow(['Number of In Use Inventories: ' + str(self.in_use_inventory_iter.count())])
 
         if self.in_use_inventory_iter.count() > 0:
-            csv_writer.writerow(['Model Name', 'Name', 'Serial Number', 'Description', 'Hostname', 'Chassis',
+            csv_writer.writerow(['Model Name', 'Name', 'Serial Number', 'VID', 'Description', 'Hostname', 'Chassis',
                                  'Platform', 'Software', 'Region', 'Location', 'Last Successful Retrieval'])
 
             for inventory in self.in_use_inventory_iter:
                 prepare_row = [(inventory.model_name if inventory.model_name else ''),
                                (inventory.name if inventory.name else ''),
                                (inventory.serial_number if inventory.serial_number else ''),
+                               (inventory.hardware_revision if inventory.hardware_revision else ''),
                                (inventory.description if inventory.description else '')]
 
                 host = inventory.host

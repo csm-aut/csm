@@ -744,6 +744,8 @@ def api_search_inventory():
         if request_args.get('model_names') is not None else []
     search_filters['partial_model_names'] = request_args.get('partial_model_names').split(',') \
         if request_args.get('partial_model_names') is not None else []
+    search_filters['vid'] = request_args.get('vid') \
+        if request_args.get('vid') is not None else None
 
     search_filters['hostname'] = request_args.get('hostname') \
         if request_args.get('hostname') is not None else None
@@ -758,7 +760,8 @@ def api_search_inventory():
     for inventory_entry in results:
         row = {'model_name': inventory_entry.model_name,
                'serial_number': inventory_entry.serial_number,
-               'description': inventory_entry.description}
+               'description': inventory_entry.description,
+               'vid': inventory_entry.hardware_revision}
         if hasattr(inventory_entry, 'notes'):
             row['notes'] = inventory_entry.notes
         else:
@@ -803,7 +806,8 @@ def api_search_inventory():
 def handle_search_for_available_inventory(db_session, json_data, dt_params):
 
     results = query_available_inventory(db_session, json_data.get('serial_number'),
-                                        json_data.get('model_names'), json_data.get('partial_model_names'))
+                                        json_data.get('model_names'), json_data.get('partial_model_names'),
+                                        json_data.get('vid'))
     total_count = results.count()
 
     clauses = []
@@ -812,6 +816,7 @@ def handle_search_for_available_inventory(db_session, json_data, dt_params):
         criteria = '%' + dt_params.search_value + '%'
         clauses.append(Inventory.model_name.like(criteria))
         clauses.append(Inventory.serial_number.like(criteria))
+        clauses.append(Inventory.hardware_revision.like(criteria))
         clauses.append(Inventory.description.like(criteria))
         clauses.append(Inventory.notes.like(criteria))
 
@@ -822,6 +827,7 @@ def handle_search_for_available_inventory(db_session, json_data, dt_params):
 
     columns = [getattr(Inventory.model_name, dt_params.sort_order)(),
                getattr(Inventory.serial_number, dt_params.sort_order)(),
+               getattr(Inventory.hardware_revision, dt_params.sort_order)(),
                getattr(Inventory.description, dt_params.sort_order)(),
                getattr(Inventory.notes, dt_params.sort_order)()]
 
@@ -843,6 +849,7 @@ def handle_search_for_in_use_inventory(db_session, json_data, dt_params):
         clauses.append(HostInventory.model_name.like(criteria))
         clauses.append(HostInventory.name.like(criteria))
         clauses.append(HostInventory.serial_number.like(criteria))
+        clauses.append(HostInventory.hardware_revision.like(criteria))
         clauses.append(HostInventory.description.like(criteria))
 
         clauses.append(Host.hostname.like(criteria))
@@ -864,6 +871,7 @@ def handle_search_for_in_use_inventory(db_session, json_data, dt_params):
         columns = [getattr(HostInventory.model_name, dt_params.sort_order)(),
                    getattr(HostInventory.name, dt_params.sort_order)(),
                    getattr(HostInventory.serial_number, dt_params.sort_order)(),
+                   getattr(HostInventory.hardware_revision, dt_params.sort_order)(),
                    getattr(HostInventory.description, dt_params.sort_order)(),
                    getattr(Host.hostname, dt_params.sort_order)(),
                    getattr(ConnectionParam.host_or_ip, dt_params.sort_order)(),
@@ -878,6 +886,7 @@ def handle_search_for_in_use_inventory(db_session, json_data, dt_params):
         check_and_add_column(columns, 'model_name', HostInventory.model_name, dt_params)
         check_and_add_column(columns, 'name', HostInventory.name, dt_params)
         check_and_add_column(columns, 'serial_number', HostInventory.serial_number, dt_params)
+        check_and_add_column(columns, 'vid', HostInventory.hardware_revision, dt_params)
         check_and_add_column(columns, 'description', HostInventory.description, dt_params)
         check_and_add_column(columns, 'hostname', Host.hostname, dt_params)
         check_and_add_column(columns, 'host_or_ip', ConnectionParam.host_or_ip, dt_params)
