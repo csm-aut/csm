@@ -24,7 +24,6 @@
 # =============================================================================
 from flask import jsonify
 from flask import g
-from flask.ext.login import current_user
 
 from sqlalchemy import and_
 from database import DBSession
@@ -32,7 +31,6 @@ from database import DBSession
 from common import get_host
 from common import create_or_update_host
 from common import delete_host
-from common import get_jump_host
 from common import get_region
 from common import get_region_id_to_name_dict
 from common import get_jump_host_id_to_name_dict
@@ -43,9 +41,9 @@ from common import get_software_profile_name_to_id_dict
 
 from models import Host
 
-from constants import UNKNOWN
 from constants import ConnectionType
 
+from utils import is_empty
 from utils import get_acceptable_string
 
 from api_utils import get_total_pages
@@ -54,13 +52,36 @@ from api_utils import ENVELOPE
 from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
 from api_utils import APIStatus
-from api_utils import check_parameters
+from api_utils import validate_url_parameters
 from api_utils import failed_response
 from api_utils import check_none
+from api_utils import convert_json_request_to_list
+from api_utils import validate_required_keys_in_dict
+from api_utils import convert_value_to_list
+from api_utils import validate_acceptable_keys_in_dict
 
 from api_constants import HTTP_OK
-from api_constants import HTTP_BAD_REQUEST
 from api_constants import HTTP_MULTI_STATUS_ERROR
+
+# Acceptable JSON keys
+KEY_HOSTNAME = 'hostname'
+KEY_REGION = 'region'
+KEY_LOCATION = 'location'
+KEY_CONNECTION_TYPE = 'connection_type'
+KEY_ROLES = 'roles'
+KEY_TS_OR_IP = 'ts_or_ip'
+KEY_PORT_NUMBER = 'port_number'
+KEY_USERNAME = 'username'
+KEY_PASSWORD = 'password'
+KEY_ENABLE_PASSWORD = 'enable_password'
+KEY_JUMP_HOST = 'jump_host'
+KEY_SOFTWARE_PROFILE = 'software_profile'
+
+KEY_FAMILY = 'family'
+KEY_CHASSIS = 'chassis'
+KEY_SOFTWARE_PLATFORM = 'software_platform'
+KEY_SOFTWARE_VERSION = 'software_version'
+KEY_OS_TYPE = 'os_type'
 
 
 def api_create_hosts(request):
@@ -88,173 +109,181 @@ def api_create_hosts(request):
     """
     rows = []
     db_session = DBSession()
-
-    if hasattr(current_user, 'username'):
-        user = current_user.username
-    else:
-        user = g.api_user.username
-
-    json_data = request.json
-    # Host information is expected to be an array of dictionaries
-    if type(json_data) is not list:
-        json_data = [json_data]
-
-    return_code = HTTP_OK
     error_found = False
 
-    try:
-        region_dict = get_region_name_to_id_dict(db_session)
-        jump_host_dict = get_jump_host_name_to_id_dict(db_session)
-        software_profile_dict = get_software_profile_name_to_id_dict(db_session)
+    # Pre-fetched information to speed up bulk host creation.
+    region_dict = get_region_name_to_id_dict(db_session)
+    jump_host_dict = get_jump_host_name_to_id_dict(db_session)
+    software_profile_dict = get_software_profile_name_to_id_dict(db_session)
 
-        for data in json_data:
-            row = dict()
-            try:
-                hostname = get_acceptable_string(data.get('hostname'))
-                if hostname is None or len(hostname) == 0:
-                    row[STATUS] = APIStatus.FAILED
-                    row[STATUS_MESSAGE] = 'Hostname "%s" is not valid' % data.get('hostname')
-                    continue
+    json_list = convert_json_request_to_list(request)
 
-                row['hostname'] = hostname
+    for data in json_list:
+        row = dict()
+        try:
+            validate_required_keys_in_dict(data, [KEY_HOSTNAME])
 
-                host = get_host(db_session, hostname)
+            hostname = get_acceptable_string(data.get(KEY_HOSTNAME))
+            row[KEY_HOSTNAME] = hostname
 
-                region_id = region_dict.get(data.get('region'))
-                if not region_id:
-                    row[STATUS] = APIStatus.FAILED
-                    row[STATUS_MESSAGE] = 'Region "%s" does not exist' % data.get('region')
-                    continue
+            if hostname is None or len(hostname) == 0:
+                raise ValueError('Host name "{}" is not valid.'.format(data.get(KEY_HOSTNAME)))
 
-                jump_host_name = data.get('jump_host')
-                if jump_host_name:
-                    jump_host_id = jump_host_dict.get(jump_host_name)
-                    if not jump_host_id:
-                        row[STATUS] = APIStatus.FAILED
-                        row[STATUS_MESSAGE] = 'Jump Host "%s" does not exist' % jump_host_name
-                        continue
+            validate_acceptable_keys_in_dict(data, [KEY_HOSTNAME, KEY_REGION, KEY_LOCATION, KEY_ROLES,
+                                                    KEY_SOFTWARE_PROFILE, KEY_CONNECTION_TYPE, KEY_TS_OR_IP,
+                                                    KEY_PORT_NUMBER, KEY_USERNAME, KEY_PASSWORD,
+                                                    KEY_ENABLE_PASSWORD, KEY_JUMP_HOST])
 
-                software_profile_id = -1
-                software_profile_name = data.get('software_profile')
-                if software_profile_name:
-                    software_profile_id = software_profile_dict.get(software_profile_name)
-                    if not software_profile_id:
-                        row[STATUS] = APIStatus.FAILED
-                        row[STATUS_MESSAGE] = 'Software Profile "%s" does not exist' % software_profile_name
-                        continue
+            host = get_host(db_session, hostname)
+            if host is None:
+                # These are the required fields for a new host creation.
+                validate_required_keys_in_dict(data, [KEY_REGION, KEY_CONNECTION_TYPE, KEY_TS_OR_IP])
 
-                connection_type = data.get('connection_type')
+            value = get_value('Region', region_dict, data, KEY_REGION)
+            region_id = value if value is not None else \
+                (None if host is None else host.region_id)
+
+            value = get_value('Jump host', jump_host_dict, data, KEY_JUMP_HOST)
+            jump_host_id = value if value is not None else \
+                (None if host is None else host.connection_param[0].jump_host_id)
+
+            value = get_value('Software profile', software_profile_dict, data, KEY_SOFTWARE_PROFILE)
+            software_profile_id = value if value is not None else \
+                (None if host is None else host.software_profile_id)
+
+            connection_type = data.get(KEY_CONNECTION_TYPE)
+            if connection_type is not None:
                 if connection_type not in [ConnectionType.SSH, ConnectionType.TELNET]:
-                    status_message = 'Connection Type must be either telnet or ssh'
-                else:
-                    location = data.get('location')
-                    roles = data.get('roles')
-                    host_or_ip = data.get('ts_or_ip')
-                    username = data.get('username')
-                    password = data.get('password')
-                    enable_password = data.get('enable_password')
-                    port_number = data.get('port_number')
-
-                    jump_host_id = -1
-                    if data.get('jump_host') is not None:
-                        jump_host = get_jump_host(db_session, data.get('jump_host'))
-                        if jump_host is None:
-                            status_message = 'Jump Host %s does not exist' % data.get('jump_host')
-                        else:
-                            jump_host_id = jump_host.id
-
-                    create_or_update_host(db_session=db_session, hostname=hostname, region_id=region_id,
-                                          location=location, roles=roles,
-                                          software_profile_id=software_profile_id,
-                                          connection_type=connection_type,
-                                          host_or_ip=host_or_ip, username=username,
-                                          password=password, enable_password=enable_password, port_number=port_number,
-                                          jump_host_id=jump_host_id, created_by=user, host=host)
-
-            except Exception as e:
-                status_message = e.message
-                db_session.rollback()
-
-            if status_message is None:
-                row[STATUS] = APIStatus.SUCCESS
+                    raise ValueError('Connection Type must be either telnet or ssh')
             else:
-                error_found = True
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = status_message
+                connection_type = None if host is None else host.connection_param[0].connection_type
 
-            rows.append(row)
+            roles = convert_value_to_list(data, KEY_ROLES)
+            roles = ','.join(roles) if roles is not None else \
+                (None if host is None else host.roles)
 
-    except Exception as e:
-        return failed_response('Bad input parameters. ' + e.message)
+            host_or_ip = convert_value_to_list(data, KEY_TS_OR_IP)
+            host_or_ip = ','.join(host_or_ip) if host_or_ip is not None else \
+                (None if host is None else host.connection_param[0].host_or_ip)
 
-    if error_found:
-        return_code = HTTP_MULTI_STATUS_ERROR
+            port_number = convert_value_to_list(data, KEY_PORT_NUMBER)
+            port_number = ','.join(str(p) for p in port_number) if port_number is not None else \
+                (None if host is None else host.connection_param[0].port_number)
 
-    return jsonify(**{ENVELOPE: {'host_list': rows}}), return_code
+            location = data.get(KEY_LOCATION) if data.get(KEY_LOCATION ) is not None else \
+                (None if host is None else host.location)
+
+            username = data.get(KEY_USERNAME) if data.get(KEY_USERNAME) is not None else \
+                (None if host is None else host.connection_param[0].username)
+
+            password = data.get(KEY_PASSWORD) if data.get(KEY_PASSWORD) is not None else \
+                (None if host is None else host.connection_param[0].password)
+
+            enable_password = data.get(KEY_ENABLE_PASSWORD) if data.get(KEY_ENABLE_PASSWORD) is not None else \
+                (None if host is None else host.connection_param[0].enable_password)
+
+            create_or_update_host(db_session=db_session, hostname=hostname, region_id=region_id,
+                                  location=location, roles=roles,
+                                  software_profile_id=software_profile_id,
+                                  connection_type=connection_type,
+                                  host_or_ip=host_or_ip, username=username,
+                                  password=password, enable_password=enable_password,
+                                  port_number=port_number, jump_host_id=jump_host_id,
+                                  created_by=g.api_user.username, host=host)
+
+            row[STATUS] = APIStatus.SUCCESS
+
+        except Exception as e:
+            row[STATUS] = APIStatus.FAILED
+            row[STATUS_MESSAGE] = e.message
+            error_found = True
+
+        rows.append(row)
+
+    # end loop
+
+    return jsonify(**{ENVELOPE: {'host_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+
+
+def get_value(item, dictionary, data, key):
+    id = None
+    name = data.get(key)
+    if name:
+        id = dictionary.get(name)
+        if not id:
+            raise ValueError('{} "{}" does not exist in the database.'.format(item, name))
+    return id
 
 
 def api_get_hosts(request):
     """
     GET:
     http://localhost:5000/api/v1/hosts
+    http://localhost:5000/api/v1/hosts?hostname=Host_1
     http://localhost:5000/api/v1/hosts?region=SJ Labs
     http://localhost:5000/api/v1/hosts?region=SJ Labs&page=2
     http://localhost:5000/api/v1/hosts?region=SJ%20Labs&family=ASR9K
     """
-    ok, response = check_parameters(request.args.keys(), ['region', 'family', 'page'])
-    if not ok:
-        return response, HTTP_BAD_REQUEST
+    validate_url_parameters(request, [KEY_HOSTNAME, KEY_REGION, KEY_FAMILY, 'page'])
 
-    rows = []
-    db_session = DBSession
-    try:
-        page = int(request.args.get('page')) if request.args.get('page') else 1
-        if page <= 0: page = 1
-    except Exception:
-        return failed_response('page must be an numeric value')
-
+    page = 1
     clauses = []
+    db_session = DBSession
 
-    region_name = request.args.get('region')
-    if region_name:
-        region = get_region(db_session, region_name)
-        if region:
-            clauses.append(Host.region_id == region.id)
-        else:
-            return failed_response('Unknown region %s' % region_name)
+    hostname = request.args.get(KEY_HOSTNAME)
+    if hostname:
+        host = get_host(db_session, hostname)
+        if host is None:
+            raise ValueError("Host '{}' does not exist in the database.".format(hostname))
 
-    family = request.args.get('family')
-    if family:
-        clauses.append(Host.family == family)
+        hosts = [host]
+    else:
+        try:
+            page = int(request.args.get('page')) if request.args.get('page') else 1
+            if page <= 0: page = 1
+        except Exception:
+            return failed_response('page must be an numeric value')
 
-    hosts = get_hosts_by_page(db_session, clauses, page)
+        region_name = request.args.get(KEY_REGION)
+        if region_name:
+            region = get_region(db_session, region_name)
+            if region:
+                clauses.append(Host.region_id == region.id)
+            else:
+                return failed_response("Region '{}' does not exist in the database.".format(region_name))
+
+        family = request.args.get(KEY_FAMILY)
+        if family:
+            clauses.append(Host.family == family)
+
+        hosts = get_hosts_by_page(db_session, clauses, page)
 
     region_dict = get_region_id_to_name_dict(db_session)
     jump_host_dict = get_jump_host_id_to_name_dict(db_session)
     software_profile_dict = get_software_profile_id_to_name_dict(db_session)
 
+    rows = []
     for host in hosts:
         row = dict()
-        row['hostname'] = host.hostname
-        row['region'] = check_none(region_dict.get(host.region_id))
+        row[KEY_HOSTNAME] = host.hostname
+        row[KEY_REGION] = check_none(region_dict.get(host.region_id))
+        row[KEY_ROLES] = [] if is_empty(host.roles) else host.roles.split(',')
+        connection_param = check_none(host.connection_param[0])
 
-        row['roles'] = host.roles
-        connection_param = host.connection_param[0]
-
-        row['family'] = host.family
-        row['chassis_type'] = host.platform
-        row['software_platform'] = host.software_platform
-        row['software_version'] = host.software_version
-        row['os_type'] = host.os_type
-        row['location'] = check_none(host.location)
-        row['software_profile'] = check_none(software_profile_dict.get(host.software_profile_id))
+        row[KEY_FAMILY] = check_none(host.family)
+        row[KEY_CHASSIS] = check_none(host.platform)
+        row[KEY_SOFTWARE_PLATFORM] = check_none(host.software_platform)
+        row[KEY_SOFTWARE_VERSION] = check_none(host.software_version)
+        row[KEY_OS_TYPE] = check_none(host.os_type)
+        row[KEY_LOCATION] = check_none(host.location)
+        row[KEY_SOFTWARE_PROFILE] = check_none(software_profile_dict.get(host.software_profile_id))
 
         if connection_param:
-            row['ts_or_ip'] = connection_param.host_or_ip
-            row['connection_type'] = connection_param.connection_type
-            row['host_username'] = connection_param.username
-            row['port_number'] = connection_param.port_number
-            row['jump_host'] = check_none(jump_host_dict.get(connection_param.jump_host_id))
+            row[KEY_TS_OR_IP] = [] if is_empty(connection_param.host_or_ip) else connection_param.host_or_ip.split(',')
+            row[KEY_CONNECTION_TYPE] = check_none(connection_param.connection_type)
+            row[KEY_USERNAME] = check_none(connection_param.username)
+            row[KEY_PORT_NUMBER] = [] if is_empty(connection_param.port_number) else connection_param.port_number.split(',')
+            row[KEY_JUMP_HOST] = check_none(jump_host_dict.get(connection_param.jump_host_id))
 
         rows.append(row)
 
@@ -282,17 +311,10 @@ def api_delete_host(hostname):
         }
     }
     """
-    row = dict()
-    row['hostname'] = hostname
-
     db_session = DBSession()
-    try:
-        delete_host(db_session, hostname)
-        row[STATUS] = APIStatus.SUCCESS
-    except Exception as e:
-        return failed_response(e.message)
 
-    return jsonify(**{ENVELOPE: row})
+    delete_host(db_session, hostname)
+    return jsonify(**{ENVELOPE: {KEY_HOSTNAME: hostname, STATUS: APIStatus.SUCCESS}})
 
 
 def get_hosts_by_page(db_session, clauses, page):

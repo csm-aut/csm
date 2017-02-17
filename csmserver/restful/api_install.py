@@ -29,7 +29,7 @@ from api_utils import ENVELOPE
 from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
 from api_utils import APIStatus
-from api_utils import check_parameters
+from api_utils import validate_url_parameters
 from api_utils import failed_response
 
 from utils import is_empty
@@ -319,11 +319,8 @@ def api_get_install_request(request):
     http://localhost:5000/api/v1/install?hostname=R1&status="failed"
     """
 
-    ok, response = check_parameters(request.args.keys(), ['id', 'hostname', 'install_action', 'status', \
-                                                             'scheduled_time', 'utc_offset'])
-    if not ok:
-        return response, 400
-
+    validate_url_parameters(request, ['id', 'hostname', 'install_action', 'status',
+                                      'scheduled_time', 'utc_offset'])
     rows = []
     db_session = DBSession
     install_job_clauses = []

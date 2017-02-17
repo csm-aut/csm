@@ -38,6 +38,8 @@ from common import can_install
 
 from api_utils import failed_response
 
+from api_constants import HTTP_NOT_AUTHORIZED
+
 import api_host
 import api_cco
 import api_install
@@ -83,24 +85,32 @@ def verify_password(username_or_token, password):
     g.api_user = user
     return True
 
+# --------------------------------------------------------------------------------------------------------------
+
 
 @restful_api.route('/v1/hosts', methods=['GET', 'POST'])
 @auth.login_required
 def api_hosts():
-    if request.method == 'POST':
-        if not can_create(g.api_user):
-            return failed_response('Not Authorized', return_code=401)
-        return api_host.api_create_hosts(request)
-    elif request.method == 'GET':
-        return api_host.api_get_hosts(request)
+    try:
+        if request.method == 'POST':
+            if not can_create(g.api_user):
+                return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+            return api_host.api_create_hosts(request)
+        elif request.method == 'GET':
+            return api_host.api_get_hosts(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/hosts/<hostname>/delete', methods=['DELETE'])
 @auth.login_required
 def host_delete(hostname):
-    if not can_delete(g.api_user):
-        return failed_response('Not Authorized', return_code=401)
-    return api_host.api_delete_host(hostname)
+    try:
+        if not can_delete(g.api_user):
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+        return api_host.api_delete_host(hostname)
+    except Exception as e:
+        return failed_response(e.message)
 
 # --------------------------------------------------------------------------------------------------------------
 
@@ -108,21 +118,27 @@ def host_delete(hostname):
 @restful_api.route('/v1/regions', methods=['GET', 'POST'])
 @auth.login_required
 def api_regions():
-    if request.method == 'POST':
-        if not can_create(g.api_user):
-            return failed_response('Not Authorized', return_code=401)
-        return api_region.api_create_regions(request)
-    elif request.method == 'GET':
-        return api_region.api_get_regions(request)
+    try:
+        if request.method == 'POST':
+            if not can_create(g.api_user):
+                return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+            return api_region.api_create_regions(request)
+        elif request.method == 'GET':
+            return api_region.api_get_regions(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/regions/<name>/delete', methods=['DELETE'])
 @auth.login_required
 def region_delete(name):
-    if not can_delete(g.api_user):
-        return failed_response('Not Authorized', return_code=401)
-    else:
-        return api_region.api_delete_region(name)
+    try:
+        if not can_delete(g.api_user):
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+        else:
+            return api_region.api_delete_region(name)
+    except Exception as e:
+        return failed_response(e.message)
 
 # --------------------------------------------------------------------------------------------------------------
 
@@ -130,21 +146,26 @@ def region_delete(name):
 @restful_api.route('/v1/jump_hosts', methods=['GET', 'POST'])
 @auth.login_required
 def api_jump_hosts():
-    if request.method == 'POST':
-        if not can_create(g.api_user):
-            return failed_response('Not Authorized', return_code=401)
-        return api_jump_host.api_create_jump_hosts(request)
-    elif request.method == 'GET':
-        return api_jump_host.api_get_jump_hosts(request)
+    try:
+        if request.method == 'POST':
+            if not can_create(g.api_user):
+                return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+            return api_jump_host.api_create_jump_hosts(request)
+        elif request.method == 'GET':
+            return api_jump_host.api_get_jump_hosts(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/jump_hosts/<hostname>/delete', methods=['DELETE'])
 @auth.login_required
 def jump_host_delete(hostname):
-    if not can_delete(g.api_user):
-        return failed_response('Not Authorized', return_code=401)
-    else:
+    try:
+        if not can_delete(g.api_user):
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         return api_jump_host.api_delete_jump_host(hostname)
+    except Exception as e:
+        return failed_response(e.message)
 
 # --------------------------------------------------------------------------------------------------------------
 
@@ -154,7 +175,7 @@ def jump_host_delete(hostname):
 def api_server_repositories():
     if request.method == 'POST':
         if not can_create(g.api_user):
-            return failed_response('Not Authorized', return_code=401)
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         return api_server_repository.api_create_server_repositories(request)
     elif request.method == 'GET':
         return api_server_repository.api_get_server_repositories(request)
@@ -164,7 +185,7 @@ def api_server_repositories():
 @auth.login_required
 def server_repository_delete(hostname):
     if not can_delete(g.api_user):
-        return failed_response('Not Authorized', return_code=401)
+        return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
     else:
         return api_server_repository.api_delete_server_repositories(hostname)
 
@@ -174,19 +195,28 @@ def server_repository_delete(hostname):
 @restful_api.route('/v1/cco/catalog')
 @auth.login_required
 def get_cco_catalog():
-    return api_cco.api_get_cco_catalog()
+    try:
+        return api_cco.api_get_cco_catalog()
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/cco/software')
 @auth.login_required
 def get_cco_software():
-    return api_cco.api_get_cco_software(request)
+    try:
+        return api_cco.api_get_cco_software(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/cco/software/<name_or_id>')
 @auth.login_required
 def get_cco_software_entry(name_or_id):
-    return api_cco.api_get_cco_software_entry(request, name_or_id)
+    try:
+        return api_cco.api_get_cco_software_entry(request, name_or_id)
+    except Exception as e:
+        return failed_response(e.message)
 
 # --------------------------------------------------------------------------------------------------------------
 
@@ -196,7 +226,7 @@ def get_cco_software_entry(name_or_id):
 def create_install_job():
     if request.method == 'POST':
         if not can_install(g.api_user):
-            return failed_response('Not Authorized', return_code=401)
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         return api_install.api_create_install_request(request)
     elif request.method == 'GET':
         return api_install.api_get_install_request(request)
@@ -206,7 +236,7 @@ def create_install_job():
 @auth.login_required
 def install_job_delete():
     if not can_delete_install(g.api_user):
-        return failed_response('Not Authorized', return_code=401)
+        return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
     return api_install.api_delete_install_job(request)
 
 
@@ -214,7 +244,7 @@ def install_job_delete():
 @auth.login_required
 def get_session_log(id):
     if not can_install(g.api_user):
-        return failed_response('Not Authorized', return_code=401)
+        return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
     return api_install.api_get_session_log(id)
 
 # --------------------------------------------------------------------------------------------------------------
@@ -223,20 +253,26 @@ def get_session_log(id):
 @restful_api.route('/v1/custom_command_profiles', methods=['GET', 'POST'])
 @auth.login_required
 def api_custom_command_profiles():
-    if request.method == 'POST':
-        if not can_create(g.api_user):
-            return failed_response('Not Authorized', return_code=401)
-        return api_custom_command_profile.api_create_custom_command_profiles(request)
-    elif request.method == 'GET':
-        return api_custom_command_profile.api_get_custom_command_profiles(request)
+    try:
+        if request.method == 'POST':
+            if not can_create(g.api_user):
+                return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+            return api_custom_command_profile.api_create_custom_command_profiles(request)
+        elif request.method == 'GET':
+            return api_custom_command_profile.api_get_custom_command_profiles(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/custom_command_profiles/<profile_name>/delete', methods=['DELETE'])
 @auth.login_required
 def custom_command_profile_delete(profile_name):
-    if not can_delete(g.api_user):
-        return failed_response('Not Authorized', return_code=401)
-    else:
+    try:
+        if not can_delete(g.api_user):
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+
         return api_custom_command_profile.api_delete_custom_command_profile(profile_name)
+    except Exception as e:
+        return failed_response(e.message)
 
 # --------------------------------------------------------------------------------------------------------------

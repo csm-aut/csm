@@ -36,7 +36,9 @@ from flask.ext.login import current_user
 
 from database import DBSession
 
+from models import logger
 from models import CustomCommandProfile
+
 from constants import get_temp_directory
 
 from wtforms import Form
@@ -51,6 +53,7 @@ from utils import make_file_writable
 from common import create_or_update_custom_command_profile
 from common import delete_custom_command_profile
 from common import get_custom_command_profile
+from common import can_delete
 
 import os
 import json
@@ -213,14 +216,18 @@ def command_profile_edit(profile_name):
 
 @custom_command.route('/command_profile/<profile_name>/delete', methods=['DELETE'])
 @login_required
-def delete_custom_command_profile(profile_name):
+def custom_command_profile_delete(profile_name):
+    if not can_delete(current_user):
+        abort(401)
+
     db_session = DBSession()
 
     try:
         delete_custom_command_profile(db_session, profile_name)
         return jsonify({'status': 'OK'})
-    except:
-        abort(404)
+    except Exception as e:
+        logger.exception('custom_command_profile_delete hit exception.')
+        return jsonify({'status': e.message})
 
 
 @custom_command.route('/export_command_profiles', methods=['POST'])

@@ -337,9 +337,9 @@ def software_profile_delete(software_profile_name):
     try:
         delete_software_profile(db_session, software_profile_name)
         return jsonify({'status': 'OK'})
-    except:
-        return jsonify({'status': 'Unable to delete software profile "' +
-                                  software_profile_name + '".  Verify that it is not used by other hosts.'})
+    except Exception as e:
+        logger.exception('software_profile_delete hit exception.')
+        return jsonify({'status': e.message})
 
 
 @conformance.route('/api/rerun_conformance_report/report/<int:id>')

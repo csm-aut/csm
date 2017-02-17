@@ -40,7 +40,7 @@ from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
 from api_utils import ENVELOPE
 from api_utils import APIStatus
-from api_utils import check_parameters
+from api_utils import validate_url_parameters
 from api_utils import failed_response
 
 
@@ -151,7 +151,7 @@ def api_create_server_repositories(request):
     if return_code == 400 and partial_success:
         return_code = 207
 
-    return jsonify(**{'data': {'server_repository_list': rows}}), return_code
+    return jsonify(**{ENVELOPE: {'server_repository_list': rows}}), return_code
 
 
 def api_edit_server_repositories(db_session, repo, data):
@@ -237,9 +237,7 @@ def api_get_server_repositories(request):
         #'SCP': 'file_directory'
     }
 
-    ok, response = check_parameters(request.args.keys(), ['hostname'])
-    if not ok:
-        return response, 400
+    validate_url_parameters(request, ['hostname'])
 
     rows = []
     db_session = DBSession()
@@ -262,7 +260,7 @@ def api_get_server_repositories(request):
                 row[server_directory[server.server_type]] = server.server_directory
             rows.append(row)
 
-    return jsonify(**{'data':{'server_repository_list': rows}})
+    return jsonify(**{ENVELOPE: {'server_repository_list': rows}})
 
 
 def api_delete_server_repositories(hostname):
