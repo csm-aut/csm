@@ -255,16 +255,9 @@ def concatenate_dirs(dir1, dir2):
         if len(result_dir) == 0:
             result_dir = dir2
         else:
-            result_dir += '/' + dir2
+            result_dir = os.path.join(result_dir, dir2)
     
     return result_dir
-
-
-def trim_last_slash(s):
-    if s is not None:
-        if s.endswith('/'):
-            return s[:-1]
-    return s
 
 
 def get_base_url(url):
