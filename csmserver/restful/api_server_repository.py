@@ -23,15 +23,14 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # ==============================================================================
 from flask import jsonify
-
-from csm_exceptions.exceptions import ValueNotFound
-from csm_exceptions.exceptions import OperationNotAllowed
+from flask import g
 
 from common import get_server_list
 from common import get_server
 from common import create_or_update_server_repository
 from common import delete_server_repository
 
+from utils import is_empty
 from utils import get_acceptable_string
 
 from database import DBSession
@@ -41,11 +40,73 @@ from api_utils import STATUS_MESSAGE
 from api_utils import ENVELOPE
 from api_utils import APIStatus
 from api_utils import validate_url_parameters
-from api_utils import failed_response
+from api_utils import validate_required_keys_in_dict
+from api_utils import convert_json_request_to_list
+from api_utils import validate_acceptable_keys_in_dict
+
+from api_constants import HTTP_OK
+from api_constants import  HTTP_MULTI_STATUS_ERROR
+
+from constants import ServerType
+
+# Acceptable JSON keys
+KEY_HOSTNAME = 'hostname'
+KEY_SERVER_TYPE = 'server_type'
+KEY_TFTP_SERVER_PATH = 'tftp_server_path'
+KEY_SERVER_ADDRESS = 'server_address'
+KEY_VRF = 'vrf'
+KEY_FILE_DIRECTORY = 'file_directory'
+KEY_HOME_DIRECTORY = 'home_directory'
+KEY_USERNAME = 'username'
+KEY_PASSWORD = 'password'
+KEY_DEVICE_PATH = 'device_path'
+KEY_DESTINATION_ON_HOST = 'destination_on_host'
+
+
+params_dict = {
+    ServerType.TFTP_SERVER: [KEY_VRF],
+    ServerType.FTP_SERVER: [KEY_VRF, KEY_USERNAME],
+    ServerType.SFTP_SERVER: [KEY_USERNAME],
+    ServerType.LOCAL_SERVER: [],
+    ServerType.SCP_SERVER: [KEY_USERNAME, KEY_DESTINATION_ON_HOST]
+}
+required_keys_dict = {
+    ServerType.TFTP_SERVER: [KEY_TFTP_SERVER_PATH, KEY_FILE_DIRECTORY],
+    ServerType.FTP_SERVER: [KEY_SERVER_ADDRESS, KEY_HOME_DIRECTORY],
+    ServerType.SFTP_SERVER: [KEY_SERVER_ADDRESS, KEY_HOME_DIRECTORY],
+    ServerType.LOCAL_SERVER: [KEY_DEVICE_PATH],
+    ServerType.SCP_SERVER: [KEY_SERVER_ADDRESS, KEY_HOME_DIRECTORY, KEY_DESTINATION_ON_HOST]
+}
+acceptable_keys_dict = {
+    ServerType.TFTP_SERVER: [KEY_HOSTNAME, KEY_SERVER_TYPE,
+                             KEY_TFTP_SERVER_PATH, KEY_VRF, KEY_FILE_DIRECTORY],
+    ServerType.FTP_SERVER: [KEY_HOSTNAME, KEY_SERVER_TYPE,
+                            KEY_SERVER_ADDRESS, KEY_VRF, KEY_HOME_DIRECTORY,
+                            KEY_USERNAME, KEY_PASSWORD],
+    ServerType.SFTP_SERVER: [KEY_HOSTNAME, KEY_SERVER_TYPE, KEY_SERVER_ADDRESS,
+                             KEY_HOME_DIRECTORY, KEY_USERNAME, KEY_PASSWORD],
+    ServerType.LOCAL_SERVER: [KEY_HOSTNAME, KEY_SERVER_TYPE, KEY_DEVICE_PATH],
+    ServerType.SCP_SERVER: [KEY_HOSTNAME, KEY_SERVER_TYPE, KEY_SERVER_ADDRESS, KEY_HOME_DIRECTORY,
+                            KEY_USERNAME, KEY_PASSWORD, KEY_DESTINATION_ON_HOST]
+}
+server_url_dict = {
+    ServerType.TFTP_SERVER: KEY_TFTP_SERVER_PATH,
+    ServerType.FTP_SERVER: KEY_SERVER_ADDRESS,
+    ServerType.SFTP_SERVER: KEY_SERVER_ADDRESS,
+    ServerType.LOCAL_SERVER: KEY_DEVICE_PATH,
+    ServerType.SCP_SERVER: KEY_SERVER_ADDRESS
+}
+server_directory_dict = {
+    ServerType.TFTP_SERVER: KEY_FILE_DIRECTORY,
+    ServerType.FTP_SERVER: KEY_HOME_DIRECTORY,
+    ServerType.SFTP_SERVER: KEY_HOME_DIRECTORY,
+    ServerType.LOCAL_SERVER: '',
+    ServerType.SCP_SERVER: KEY_HOME_DIRECTORY
+}
 
 
 def api_create_server_repositories(request):
-    '''
+    """
     [{
         "hostname": "Repository_1",
         "server_type": "TFTP",
@@ -60,204 +121,114 @@ def api_create_server_repositories(request):
         "hostname": "Repository_3",
         "server_type": "SFTP",
         "server_address": "nb-server3",
-        "home_directory": " /auto/tftp-vista"
+        "home_directory": "/auto/tftp-vista"
     }]
-    '''
+    """
     rows = []
     db_session = DBSession()
-    json_data = request.json
-    # Server Repository information is expected to be an array of dictionaries
-    if type(json_data) is not list:
-        json_data = [json_data]
+    error_found = False
 
-    return_code = 200
-    partial_success = False
+    json_list = convert_json_request_to_list(request)
+    for data in json_list:
+        row = dict()
+        try:
+            validate_required_keys_in_dict(data, [KEY_HOSTNAME, KEY_SERVER_TYPE])
 
-    uncommon_required_parameters = {
-        'TFTP': ['tftp_server_path', 'file_directory'],
-        'FTP': ['server_address', 'home_directory'],
-        'SFTP': ['server_address', 'home_directory'],
-        'LOCAL': ['device_path']
-        #'SCP': ['remote_host', 'destination']
-    }
-    server_url = {
-        'TFTP': 'tftp_server_path',
-        'FTP': 'server_address',
-        'SFTP': 'server_address',
-        'LOCAL': 'device_path'
-        #'SCP': 'remote_host'
-    }
-    server_directory = {
-        'TFTP': 'file_directory',
-        'FTP': 'home_directory',
-        'SFTP': 'home_directory',
-        'LOCAL': ''
-        #'SCP': 'file_directory'
-    }
+            hostname = get_acceptable_string(data[KEY_HOSTNAME])
+            row[KEY_HOSTNAME] = hostname
 
-    for data in json_data:
-        row = {}
-        status_message = None
+            if len(hostname) == 0:
+                raise ValueError("Server repository name '{}' is not valid.".format(data[KEY_HOSTNAME]))
 
-        if 'hostname' not in data.keys():
-                status_message = "Missing parameter 'hostname'."
-        else:
-            repo = get_server(db_session, data['hostname'])
-            if repo is not None:
-                row, success = api_edit_server_repositories(db_session, repo, data)
-                if success:
-                    partial_success = True
-                else:
-                    return_code = 400
-            elif 'server_type' not in data.keys() or data['server_type'] not in uncommon_required_parameters.keys():
-                status_message = 'Missing or invalid server_type. Accepted values are "TFTP", "FTP", "SFTP", "LOCAL", and "SCP".'
+            server_type = data.get(KEY_SERVER_TYPE)
+            if server_type not in [ServerType.TFTP_SERVER, ServerType.FTP_SERVER, ServerType.SFTP_SERVER,
+                                   ServerType.LOCAL_SERVER, ServerType.SCP_SERVER]:
+                raise ValueError("'{}' is not a supported server type.".format(server_type))
 
-            else:
-                for required_param in uncommon_required_parameters[data['server_type']]:
-                    if required_param not in data.keys():
-                        status_message = "Missing parameter '%s'." % required_param
+            row[KEY_SERVER_TYPE] = server_type
 
-        if status_message is None and row == {}:
-            try:
-                hostname = get_acceptable_string(data['hostname'])
-                # FIXME: Fix destination_on_host when SCP is supported
-                server_repository = create_or_update_server_repository(db_session,
-                                       hostname=hostname,
-                                       server_type=data['server_type'],
-                                       server_url=data[server_url[data['server_type']]],
-                                       username='' if 'username' not in data.keys() else data['username'],
-                                       password='' if 'password' not in data.keys() else data['password'],
-                                       vrf='' if 'vrf' not in data.keys() else data['vrf'],
-                                       server_directory='' if data['server_type'] == "LOCAL" else data[server_directory[data['server_type']]],
-                                       destination_on_host='',
-                                       server=get_server(db_session, hostname))
-                row[STATUS] = APIStatus.SUCCESS
-                row['hostname'] = server_repository.hostname
-                partial_success = True
-            except Exception as e:
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = e.message
-                row['hostname'] = data['hostname']
-                return_code = 400
-        elif row == {}:
+            validate_required_keys_in_dict(data, required_keys_dict[server_type])
+            validate_acceptable_keys_in_dict(data, acceptable_keys_dict[server_type])
+
+            server = get_server(db_session, hostname)
+            if server is None:
+                # These are the required fields for a new server repository creation.
+                validate_required_keys_in_dict(data, required_keys_dict.get(server_type))
+
+            server_url = data.get(server_url_dict[server_type])
+            server_url = server_url if server_url is not None else \
+                (None if server is None else server.server_url)
+
+            server_directory = data.get(server_directory_dict[server_type])
+            server_directory = server_directory if server_directory is not None else \
+                (None if server is None else server.server_directory)
+
+            vrf = data.get(KEY_VRF) if data.get(KEY_VRF) is not None else \
+                (None if server is None else server.vrf)
+
+            username = data.get(KEY_USERNAME) if data.get(KEY_USERNAME) is not None else \
+                (None if server is None else server.username)
+
+            password = data.get(KEY_PASSWORD) if data.get(KEY_PASSWORD) is not None else \
+                (None if server is None else server.password)
+
+            destination_on_host = data.get(KEY_DESTINATION_ON_HOST) if data.get(KEY_DESTINATION_ON_HOST) is not None else \
+                (None if server is None else server.destination_on_host)
+
+            create_or_update_server_repository(db_session,
+                                               hostname=hostname,
+                                               server_type=server_type,
+                                               server_url=server_url,
+                                               username=username,
+                                               password=password,
+                                               vrf=vrf,
+                                               server_directory=server_directory,
+                                               destination_on_host=destination_on_host,
+                                               created_by=g.api_user.username,
+                                               server=get_server(db_session, hostname))
+
+            row[STATUS] = APIStatus.SUCCESS
+        except Exception as e:
             row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = status_message
-            for key, value in data.iteritems():
-                row[key] = value
-            return_code = 400
+            row[STATUS_MESSAGE] = e.message
+            error_found = True
 
         rows.append(row)
 
-    if return_code == 400 and partial_success:
-        return_code = 207
-
-    return jsonify(**{ENVELOPE: {'server_repository_list': rows}}), return_code
-
-
-def api_edit_server_repositories(db_session, repo, data):
-    row = {}
-
-    server_urls = {
-        'TFTP': 'tftp_server_path',
-        'FTP': 'server_address',
-        'SFTP': 'server_address',
-        'LOCAL': 'device_path'
-        #'SCP': 'scp_server_path'
-    }
-    server_directories = {
-        'TFTP': 'file_directory',
-        'FTP': 'home_directory',
-        'SFTP': 'home_directory',
-        'LOCAL': ''
-        #'SCP': 'file_directory'
-    }
-
-    # server_type is not editable
-    if 'server_type' in data.keys() and data['server_type'] != repo.server_type:
-        row[STATUS] = APIStatus.FAILED
-        row[STATUS_MESSAGE] = "Given server_type '%s' does not match database value '%s'; server_type cannot be edited." % \
-                              (data['server_type'], repo.server_type)
-        for key, value in data.iteritems():
-            row[key] = value
-        success = False
-        return row, success
-
-    server_type = repo.server_type
-    server_url = repo.server_url if server_urls[server_type] not in data.keys() else data[server_urls[server_type]]
-    server_directory = repo.server_directory if server_directories[server_type] not in data.keys() else data[server_directories[server_type]]
-
-    try:
-        # FIXME: Fix destination_on_host when SCP is supported
-        repo = create_or_update_server_repository(db_session,
-                                        hostname=repo.hostname,
-                                        server_type=server_type,
-                                        server_url=server_url,
-                                        username=repo.username if 'username' not in data.keys()
-                                            else data['username'],
-                                        vrf=repo.vrf if 'vrf' not in data.keys()
-                                            else data['vrf'],
-                                        server_directory=server_directory,
-                                        password=repo.server_type if 'password' not in data.keys()
-                                            else data['password'],
-                                        server=repo,
-                                        destination_on_host='')
-        row[STATUS] = APIStatus.SUCCESS
-        row['hostname'] = repo.hostname
-        success = APIStatus.SUCCESS
-    except Exception as e:
-        row[STATUS] = APIStatus.FAILED
-        row[STATUS_MESSAGE] = e.message
-        for key, value in data.iteritems():
-            row[key] = value
-        success = False
-
-    return row, success
+    return jsonify(**{ENVELOPE: {'server_repository_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def api_get_server_repositories(request):
-    params = {
-        'TFTP': ['vrf'],
-        'FTP': ['vrf', 'username'],
-        'SFTP': ['username'],
-        'LOCAL': []
-        #'SCP': ['destination', 'username', 'password']
-    }
-    server_url = {
-        'TFTP': 'tftp_server_path',
-        'FTP': 'server_address',
-        'SFTP': 'server_address',
-        'LOCAL': 'device_path'
-        #'SCP': 'remote_host'
-    }
-    server_directory = {
-        'TFTP': 'file_directory',
-        'FTP': 'home_directory',
-        'SFTP': 'home_directory',
-        'LOCAL': ''
-        #'SCP': 'file_directory'
-    }
 
-    validate_url_parameters(request, ['hostname'])
+    validate_url_parameters(request, [KEY_HOSTNAME])
 
     rows = []
     db_session = DBSession()
 
-    hostname = request.args.get('hostname')
+    hostname = request.args.get(KEY_HOSTNAME)
     if hostname:
-        servers = [get_server(db_session, hostname)]
+        server = get_server(db_session, hostname)
+        if server is None:
+            raise ValueError("Server repository '{}' does not exist in the database.".format(hostname))
+
+        servers = [server]
     else:
         servers = get_server_list(db_session)
 
     for server in servers:
         if server is not None:
-            row = {}
-            row['hostname'] = server.hostname
-            row['sever_type'] = server.server_type
-            for req in params[server.server_type]:
+            row = dict()
+            row[KEY_HOSTNAME] = server.hostname
+            row[KEY_SERVER_TYPE] = server.server_type
+
+            for req in params_dict[server.server_type]:
                 row[req] = server.__getattribute__(req) if server.__getattribute__(req) is not None else ''
-            row[server_url[server.server_type]] = server.server_url
-            if server_directory[server.server_type] is not '':
-                row[server_directory[server.server_type]] = server.server_directory
+
+            row[server_url_dict[server.server_type]] = server.server_url
+
+            if not is_empty(server_directory_dict[server.server_type]):
+                row[server_directory_dict[server.server_type]] = server.server_directory
+
             rows.append(row)
 
     return jsonify(**{ENVELOPE: {'server_repository_list': rows}})
@@ -265,14 +236,6 @@ def api_get_server_repositories(request):
 
 def api_delete_server_repositories(hostname):
     db_session = DBSession()
-    row = {}
-    return_code = 200
 
-    try:
-        delete_server_repository(db_session, hostname)
-        row['hostname'] = hostname
-        row[STATUS] = APIStatus.SUCCESS
-    except (ValueNotFound, OperationNotAllowed) as e:
-        return failed_response(e.message)
-
-    return jsonify(**{ENVELOPE: row}), return_code
+    delete_server_repository(db_session, hostname)
+    return jsonify(**{ENVELOPE: {KEY_HOSTNAME: hostname, STATUS: APIStatus.SUCCESS}})

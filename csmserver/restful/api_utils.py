@@ -85,9 +85,9 @@ def validate_acceptable_keys_in_dict(dictionary, key_list):
 
     if result:
         if len(result) == 1:
-            raise ValueError("The following key is not valid '{}'".format(','.join(result)))
+            raise ValueError("The following key, '{}', is not valid.".format(','.join(result)))
         else:
-            raise ValueError("The following keys are not valid '{}'".format(','.join(result)))
+            raise ValueError("The following keys, '{}', are not valid.".format(','.join(result)))
 
 
 def validate_required_keys_in_dict(dictionary, key_list):
@@ -99,7 +99,7 @@ def validate_required_keys_in_dict(dictionary, key_list):
     """
     for key in key_list:
         if key not in dictionary.keys():
-            raise ValueError("Missing JSON key: '{}'".format(key))
+            raise ValueError("Missing JSON key: '{}'.".format(key))
 
     return dictionary
 
@@ -115,9 +115,9 @@ def validate_url_parameters(request, parameter_list):
     invalid_params = [arg for arg in args if arg not in parameter_list]
     if invalid_params:
         if len(invalid_params) == 1:
-            raise ValueError("Following parameter is not allowed: {}".format(','.join(invalid_params)))
+            raise ValueError("Following parameter, '{}', is not allowed.".format(','.join(invalid_params)))
         else:
-            raise ValueError("Following parameters are not allowed: {}".format(','.join(invalid_params)))
+            raise ValueError("Following parameters, '{}', are not allowed.".format(','.join(invalid_params)))
 
 
 def failed_response(message, return_code=HTTP_BAD_REQUEST):

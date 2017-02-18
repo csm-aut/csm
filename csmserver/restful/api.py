@@ -173,21 +173,28 @@ def jump_host_delete(hostname):
 @restful_api.route('/v1/server_repositories', methods=['GET', 'POST'])
 @auth.login_required
 def api_server_repositories():
-    if request.method == 'POST':
-        if not can_create(g.api_user):
-            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
-        return api_server_repository.api_create_server_repositories(request)
-    elif request.method == 'GET':
-        return api_server_repository.api_get_server_repositories(request)
+    try:
+        if request.method == 'POST':
+            if not can_create(g.api_user):
+                return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+            return api_server_repository.api_create_server_repositories(request)
+        elif request.method == 'GET':
+            return api_server_repository.api_get_server_repositories(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/server_repositories/<hostname>/delete', methods=['DELETE'])
 @auth.login_required
 def server_repository_delete(hostname):
-    if not can_delete(g.api_user):
-        return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
-    else:
-        return api_server_repository.api_delete_server_repositories(hostname)
+    try:
+        if not can_delete(g.api_user):
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+        else:
+            return api_server_repository.api_delete_server_repositories(hostname)
+    except Exception as e:
+        return failed_response(e.message)
+
 
 # --------------------------------------------------------------------------------------------------------------
 
@@ -224,30 +231,39 @@ def get_cco_software_entry(name_or_id):
 @restful_api.route('/v1/install', methods=['POST', 'GET'])
 @auth.login_required
 def create_install_job():
-    if request.method == 'POST':
-        if not can_install(g.api_user):
-            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
-        return api_install.api_create_install_request(request)
-    elif request.method == 'GET':
-        return api_install.api_get_install_request(request)
+    try:
+        if request.method == 'POST':
+            if not can_install(g.api_user):
+                return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+            return api_install.api_create_install_request(request)
+        elif request.method == 'GET':
+            return api_install.api_get_install_request(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/install/delete', methods=['DELETE'])
 @auth.login_required
 def install_job_delete():
-    if not can_delete_install(g.api_user):
-        return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
-    return api_install.api_delete_install_job(request)
+    try:
+        if not can_delete_install(g.api_user):
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+        return api_install.api_delete_install_job(request)
+    except Exception as e:
+        return failed_response(e.message)
 
 
 @restful_api.route('/v1/install/logs/<int:id>')
 @auth.login_required
 def get_session_log(id):
-    if not can_install(g.api_user):
-        return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
-    return api_install.api_get_session_log(id)
+    try:
+        if not can_install(g.api_user):
+            return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
+        return api_install.api_get_session_log(id)
+    except Exception as e:
+        return failed_response(e.message)
 
-# --------------------------------------------------------------------------------------------------------------
+# -------------------------- ------------------------------------------------------------------------------------
 
 
 @restful_api.route('/v1/custom_command_profiles', methods=['GET', 'POST'])
