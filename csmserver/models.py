@@ -505,7 +505,7 @@ class HostInventory(BaseInventoryModel):
     host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
     # Entity to parent : many to one
-    parent_id = Column(Integer, ForeignKey(id), index=True)
+    # parent_id = Column(Integer, ForeignKey(id), index=True)
 
     position = Column(Integer, index=True)
 
@@ -516,7 +516,7 @@ class HostInventory(BaseInventoryModel):
     serial_number = Column(String(50), index=True)
     hardware_revision = Column(String(10))
     # type = Column(String(50))
-
+    """
     children = relationship("HostInventory",
 
                             # many to one based on parent_id
@@ -525,15 +525,14 @@ class HostInventory(BaseInventoryModel):
                             # cascade deletions
                             cascade="all, delete-orphan"
                             )
-
+    """
     def __init__(self, db_session, host_id=None, location="", model_name="", hardware_revision="",
-                 name="", parent=None, serial_number="", description="", position=-1):
+                 name="", serial_number="", description="", position=-1):
         self.host_id = host_id
         self.location = location
         self.model_name = model_name
         self.hardware_revision = hardware_revision
         self.name = name
-        self.parent = parent
         self.serial_number = serial_number
         self.description = description
         self.position = position
@@ -586,6 +585,7 @@ class HostInventory(BaseInventoryModel):
                             model_name=self.model_name, description=self.description,
                             hardware_revision=self.hardware_revision)
             db_session.add(inv)
+            db_session.commit()
         return
 
 

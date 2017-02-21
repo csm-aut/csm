@@ -22,6 +22,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+import re
+
 from models import Package
 from constants import PackageState
 from base import BaseSoftwarePackageParser, BaseInventoryParser
@@ -105,6 +107,8 @@ class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
 
 class ASR9KInventoryParser(BaseInventoryParser):
 
+    REGEX_SATELLITE_CHASSIS = re.compile(r'satellite chassis', flags=re.IGNORECASE)
+
     def parse_inventory_output(self, output):
         """
         Get everything except for the Generic Fan inventories from the inventory data
@@ -127,9 +131,16 @@ class ASR9KInventoryParser(BaseInventoryParser):
 
         inventory_data = self.parse_inventory_output(inventory_output)
 
-        for idx in xrange(len(inventory_data)-1, -1, -1):
-            if "chassis" in inventory_data[idx]['name']:
-                return self.store_inventory(ctx, inventory_data, idx)
+        chassis_indices = []
+
+        for idx in xrange(0, len(inventory_data)):
+            if self.REGEX_CHASSIS.search(inventory_data[idx]['name']) and \
+                    (not self.REGEX_SATELLITE_CHASSIS.search(inventory_data[idx]['name'])) and \
+                    self.REGEX_CHASSIS.search(inventory_data[idx]['description']):
+                chassis_indices.append(idx)
+
+        if chassis_indices:
+            return self.store_inventory(ctx, inventory_data, chassis_indices)
 
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
@@ -153,16 +164,18 @@ class CRSInventoryParser(BaseInventoryParser):
         inventory_data = self.parse_inventory_output(inventory_output)
 
         chassis_indices = []
+
         for idx in xrange(0, len(inventory_data)):
-            if "Chassis" in inventory_data[idx]['name']:
+            if self.REGEX_CHASSIS.search(inventory_data[idx]['name']) and \
+                    self.REGEX_CHASSIS.search(inventory_data[idx]['description']):
                 chassis_indices.append(idx)
 
-        if len(chassis_indices) > 0:
+        if chassis_indices:
             return self.store_inventory(ctx, inventory_data, chassis_indices)
-        else:
-            logger = get_db_session_logger(ctx.db_session)
-            logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
-            return
+
+        logger = get_db_session_logger(ctx.db_session)
+        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
+        return
 
     def store_inventory(self, ctx, inventory_data, chassis_indices):
         if len(chassis_indices) == 1:

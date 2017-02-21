@@ -162,9 +162,6 @@ class IOSXEInventoryParser(BaseInventoryParser):
         For IOS-XE.
         There is only one chassis in this case. It most likely shows up
         first in the output of "show inventory".
-        Example for CRS:
-        NAME: "Rack 0 - Chassis", DESCR: "CRS 16 Slots Line Card Chassis for CRS-16/S-B"
-        PID: CRS-16-LCC-B, VID: V03, SN: FXS1804Q576
 
         Example for IOS-XE:
         NAME: "Chassis", DESCR: "ASR 903 Series Router Chassis"
@@ -177,9 +174,15 @@ class IOSXEInventoryParser(BaseInventoryParser):
 
         inventory_data = self.parse_inventory_output(inventory_output)
 
+        chassis_indices = []
+
         for idx in xrange(0, len(inventory_data)):
-            if "Chassis" in inventory_data[idx]['name']:
-                return self.store_inventory(ctx, inventory_data, idx)
+            if self.REGEX_CHASSIS.search(inventory_data[idx]['name']) and \
+                    self.REGEX_CHASSIS.search(inventory_data[idx]['description']):
+                chassis_indices.append(idx)
+
+        if chassis_indices:
+            return self.store_inventory(ctx, inventory_data, chassis_indices)
 
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))

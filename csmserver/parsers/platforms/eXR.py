@@ -338,9 +338,15 @@ class EXRInventoryParser(BaseInventoryParser):
 
         inventory_data = self.parse_inventory_output(inventory_output)
 
+        chassis_indices = []
+
         for idx in xrange(0, len(inventory_data)):
-            if "Chassis" in inventory_data[idx]['description']:
-                return self.store_inventory(ctx, inventory_data, idx)
+            if self.REGEX_RACK.match(inventory_data[idx]['name']) and \
+                    self.REGEX_CHASSIS.search(inventory_data[idx]['description']):
+                chassis_indices.append(idx)
+
+        if chassis_indices:
+            return self.store_inventory(ctx, inventory_data, chassis_indices)
 
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
@@ -368,9 +374,14 @@ class NCS1K5KInventoryParser(EXRInventoryParser):
 
         inventory_data = self.parse_inventory_output(inventory_output)
 
+        chassis_indices = []
+
         for idx in xrange(0, len(inventory_data)):
-            if "Rack 0" in inventory_data[idx]['name']:
-                return self.store_inventory(ctx, inventory_data, idx)
+            if self.REGEX_RACK.match(inventory_data[idx]['name']):
+                chassis_indices.append(idx)
+
+        if chassis_indices:
+            return self.store_inventory(ctx, inventory_data, chassis_indices)
 
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
