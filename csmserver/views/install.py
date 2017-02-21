@@ -210,13 +210,11 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
             # Form a line separated list for the textarea
             if install_job.packages is not None:
-
                 form.software_packages.data = '\n'.join(install_job.packages.split(','))
 
-            form.dependency.data = str(install_job.dependency)
+            form.dependency.data = install_job.dependency
 
             if install_job.scheduled_time is not None:
-
                 form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
 
             if install_job.custom_command_profile_id:

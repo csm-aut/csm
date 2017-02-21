@@ -110,8 +110,8 @@ def fill_dependency_from_host_install_jobs(choices, install_jobs, current_instal
     
     for install_job in install_jobs:
         if install_job.id != current_install_job_id:
-            choices.append((install_job.id, '{} - {}'.format((install_job.install_action,
-                            get_datetime_string(install_job.scheduled_time)))))
+            choices.append((install_job.id, '{} - {}'.format(install_job.install_action,
+                            get_datetime_string(install_job.scheduled_time))))
 
 
 def delete_install_job_dependencies(db_session, id):

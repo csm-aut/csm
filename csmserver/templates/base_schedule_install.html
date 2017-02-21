@@ -130,6 +130,7 @@ var host_software_platform = null;
 var host_software_version = null;
 
 $(function() {
+
     var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True'
     if (use_utc_timezone) {
         $('#label_scheduled_time').text('Scheduled Time (UTC)');
@@ -172,7 +173,6 @@ $(function() {
         todayHighlight: true
     });
 
-    toggle_ui();
 
     $('#install_action').on('change', function(e) {
         // Remember the selected install actions.
