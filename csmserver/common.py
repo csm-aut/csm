@@ -782,7 +782,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE or \
        install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM or \
        install_action == InstallAction.POST_MIGRATE:
-        install_job.custom_command_profile_id = custom_command_profile if custom_command_profile else None
+        install_job.custom_command_profile_ids = custom_command_profile if custom_command_profile else None
 
     # Resets the following fields
     install_job.status = None

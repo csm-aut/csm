@@ -81,7 +81,7 @@ def api_create_regions(request):
             row[KEY_REGION_NAME] = region_name
 
             if region_name is None or len(region_name) == 0:
-                raise ValueError("Invalid region name '{}' in {}.".format(data[KEY_REGION_NAME], data))
+                raise ValueError("'{}' is an invalid region name.".format(data[KEY_REGION_NAME]))
 
             validate_acceptable_keys_in_dict(data, [KEY_REGION_NAME, KEY_SERVER_REPOSITORIES])
 

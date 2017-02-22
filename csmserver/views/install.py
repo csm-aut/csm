@@ -217,8 +217,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             if install_job.scheduled_time is not None:
                 form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
 
-            if install_job.custom_command_profile_id:
-                ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
+            if install_job.custom_command_profile_ids:
+                ids = [int(id) for id in install_job.custom_command_profile_ids.split(',')]
                 form.custom_command_profile.data = ids
 
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),

@@ -99,7 +99,7 @@ class InstallWorkUnit(WorkUnit):
                 logger.error('Unable to get handler for %s, install job %s', host.software_platform, self.job_id)
 
             install_job.start_time = datetime.datetime.utcnow()
-            install_job.set_status(JobStatus.PROCESSING)
+            install_job.set_status(JobStatus.IN_PROGRESS)
             install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
 
             ctx.operation_id = self.get_last_operation_id(db_session, install_job)

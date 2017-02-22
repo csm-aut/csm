@@ -36,7 +36,8 @@ sql_statements = [
     'alter table host add software_profile_id INTEGER',
     'alter table conformance_report_entry change platform software_platform VARCHAR(20)',
     'alter table conformance_report_entry change software software_version VARCHAR(20)',
-    'alter table system_option add ldap_default_user_privilege VARCHAR(20) default "Viewer"'
+    'alter table system_option add ldap_default_user_privilege VARCHAR(20) default "Viewer"',
+    'alter table install_job change column custom_command_profile_id custom_command_profile_ids VARCHAR(20)',
     ]
 
 

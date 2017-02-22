@@ -85,7 +85,7 @@ class DownloadWorkUnit(WorkUnit):
                 if preferences is None:
                     logger.error('Unable to retrieve user preferences: %s' % user_id)
 
-                self.download_job.set_status(JobStatus.PROCESSING)
+                self.download_job.set_status(JobStatus.IN_PROGRESS)
                 db_session.commit()
 
                 bsd = BSDServiceHandler(logger=logger, username=preferences.cco_username,

@@ -69,7 +69,7 @@ class InventoryWorkUnit(WorkUnit):
             if handler_class is None:
                 logger.error('Unable to get handler for %s, inventory job %s', host.software_platform, self.job_id)
 
-            inventory_job.set_status(JobStatus.PROCESSING)
+            inventory_job.set_status(JobStatus.IN_PROGRESS)
             inventory_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, inventory_job.id)
             db_session.commit()
 

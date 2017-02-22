@@ -99,8 +99,8 @@ class PackageState:
 
 
 class JobStatus:
-    SUBMITTED = 'submitted'
-    PROCESSING = 'processing'
+    SCHEDULED = 'scheduled'
+    IN_PROGRESS = 'in-progress'
     FAILED = 'failed'
     COMPLETED = 'completed'
 
