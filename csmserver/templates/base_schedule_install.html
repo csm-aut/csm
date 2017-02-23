@@ -25,6 +25,7 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
             <option value="Commit">Commit</option>
             <option value="ALL">ALL</option>
             <option value="Remove">Remove</option>
+            <option value="Remove All">Remove All</option>
             <option value="Deactivate">Deactivate</option>
             <option value="FPD-Upgrade">FPD-Upgrade</option>
         </select>
@@ -147,6 +148,7 @@ $(function() {
     var INSTALL_COMMIT = "Commit";
     var ALL = "ALL";
     var INSTALL_REMOVE = "Remove";
+    var INSTALL_REMOVE_ALL = "Remove All";
     var INSTALL_DEACTIVATE = "Deactivate";
     var FPD_UPGRADE = "FPD-Upgrade";
 
@@ -182,6 +184,8 @@ $(function() {
             $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_REMOVE]) && install_actions.length > 1) {
             $("#install_action").val([INSTALL_REMOVE]).trigger('change');
+        } else if (has_one_of_these(install_actions, [INSTALL_REMOVE_ALL]) && install_actions.length > 1) {
+            $("#install_action").val([INSTALL_REMOVE_ALL]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
             $("#install_action").val([INSTALL_DEACTIVATE]).trigger('change');
         }
