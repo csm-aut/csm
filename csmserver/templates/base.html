@@ -58,15 +58,6 @@
                 {% endif %}
             }, 3600000)); // 60 minutes inactivity
 
-            var sidebar_selection = read_cookie_value('sidebar_selection');
-            if (sidebar_selection != undefined) {
-                $('#' + sidebar_selection).addClass("active");
-                $('#' + sidebar_selection).siblings().removeClass("active");
-            }
-
-            $('.navmenu-nav li').click(function(e) {
-                write_cookie_value('sidebar_selection', $(this).attr('id'));
-            });
         });
     </script>
 
@@ -80,16 +71,10 @@
     {% block base_head %}{% endblock %}
 
     {% block head %}{% endblock %}
+
 </head>
 
 <body>
-    <nav id="myNavmenu" class="navmenu navmenu-default navmenu-fixed-left offcanvas" role="navigation">
-        <a class="navmenu-brand" href="#">Applications</a>
-        <ul class="nav navmenu-nav">
-            <li id="sidebar-selection-software" class="active"><a href="{{ url_for('home') }}"><i class="glyphicon glyphicon-th-list"></i> Software</a></li>
-            <li id="sidebar-selection-inventory"><a href="{{ url_for('inventory.dashboard') }}"><i class="glyphicon glyphicon-tags"></i> Inventory</a></li>
-        </ul>
-    </nav>
 
     {% block menu_bar %}{% endblock %}
 

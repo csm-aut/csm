@@ -77,9 +77,10 @@
         $('#search-host-selector').on('change', function(e) {
             var host = $(this).val();
             window.location = "/host_dashboard/hosts/" + host + "/"
-        })
+            $.cookie('menu_selection', 'null', { path: '/' });
+        });
 
-        function create_menu() {
+        function create_dropdown_menu_for_cco() {
             $.ajax({
                 url: "{{ url_for('cco.api_get_catalog') }}",
                 dataType: 'json',
@@ -113,8 +114,54 @@
             });
         }
 
-        create_menu();
+        create_dropdown_menu_for_cco();
+
+        var menu_selection = $.cookie('menu_selection');
+
+        if (menu_selection == undefined) {
+            menu_selection = 'menu-option-1';
+        }
+        var current_active_menu_link = $('.menu li.active');
+        if (current_active_menu_link.attr('id') != menu_selection) {
+            current_active_menu_link.removeClass('active');
+            if (menu_selection != 'null') {
+                $('#' + menu_selection).addClass('active');
+            }
+        }
+
+        $('.menu li').on('click', 'a', function() {
+            $.cookie('menu_selection', $(this).parents('li').last().attr('id'), { path: '/' });
+        });
+
+        function show_or_hide_navbar_menu() {
+            if ($.cookie("inventory-nav-visibility") == '1') {
+                $('#checkmark-inventory-menu').css('visibility', "visible");
+                $('#nav-inventory').css('visibility', "visible");
+                $('#nav-inventory').css('margin-bottom', "40px");
+            } else {
+                $('#checkmark-inventory-menu').css('visibility', "hidden");
+                $('#nav-inventory').css('visibility', "hidden");
+                $('#nav-inventory').css('margin-bottom', "0px");
+            }
+        }
+        show_or_hide_navbar_menu();
+
+        $('#navbar-menus li').on('click', 'a', function() {
+            if ($(this).attr('id') == 'inventory-menu') {
+                var cookie_val = $.cookie("inventory-nav-visibility");
+                if (cookie_val == '1') {
+                    cookie_val = '0';
+                } else {
+                    cookie_val = '1'; // not only for cookie value of 0, but also for potential recovery in case cookie value is missing
+                }
+                $.cookie("inventory-nav-visibility", cookie_val, { path: '/' });
+                show_or_hide_navbar_menu();
+            }
+
+        });
+
     });
+
 </script>
 
 {% endblock %}
@@ -124,27 +171,21 @@
     <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
 
         <div class="navbar-header">
-            <button type="button" class="navbar-toggle" data-toggle="offcanvas" data-target=".navmenu" data-canvas="body">
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-
-            <a class="navbar-brand" style="padding:10px" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
+            <a class="navbar-brand" style="padding:10px; padding-left: 30px;" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
             <a class="navbar-brand" href="#">CSM Server</a>
         </div>
 
         <div class="navbar-collapse collapse">
-            <ul class="nav navbar-nav">
+            <ul class="nav navbar-nav menu">
                 {% if current_user.is_authenticated() %}
-                <li class="active"><a href="{{ url_for('home') }}">Home</a></li>
+                <li id="menu-option-1"><a href="{{ url_for('home') }}">Home</a></li>
                 <ul class="nav navbar-nav">
-                    <li class="dropdown">
+                    <li id="menu-option-2" class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO<b class="caret"></b></a>
                         <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
                     </li>
                 </ul>
-                <li class="dropdown">
+                <li id="menu-option-3" class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">Dashboards<b class="caret"></b></a>
                     <ul class="dropdown-menu">
                         <li><a href="{{ url_for('install_dashboard.home') }}">Install Dashboard</a></li>
@@ -152,7 +193,7 @@
                         <li><a href="{{ url_for('download_dashboard.home') }}">CCO Download Dashboard</a></li>
                     </ul>
                 </li>
-                <li><a href="{{ url_for('conformance.home') }}">Conformance</a></li>
+                <li id="menu-option-4"><a href="{{ url_for('conformance.home') }}">Conformance</a></li>
                 {% endif %}
             </ul>
             {% if current_user.is_authenticated() %}
@@ -164,9 +205,23 @@
                     </ul>
                 </li>
                 <li><a href="{{ url_for('authenticate.logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
-            </ul>
-            <ul class="nav navbar-nav navbar-right">
                 <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                        <div class="btn-group">
+                            <button type="button" class="navbar-toggle" style="padding: 0px 0px;margin-top: 0px;margin-bottom: 0px;">
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+                        </div>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-right" id="navbar-menus">
+                        <li><a href='#' id='inventory-menu'><b id='checkmark-inventory-menu'>&#10003</b>&nbsp;&nbsp;Inventory Menu</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right menu">
+                <li id="menu-option-5" class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
                     {% if current_user.privilege == 'Admin' %}
                     <ul class="dropdown-menu multi-column columns-2">
@@ -198,6 +253,33 @@
             </form>
             {% endif %}
         </div>
+
         <!--/.nav-collapse -->
     </div>
+
+    <!-- inventory navbar below -->
+    {% if current_user.is_authenticated() %}
+    <div class="navbar container navbar-default" style="visibility:hidden;width:100%;" id="nav-inventory" role="navigation">
+
+        <div class="navbar-header" style="margin-top:16px;padding-left: 30px;padding-right: 10px;">
+            <i class="glyphicon glyphicon-tags"></i>
+        </div>
+
+        <ul class="nav navbar-nav menu">
+            {% if current_user.is_authenticated() %}
+                <li id="menu-option-6"><a class="nav-link" href="{{ url_for('inventory.dashboard') }}">Inventory Dashboard</a></li>
+                <li id="menu-option-7"><a class="nav-link" href="{{ url_for('inventory.query_add_inventory') }}">Query/Add Inventory</a></li>
+                <li id="menu-option-8"><a class="nav-link" href="{{ url_for('inventory.search_inventory') }}">Search</a></li>
+                {% if current_user.privilege == 'Admin'%}
+                    <li id="menu-option-9"><a class="nav-link" href="{{ url_for('inventory.import_inventory') }}">Import Inventory</a></li>
+                {% endif %}
+            {% endif %}
+        </ul>
+
+    </div>
+    {% else %}
+        <div style="padding-bottom: 46px"></div>
+    {% endif %}
+        <!--/.nav-collapse -->
+
 {% endblock %}
