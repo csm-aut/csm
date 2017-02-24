@@ -110,7 +110,7 @@ def fill_dependency_from_host_install_jobs(choices, install_jobs, current_instal
     
     for install_job in install_jobs:
         if install_job.id != current_install_job_id:
-            choices.append((install_job.id, '%s - %s' % (install_job.install_action,
+            choices.append((install_job.id, '{} - {}'.format(install_job.install_action,
                             get_datetime_string(install_job.scheduled_time))))
 
 
@@ -253,10 +253,8 @@ def fill_custom_command_profiles(db_session, choices):
 
     try:
         profiles = get_custom_command_profile_list(db_session)
-
         for profile in profiles:
             choices.append((profile.id, profile.profile_name))
-
     except:
         logger.exception('fill_custom_command_profiles() hit exception')
 
@@ -309,10 +307,6 @@ def get_host_inactive_packages(hostname):
     return result_list
 
 
-def get_server_list(db_session):
-    return db_session.query(Server).order_by(Server.hostname.asc()).all()
-
-
 def get_host(db_session, hostname):
     return db_session.query(Host).filter(Host.hostname == hostname).first()
 
@@ -343,6 +337,10 @@ def get_server(db_session, hostname):
 
 def get_server_by_id(db_session, id):
     return db_session.query(Server).filter(Server.id == id).first()
+
+
+def get_server_list(db_session):
+    return db_session.query(Server).order_by(Server.hostname.asc()).all()
 
 
 def get_custom_command_profile_by_id(db_session, profile_id):
@@ -559,7 +557,7 @@ def get_host_list_by(db_session, platform, software_versions, region_ids, roles)
 def delete_host(db_session, hostname):
     host = get_host(db_session, hostname)
     if host is None:
-        raise ValueNotFound("Unable to locate host '%s'" % hostname)
+        raise ValueNotFound("Host '{}' does not exist in the database.".format(hostname))
 
     host.delete(db_session)
 
@@ -574,19 +572,21 @@ def create_or_update_region(db_session, region_name, server_repositories, create
     :return:
     """
     region_name = check_acceptable_string(region_name)
+
     if region is None:
         region = Region(created_by=created_by)
         db_session.add(region)
 
     region.name = region_name
     region.servers = []
-    if server_repositories is not '':
-        for server in server_repositories.split(','):
-            valid_server = get_server(db_session, server.strip())
+    if not is_empty(server_repositories):
+        for server_name in server_repositories.split(','):
+            valid_server = get_server(db_session, server_name.strip())
             if valid_server is not None:
                 region.servers.append(valid_server)
             else:
-                raise ValueNotFound("Server repository '%s' does not exist in CSM database." % server)
+                raise ValueNotFound("Server repository '{}' does not exist in the database.".format(server_name))
+
     db_session.commit()
 
     return region
@@ -596,7 +596,7 @@ def delete_software_profile(db_session, profile_name):
 
     software_profile = get_software_profile(db_session, profile_name)
     if software_profile is None:
-        raise ValueNotFound("Unable to locate software profile '%s'" % profile_name)
+        raise ValueNotFound("Software profile '{}' does not exist in the database.".format(profile_name))
 
     count = db_session.query(Host).filter(
         Host.software_profile_id == software_profile.id).count()
@@ -604,8 +604,8 @@ def delete_software_profile(db_session, profile_name):
     # Older version of db does not perform check on
     # foreign key constrain, so do it programmatically here.
     if count > 0:
-        raise OperationNotAllowed("Unable to delete software profile '%s'. " +
-                                  "Verify that it is not used by other hosts." % profile_name)
+        raise OperationNotAllowed("Unable to delete software profile '{}'. "
+                                  "Verify that it is not used by other hosts.".format(profile_name))
 
     db_session.delete(software_profile)
     db_session.commit()
@@ -614,7 +614,7 @@ def delete_software_profile(db_session, profile_name):
 def delete_region(db_session, name):
     region = get_region(db_session, name)
     if region is None:
-        raise ValueNotFound("Unable to locate region '%s'" % name)
+        raise ValueNotFound("Region '{}' does not exist in the database.".format(name))
 
     count = db_session.query(Host).filter(
         Host.region_id == region.id).count()
@@ -622,7 +622,8 @@ def delete_region(db_session, name):
     # Older version of db does not perform check on
     # foreign key constrain, so do it programmatically here.
     if count > 0:
-        raise OperationNotAllowed("Unable to delete region '%s'. Verify that it is not used by other hosts." % name)
+        raise OperationNotAllowed("Unable to delete region '{}'. "
+                                  "Verify that it is not used by other hosts.".format(name))
 
     db_session.delete(region)
     db_session.commit()
@@ -630,12 +631,13 @@ def delete_region(db_session, name):
 
 def create_or_update_custom_command_profile(db_session, profile_name, command_list, created_by, custom_command_profile=None):
     profile_name = check_acceptable_string(profile_name)
+
     if custom_command_profile is None:
         custom_command_profile = CustomCommandProfile(created_by=created_by)
         db_session.add(custom_command_profile)
 
     custom_command_profile.profile_name = profile_name
-    custom_command_profile.command_list = command_list
+    custom_command_profile.command_list = '' if command_list is None else command_list
     db_session.commit()
 
     return custom_command_profile
@@ -643,8 +645,9 @@ def create_or_update_custom_command_profile(db_session, profile_name, command_li
 
 def delete_custom_command_profile(db_session, profile_name):
     custom_command_profile = get_custom_command_profile(db_session, profile_name)
+
     if custom_command_profile is None:
-        raise ValueNotFound("Unable to locate custom command profile '%s'" % profile_name)
+        raise ValueNotFound("Custom command profile '{}' does not exist in the database.".format(profile_name))
 
     db_session.delete(custom_command_profile)
     db_session.commit()
@@ -662,7 +665,7 @@ def create_or_update_jump_host(db_session, hostname, connection_type, host_or_ip
     jumphost.hostname = hostname
     jumphost.host_or_ip = host_or_ip
     jumphost.username = username if username else ''
-    jumphost.password = password
+    jumphost.password = password if password else ''
     jumphost.connection_type = connection_type
     jumphost.port_number = port_number if port_number else ''
 
@@ -674,7 +677,7 @@ def create_or_update_jump_host(db_session, hostname, connection_type, host_or_ip
 def delete_jump_host(db_session, hostname):
     jump_host = get_jump_host(db_session, hostname)
     if jump_host is None:
-        raise ValueNotFound("Unable to locate Jump Host '%s'" % hostname)
+        raise ValueNotFound("Jump host '{}' does not exist in the database.".format(hostname))
 
     db_session.delete(jump_host)
     db_session.commit()
@@ -707,10 +710,11 @@ def create_or_update_server_repository(db_session, hostname, server_type, server
 def delete_server_repository(db_session, hostname):
     server = get_server(db_session, hostname)
     if server is None:
-        raise ValueNotFound("Unable to locate server repository '%s'" % hostname)
+        raise ValueNotFound("Server repository '{}' does not exist in the database.".format(hostname))
 
     if len(server.regions) > 0:
-        raise OperationNotAllowed("Unable to delete server repository '%s'. Verify that it is not used by other regions." % hostname)
+        raise OperationNotAllowed("Unable to delete server repository '{}'. "
+                                  "Verify that it is not used by other regions.".format(hostname))
 
     db_session.delete(server)
     db_session.commit()
@@ -778,7 +782,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE or \
        install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM or \
        install_action == InstallAction.POST_MIGRATE:
-        install_job.custom_command_profile_id = custom_command_profile if custom_command_profile else None
+        install_job.custom_command_profile_ids = custom_command_profile if custom_command_profile else None
 
     # Resets the following fields
     install_job.status = None

@@ -210,17 +210,15 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
             # Form a line separated list for the textarea
             if install_job.packages is not None:
-
                 form.software_packages.data = '\n'.join(install_job.packages.split(','))
 
-            form.dependency.data = str(install_job.dependency)
+            form.dependency.data = install_job.dependency
 
             if install_job.scheduled_time is not None:
-
                 form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
 
-            if install_job.custom_command_profile_id:
-                ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
+            if install_job.custom_command_profile_ids:
+                ids = [int(id) for id in install_job.custom_command_profile_ids.split(',')]
                 form.custom_command_profile.data = ids
 
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
@@ -506,7 +504,8 @@ def api_get_supported_install_actions(hostname):
         rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                                          InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
                                          InstallAction.INSTALL_COMMIT, InstallAction.ALL]})
-        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE, InstallAction.INSTALL_DEACTIVATE]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE, InstallAction.INSTALL_REMOVE_ALL,
+                                         InstallAction.INSTALL_DEACTIVATE]})
         rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
 
     return jsonify(**{'data': rows})

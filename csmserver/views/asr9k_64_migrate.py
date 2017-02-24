@@ -533,8 +533,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         if install_job is not None:
             schedule_form.install_action.data = install_job.install_action
 
-            if install_job.custom_command_profile_id:
-                ids = [int(id) for id in install_job.custom_command_profile_id.split(',')]
+            if install_job.custom_command_profile_ids:
+                ids = [int(id) for id in install_job.custom_command_profile_ids.split(',')]
                 schedule_form.custom_command_profile.data = ids
 
             schedule_form.hidden_override_hw_req.data = host.context[0].data.get('override_hw_req')

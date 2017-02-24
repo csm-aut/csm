@@ -99,8 +99,8 @@ class PackageState:
 
 
 class JobStatus:
-    SUBMITTED = 'submitted'
-    PROCESSING = 'processing'
+    SCHEDULED = 'scheduled'
+    IN_PROGRESS = 'in-progress'
     FAILED = 'failed'
     COMPLETED = 'completed'
 
@@ -123,6 +123,7 @@ class InstallAction:
     INSTALL_COMMIT = 'Commit'
     ALL = 'ALL'
     INSTALL_REMOVE = 'Remove'
+    INSTALL_REMOVE_ALL = 'Remove All'
     INSTALL_DEACTIVATE = 'Deactivate'
     INSTALL_ROLLBACK = 'Rollback'
     MIGRATION_AUDIT = 'Migration-Audit'
@@ -130,7 +131,7 @@ class InstallAction:
     MIGRATE_SYSTEM = 'Migrate'
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
-    FPD_UPGRADE = 'FPD Upgrade'
+    FPD_UPGRADE = 'FPD-Upgrade'
 
 
 class PackageType:

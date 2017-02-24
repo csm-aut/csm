@@ -23,7 +23,10 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from sqlalchemy import and_
+
 from flask import jsonify
+from werkzeug.exceptions import BadRequest
+
 from api_constants import HTTP_BAD_REQUEST
 
 import math
@@ -44,13 +47,77 @@ def get_total_pages(db_session, table, clauses):
     return int(math.ceil(float(total_records) / RECORDS_PER_PAGE))
 
 
-def check_parameters(args, allowed_list):
-    invalid_params = [arg for arg in args if arg not in allowed_list]
+def convert_json_request_to_list(request):
+    """
+    Given a request instance, check the return json data to ensure it is a list of json blocks.
+    If not, converts the data to a list.  If there is an error, raise an exception.
+    :param request: A request instance.
+    :return: Returns an array of individual json blocks.
+    """
+    try:
+        json_data = request.json if type(request.json) is list else [request.json]
+    except BadRequest:
+        raise ValueError("Data in the HTTP Request is not a valid JSON.")
 
+    return json_data
+
+
+def convert_value_to_list(dictionary, key):
+    """
+    Given a dictionary and a key, make sure the key value is a list type.
+    If the key does not exist in the dictionary, just return None.
+    :param dictionary: A dictionary instance.
+    :param key: A dictionary key.
+    :return: Return a list type.
+    """
+    try:
+        value = dictionary.get(key)
+        return None if value is None else value if type(value) is list else [value]
+    except:
+        raise ValueError("The value associated with '{}' is expected to be a list type - {}.".format(key, dictionary))
+
+
+def validate_acceptable_keys_in_dict(dictionary, key_list):
+    result = []
+    for key in dictionary.keys():
+        if key not in key_list:
+            result.append(key)
+
+    if result:
+        if len(result) == 1:
+            raise ValueError("The following key, '{}', is not valid.".format(','.join(result)))
+        else:
+            raise ValueError("The following keys, '{}', are not valid.".format(','.join(result)))
+
+
+def validate_required_keys_in_dict(dictionary, key_list):
+    """
+    Check if the dictionary contains the required keys.  If not, raise an exception.
+    :param args: A request instance.
+    :param key_list: The keys that should be in the json structure (only 1st level keys).
+    :return: Returns an array of individual json blocks.
+    """
+    for key in key_list:
+        if key not in dictionary.keys():
+            raise ValueError("Missing JSON key: '{}'.".format(key))
+
+    return dictionary
+
+
+def validate_url_parameters(request, parameter_list):
+    """
+    Check if the url parameters in the request are in the parameter_list .  If not, raise an exception.
+    :param args: A request instance.
+    :param parameter_list: A list of parameters that are allowed in the URL request.
+    """
+    args = request.args.keys()
+
+    invalid_params = [arg for arg in args if arg not in parameter_list]
     if invalid_params:
-        return False, jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED,
-                                            STATUS_MESSAGE: 'Unrecognized parameter(s): {}'.format(','.join(invalid_params))}})
-    return True, ''
+        if len(invalid_params) == 1:
+            raise ValueError("Following parameter, '{}', is not allowed.".format(','.join(invalid_params)))
+        else:
+            raise ValueError("Following parameters, '{}', are not allowed.".format(','.join(invalid_params)))
 
 
 def failed_response(message, return_code=HTTP_BAD_REQUEST):

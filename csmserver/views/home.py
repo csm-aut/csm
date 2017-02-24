@@ -61,11 +61,9 @@ from common import can_check_reachability
 from common import get_jump_host_by_id
 from common import fill_software_profiles
 
-from utils import remove_extra_spaces
 from utils import is_empty
 from utils import get_return_url
 from utils import get_build_date
-from utils import trim_last_slash
 from utils import make_url
 
 from models import Server
@@ -354,12 +352,12 @@ def server_create():
         create_or_update_server_repository(db_session=db_session,
                                            hostname=form.hostname.data,
                                            server_type=form.server_type.data,
-                                           server_url=trim_last_slash(form.server_url.data),
+                                           server_url=form.server_url.data,
                                            username=form.username.data,
                                            password=form.password.data,
                                            vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
                                                                 form.server_type.data == ServerType.FTP_SERVER else '',
-                                           server_directory=trim_last_slash(form.server_directory.data),
+                                           server_directory=form.server_directory.data,
                                            destination_on_host=form.destination_on_host.data,
                                            created_by=current_user.username)
 
@@ -389,12 +387,12 @@ def server_edit(hostname):
         create_or_update_server_repository(db_session=db_session,
                                            hostname=form.hostname.data,
                                            server_type=form.server_type.data,
-                                           server_url=trim_last_slash(form.server_url.data),
+                                           server_url=form.server_url.data,
                                            username=form.username.data,
                                            password=form.password.data if len(form.password.data) > 0 else server.password,
                                            vrf=form.vrf.data if form.server_type.data == ServerType.TFTP_SERVER or
                                                                 form.server_type.data == ServerType.FTP_SERVER else '',
-                                           server_directory=trim_last_slash(form.server_directory.data),
+                                           server_directory=form.server_directory.data,
                                            destination_on_host=form.destination_on_host.data,
                                            created_by=current_user.username,
                                            server=server)

@@ -35,7 +35,7 @@ class CreateTarWorkUnit(WorkUnit):
                 logger.error('Unable to retrieve create tar job: %s' % self.job_id)
                 return
 
-            self.create_tar_job.set_status(JobStatus.PROCESSING)
+            self.create_tar_job.set_status(JobStatus.IN_PROGRESS)
 
             server_id = self.create_tar_job.server_id
             server_directory = self.create_tar_job.server_directory

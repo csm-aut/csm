@@ -26,11 +26,12 @@ from smu_info_loader import SMUInfoLoader
 from flask import jsonify
 
 from api_utils import ENVELOPE
-from api_utils import check_parameters
+from api_utils import validate_url_parameters
 from api_utils import failed_response
 
-from api_constants import HTTP_BAD_REQUEST
 from api_constants import HTTP_NOT_FOUND
+
+from utils import is_empty
 
 import datetime
 
@@ -46,46 +47,43 @@ def api_get_cco_software(request):
     """
     http://localhost:5000/api/v1/cco/software?platform=asr9k_px&release=5.3.3
     """
-    ok, response = check_parameters(request.args.keys(), ['platform', 'release', 'date'])
-    if not ok:
-        return response, HTTP_BAD_REQUEST
+    validate_url_parameters(request, ['platform', 'release', 'date'])
 
     platform = request.args.get('platform')
     release = request.args.get('release')
     date = request.args.get('date')
 
-    try:
-        if date:
-            date = datetime.datetime.strptime(date, "%m-%d-%Y")
+    if date:
+        date = datetime.datetime.strptime(date, "%m-%d-%Y")
+    else:
+        date = datetime.datetime.strptime('01-01-2000', "%m-%d-%Y")
+
+    optimal = request.args.get('optimal')
+
+    rows = []
+    smu_loader = SMUInfoLoader(platform, release)
+
+    if smu_loader.is_valid:
+        if optimal and optimal == 'false':
+            smu_list = smu_loader.get_smu_list()
+            sp_list = smu_loader.get_sp_list()
         else:
-            date = datetime.datetime.strptime('01-01-2000', "%m-%d-%Y")
-
-        optimal = request.args.get('optimal')
-
-        rows = []
-        smu_loader = SMUInfoLoader(platform, release)
-        if smu_loader.is_valid:
             smu_list = smu_loader.get_optimal_smu_list()
             sp_list = smu_loader.get_optimal_sp_list()
-            if optimal and optimal == 'false':
-                smu_list = smu_loader.get_smu_list()
-                sp_list = smu_loader.get_sp_list()
 
-            for smu_info in smu_list:
-                if datetime.datetime.strptime(smu_info.posted_date.split()[0], "%m/%d/%Y") >= date:
-                    rows.append(get_smu_info(smu_info))
+        for smu_info in smu_list:
+            if datetime.datetime.strptime(smu_info.posted_date.split()[0], "%m/%d/%Y") >= date:
+                rows.append(get_smu_info(smu_info))
 
-            for sp_info in sp_list:
-                if datetime.datetime.strptime(sp_info.posted_date.split()[0], "%m/%d/%Y") >= date:
-                    rows.append(get_smu_info(sp_info))
+        for sp_info in sp_list:
+            if datetime.datetime.strptime(sp_info.posted_date.split()[0], "%m/%d/%Y") >= date:
+                rows.append(get_smu_info(sp_info))
 
-        if rows:
-            return jsonify(**{ENVELOPE: {'software_list': rows}})
+    if rows:
+        return jsonify(**{ENVELOPE: {'software_list': rows}})
 
-        return failed_response(('Unable to get software information for platform {} ' +
-                                'and release {}').format(platform, release))
-    except Exception as e:
-        return failed_response(e.message)
+    return failed_response(('Unable to get software information for platform {} ' +
+                            'and release {}').format(platform, release))
 
 
 def api_get_cco_software_entry(request, name_or_id):
@@ -93,9 +91,7 @@ def api_get_cco_software_entry(request, name_or_id):
     http://localhost:5000/api/v1/cco/software/AA09694?platform=asr9k_px&release=5.3.3
     name_or_id can be the PIMS ID (e.g., AA09694) or the software name (asr9k-p-4.2.3.CSCut30136)
     """
-    ok, response = check_parameters(request.args.keys(), ['platform', 'release'])
-    if not ok:
-        return response, HTTP_BAD_REQUEST
+    validate_url_parameters(request, ['platform', 'release'])
 
     platform = request.args.get('platform')
     release = request.args.get('release')
@@ -111,11 +107,11 @@ def api_get_cco_software_entry(request, name_or_id):
             if smu_info:
                 return jsonify(**{ENVELOPE: get_smu_info(smu_info)})
 
-    return failed_response('Unable to locate %s' % name_or_id, return_code=HTTP_NOT_FOUND)
+    return failed_response('Unable to locate {}'.format(name_or_id), return_code=HTTP_NOT_FOUND)
 
 
 def get_smu_info(smu_info):
-    row = {}
+    row = dict()
     row['id'] = smu_info.id
     row['name'] = smu_info.name
     row['status'] = smu_info.status
@@ -123,14 +119,14 @@ def get_smu_info(smu_info):
     row['posted_date'] = smu_info.posted_date
     row['ddts'] = smu_info.ddts
     row['description'] = smu_info.description
-    row['functional_areas'] = smu_info.functional_areas
+    row['functional_areas'] = [] if is_empty(smu_info.functional_areas) else smu_info.functional_areas.split(',')
     row['impact'] = smu_info.impact
-    row['package_bundles'] = smu_info.package_bundles
+    row['package_bundles'] = [] if is_empty(smu_info.package_bundles) else smu_info.package_bundles.split(',')
     row['compressed_image_size'] = str(smu_info.compressed_image_size)
     row['uncompressed_image_size'] = str(smu_info.uncompressed_image_size)
-    row['prerequisites'] = smu_info.prerequisites
-    row['supersedes'] = smu_info.supersedes
-    row['superseded_by'] = smu_info.superseded_by
-    row['composite_DDTS'] = smu_info.composite_DDTS
+    row['prerequisites'] = [] if is_empty(smu_info.prerequisites) else smu_info.prerequisites.split(',')
+    row['supersedes'] = [] if is_empty(smu_info.supersedes) else smu_info.supersedes.split(',')
+    row['superseded_by'] = [] if is_empty(smu_info.superseded_by) else smu_info.superseded_by.split(',')
+    row['composite_DDTS'] = [] if is_empty(smu_info.composite_DDTS) else smu_info.composite_DDTS.split(',')
 
     return row

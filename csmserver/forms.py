@@ -78,7 +78,7 @@ class HostScheduleInstallForm(ServerDialogForm):
     scheduled_time_UTC = HiddenField('Scheduled Time')
     software_packages = TextAreaField('Software Packages')
     custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[('', '')])
-    dependency = SelectField('Dependency', coerce=str, choices=[(-1, 'None')])
+    dependency = SelectField('Dependency', coerce=int, choices=[(-1, 'None')])
        
     install_history_dialog_host = SelectField('Host', coerce=str, choices=[('', '')])
     

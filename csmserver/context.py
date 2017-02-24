@@ -166,7 +166,7 @@ class InstallContext(ConnectionContext):
         self._operation_id = -1
 
         self.custom_commands = []
-        custom_command_profile_ids = self.install_job.custom_command_profile_id
+        custom_command_profile_ids = self.install_job.custom_command_profile_ids
         if custom_command_profile_ids:
             for id in custom_command_profile_ids.split(','):
                 profile = self.db_session.query(CustomCommandProfile).filter(CustomCommandProfile.id == id).first()
