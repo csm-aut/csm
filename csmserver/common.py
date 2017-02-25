@@ -213,6 +213,16 @@ def get_software_profile_name_to_id_dict(db_session):
     return results
 
 
+def get_custom_command_profile_name_to_id_dict(db_session):
+    results = dict()
+
+    custom_command_profiles = get_custom_command_profile_list(db_session)
+    for custom_command_profile in custom_command_profiles:
+        results[custom_command_profile.profile_name] = custom_command_profile.id
+
+    return results
+
+
 def fill_user_privileges(choices):
     # Remove all the existing entries
     del choices[:]
@@ -724,6 +734,14 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
                                  server=-1, server_directory='', custom_command_profile=-1, dependency=0,
                                  pending_downloads=None, install_job=None):
 
+    """
+    if not type(software_packages) is list:
+        raise ValueError('software_packages must be a list type')
+
+    if not type(custom_command_profile) is list:
+        raise ValueError('custom_command_profile must be a list type')
+    """
+
     # This is a new install_job
     if install_job is None:
         install_job = InstallJob()
@@ -804,14 +822,14 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
 
         # Derives the platform and release using the first SMU name.
         platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
-
+        # FIXME - current_user.username
         create_download_jobs(db_session, platform, release, pending_downloads,
-                             install_job.server_id, install_job.server_directory)
+                             install_job.server_id, install_job.server_directory, current_user.username)
 
     return install_job
 
 
-def create_download_jobs(db_session, platform, release, pending_downloads, server_id, server_directory):
+def create_download_jobs(db_session, platform, release, pending_downloads, server_id, server_directory, created_by):
     """
     Pending downloads is an array of TAR files.
     """
@@ -841,7 +859,7 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
                     server_id=server_id,
                     server_directory=server_directory,
                     user_id=current_user.id,
-                    created_by=current_user.username)
+                    created_by=created_by)
 
                 db_session.add(download_job)
                 db_session.commit()

@@ -175,6 +175,8 @@ $(function() {
         todayHighlight: true
     });
 
+    // Initialize the UI state
+    toggle_ui();
 
     $('#install_action').on('change', function(e) {
         // Remember the selected install actions.
@@ -226,7 +228,6 @@ $(function() {
 
     function toggle_ui() {
         should_enable_widget_panel(install_actions);
-
         $('#add-widget-panel').hide();
         $('#activate-widget-panel').hide();
         $('#remove-widget-panel').hide();
@@ -266,7 +267,6 @@ $(function() {
         should_enable_software_packages_panel();
 
         if (install_actions == null || install_actions.length > 1) {
-            $('#dependency').val(-1);
             $('#dependency-panel').hide();
         } else {
             $('#dependency-panel').show();

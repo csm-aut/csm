@@ -128,7 +128,7 @@ def api_create_download_jobs():
         if len(smu_list) > 0 and len(pending_downloads) > 0:
             platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
 
-            create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory)
+            create_download_jobs(DBSession(), platform, release, pending_downloads, server_id, server_directory, current_user.username)
         return jsonify({'status': 'OK'})
     except:
         logger.exception('api_create_download_jobs() hit exception')
