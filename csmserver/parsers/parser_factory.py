@@ -24,7 +24,7 @@
 # =============================================================================
 import abc
 
-from platforms.eXR import EXRSoftwarePackageParser, EXRInventoryParser, NCS1K5KInventoryParser
+from platforms.eXR import EXRSoftwarePackageParser, EXRInventoryParser, NCS1K5KIOSXRvInventoryParser
 from platforms.IOS_XE import IOSXESoftwarePackageParser, IOSXEInventoryParser
 from platforms.IOS import IOSSoftwarePackageParser, IOSInventoryParser
 from platforms.IOS_XR import IOSXRSoftwarePackageParser, ASR9KInventoryParser, CRSInventoryParser
@@ -60,16 +60,10 @@ class EXRParserFactory(ParserFactory):
         return EXRInventoryParser()
 
 
-class IOSXRvParserFactory(EXRParserFactory):
+class NCS1K5KIOSXRvParserFactory(EXRParserFactory):
 
     def create_inventory_parser(self):
-        return None
-
-
-class NCS1K5KParserFactory(EXRParserFactory):
-
-    def create_inventory_parser(self):
-        return NCS1K5KInventoryParser()
+        return NCS1K5KIOSXRvInventoryParser()
 
 
 class IOSXEParserFactory(ParserFactory):

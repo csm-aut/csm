@@ -138,20 +138,14 @@ class IOSSoftwarePackageParser(BaseSoftwarePackageParser):
 
 
 class IOSInventoryParser(BaseInventoryParser):
+    REGEX_CHASSIS = re.compile(r'.*chassis$', flags=re.IGNORECASE)
 
     def process_inventory(self, ctx):
         """
-        For IOS-XE.
-        There is only one chassis in this case. It most likely shows up
-        first in the output of "show inventory".
-        Example for CRS:
-        NAME: "Rack 0 - Chassis", DESCR: "CRS 16 Slots Line Card Chassis for CRS-16/S-B"
-        PID: CRS-16-LCC-B, VID: V03, SN: FXS1804Q576
-
-        Example for IOS-XE:
-        NAME: "Chassis", DESCR: "ASR 903 Series Router Chassis"
-        PID: ASR-903           , VID: V01, SN: FOX1717P569
-
+        For ASR900 IOS.
+        Example:
+        NAME: "A901-6CZ-FT-A Chassis", DESCR: "A901-6CZ-FT-A Chassis"
+        PID: A901-6CZ-FT-A     , VID: V01 , SN: CAT1650U01P
         """
         if not ctx.load_data('cli_show_inventory'):
             return
@@ -159,11 +153,16 @@ class IOSInventoryParser(BaseInventoryParser):
 
         inventory_data = self.parse_inventory_output(inventory_output)
 
-        for i in xrange(0, len(inventory_data)):
-            if "Chassis" in inventory_data[i]['name']:
-                return self.store_inventory(ctx, inventory_data, i)
+        chassis_indices = []
+
+        for idx in xrange(0, len(inventory_data)):
+            if self.REGEX_CHASSIS.match(inventory_data[idx]['name']) and \
+                    self.REGEX_CHASSIS.match(inventory_data[idx]['description']):
+                chassis_indices.append(idx)
+
+        if chassis_indices:
+            return self.store_inventory(ctx, inventory_data, chassis_indices)
 
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
         return
-

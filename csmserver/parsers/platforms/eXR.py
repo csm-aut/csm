@@ -317,7 +317,7 @@ class EXRInventoryParser(BaseInventoryParser):
     def process_inventory(self, ctx):
         """
         For ASR9K-64, NCS6K and NCS5500
-        There is only one chassis in this case. It most likely shows up first in the
+        Chassis most likely shows up first in the
         output of "admin show inventory".
         Example for ASR9K-64:
         Name: Rack 0                Descr: ASR-9904 AC Chassis
@@ -353,12 +353,12 @@ class EXRInventoryParser(BaseInventoryParser):
         return
 
 
-class NCS1K5KInventoryParser(EXRInventoryParser):
+class NCS1K5KIOSXRvInventoryParser(EXRInventoryParser):
 
     def process_inventory(self, ctx):
         """
-        For NCS1K and NCS5K.
-        There is only one chassis in this case. It most likely shows up first in the
+        For NCS1K, NCS5K and IOSXRv9K
+        Chassis most likely shows up first in the
         output of "admin show inventory".
         Example for NCS1K:
         Name: Rack 0                Descr: Network Convergence System 1000 Controller
@@ -367,6 +367,10 @@ class NCS1K5KInventoryParser(EXRInventoryParser):
         Example for NCS5K:
         Name: Rack 0                Descr:
         PID: NCS-5002               VID: V01                   SN: FOC1946R0DH
+
+        Example for IOSXRv:
+        NAME: "Rack 0", DESCR: "Cisco XRv9K Virtual Router"
+        PID: R-IOSXRV9000-CH   , VID: V01, SN: DA55BD5FAC9
         """
         if not ctx.load_data('cli_show_inventory'):
             return

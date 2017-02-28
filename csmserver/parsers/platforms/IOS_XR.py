@@ -176,8 +176,3 @@ class CRSInventoryParser(BaseInventoryParser):
         logger = get_db_session_logger(ctx.db_session)
         logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
         return
-
-    def store_inventory(self, ctx, inventory_data, chassis_indices):
-        if len(chassis_indices) == 1:
-            super(CRSInventoryParser, self).store_inventory(ctx, inventory_data, chassis_indices[0])
-        return
