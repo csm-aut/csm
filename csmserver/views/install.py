@@ -146,7 +146,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         if install_job is not None:
             # In Edit mode, the install_action UI on HostScheduleForm is disabled (not allow to change).
             # Thus, there will be no value returned by form.install_action.data.  So, re-use the existing ones.
-            install_action = [ install_job.install_action ]
+            install_action = [install_job.install_action]
         else:
             install_action = form.install_action.data
 
@@ -212,7 +212,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             if install_job.packages is not None:
                 form.software_packages.data = '\n'.join(install_job.packages.split(','))
 
-            form.dependency.data = install_job.dependency
+            form.dependency.data = str(install_job.dependency)
 
             if install_job.scheduled_time is not None:
                 form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)

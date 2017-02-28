@@ -139,15 +139,15 @@ def api_create_hosts(request):
                 # These are the required fields for a new host creation.
                 validate_required_keys_in_dict(data, [KEY_REGION, KEY_CONNECTION_TYPE, KEY_TS_OR_IP])
 
-            value = get_value('Region', region_dict, data, KEY_REGION)
+            value = get_id_from_value('Region', region_dict, data, KEY_REGION)
             region_id = value if value is not None else \
                 (None if host is None else host.region_id)
 
-            value = get_value('Jump host', jump_host_dict, data, KEY_JUMP_HOST)
+            value = get_id_from_value('Jump host', jump_host_dict, data, KEY_JUMP_HOST)
             jump_host_id = value if value is not None else \
                 (None if host is None else host.connection_param[0].jump_host_id)
 
-            value = get_value('Software profile', software_profile_dict, data, KEY_SOFTWARE_PROFILE)
+            value = get_id_from_value('Software profile', software_profile_dict, data, KEY_SOFTWARE_PROFILE)
             software_profile_id = value if value is not None else \
                 (None if host is None else host.software_profile_id)
 
@@ -205,7 +205,7 @@ def api_create_hosts(request):
     return jsonify(**{ENVELOPE: {'host_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
-def get_value(item, dictionary, data, key):
+def get_id_from_value(item, dictionary, data, key):
     id = None
     name = data.get(key)
     if name:

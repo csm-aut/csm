@@ -30,9 +30,14 @@ from api_utils import STATUS
 from api_utils import STATUS_MESSAGE
 from api_utils import APIStatus
 from api_utils import validate_url_parameters
+from api_utils import convert_value_to_list
+from api_utils import validate_required_keys_in_dict
+from api_utils import validate_acceptable_keys_in_dict
+from api_utils import convert_json_request_to_list
 from api_utils import failed_response
 
 from api_constants import HTTP_OK
+from api_constants import HTTP_BAD_REQUEST
 from api_constants import HTTP_MULTI_STATUS_ERROR
 
 from utils import is_empty
@@ -68,7 +73,7 @@ KEY_ID = 'id'
 KEY_HOSTNAME = 'hostname'
 KEY_STATUS = 'status'
 KEY_INSTALL_ACTION = 'install_action'
-KEY_PACKAGES = 'packages'
+KEY_SOFTWARE_PACKAGES = 'software_packages'
 KEY_SCHEDULED_TIME = 'scheduled_time'
 KEY_START_TIME = 'start_time'
 KEY_STATUS_TIME = 'status_time'
@@ -76,11 +81,29 @@ KEY_UTC_OFFSET = 'utc_offset'
 KEY_DEPENDENCY = 'dependency'
 KEY_SERVER_REPOSITORY = 'server_repository'
 KEY_SERVER_DIRECTORY = 'server_directory'
-KEY_CUSTOM_COMMAND_PROFILE = 'custom_command_profile'
+KEY_CUSTOM_COMMAND_PROFILE = 'command_profile'
+
+KEY_UTC_SCHEDULED_TIME = 'utc_scheduled_time'
 KEY_TRACE = 'trace'
 KEY_CREATED_BY = 'created_by'
 KEY_DELETED_DEPENDENCIES = 'deleted_dependencies'
 KEY_INSTALL_JOB_LIST = 'install_job_list'
+
+supported_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD, InstallAction.INSTALL_ACTIVATE,
+                             InstallAction.POST_UPGRADE, InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_REMOVE,
+                             InstallAction.INSTALL_DEACTIVATE]
+
+acceptable_keys = [KEY_HOSTNAME, KEY_INSTALL_ACTION, KEY_SCHEDULED_TIME, KEY_UTC_OFFSET, KEY_CUSTOM_COMMAND_PROFILE,
+                   KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES]
+
+required_keys_dict = {InstallAction.PRE_UPGRADE: [KEY_HOSTNAME],
+                      InstallAction.INSTALL_ADD: [KEY_HOSTNAME, KEY_SERVER_REPOSITORY, KEY_SOFTWARE_PACKAGES],
+                      InstallAction.INSTALL_ACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
+                      InstallAction.POST_UPGRADE: [KEY_HOSTNAME],
+                      InstallAction.INSTALL_COMMIT: [KEY_HOSTNAME],
+                      InstallAction.INSTALL_REMOVE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
+                      InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES]}
+
 
 def api_create_install_request(request):
     """
@@ -125,6 +148,142 @@ def api_create_install_request(request):
             }
     """
 
+    rows = []
+    error_found = False
+    db_session = DBSession()
+    # ----------------------------  first phase is to attempt the data validation ---------------------------- #
+
+    entries = []
+    json_list = convert_json_request_to_list(request)
+
+    for data in json_list:
+        row = dict()
+        try:
+            validate_required_keys_in_dict(data, [KEY_INSTALL_ACTION])
+
+            install_action = data[KEY_INSTALL_ACTION]
+            if install_action not in supported_install_actions:
+                raise ValueError("'{}' is not a valid install action.".format(install_action))
+
+            validate_acceptable_keys_in_dict(data, acceptable_keys)
+            validate_required_keys_in_dict(data, required_keys_dict[install_action])
+
+            hostname = data[KEY_HOSTNAME]
+            host = get_host(db_session, hostname)
+            if host is None:
+                raise ValueError("'{}' is not a valid hostname.".format(data[KEY_HOSTNAME]))
+
+            if KEY_SERVER_REPOSITORY in data.keys():
+                server = get_server(db_session, data[KEY_SERVER_REPOSITORY])
+                if server is None:
+                    raise ValueError("'{}' is not a valid server repository.".format(data[KEY_SERVER_REPOSITORY]))
+
+            if KEY_CUSTOM_COMMAND_PROFILE in data.keys():
+                custom_command_profile_names = convert_value_to_list(data, KEY_CUSTOM_COMMAND_PROFILE)
+                for custom_command_profile_name in custom_command_profile_names:
+                    command_profile = get_custom_command_profile(db_session, custom_command_profile_name)
+                    if command_profile is None:
+                        raise ValueError("'{}' is not a valid custom command profile.".format(custom_command_profile_name))
+
+            if KEY_SOFTWARE_PACKAGES in data.keys() and is_empty(data[KEY_SOFTWARE_PACKAGES]):
+                raise ValueError("Software packages if specified cannot be empty.")
+
+            # Check time fields and validate their values
+            if KEY_SCHEDULED_TIME not in data.keys():
+                row[KEY_UTC_SCHEDULED_TIME] = datetime.utcnow()
+            elif KEY_UTC_OFFSET not in data.keys():
+                raise ValueError("Missing utc_offset. If scheduled_time is submitted, utc_offset is also required.")
+            elif not verify_utc_offset(data[KEY_UTC_OFFSET]):
+                raise ValueError("Invalid utc_offset: Must be in '<+|->dd:dd' format and be between -12:00 and +14:00.")
+            else:
+                try:
+                    time = datetime.strptime(data[KEY_SCHEDULED_TIME], "%m-%d-%Y %I:%M %p")
+                    row[KEY_UTC_SCHEDULED_TIME] = get_utc_time(time, data[KEY_UTC_OFFSET])
+                except ValueError:
+                    raise ValueError("Invalid scheduled_time: {} must be in 'mm-dd-yyyy hh:mm AM|PM' format.".
+                                     format(data[KEY_SCHEDULED_TIME]))
+
+            # Handle duplicate entry.  It is defined by the hostname and install_action pair.
+            if (hostname, install_action) not in entries:
+                entries.append((hostname, install_action))
+            else:
+                raise ValueError("More than one entry with the same hostname: '{}' and install_action: '{}'. "
+                                 "Remove any duplicate and resubmit.".format(hostname, install_action))
+
+        except Exception as e:
+            row[STATUS] = APIStatus.FAILED
+            row[STATUS_MESSAGE] = e.message
+            error_found = True
+
+        # Add the original key value pairs to the new array.
+        for key in data.keys():
+            row[key] = data[key]
+
+        rows.append(row)
+
+    # End of loop
+
+    if error_found:
+        for row in rows:
+            if STATUS not in row.keys():
+                row[STATUS] = APIStatus.FAILED
+                row[STATUS_MESSAGE] = 'Not submitted. Check other jobs for error message.'
+
+            if KEY_UTC_SCHEDULED_TIME in row.keys():
+                row.pop(KEY_UTC_SCHEDULED_TIME)
+
+        return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), HTTP_BAD_REQUEST
+
+    print('ROW', rows)
+
+    # sorted_list = sorted(rows, key=lambda k: (k[KEY_HOSTNAME], k[KEY_INSTALL_ACTION]))
+    json_data = sorted(rows, cmp=getKey)
+    sorted_list = sorted(json_data, key=itemgetter('utc_scheduled_time', 'hostname'))
+
+    print('SORTED_LIST', sorted_list)
+
+    # ----------------------------  Second phase is to attempt the job creation ---------------------------- #
+    rows = []
+    error_found = False
+    for data in sorted_list:
+        row = dict()
+        try:
+            pass
+
+            install_action = data[KEY_INSTALL_ACTION]
+
+            server_id = -1
+            if KEY_SERVER_REPOSITORY in data.keys():
+                server = get_server(db_session, data[KEY_SERVER_REPOSITORY])
+                if server is not None:
+                    server_id = server.id
+
+            if KEY_SERVER_DIRECTORY in data.keys():
+                server_directory = data[KEY_SERVER_DIRECTORY]
+            else:
+                server_directory = ''
+
+            install_job = create_or_update_install_job(db_session,
+                                                       host_id=get_host(db_session, install_request['hostname']).id,
+                                                       install_action=install_action,
+                                                       scheduled_time=utc_scheduled_time,
+                                                       software_packages=software_packages,
+                                                       server=server_id,
+                                                       server_directory=server_directory,
+                                                       custom_command_profile=command_profile,
+                                                       dependency=install_request['dependency'])
+
+        except Exception as e:
+            row[STATUS] = APIStatus.FAILED
+            row[STATUS_MESSAGE] = e.message
+            error_found = True
+
+        rows.append(row)
+
+    return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+
+
+    """
     db_session = DBSession()
     rows = []
 
@@ -198,6 +357,8 @@ def api_create_install_request(request):
 
         rows.append(row)
 
+    print('ROWS', rows)
+
     if not valid_request:
         for r in rows:
             if STATUS not in r.keys():
@@ -206,12 +367,14 @@ def api_create_install_request(request):
             if 'utc_scheduled_time' in r.keys():
                 r.pop('utc_scheduled_time')
         return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), 400
+    """
 
 
     # Sort on install_action, then hostname, then scheduled_time
     json_data = sorted(rows, cmp=getKey)
     json_data = sorted(json_data, key=itemgetter('utc_scheduled_time', 'hostname'))
 
+    """
     # Remove duplicates (defined as having the same hostname and install_action)
     install_requests = []
     entries =[]
@@ -237,7 +400,7 @@ def api_create_install_request(request):
                 row[key] = r[key]
             rows.append(row)
         return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), 400
-
+    """
 
     # For implicit dependencies
     dependency_list = {}
@@ -307,6 +470,7 @@ def api_create_install_request(request):
                                                            server_directory=server_directory,
                                                            custom_command_profile=command_profile,
                                                            dependency=install_request['dependency'])
+
                 if install_request['install_action'] not in ['Remove', 'Deactivate']:
                     if install_request['hostname'] not in dependency_list:
                         dependency_list[install_request['hostname']] = []
@@ -341,7 +505,6 @@ def api_get_install_request(request):
     http://localhost:5000/api/v1/install?hostname=r1&install_action=Add
     http://localhost:5000/api/v1/install?hostname=R1&status="failed"
     """
-
     validate_url_parameters(request, [KEY_ID, KEY_HOSTNAME, KEY_INSTALL_ACTION, KEY_STATUS,
                                       KEY_SCHEDULED_TIME, KEY_UTC_OFFSET])
     clauses = []
@@ -353,6 +516,7 @@ def api_get_install_request(request):
     status = request.args.get(KEY_STATUS)
     scheduled_time = request.args.get(KEY_SCHEDULED_TIME)
     utc_offset = request.args.get(KEY_UTC_OFFSET)
+
     if utc_offset and '-' not in utc_offset and '+' not in utc_offset:
         utc_offset = "+" + utc_offset.strip()
 
@@ -475,7 +639,7 @@ def get_install_job_info(db_session, install_job, utc_offset):
         row[KEY_START_TIME] = install_job.start_time if install_job.start_time else ""
         row[KEY_STATUS_TIME] = install_job.status_time if install_job.status_time else ""
 
-    row[KEY_PACKAGES] = install_job.packages if install_job.packages else ""
+    row[KEY_SOFTWARE_PACKAGES] = install_job.packages if install_job.packages else ""
     row[KEY_STATUS] = install_job.status if install_job.status else JobStatus.SCHEDULED
     row[KEY_TRACE] = install_job.trace if install_job.trace else ""
     row[KEY_CREATED_BY] = install_job.created_by if install_job.created_by else ""
@@ -718,11 +882,11 @@ def api_delete_install_job(request):
 
                 # If hostname is not specified, go ahead and delete all the install job's dependencies.
                 # Otherwise, the dependencies should have already been selected for deletion.
-                deleted = delete_install_job_dependencies(db_session, id) if hostname is None else []
+                deleted_jobs = delete_install_job_dependencies(db_session, id) if hostname is None else []
                 db_session.commit()
 
-                if len(deleted) > 0:
-                    row[KEY_DELETED_DEPENDENCIES] = deleted
+                if len(deleted_jobs) > 0:
+                    row[KEY_DELETED_DEPENDENCIES] = deleted_jobs
 
                 row[STATUS] = APIStatus.SUCCESS
             else:
@@ -844,6 +1008,7 @@ def get_dependency(db_session, install_request, host_id):
 
 
 # returns (bool valid, str msg)
+"""
 def validate_install_request(db_session, install_request):
     requirements = {'Pre-Upgrade': ['hostname'],
                     'Add': ['hostname', 'server_repository', 'software_packages'],
@@ -870,6 +1035,7 @@ def validate_install_request(db_session, install_request):
         return False, "software_packages cannot be empty"
 
     return True, "valid"
+"""
 
 
 def getKey(dict1, dict2):
