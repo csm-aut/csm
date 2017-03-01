@@ -516,8 +516,8 @@ comma-delimited email address(es) here.</pre>
 </div>
 
 <div class="form-horizontal form-group row">
-    <div class="container">
-        <h4>Search Inventory:</h4>
+    <div class="container well">
+        <legend>Search Inventory:</legend>
         <hr style="margin-top:10px;margin-bottom:30px;">
         <div class="row custom-margin">
             {{ custom_edit_field(search_inventory_form.serial_number, placeholder="Optional") }}
@@ -553,52 +553,50 @@ comma-delimited email address(es) here.</pre>
                 Export
             </button>
         </div>
-
-
-        <div id="search-inventory-result" style="display:none;">
-            <br>
-            <br>
-            <h4>Results:</h4>
-            <hr style="margin-top:10px;margin-bottom:30px;">
-            <div id="no-inventory"><h4>No inventory matches the search criteria.</h4></div>
-            <div id="tables" class="row">
-                <div class="col-sm-12">
-                    <ul class="nav nav-tabs" id="search-inventory-tabs">
-                    </ul>
-                    <div class="tab-content" style="margin-top:20px;">
-                        <div id="available-inventory" class="tab-pane fade in active">
-                            <table class="display table" id="available-inventory-datatable">
-                                <thead>
-                                    <tr>
-                                        <th>Model Name</th>
-                                        <th>Serial Number</th>
-                                        <th>VID</th>
-                                        <th>Description</th>
-                                        <th>Notes</th>
-                                    </tr>
-                                </thead>
-                            </table>
-                        </div>
-                        <div id="in-use-inventory" class="tab-pane fade">
-                            <table class="display table" id="in-use-inventory-datatable">
-                                <thead>
-                                    <tr>
-                                        <th>Model Name</th>
-                                        <th>Name</th>
-                                        <th>Serial Number</th>
-                                        <th>VID</th>
-                                        <th>Description</th>
-                                        <th>Hostname</th>
-                                        <th>Chassis</th>
-                                        <th>Platform</th>
-                                        <th>Software</th>
-                                        <th>Region</th>
-                                        <th>Location</th>
-                                        <th>Last Successful Retrieval</th>
-                                    </tr>
-                                </thead>
-                            </table>
-                        </div>
+    </div>
+    <div class="container" id="search-inventory-result" style="display:none;">
+        <br>
+        <br>
+        <h4>Results:</h4>
+        <hr style="margin-top:10px;margin-bottom:30px;">
+        <div id="no-inventory"><h4>No inventory matches the search criteria.</h4></div>
+        <div id="tables" class="row">
+            <div class="col-sm-12">
+                <ul class="nav nav-tabs" id="search-inventory-tabs">
+                </ul>
+                <div class="tab-content" style="margin-top:20px;">
+                    <div id="available-inventory" class="tab-pane fade in active">
+                        <table class="display table" id="available-inventory-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Model Name</th>
+                                    <th>Serial Number</th>
+                                    <th>VID</th>
+                                    <th>Description</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div id="in-use-inventory" class="tab-pane fade">
+                        <table class="display table" id="in-use-inventory-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Model Name</th>
+                                    <th>Name</th>
+                                    <th>Serial Number</th>
+                                    <th>VID</th>
+                                    <th>Description</th>
+                                    <th>Hostname</th>
+                                    <th>Chassis</th>
+                                    <th>Platform</th>
+                                    <th>Software</th>
+                                    <th>Region</th>
+                                    <th>Location</th>
+                                    <th>Last Successful Retrieval</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 </div>
             </div>
