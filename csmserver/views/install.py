@@ -151,21 +151,22 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             install_action = form.install_action.data
 
         scheduled_time = form.scheduled_time_UTC.data
-        software_packages = form.software_packages.data
-        server = form.hidden_server.data
+        software_packages = form.software_packages.data.split()
+        server_id = form.hidden_server.data
         server_directory = form.hidden_server_directory.data
-        pending_downloads = form.hidden_pending_downloads.data
-        custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
+        pending_downloads = form.hidden_pending_downloads.data.split()
+        custom_command_profile_ids = [str(i) for i in form.custom_command_profile.data]
 
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
         if len(install_action) == 1:
             dependency = int(form.dependency.data)
             create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
-                                         scheduled_time=scheduled_time, software_packages=software_packages, server=server,
-                                         server_directory=server_directory, pending_downloads=pending_downloads,
-                                         custom_command_profile=custom_command_profile, dependency=dependency,
-                                         install_job=install_job)
+                                         scheduled_time=scheduled_time, software_packages=software_packages,
+                                         server_id=server_id, server_directory=server_directory,
+                                         pending_downloads=pending_downloads,
+                                         custom_command_profile_ids=custom_command_profile_ids, dependency=dependency,
+                                         created_by=current_user.username, install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
@@ -176,11 +177,12 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                                                host_id=host.id,
                                                                install_action=one_install_action,
                                                                scheduled_time=scheduled_time,
-                                                               software_packages=software_packages, server=server,
+                                                               software_packages=software_packages, server_id=server_id,
                                                                server_directory=server_directory,
                                                                pending_downloads=pending_downloads,
-                                                               custom_command_profile=custom_command_profile,
-                                                               dependency=dependency, install_job=install_job)
+                                                               custom_command_profile_ids=custom_command_profile_ids,
+                                                               dependency=dependency, created_by=current_user.username,
+                                                               install_job=install_job)
                 dependency = new_install_job.id
 
         return redirect(url_for(return_url, hostname=hostname))
@@ -256,7 +258,7 @@ def batch_schedule_install():
         hostnames = form.hidden_selected_hosts.data.split(',')
         install_action = form.install_action.data
 
-        custom_command_profile = ','.join([str(i) for i in form.custom_command_profile.data])
+        custom_command_profile_ids = [str(i) for i in form.custom_command_profile.data]
 
         if hostnames is not None:
 
@@ -265,10 +267,10 @@ def batch_schedule_install():
                 if host is not None:
                     db_session = DBSession()
                     scheduled_time = form.scheduled_time_UTC.data
-                    software_packages = form.software_packages.data
-                    server = form.hidden_server.data
+                    software_packages = form.software_packages.data.split()
+                    server_id = form.hidden_server.data
                     server_directory = form.hidden_server_directory.data
-                    pending_downloads = form.hidden_pending_downloads.data
+                    pending_downloads = form.hidden_pending_downloads.data.split()
 
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -279,12 +281,14 @@ def batch_schedule_install():
                                                                                form.dependency.data, host.id)
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
+
                         create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                      install_action=install_action[0],
-                                                     custom_command_profile=custom_command_profile,
+                                                     custom_command_profile_ids=custom_command_profile_ids,
                                                      scheduled_time=scheduled_time, software_packages=software_packages,
-                                                     server=server, server_directory=server_directory,
-                                                     pending_downloads=pending_downloads, dependency=dependency)
+                                                     server_id=server_id, server_directory=server_directory,
+                                                     pending_downloads=pending_downloads, dependency=dependency,
+                                                     created_by=current_user.username)
                     else:
                         # The dependency on each install action is already indicated in the implicit ordering
                         # in the selector.  If the user selected Pre-Upgrade and Install Add, Install Add (successor)
@@ -294,12 +298,13 @@ def batch_schedule_install():
                             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                                            install_action=one_install_action,
                                                                            scheduled_time=scheduled_time,
-                                                                           custom_command_profile=custom_command_profile,
+                                                                           custom_command_profile_ids=custom_command_profile_ids,
                                                                            software_packages=software_packages,
-                                                                           server=server,
+                                                                           server_id=server_id,
                                                                            server_directory=server_directory,
                                                                            pending_downloads=pending_downloads,
-                                                                           dependency=dependency)
+                                                                           dependency=dependency,
+                                                                           created_by=current_user.username)
                             dependency = new_install_job.id
 
         return redirect(url_for(return_url))
