@@ -94,7 +94,7 @@ def api_create_jump_hosts(request):
             row[KEY_HOSTNAME] = hostname
 
             if len(hostname) == 0:
-                raise ValueError("Jump host name '{}' is not valid.".format(data[KEY_HOSTNAME]))
+                raise ValueError("'{}' is an invalid jump hostname.".format(data[KEY_HOSTNAME]))
 
             validate_acceptable_keys_in_dict(data, [KEY_HOSTNAME, KEY_CONNECTION_TYPE, KEY_HOST_OR_IP,
                                                     KEY_PORT_NUMBER, KEY_USERNAME, KEY_PASSWORD])
