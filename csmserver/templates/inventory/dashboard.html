@@ -244,7 +244,6 @@
 
             $("#host-no-serial-number-details-table").DataTable({
                 destroy: true,
-                "processing": true,
                 "serverSide": true,
                 "ajax": {
                     "url": "{{ url_for('datatable.api_search_inventory') }}",
@@ -318,7 +317,6 @@
 
             $("#serial-number-details-table").DataTable({
                 destroy: true,
-                "processing": true,
                 "serverSide": true,
                 "ajax": {
                     "url": "{{ url_for('datatable.api_search_inventory') }}",
@@ -407,7 +405,6 @@
 
             $("#model-name-details-table").DataTable({
                 destroy: true,
-                "processing": true,
                 "serverSide": true,
                 "ajax": {
                     "url": "{{ url_for('datatable.api_search_inventory') }}",
@@ -491,7 +488,6 @@
 
             $("#chassis-details-table").DataTable({
                 destroy: true,
-                "processing": true,
                 "serverSide": true,
                 "ajax": {
                     "url": "/datatable/api/get_managed_hosts/region/" + prepare_region_from_cookie_for_rest_api() + "/chassis/" + chassis,
