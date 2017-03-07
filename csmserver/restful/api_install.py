@@ -24,6 +24,7 @@
 # ==============================================================================
 
 from flask import jsonify
+from flask import g
 
 from api_utils import ENVELOPE
 from api_utils import STATUS
@@ -34,7 +35,6 @@ from api_utils import convert_value_to_list
 from api_utils import validate_required_keys_in_dict
 from api_utils import validate_acceptable_keys_in_dict
 from api_utils import convert_json_request_to_list
-from api_utils import failed_response
 
 from api_constants import HTTP_OK
 from api_constants import HTTP_BAD_REQUEST
@@ -60,11 +60,10 @@ from common import get_server_by_id
 from common import get_host
 from common import get_host_by_id
 from common import download_session_logs
-from common import get_custom_command_profile
 from common import get_custom_command_profile_by_id
+from common import get_custom_command_profile_name_to_id_dict
 
 from datetime import datetime, timedelta
-from operator import itemgetter
 
 import re
 import os
@@ -89,10 +88,6 @@ KEY_CREATED_BY = 'created_by'
 KEY_DELETED_DEPENDENCIES = 'deleted_dependencies'
 KEY_INSTALL_JOB_LIST = 'install_job_list'
 
-supported_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD, InstallAction.INSTALL_ACTIVATE,
-                             InstallAction.POST_UPGRADE, InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_REMOVE,
-                             InstallAction.INSTALL_DEACTIVATE]
-
 acceptable_keys = [KEY_HOSTNAME, KEY_INSTALL_ACTION, KEY_SCHEDULED_TIME, KEY_UTC_OFFSET, KEY_CUSTOM_COMMAND_PROFILE,
                    KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES]
 
@@ -103,6 +98,14 @@ required_keys_dict = {InstallAction.PRE_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.INSTALL_COMMIT: [KEY_HOSTNAME],
                       InstallAction.INSTALL_REMOVE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
                       InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES]}
+
+ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
+                           InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+                           InstallAction.INSTALL_COMMIT]
+
+# Supported install actions
+supported_install_actions = ordered_install_actions + [InstallAction.INSTALL_REMOVE,
+                                                       InstallAction.INSTALL_DEACTIVATE]
 
 
 def api_create_install_request(request):
@@ -123,9 +126,7 @@ def api_create_install_request(request):
                'install_action': 'Add',
                'scheduled_time': '05-02-2016 08:00 AM',
                'server_repository': 'My FTP Server',
-               'software_packages': 'asr9k-px-5.3.3.CSCuz05961.pie,
-                       asr9k-px-5.3.3.CSCux89921.pie,
-                       asr9k-px-5.3.3.CSCuy03335.pie',
+               'software_packages': ['asr9k-px-5.3.3.CSCuz05961.pie, asr9k-px-5.3.3.CSCux89921.pie],
                'dependency': 'Pre-Upgrade'} ]
 
     Install Action: Activate, Remove, Deactivate
@@ -133,24 +134,22 @@ def api_create_install_request(request):
             [ {'hostname': 'My Host',
                'install_action': 'Activate',
                'scheduled_time': '05-02-2016 08:00 AM',
-               'software_packages': 'asr9k-px-5.3.3.CSCuz05961.pie,
-                       asr9k-px-5.3.3.CSCux89921.pie,
-                       asr9k-px-5.3.3.CSCuy03335.pie',
+               'software_packages': ['asr9k-px-5.3.3.CSCuz05961.pie, asr9k-px-5.3.3.CSCux89921.pie]
                'dependency': '101'} ]
 
 
         RETURN:
             {"api_response": {
-                "install_job_list": [ {"status": "SUCCESS", "hostname": "My Host", "install_request_id": 101},
-                               {"status": "FAILED", "hostname": "My Host 2", "status_message": "Unable to locate host"} ]
+                "install_job_list": [ {"status": "SUCCESS", "hostname": "My Host", "id": 101},
+                                      {"status": "FAILED", "hostname": "My Host 2", "status_message": "Unable to locate host"} ]
 
                 }
             }
     """
-
     rows = []
     error_found = False
     db_session = DBSession()
+    custom_command_profile_dict = get_custom_command_profile_name_to_id_dict(db_session)
     # ----------------------------  first phase is to attempt the data validation ---------------------------- #
 
     entries = []
@@ -181,12 +180,12 @@ def api_create_install_request(request):
             if KEY_CUSTOM_COMMAND_PROFILE in data.keys():
                 custom_command_profile_names = convert_value_to_list(data, KEY_CUSTOM_COMMAND_PROFILE)
                 for custom_command_profile_name in custom_command_profile_names:
-                    command_profile = get_custom_command_profile(db_session, custom_command_profile_name)
-                    if command_profile is None:
+                    custom_command_profile_id = custom_command_profile_dict.get(custom_command_profile_name)
+                    if custom_command_profile_id is None:
                         raise ValueError("'{}' is not a valid custom command profile.".format(custom_command_profile_name))
 
             if KEY_SOFTWARE_PACKAGES in data.keys() and is_empty(data[KEY_SOFTWARE_PACKAGES]):
-                raise ValueError("Software packages if specified cannot be empty.")
+                raise ValueError("Software packages when specified cannot be empty.")
 
             # Check time fields and validate their values
             if KEY_SCHEDULED_TIME not in data.keys():
@@ -234,44 +233,65 @@ def api_create_install_request(request):
 
         return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), HTTP_BAD_REQUEST
 
-    print('ROW', rows)
-
-    # sorted_list = sorted(rows, key=lambda k: (k[KEY_HOSTNAME], k[KEY_INSTALL_ACTION]))
-    json_data = sorted(rows, cmp=getKey)
-    sorted_list = sorted(json_data, key=itemgetter('utc_scheduled_time', 'hostname'))
-
-    print('SORTED_LIST', sorted_list)
-
     # ----------------------------  Second phase is to attempt the job creation ---------------------------- #
+
     rows = []
     error_found = False
-    for data in sorted_list:
+    implicit_dependency_list = {}
+    sorted_list = sorted(rows, cmp=get_key)
+
+    for install_request in sorted_list:
         row = dict()
         try:
-            pass
+            hostname = install_request[KEY_HOSTNAME]
+            install_action = install_request[KEY_INSTALL_ACTION]
 
-            install_action = data[KEY_INSTALL_ACTION]
+            row[KEY_INSTALL_ACTION] = install_action
+            row[KEY_HOSTNAME] = hostname
+
+            host_id = get_host(db_session, hostname).id
+            utc_scheduled_time = install_request[KEY_UTC_SCHEDULED_TIME].strftime("%m/%d/%Y %I:%M %p")
 
             server_id = -1
-            if KEY_SERVER_REPOSITORY in data.keys():
-                server = get_server(db_session, data[KEY_SERVER_REPOSITORY])
+            if KEY_SERVER_REPOSITORY in install_request.keys():
+                server = get_server(db_session, install_request[KEY_SERVER_REPOSITORY])
                 if server is not None:
                     server_id = server.id
 
-            if KEY_SERVER_DIRECTORY in data.keys():
-                server_directory = data[KEY_SERVER_DIRECTORY]
-            else:
-                server_directory = ''
+            server_directory = ''
+            if KEY_SERVER_DIRECTORY in install_request.keys():
+                server_directory = install_request[KEY_SERVER_DIRECTORY]
+
+            software_packages = []
+            if KEY_SOFTWARE_PACKAGES in install_request.keys():
+                software_packages = install_request[KEY_SOFTWARE_PACKAGES]
+
+            custom_command_profile_ids = []
+            if KEY_CUSTOM_COMMAND_PROFILE in install_request.keys():
+                custom_command_profile_names = convert_value_to_list(install_request, KEY_CUSTOM_COMMAND_PROFILE)
+                for custom_command_profile_name in custom_command_profile_names:
+                    custom_command_profile_id = custom_command_profile_dict.get(custom_command_profile_name)
+                    if custom_command_profile_id is not None:
+                        custom_command_profile_ids.append(custom_command_profile_id)
 
             install_job = create_or_update_install_job(db_session,
-                                                       host_id=get_host(db_session, install_request['hostname']).id,
+                                                       host_id=host_id,
                                                        install_action=install_action,
                                                        scheduled_time=utc_scheduled_time,
                                                        software_packages=software_packages,
-                                                       server=server_id,
+                                                       server_id=server_id,
                                                        server_directory=server_directory,
-                                                       custom_command_profile=command_profile,
-                                                       dependency=install_request['dependency'])
+                                                       custom_command_profile_ids=custom_command_profile_ids,
+                                                       dependency=get_dependency_id(db_session, implicit_dependency_list, install_request, host_id),
+                                                       created_by=g.api_user.username)
+
+            row[KEY_ID] = install_job.id
+
+            if install_action in ordered_install_actions:
+                if hostname not in implicit_dependency_list:
+                    implicit_dependency_list[hostname] = []
+
+                implicit_dependency_list[hostname].append((install_job.id, install_action))
 
         except Exception as e:
             row[STATUS] = APIStatus.FAILED
@@ -283,217 +303,55 @@ def api_create_install_request(request):
     return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
-    """
-    db_session = DBSession()
-    rows = []
+def get_key(dict1, dict2):
+    key1 = "{}{}".format(dict1[KEY_HOSTNAME], str(supported_install_actions.index(dict1[KEY_INSTALL_ACTION])).zfill(2))
+    key2 = "{}{}".format(dict1[KEY_HOSTNAME], str(supported_install_actions.index(dict2[KEY_INSTALL_ACTION])).zfill(2))
+    return key1 > key2
 
-    # Install job information is expected to be an array of dictionaries
-    json_data = request.json
 
-    install_actions = ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']
+def get_dependency_id(db_session, implicit_dependency_list, install_request, host_id):
+    hostname = install_request[KEY_HOSTNAME]
+    install_action = install_request[KEY_INSTALL_ACTION]
+    utc_scheduled_time = install_request[KEY_UTC_SCHEDULED_TIME]
+    dependency = install_request[KEY_DEPENDENCY]
 
-    # Convert all scheduled_times to datetime.datetime objects.
-    # If any job is invalid, no jobs will be run and all will be returned with status "Not run." except the invalid
-    # job. The invalid job will have a status message relevant to the error seen.
-
-    valid_request = True
-    if type(json_data) is not list:
-        json_data = [json_data]
-
-    for r in json_data:
-        row = {}
-        try:
-            if 'scheduled_time' not in r.keys():
-                row['utc_scheduled_time'] = datetime.utcnow()
-            elif 'utc_offset' not in r.keys():
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Missing utc_offset. If scheduled_time is submitted, utc_offset is also required.'
-                valid_request = False
-            elif not verify_utc_offset(r['utc_offset']):
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = "Invalid utc_offset: Must be in '<+|->dd:dd' format and be between -12:00 and +14:00."
-                valid_request = False
+    if KEY_DEPENDENCY in install_request.keys():
+        if dependency.isdigit():
+            install_job = db_session.query(InstallJob).filter(InstallJob.id == int(dependency)).first()
+            if install_job:
+                if install_job.host_id != host_id:
+                    raise ValueError("The dependency '{}' requested belongs to a different host.".format(dependency))
+                elif install_job.scheduled_time > install_request[KEY_UTC_SCHEDULED_TIME]:
+                    raise ValueError("The dependency '{}' requested has a later scheduled time.".format(dependency))
+                else:
+                    return int(dependency)
             else:
-                try:
-                    time = datetime.strptime(r['scheduled_time'], "%m-%d-%Y %I:%M %p")
-                    r['utc_scheduled_time'] = get_utc_time(time, r['utc_offset'])
-                except ValueError:
-                    row[STATUS] = APIStatus.FAILED
-                    row[STATUS_MESSAGE] = "Invalid scheduled_time: %s must be in 'mm-dd-yyyy hh:mm AM|PM' format." % r[
-                        'scheduled_time']
-                    valid_request = False
-
-        except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
-            rows = [row]
-            db_session.rollback()
-            return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), 400
-
-        if STATUS not in row.keys():
-            if 'hostname' not in r.keys():
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Missing hostname.'
-                valid_request = False
-            elif not get_host(db_session, r['hostname']):
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Invalid hostname: %s.' % r['hostname']
-                valid_request = False
-            elif 'install_action' not in r.keys() or \
-                            r['install_action'] not in install_actions:
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Missing or invalid install_action.'
-                valid_request = False
-            else:
-                valid, msg = validate_install_request(db_session, r)
-                if not valid:
-                    row[STATUS] = APIStatus.FAILED
-                    row[STATUS_MESSAGE] = msg
-                    valid_request = False
-
-        for key in r.keys():
-            row[key] = r[key]
-
-
-        rows.append(row)
-
-    print('ROWS', rows)
-
-    if not valid_request:
-        for r in rows:
-            if STATUS not in r.keys():
-                r[STATUS] = APIStatus.FAILED
-                r[STATUS_MESSAGE] = 'Not submitted. Check other jobs for error message.'
-            if 'utc_scheduled_time' in r.keys():
-                r.pop('utc_scheduled_time')
-        return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), 400
-    """
-
-
-    # Sort on install_action, then hostname, then scheduled_time
-    json_data = sorted(rows, cmp=getKey)
-    json_data = sorted(json_data, key=itemgetter('utc_scheduled_time', 'hostname'))
-
-    """
-    # Remove duplicates (defined as having the same hostname and install_action)
-    install_requests = []
-    entries =[]
-    duplicate_flag = False
-    for r in json_data:
-        if (r['hostname'], r['install_action']) not in entries:
-            install_requests.append(r)
-            entries.append((r['hostname'], r['install_action']))
+                raise ValueError("Dependency '{}' does not exist in the database.".format(dependency))
         else:
-            duplicate_flag = True
-            r[STATUS] = APIStatus.FAILED
-            r[STATUS_MESSAGE] = "Duplicate entry detected. Duplicates are defined as entries with the same hostname and" \
-                                " same install_action. Please remove one duplicate and resubmit."
+            # dependency is specified as an install action string.
+            if hostname in implicit_dependency_list.keys():
+                for id, action in implicit_dependency_list[hostname]:
+                    if action == dependency:
+                        return id
 
-    if duplicate_flag:
-        rows = []
-        for r in json_data:
-            row = {}
-            if STATUS not in r.keys():
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = "Not submitted. Check other jobs for error message."
-            for key in r.keys():
-                row[key] = r[key]
-            rows.append(row)
-        return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), 400
-    """
+            # Check the database since the hostname and install action are not found in the cache.
+            install_jobs = db_session.query(InstallJob).filter(and_(InstallJob.host_id == host_id,
+                                                                    InstallJob.install_action == dependency)).order_by(InstallJob.scheduled_time.desc())
+            for install_job in install_jobs:
+                if install_job.scheduled_time <= utc_scheduled_time:
+                    return install_job.id
 
-    # For implicit dependencies
-    dependency_list = {}
-    order = ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']
+            raise ValueError("'{}' is an invalid dependency.".format(dependency))
 
-    rows = []
-    error_found = False
-    return_code = 200
-    for install_request in install_requests:
-        row = {}
-        msg = ''
-        # If dependency was not specified, there may be an implicit dependency
-        if install_request['install_action'] in ['Deactivate', 'Remove']:
-            install_request['dependency'] = 0
-        if 'dependency' not in install_request.keys():
-            install_request['dependency'] = 0
-            if install_request['hostname'] in dependency_list.keys():
-                last_id, last_action = dependency_list[install_request['hostname']][-1]
-                if order.index(last_action) < order.index(install_request['install_action']):
-                    install_request['dependency'] = last_id
-        elif not str(install_request['dependency']).isdigit():
-            # check for implicit dependencies before checking DB
-            if install_request['hostname'] in dependency_list.keys():
-                for id, action in dependency_list[install_request['hostname']]:
-                    if action == install_request['dependency']:
-                        install_request['dependency'] = id
-                if not str(install_request['dependency']).isdigit():
-                    host = get_host(db_session, install_request['hostname'])
-                    install_request['dependency'], msg = get_dependency(db_session, install_request, host.id)
-            else:
-                host = get_host(db_session, install_request['hostname'])
-                install_request['dependency'], msg = get_dependency(db_session, install_request, host.id)
-        else:
-            host = get_host(db_session, install_request['hostname'])
-            install_request['dependency'], msg = get_dependency(db_session, install_request, host.id)
+    else:
+        # Check to see if implicit dependency needs to be applied here.
+        if install_action in ordered_install_actions and hostname in implicit_dependency_list.keys():
+            last_id, last_action = implicit_dependency_list[hostname][-1]
 
-        if msg not in [APIStatus.SUCCESS, '']:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = msg
-            row['install_action'] = install_request['install_action']
-            row['hostname'] = install_request['hostname']
-        else:
-            utc_scheduled_time = install_request['utc_scheduled_time'].strftime("%m/%d/%Y %I:%M %p")
-            if 'command_profile' in install_request.keys():
-                command_profile = get_custom_command_profile(db_session, install_request['command_profile']).id
-            else:
-                command_profile = -1
-            if 'server_repository' in install_request.keys():
-                server = get_server(db_session, install_request['server_repository']).id
-            else:
-                server = -1
-            if 'software_packages' in install_request.keys():
-                software_packages = install_request['software_packages']
-            else:
-                software_packages = ""
-            if 'server_directory' in install_request.keys():
-                server_directory = install_request['server_directory']
-            else:
-                server_directory = ""
-            try:
-                install_job = create_or_update_install_job(db_session,
-                                                           host_id=get_host(db_session, install_request['hostname']).id,
-                                                           install_action=install_request['install_action'],
-                                                           scheduled_time=utc_scheduled_time,
-                                                           software_packages=software_packages,
-                                                           server=server,
-                                                           server_directory=server_directory,
-                                                           custom_command_profile=command_profile,
-                                                           dependency=install_request['dependency'])
+            if ordered_install_actions.index(last_action) < ordered_install_actions.index(install_action):
+                return last_id
 
-                if install_request['install_action'] not in ['Remove', 'Deactivate']:
-                    if install_request['hostname'] not in dependency_list:
-                        dependency_list[install_request['hostname']] = []
-                    dependency_list[install_request['hostname']].append((install_job.id, install_job.install_action))
-
-                row[STATUS] = APIStatus.SUCCESS
-                row['id'] = install_job.id
-                row['install_action'] = install_job.install_action
-                row['hostname'] = install_request['hostname']
-            except Exception as e:
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = e.message
-                row['install_action'] = install_request['install_action']
-                row['hostname'] = install_request['hostname']
-                db_session.rollback()
-                error_found = True
-
-        rows.append(row)
-
-    if error_found:
-        return_code = 207
-
-    return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), return_code
+    return 0
 
 
 def api_get_install_request(request):
@@ -617,20 +475,17 @@ def get_install_job_info(db_session, install_job, utc_offset):
 
     if utc_offset and verify_utc_offset(utc_offset):
         if install_job.scheduled_time:
-            row[KEY_SCHEDULED_TIME] = get_local_time(install_job.scheduled_time, utc_offset).strftime(
-                "%m-%d-%Y %I:%M %p")
+            row[KEY_SCHEDULED_TIME] = get_local_time(install_job.scheduled_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
         else:
             row[KEY_SCHEDULED_TIME] = ""
 
         if install_job.start_time:
-            row[KEY_START_TIME] = get_local_time(install_job.start_time, utc_offset).strftime(
-                "%m-%d-%Y %I:%M %p")
+            row[KEY_START_TIME] = get_local_time(install_job.start_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
         else:
             row[KEY_START_TIME] = ""
 
         if install_job.status_time:
-            row[KEY_STATUS_TIME] = get_local_time(install_job.status_time, utc_offset).strftime(
-                "%m-%d-%Y %I:%M %p")
+            row[KEY_STATUS_TIME] = get_local_time(install_job.status_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
         else:
             row[KEY_STATUS_TIME] = ""
 
@@ -648,190 +503,6 @@ def get_install_job_info(db_session, install_job, utc_offset):
     return row
 
 
-
-    """
-    install_job_clauses = []
-    install_job_history_clauses = [InstallJobHistory.status == 'completed']
-
-
-    utc_offset = request.args.get('utc_offset')
-    if utc_offset and '-' not in utc_offset and '+' not in utc_offset:
-        utc_offset = "+" + utc_offset.strip()
-
-    id = request.args.get('id')
-    if id:
-        install_jobs = db_session.query(InstallJob).filter((InstallJob.id==id)).all()
-        if not install_jobs:
-            install_history_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id==id).all()
-        else:
-            install_history_jobs = []
-    else:
-        hostname = request.args.get('hostname')
-        if hostname:
-            host = get_host(db_session, hostname)
-            if host:
-                host_id = host.id
-            else:
-                #return jsonify(**{ENVELOPE: 'Invalid hostname: %s.' % hostname}), 400
-                return failed_response('Invalid hostname: %s.' % hostname)
-
-            install_job_clauses.append(InstallJob.host_id == host_id)
-            install_job_history_clauses.append(InstallJobHistory.host_id == host_id)
-
-        install_action = request.args.get('install_action')
-        if install_action:
-            if install_action in ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']:
-                install_job_clauses.append(InstallJob.install_action == install_action)
-                install_job_history_clauses.append(InstallJobHistory.install_action == install_action)
-            else:
-                #return jsonify(**{ENVELOPE: 'Invalid install_action: %s.' % install_action}), 400
-                return failed_response('Invalid install_action: %s.' % install_action)
-
-        status = request.args.get('status')
-        if status:
-            if status == 'scheduled':
-                install_job_clauses.append(InstallJob.status.is_(None))
-                install_job_history_clauses.append(False)
-            elif status == 'in-progress': # get all the jobs, then code filter for status (Test first)
-                install_job_clauses.append(InstallJob.status != None)
-                install_job_clauses.append(InstallJob.status != 'failed')
-                install_job_clauses.append(InstallJob.status != 'completed')
-                install_job_history_clauses.append(False)
-            elif status == 'failed':
-                install_job_clauses.append(InstallJob.status == status)
-                install_job_history_clauses.append(False)
-            elif status == 'completed':
-                install_job_clauses.append(InstallJob.status == status)
-            else:
-                #return jsonify(**{ENVELOPE: 'Invalid status: %s.' % status}), 400
-                return failed_response('Invalid status: %s.' % status)
-
-        scheduled_time = request.args.get('scheduled_time')
-        if scheduled_time:
-            if not utc_offset:
-                return jsonify(**{ENVELOPE: 'utc_offset must be specified if scheduled_time is specified.'})
-            elif not verify_utc_offset(utc_offset):
-                return jsonify(**{
-                    ENVELOPE: "Invalid utc_offset: Must be in '<+|->dd:dd' format and be between -12:00 and +14:00."})
-            try:
-                time = datetime.strptime(scheduled_time, "%m-%d-%Y %I:%M %p")
-                time_utc = get_utc_time(time, utc_offset)
-                install_job_clauses.append(InstallJob.scheduled_time >= time_utc)
-                install_job_history_clauses.append(InstallJobHistory.scheduled_time >= time_utc)
-            except:
-                return jsonify(**{
-                    ENVELOPE: "Invalid scheduled_time: %s must be in 'mm-dd-yyyy hh:mm AM|PM' format." % time})
-
-        install_jobs = get_install_jobs_by_page(db_session, install_job_clauses)
-        install_history_jobs = get_install_history_jobs_by_page(db_session, install_job_history_clauses)
-
-    if is_empty(install_jobs) and is_empty(install_history_jobs):
-        #return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: "No install job fits the given criteria"}}), 400
-        return failed_response("No install job fits the given criteria")
-
-    # If the get_..._by_page methods return an error string (more than 5000 results for one or both)
-    if type(install_jobs) is str:
-        #return jsonify(**{ENVELOPE: install_jobs}), 400
-        return failed_response(install_jobs)
-    elif type(install_history_jobs) is str:
-        #return jsonify(**{ENVELOPE: install_history_jobs}), 400
-        return failed_response(install_history_jobs)
-
-    for install_job in install_jobs:
-        row = {}
-        row['id'] = install_job.id if install_job.id else ""
-        row['install_action'] = install_job.install_action if install_job.install_action else ""
-        row['dependency'] = install_job.dependency if install_job.dependency else ""
-
-        if install_job.server_id:
-            server = get_server_by_id(db_session, install_job.server_id)
-            row['server_repository'] = server.hostname
-        else:
-            row['server_repository'] = ""
-
-        if utc_offset and verify_utc_offset(utc_offset):
-            if install_job.scheduled_time:
-                row['scheduled_time'] = get_local_time(install_job.scheduled_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
-            else:
-                row['scheduled_time'] = ""
-            if install_job.start_time:
-                row['start_time'] = get_local_time(install_job.start_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
-            else:
-                row['start_time'] = ""
-            if install_job.status_time:
-                row['status_time'] = get_local_time(install_job.status_time, utc_offset).strftime("%m-%d-%Y %I:%M %p")
-            else:
-                row['status_time'] = ""
-
-        else:
-            row['scheduled_time'] = install_job.scheduled_time if install_job.scheduled_time else ""
-            row['start_time'] = install_job.start_time if install_job.start_time else ""
-            row['status_time'] = install_job.status_time if install_job.status_time else ""
-
-        row['server_directory'] = install_job.server_directory if install_job.server_directory else ""
-        row['packages'] = install_job.packages if install_job.packages else ""
-
-        #row['status'] = install_job.status if install_job.status else "scheduled"
-        if install_job.status:
-            if install_job.status not in ['failed', 'completed']:
-                row['status'] = "in-progress - %s" % install_job.status
-            else:
-                row['status'] = install_job.status
-        else:
-            row['status'] = "scheduled"
-
-        row['trace'] = install_job.trace if install_job.trace else ""
-        row['created_by'] = install_job.created_by if install_job.created_by else ""
-        row['hostname'] = get_host_by_id(db_session, install_job.host_id).hostname
-
-        if not is_empty(install_job.custom_command_profile_id) and int(install_job.custom_command_profile_id) > 0:
-            row['custom_command_profile'] = get_custom_command_profile_by_id(db_session,
-                                                                             install_job.custom_command_profile_id).profile_name
-        else:
-            row['custom_command_profile'] = ""
-
-        rows.append(row)
-
-    for install_history_job in install_history_jobs:
-        row = {}
-        row['id'] = install_history_job.install_job_id if install_history_job.install_job_id else ""
-        row['install_action'] = install_history_job.install_action if install_history_job.install_action else ""
-        row['dependency'] = install_history_job.dependency if install_history_job.dependency else ""
-
-        if utc_offset and verify_utc_offset(utc_offset):
-            if install_history_job.scheduled_time:
-                row['scheduled_time'] = get_local_time(install_history_job.scheduled_time, utc_offset).strftime(
-                    "%m-%d-%Y %I:%M %p")
-            else:
-                row['scheduled_time'] = ""
-            if install_history_job.start_time:
-                row['start_time'] = get_local_time(install_history_job.start_time, utc_offset).strftime(
-                    "%m-%d-%Y %I:%M %p")
-            else:
-                row['start_time'] = ""
-            if install_history_job.status_time:
-                row['status_time'] = get_local_time(install_history_job.status_time, utc_offset).strftime(
-                    "%m-%d-%Y %I:%M %p")
-            else:
-                row['status_time'] = ""
-
-        else:
-            row['scheduled_time'] = install_history_job.scheduled_time if install_history_job.scheduled_time else ""
-            row['start_time'] = install_history_job.start_time if install_history_job.start_time else ""
-            row['status_time'] = install_history_job.status_time if install_history_job.status_time else ""
-
-        row['packages'] = install_history_job.packages if install_history_job.packages else ""
-        row['status'] = install_history_job.status if install_history_job.status else "scheduled"
-        row['trace'] = install_history_job.trace if install_history_job.trace else ""
-        row['created_by'] = install_history_job.created_by if install_history_job.created_by else ""
-        row['hostname'] = get_host_by_id(db_session, install_history_job.host_id).hostname if install_history_job.host_id else ""
-
-        rows.append(row)
-        """
-
-    return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}})
-
-
 def api_delete_install_job(request):
 
     validate_url_parameters(request, [KEY_ID, KEY_HOSTNAME, KEY_STATUS])
@@ -846,7 +517,7 @@ def api_delete_install_job(request):
     if id:
         install_jobs = db_session.query(InstallJob).filter(InstallJob.id == id).all()
         if len(install_jobs) == 0:
-            raise ValueError("Install id '{}' does not exist in the database.".format(id))
+            raise ValueError("Install job id '{}' does not exist in the database.".format(id))
     else:
         if hostname:
             host = get_host(db_session, hostname)
@@ -906,22 +577,21 @@ def api_get_session_log(id):
     db_session = DBSession
 
     if not id:
-        #return jsonify(**{ENVELOPE: "ID must be specified."}), 400
-        return failed_response("ID must be specified.")
+        raise ValueError("Install job id must be specified.")
 
     install_job = db_session.query(InstallJob).filter((InstallJob.id == id)).first()
     if install_job is None:
         install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.install_job_id == id)).first()
+
     if install_job is None:
-        #return jsonify(**{ENVELOPE: "Invalid ID."}), 400
-        return failed_response("Invalid ID: %d." % id)
+        raise ValueError("Install job id '%d' does not exist in the database." % id)
 
     if install_job.session_log is not None:
         log_dir = os.path.join(get_log_directory(), install_job.session_log)
         file_list = [os.path.join(log_dir, f) for f in os.listdir(log_dir)]
         return download_session_logs(file_list)
     else:
-        return jsonify(**{ENVELOPE: "No log files."})
+        raise ValueError("Session log does not exist for install job id '%d'." % id)
 
 
 def get_install_jobs(install_job_table, db_session, clauses):
@@ -937,110 +607,6 @@ def get_install_jobs(install_job_table, db_session, clauses):
             raise ValueError("Too many results; please refine your request.")
         else:
             return db_session.query(install_job_table).order_by(install_job_table.id.asc()).all()
-
-"""
-def get_install_jobs_by_page(db_session, clauses):
-    if not is_empty(clauses):
-        if db_session.query(InstallJob.id).filter(and_(*clauses)).count() > 5000:
-            return "Too many results; please refine your request."
-        else:
-            return db_session.query(InstallJob).filter(and_(*clauses)).\
-                order_by(InstallJob.id.asc()).all()
-    else:
-        if db_session.query(InstallJob.id).count() > 5000:
-            return "Too many results; please refine your request."
-        else:
-            return db_session.query(InstallJob).order_by(InstallJob.id.asc()).all()
-
-def get_install_history_jobs_by_page(db_session, clauses):
-        if not is_empty(clauses):
-            if db_session.query(InstallJobHistory.id).filter(and_(*clauses)).count() > 5000:
-                return "Too many results; please refine your request."
-            else:
-                return db_session.query(InstallJobHistory).filter(and_(*clauses)). \
-                    order_by(InstallJobHistory.id.asc()).all()
-        else:
-            if db_session.query(InstallJobHistory.id).filter(InstallJobHistory.status =='completed').count() > 5000:
-                return "Too many results; please refine your request."
-            else:
-                return db_session.query(InstallJobHistory).order_by(InstallJobHistory.install_job_id.asc()).all()
-"""
-
-# returns (int dependency, str msg)
-def get_dependency(db_session, install_request, host_id):
-    # Install jobs are already ordered from earliest to latest scheduled_time, then by hostname, then install_action
-    # If dependency is not specified, it will be set to the last-processed install job for the same host, if one exists.
-    if install_request['install_action'] in ['Remove', 'Deactivate']:
-        return 0, APIStatus.SUCCESS
-    else:
-        dependency = str(install_request['dependency'])
-        valid_actions = ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']
-        if dependency.isdigit():
-            if int(dependency) > 0:
-                install_job = db_session.query(InstallJob).filter(InstallJob.id == int(dependency)).first()
-                if install_job:
-                    if install_job.host_id != host_id:
-                        return 0, 'Prerequisite job hostname does not match %s.' % install_request['hostname']
-                    elif install_job.scheduled_time > install_request['utc_scheduled_time']:
-                        return 0, 'Prerequisite job scheduled time is later than %s.' % install_request['utc_scheduled_time']
-                    else:
-                        return int(dependency), APIStatus.SUCCESS
-                else:
-                    return int(dependency), "Invalid dependency id; install job with id '%d' does not exist." % int(dependency)
-            elif int(dependency) < 0:
-                return 0, 'Invalid dependency value.'
-            elif int(dependency) == 0:
-                return 0, APIStatus.SUCCESS
-        elif dependency not in valid_actions:
-            return 0, 'Invalid dependency value.'
-        else:
-            install_jobs = db_session.query(InstallJob).filter(and_(InstallJob.host_id == host_id,
-                                                                    InstallJob.install_action == dependency))\
-                                                                    .order_by(InstallJob.scheduled_time.desc())
-            for install_job in install_jobs:
-                if install_job.scheduled_time <= install_request['utc_scheduled_time']:
-                    return install_job.id, APIStatus.SUCCESS
-
-            # No install_jobs currently scheduled for that host have both the specified action and scheduled_time
-            # earlier than the current scheduled_time, or an action "less than" the current action and were submitted
-            # in the same request
-            return 0, APIStatus.SUCCESS
-
-
-# returns (bool valid, str msg)
-"""
-def validate_install_request(db_session, install_request):
-    requirements = {'Pre-Upgrade': ['hostname'],
-                    'Add': ['hostname', 'server_repository', 'software_packages'],
-                    'Activate': ['hostname', 'software_packages'],
-                    'Post-Upgrade': ['hostname'],
-                    'Commit': ['hostname'],
-                    'Remove': ['hostname', 'software_packages'],
-                    'Deactivate': ['hostname', 'software_packages']}
-
-    for required in requirements[install_request['install_action']]:
-        if required not in install_request.keys():
-            return False, "Missing requirement: %s." % required
-
-    if 'server_repository' in requirements[install_request['install_action']] and \
-        not get_server(db_session, install_request['server_repository']):
-        return False, "Invalid value for server_repository."
-
-    if 'command_profile' in install_request.keys():
-        if not get_custom_command_profile(db_session, install_request['command_profile']):
-            return False, "Invalid value for command_profile; profile must exist."
-
-    if 'software_packages' in requirements[install_request['install_action']] and \
-        is_empty(install_request['software_packages']):
-        return False, "software_packages cannot be empty"
-
-    return True, "valid"
-"""
-
-
-def getKey(dict1, dict2):
-    order = ['Pre-Upgrade', 'Add', 'Activate', 'Post-Upgrade', 'Commit', 'Remove', 'Deactivate']
-    return order.index(dict1['install_action']) - order.index(dict2['install_action'])
 
 
 def verify_utc_offset(utc_offset):

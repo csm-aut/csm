@@ -127,7 +127,7 @@ def api_create_hosts(request):
             row[KEY_HOSTNAME] = hostname
 
             if hostname is None or len(hostname) == 0:
-                raise ValueError('Host name "{}" is not valid.'.format(data.get(KEY_HOSTNAME)))
+                raise ValueError("'{}' is an invalid hostname.".format(data.get(KEY_HOSTNAME)))
 
             validate_acceptable_keys_in_dict(data, [KEY_HOSTNAME, KEY_REGION, KEY_LOCATION, KEY_ROLES,
                                                     KEY_SOFTWARE_PROFILE, KEY_CONNECTION_TYPE, KEY_TS_OR_IP,
