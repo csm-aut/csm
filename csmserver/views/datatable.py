@@ -167,10 +167,10 @@ def get_server_managed_hosts(region_id, chassis, filter_failed):
                 inventory_job = host.inventory_job[0]
                 if inventory_job is not None:
                     row['last_successful_retrieval'] = get_last_successful_inventory_elapsed_time(host)
-                    row['inventory_status'] = inventory_job.status
+                    row['inventory_retrieval_status'] = inventory_job.status
                 else:
                     row['last_successful_retrieval'] = ''
-                    row['inventory_status'] = ''
+                    row['inventory_retrieval_status'] = ''
 
                 rows.append(row)
             else:
