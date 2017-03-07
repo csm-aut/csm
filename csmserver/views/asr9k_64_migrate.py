@@ -353,10 +353,10 @@ def migration():
 
                     db_session = DBSession()
                     scheduled_time = schedule_form.scheduled_time_UTC.data
-                    software_packages = schedule_form.hidden_software_packages.data
-                    server = schedule_form.hidden_server.data
+                    software_packages = schedule_form.hidden_software_packages.data.split()
+                    server_id = schedule_form.hidden_server.data
                     server_directory = schedule_form.hidden_server_directory.data
-                    custom_command_profile = ','.join([str(i) for i in schedule_form.custom_command_profile.data])
+                    custom_command_profile_ids = [str(i) for i in schedule_form.custom_command_profile.data]
 
                     if InstallAction.MIGRATION_AUDIT in install_action:
                         host.context[0].data['hardware_audit_version'] = \
@@ -383,9 +383,9 @@ def migration():
                                                                        install_action=install_action[i],
                                                                        scheduled_time=scheduled_time,
                                                                        software_packages=software_packages,
-                                                                       server=server,
+                                                                       server_ids=server_id,
                                                                        server_directory=server_directory,
-                                                                       custom_command_profile=custom_command_profile,
+                                                                       custom_command_profile_ids=custom_command_profile_ids,
                                                                        dependency=dependency)
                         print("dependency for install_action = {} is {}".format(install_action[i],
                                                                                 str(dependency)))
@@ -491,10 +491,10 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             install_action = schedule_form.install_action.data
 
         scheduled_time = schedule_form.scheduled_time_UTC.data
-        software_packages = schedule_form.hidden_software_packages.data
-        server = schedule_form.hidden_server.data
+        software_packages = schedule_form.hidden_software_packages.data.split()
+        server_id = schedule_form.hidden_server.data
         server_directory = schedule_form.hidden_server_directory.data
-        custom_command_profile = ','.join([str(i) for i in schedule_form.custom_command_profile.data])
+        custom_command_profile_ids = [str(i) for i in schedule_form.custom_command_profile.data]
 
         if InstallAction.MIGRATION_AUDIT in install_action:
             host.context[0].data['hardware_audit_version'] = \
@@ -510,8 +510,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         dependency = int(schedule_form.hidden_dependency.data)
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                      scheduled_time=scheduled_time, software_packages=software_packages,
-                                     server=server, server_directory=server_directory,
-                                     custom_command_profile=custom_command_profile, dependency=dependency,
+                                     server_id=server_id, server_directory=server_directory,
+                                     custom_command_profile_ids=custom_command_profile_ids, dependency=dependency,
                                      install_job=install_job)
 
         return redirect(url_for(return_url, hostname=hostname))

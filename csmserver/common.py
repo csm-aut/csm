@@ -639,7 +639,8 @@ def delete_region(db_session, name):
     db_session.commit()
 
 
-def create_or_update_custom_command_profile(db_session, profile_name, command_list, created_by, custom_command_profile=None):
+def create_or_update_custom_command_profile(db_session, profile_name, command_list, created_by,
+                                            custom_command_profile=None):
     profile_name = check_acceptable_string(profile_name)
 
     if custom_command_profile is None:
@@ -730,17 +731,18 @@ def delete_server_repository(db_session, hostname):
     db_session.commit()
 
 
-def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=None,
-                                 server=-1, server_directory='', custom_command_profile=-1, dependency=0,
-                                 pending_downloads=None, install_job=None):
+def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=[],
+                                 server_id=-1, server_directory='', custom_command_profile_ids=[], dependency=0,
+                                 pending_downloads=None, created_by=None, install_job=None):
 
-    """
     if not type(software_packages) is list:
         raise ValueError('software_packages must be a list type')
 
-    if not type(custom_command_profile) is list:
-        raise ValueError('custom_command_profile must be a list type')
-    """
+    if not type(custom_command_profile_ids) is list:
+        raise ValueError('custom_command_profile_ids must be a list type')
+
+    if not type(pending_downloads) is list:
+        raise ValueError('pending_downloads must be a list type')
 
     # This is a new install_job
     if install_job is None:
@@ -751,7 +753,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     install_job.install_action = install_action
 
     if install_job.install_action == InstallAction.INSTALL_ADD and not is_empty(pending_downloads):
-        install_job.pending_downloads = ','.join(pending_downloads.split())
+        install_job.pending_downloads = ','.join(pending_downloads)
     else:
         install_job.pending_downloads = ''
 
@@ -759,7 +761,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
 
     # Only Install Add and Pre-Migrate should have server_id and server_directory
     if install_action == InstallAction.INSTALL_ADD or install_action == InstallAction.PRE_MIGRATE:
-        install_job.server_id = int(server) if int(server) > 0 else None
+        install_job.server_id = int(server_id) if int(server_id) > 0 else None
         install_job.server_directory = server_directory
     else:
         install_job.server_id = None
@@ -774,11 +776,6 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
         install_action == InstallAction.INSTALL_DEACTIVATE or \
         install_action == InstallAction.PRE_MIGRATE:
 
-        if install_action == InstallAction.PRE_MIGRATE:
-            software_packages = software_packages.split(',') if software_packages is not None else []
-        else:
-            software_packages = software_packages.split() if software_packages is not None else []
-
         for software_package in software_packages:
             if install_action == InstallAction.INSTALL_ADD:
                 if is_file_acceptable_for_install_add(software_package):
@@ -790,17 +787,14 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     install_job.packages = ','.join(install_job_packages)
     install_job.dependency = dependency if dependency > 0 else None
 
-    if hasattr(current_user, 'username'):
-        install_job.created_by = current_user.username
-        install_job.user_id = current_user.id
-    else:
-        install_job.created_by = g.api_user.username
-        install_job.user_id = g.api_user.id
+    user = get_user(db_session, created_by)
+    install_job.created_by = created_by
+    install_job.user_id = None if user is None else user.id
 
     if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE or \
        install_action == InstallAction.PRE_MIGRATE or install_action == InstallAction.MIGRATE_SYSTEM or \
        install_action == InstallAction.POST_MIGRATE:
-        install_job.custom_command_profile_ids = custom_command_profile if custom_command_profile else None
+        install_job.custom_command_profile_ids = ','.join(custom_command_profile_ids) if custom_command_profile_ids else None
 
     # Resets the following fields
     install_job.status = None
@@ -822,9 +816,9 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
 
         # Derives the platform and release using the first SMU name.
         platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
-        # FIXME - current_user.username
+
         create_download_jobs(db_session, platform, release, pending_downloads,
-                             install_job.server_id, install_job.server_directory, current_user.username)
+                             install_job.server_id, install_job.server_directory, created_by)
 
     return install_job
 

@@ -660,11 +660,11 @@ def api_create_install_jobs():
     hostname = request.form['hostname']
     install_action = request.form.getlist('install_action[]')
     scheduled_time = request.form['scheduled_time_UTC']
-    software_packages = request.form['software_packages']
-    server = request.form['server']
+    software_packages = request.form['software_packages'].split()
+    server_id = request.form['server']
     server_directory = request.form['server_directory']
-    pending_downloads = request.form['pending_downloads']
-    custom_command_profiles = request.form['custom_command_profile']
+    pending_downloads = request.form['pending_downloads'].split()
+    custom_command_profile_ids = [str(i) for i in request.form['custom_command_profile'].split()]
 
     host = get_host(db_session, hostname)
 
@@ -678,9 +678,9 @@ def api_create_install_jobs():
                                                            install_action=one_install_action,
                                                            scheduled_time=scheduled_time,
                                                            software_packages=software_packages,
-                                                           server=server, server_directory=server_directory,
+                                                           server_id=server_id, server_directory=server_directory,
                                                            pending_downloads=pending_downloads,
-                                                           custom_command_profile=custom_command_profiles,
+                                                           custom_command_profile_ids=custom_command_profile_ids,
                                                            dependency=dependency)
             dependency = new_install_job.id
 
