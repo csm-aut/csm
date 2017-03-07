@@ -100,7 +100,7 @@
             // Update the last successful inventory elapsed time
             if (hostname != null && hostname.length > 0) {
                 $.ajax({
-                    url: '/api/hosts/' + hostname + '/last_successful_inventory_elapsed_time',
+                    url: '/install/api/hosts/' + hostname + '/last_successful_inventory_elapsed_time',
                     dataType: 'json',
                     success: function (data) {
                         $.each(data, function (index, element) {
