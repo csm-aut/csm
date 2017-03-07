@@ -325,7 +325,7 @@ def migration():
 
     db_session = DBSession()
 
-    return_url = get_return_url(request, 'install_dashboard')
+    return_url = get_return_url(request, 'install_dashboard.home')
 
     schedule_form = init_schedule_form(db_session, request, get=request.method == 'GET')
     config_form = init_config_form(db_session, request, get=request.method == 'GET')
@@ -383,7 +383,7 @@ def migration():
                                                                        install_action=install_action[i],
                                                                        scheduled_time=scheduled_time,
                                                                        software_packages=software_packages,
-                                                                       server_ids=server_id,
+                                                                       server_id=server_id,
                                                                        server_directory=server_directory,
                                                                        custom_command_profile_ids=custom_command_profile_ids,
                                                                        dependency=dependency)
@@ -473,7 +473,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     if host is None:
         abort(404)
 
-    return_url = get_return_url(request, 'host_dashboard')
+    return_url = get_return_url(request, 'host_dashboard.home')
 
     schedule_form = ScheduleMigrationForm(request.form)
 
@@ -689,7 +689,6 @@ def get_nox_binary_publish_date():
             return 0, 'HTTP request to get ' + IOSXR_URL + '/' + NOX_PUBLISH_DATE + ' failed.'
         return (1, r.text)
     except:
-
         return 0, 'Exception was thrown during HTTP request to get ' + IOSXR_URL + '/' + NOX_PUBLISH_DATE
 
 

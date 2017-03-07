@@ -180,7 +180,7 @@
                 "targets": 7,
                 "data": 'last_successful_retrieval',
                 "render": function(data, type, row) {
-                    if (row['inventory_status'] == 'failed') {
+                    if (row['inventory_retrieval_status'] == 'failed') {
                         return '<span style="color:red;">' + data + '</span>';
                     } else {
                         return data;
@@ -296,7 +296,7 @@
                     "targets": 8,
                     "data": 'last_successful_retrieval',
                     "render": function(data, type, row) {
-                        if (row['inventory_status'] == 'failed') {
+                        if (row['inventory_retrieval_status'] == 'failed') {
                             return '<span style="color:red;">' + data + '</span>';
                         } else {
                             return data;
@@ -380,7 +380,7 @@
                     "targets": 10,
                     "data": 'last_successful_retrieval',
                     "render": function(data, type, row) {
-                        if (row['inventory_status'] == 'failed') {
+                        if (row['inventory_retrieval_status'] == 'failed') {
                             return '<span style="color:red;">' + data + '</span>';
                         } else {
                             return data;
@@ -469,10 +469,10 @@
                     "targets": 10,
                     "data": 'last_successful_retrieval',
                     "render": function(data, type, row) {
-                        if (row['inventory_status'] == 'failed') {
+                        if (row['inventory_retrieval_status'] == 'failed') {
                             return '<span style="color:red;">' + data + '</span>';
                         } else {
-                            return data;
+                            return row['inventory_retrieval_status'] + data;
                         }
                     }
                 }]
@@ -531,7 +531,7 @@
                     "targets": 6,
                     "data": 'last_successful_retrieval',
                     "render": function(data, type, row) {
-                        if (row['inventory_status'] == 'failed') {
+                        if (row['inventory_retrieval_status'] == 'failed') {
                             return '<span style="color:red;">' + data + '</span>';
                         } else {
                             return data;

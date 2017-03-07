@@ -733,7 +733,7 @@ def delete_server_repository(db_session, hostname):
 
 def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=[],
                                  server_id=-1, server_directory='', custom_command_profile_ids=[], dependency=0,
-                                 pending_downloads=None, created_by=None, install_job=None):
+                                 pending_downloads=[], created_by=None, install_job=None):
 
     if not type(software_packages) is list:
         raise ValueError('software_packages must be a list type')
