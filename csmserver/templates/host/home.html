@@ -176,7 +176,7 @@
                 "targets": 6,
                 "data": 'last_successful_retrieval',
                 "render": function(data, type, row) {
-                    if (row['inventory_status'] == 'failed') {
+                    if (row['inventory_retrieval_status'] == 'failed') {
                         return '<span style="color:red;">' + data + '</span>';
                     } else {
                         if (data == 'Pending Retrieval') {
