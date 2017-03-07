@@ -52,14 +52,20 @@
                 "data": 'model_name',
                 "render": function(data, type, row) {
                     if (data == '') {
-                        return '<a class="show-model-name-details" model_name="" href="javascript://">(Undefined PID)</a>';
+                        return '(Undefined PID)';
                     } else {
-                     return '<a class="show-model-name-details" model_name="' + data + '" href="javascript://">' + data + '</a>';
+                     return data;
                     }
                 }
             }, {
                 "targets": 1,
-                "data": 'in_use_count'
+                "data": 'in_use_count',
+                "render": function(data, type, row) {
+                    if (data == '0'){
+                        return data
+                    }
+                    return '<a class="show-model-name-details" model_name="' + row['model_name'] + '" href="javascript://">' + data + '</a>';
+                }
             }, {
                 "targets": 2,
                 "data": 'available_count'
@@ -472,7 +478,7 @@
                         if (row['inventory_retrieval_status'] == 'failed') {
                             return '<span style="color:red;">' + data + '</span>';
                         } else {
-                            return row['inventory_retrieval_status'] + data;
+                            return data;
                         }
                     }
                 }]
