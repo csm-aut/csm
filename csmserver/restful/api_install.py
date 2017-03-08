@@ -295,7 +295,7 @@ def api_create_install_request(request):
                 if hostname not in implicit_dependency_list:
                     implicit_dependency_list[hostname] = []
 
-                implicit_dependency_list[hostname].append((install_job.id, install_action))
+                implicit_dependency_list[hostname].append((install_job.id, install_action, install_request[KEY_UTC_SCHEDULED_TIME]))
 
             row[RESPONSE_STATUS] = APIStatus.SUCCESS
 
@@ -338,8 +338,8 @@ def get_dependency_id(db_session, implicit_dependency_list, install_request, hos
         else:
             # dependency is specified as an install action string.
             if hostname in implicit_dependency_list.keys():
-                for id, action in implicit_dependency_list[hostname]:
-                    if action == dependency:
+                for id, action, utc_time in implicit_dependency_list[hostname]:
+                    if action == dependency and utc_time <= utc_scheduled_time:
                         return id
 
             # Check the database since the hostname and install action are not found in the cache.
@@ -354,9 +354,9 @@ def get_dependency_id(db_session, implicit_dependency_list, install_request, hos
     else:
         # Check to see if implicit dependency needs to be applied here.
         if install_action in ordered_install_actions and hostname in implicit_dependency_list.keys():
-            last_id, last_action = implicit_dependency_list[hostname][-1]
+            last_id, last_action, utc_time = implicit_dependency_list[hostname][-1]
 
-            if ordered_install_actions.index(last_action) < ordered_install_actions.index(install_action):
+            if ordered_install_actions.index(last_action) < ordered_install_actions.index(install_action) and utc_time <= utc_scheduled_time:
                 return last_id
 
     return 0
