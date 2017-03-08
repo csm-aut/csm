@@ -123,7 +123,7 @@ class InstallAction:
     INSTALL_COMMIT = 'Commit'
     ALL = 'ALL'
     INSTALL_REMOVE = 'Remove'
-    INSTALL_REMOVE_ALL = 'Remove All'
+    INSTALL_REMOVE_ALL_INACTIVE = 'Remove All Inactive'
     INSTALL_DEACTIVATE = 'Deactivate'
     INSTALL_ROLLBACK = 'Rollback'
     MIGRATION_AUDIT = 'Migration-Audit'
