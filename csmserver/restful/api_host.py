@@ -47,11 +47,7 @@ from utils import is_empty
 from utils import get_acceptable_string
 
 from api_utils import get_total_pages
-from api_utils import RECORDS_PER_PAGE
-from api_utils import ENVELOPE
-from api_utils import STATUS
-from api_utils import STATUS_MESSAGE
-from api_utils import APIStatus
+
 from api_utils import validate_url_parameters
 from api_utils import failed_response
 from api_utils import check_none
@@ -62,6 +58,11 @@ from api_utils import validate_acceptable_keys_in_dict
 
 from api_constants import HTTP_OK
 from api_constants import HTTP_MULTI_STATUS_ERROR
+from api_constants import RECORDS_PER_PAGE
+from api_constants import RESPONSE_ENVELOPE
+from api_constants import RESPONSE_STATUS
+from api_constants import RESPONSE_STATUS_MESSAGE
+from api_constants import APIStatus
 
 # Acceptable JSON keys
 KEY_HOSTNAME = 'hostname'
@@ -191,18 +192,18 @@ def api_create_hosts(request):
                                   port_number=port_number, jump_host_id=jump_host_id,
                                   created_by=g.api_user.username, host=host)
 
-            row[STATUS] = APIStatus.SUCCESS
+            row[RESPONSE_STATUS] = APIStatus.SUCCESS
 
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         rows.append(row)
 
     # end loop
 
-    return jsonify(**{ENVELOPE: {'host_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {'host_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def get_id_from_value(item, dictionary, data, key):
@@ -289,7 +290,7 @@ def api_get_hosts(request):
 
     total_pages = get_total_pages(db_session, Host, clauses)
 
-    return jsonify(**{ENVELOPE: {'host_list': rows}, 'current_page': page, 'total_pages': total_pages})
+    return jsonify(**{RESPONSE_ENVELOPE: {'host_list': rows}, 'current_page': page, 'total_pages': total_pages})
 
 
 def api_delete_host(hostname):
@@ -314,7 +315,7 @@ def api_delete_host(hostname):
     db_session = DBSession()
 
     delete_host(db_session, hostname)
-    return jsonify(**{ENVELOPE: {KEY_HOSTNAME: hostname, STATUS: APIStatus.SUCCESS}})
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_HOSTNAME: hostname, RESPONSE_STATUS: APIStatus.SUCCESS}})
 
 
 def get_hosts_by_page(db_session, clauses, page):

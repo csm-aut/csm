@@ -26,10 +26,6 @@
 from flask import jsonify
 from flask import g
 
-from api_utils import ENVELOPE
-from api_utils import STATUS
-from api_utils import STATUS_MESSAGE
-from api_utils import APIStatus
 from api_utils import validate_url_parameters
 from api_utils import convert_value_to_list
 from api_utils import validate_required_keys_in_dict
@@ -39,6 +35,12 @@ from api_utils import convert_json_request_to_list
 from api_constants import HTTP_OK
 from api_constants import HTTP_BAD_REQUEST
 from api_constants import HTTP_MULTI_STATUS_ERROR
+
+from api_constants import RESPONSE_ENVELOPE
+from api_constants import RESPONSE_STATUS
+from api_constants import RESPONSE_STATUS_MESSAGE
+from api_constants import RESPONSE_TRACE
+from api_constants import APIStatus
 
 from utils import is_empty
 
@@ -67,6 +69,7 @@ from datetime import datetime, timedelta
 
 import re
 import os
+import traceback
 
 KEY_ID = 'id'
 KEY_HOSTNAME = 'hostname'
@@ -162,7 +165,7 @@ def api_create_install_request(request):
 
             install_action = data[KEY_INSTALL_ACTION]
             if install_action not in supported_install_actions:
-                raise ValueError("'{}' is not a valid install action.".format(install_action))
+                raise ValueError("'{}' is an invalid install action.".format(install_action))
 
             validate_acceptable_keys_in_dict(data, acceptable_keys)
             validate_required_keys_in_dict(data, required_keys_dict[install_action])
@@ -170,19 +173,19 @@ def api_create_install_request(request):
             hostname = data[KEY_HOSTNAME]
             host = get_host(db_session, hostname)
             if host is None:
-                raise ValueError("'{}' is not a valid hostname.".format(data[KEY_HOSTNAME]))
+                raise ValueError("'{}' is an invalid hostname.".format(data[KEY_HOSTNAME]))
 
             if KEY_SERVER_REPOSITORY in data.keys():
                 server = get_server(db_session, data[KEY_SERVER_REPOSITORY])
                 if server is None:
-                    raise ValueError("'{}' is not a valid server repository.".format(data[KEY_SERVER_REPOSITORY]))
+                    raise ValueError("'{}' is an invalid server repository.".format(data[KEY_SERVER_REPOSITORY]))
 
             if KEY_CUSTOM_COMMAND_PROFILE in data.keys():
                 custom_command_profile_names = convert_value_to_list(data, KEY_CUSTOM_COMMAND_PROFILE)
                 for custom_command_profile_name in custom_command_profile_names:
                     custom_command_profile_id = custom_command_profile_dict.get(custom_command_profile_name)
                     if custom_command_profile_id is None:
-                        raise ValueError("'{}' is not a valid custom command profile.".format(custom_command_profile_name))
+                        raise ValueError("'{}' is an invalid custom command profile.".format(custom_command_profile_name))
 
             if KEY_SOFTWARE_PACKAGES in data.keys() and is_empty(data[KEY_SOFTWARE_PACKAGES]):
                 raise ValueError("Software packages when specified cannot be empty.")
@@ -210,8 +213,8 @@ def api_create_install_request(request):
                                  "Remove any duplicate and resubmit.".format(hostname, install_action))
 
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         # Add the original key value pairs to the new array.
@@ -224,21 +227,22 @@ def api_create_install_request(request):
 
     if error_found:
         for row in rows:
-            if STATUS not in row.keys():
-                row[STATUS] = APIStatus.FAILED
-                row[STATUS_MESSAGE] = 'Not submitted. Check other jobs for error message.'
+            if RESPONSE_STATUS not in row.keys():
+                row[RESPONSE_STATUS] = APIStatus.FAILED
+                row[RESPONSE_STATUS_MESSAGE] = 'Not submitted. Check other jobs for error message.'
 
             if KEY_UTC_SCHEDULED_TIME in row.keys():
                 row.pop(KEY_UTC_SCHEDULED_TIME)
 
-        return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), HTTP_BAD_REQUEST
+        return jsonify(**{RESPONSE_ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), HTTP_BAD_REQUEST
 
     # ----------------------------  Second phase is to attempt the job creation ---------------------------- #
+
+    sorted_list = sorted(rows, cmp=get_key)
 
     rows = []
     error_found = False
     implicit_dependency_list = {}
-    sorted_list = sorted(rows, cmp=get_key)
 
     for install_request in sorted_list:
         row = dict()
@@ -272,7 +276,7 @@ def api_create_install_request(request):
                 for custom_command_profile_name in custom_command_profile_names:
                     custom_command_profile_id = custom_command_profile_dict.get(custom_command_profile_name)
                     if custom_command_profile_id is not None:
-                        custom_command_profile_ids.append(custom_command_profile_id)
+                        custom_command_profile_ids.append(str(custom_command_profile_id))
 
             install_job = create_or_update_install_job(db_session,
                                                        host_id=host_id,
@@ -293,29 +297,33 @@ def api_create_install_request(request):
 
                 implicit_dependency_list[hostname].append((install_job.id, install_action))
 
+            row[RESPONSE_STATUS] = APIStatus.SUCCESS
+
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
+            row[RESPONSE_TRACE] = traceback.format_exc()
             error_found = True
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def get_key(dict1, dict2):
     key1 = "{}{}".format(dict1[KEY_HOSTNAME], str(supported_install_actions.index(dict1[KEY_INSTALL_ACTION])).zfill(2))
-    key2 = "{}{}".format(dict1[KEY_HOSTNAME], str(supported_install_actions.index(dict2[KEY_INSTALL_ACTION])).zfill(2))
-    return key1 > key2
+    key2 = "{}{}".format(dict2[KEY_HOSTNAME], str(supported_install_actions.index(dict2[KEY_INSTALL_ACTION])).zfill(2))
+
+    return cmp(key1, key2)
 
 
 def get_dependency_id(db_session, implicit_dependency_list, install_request, host_id):
     hostname = install_request[KEY_HOSTNAME]
     install_action = install_request[KEY_INSTALL_ACTION]
     utc_scheduled_time = install_request[KEY_UTC_SCHEDULED_TIME]
-    dependency = install_request[KEY_DEPENDENCY]
 
     if KEY_DEPENDENCY in install_request.keys():
+        dependency = install_request[KEY_DEPENDENCY]
         if dependency.isdigit():
             install_job = db_session.query(InstallJob).filter(InstallJob.id == int(dependency)).first()
             if install_job:
@@ -439,13 +447,13 @@ def api_get_install_request(request):
         try:
             row = get_install_job_info(db_session, install_job, utc_offset)
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def get_install_job_info(db_session, install_job, utc_offset):
@@ -559,18 +567,18 @@ def api_delete_install_job(request):
                 if len(deleted_jobs) > 0:
                     row[KEY_DELETED_DEPENDENCIES] = deleted_jobs
 
-                row[STATUS] = APIStatus.SUCCESS
+                row[RESPONSE_STATUS] = APIStatus.SUCCESS
             else:
                 raise ValueError("Unable to delete install job '{}' as it is in progress.".format(install_job.id))
 
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def api_get_session_log(id):
@@ -589,6 +597,7 @@ def api_get_session_log(id):
     if install_job.session_log is not None:
         log_dir = os.path.join(get_log_directory(), install_job.session_log)
         file_list = [os.path.join(log_dir, f) for f in os.listdir(log_dir)]
+
         return download_session_logs(file_list)
     else:
         raise ValueError("Session log does not exist for install job id '%d'." % id)

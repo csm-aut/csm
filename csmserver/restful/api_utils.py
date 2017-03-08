@@ -28,19 +28,13 @@ from flask import jsonify
 from werkzeug.exceptions import BadRequest
 
 from api_constants import HTTP_BAD_REQUEST
+from api_constants import RECORDS_PER_PAGE
+from api_constants import RESPONSE_STATUS
+from api_constants import RESPONSE_STATUS_MESSAGE
+from api_constants import RESPONSE_ENVELOPE
+from api_constants import APIStatus
 
 import math
-
-RECORDS_PER_PAGE = 1000
-ENVELOPE = 'api_response'
-STATUS = 'status'
-STATUS_MESSAGE = 'status_message'
-
-
-class APIStatus:
-    SUCCESS = 'SUCCESS'
-    FAILED = 'FAILED'
-
 
 def get_total_pages(db_session, table, clauses):
     total_records = db_session.query(table).filter(and_(*clauses)).count()
@@ -57,7 +51,7 @@ def convert_json_request_to_list(request):
     try:
         json_data = request.json if type(request.json) is list else [request.json]
     except BadRequest:
-        raise ValueError("Data in the HTTP Request is not a valid JSON.")
+        raise ValueError("Data in the HTTP Request is an invalid JSON.")
 
     return json_data
 
@@ -85,9 +79,9 @@ def validate_acceptable_keys_in_dict(dictionary, key_list):
 
     if result:
         if len(result) == 1:
-            raise ValueError("The following key, '{}', is not valid.".format(','.join(result)))
+            raise ValueError("The following key, '{}', is invalid.".format(','.join(result)))
         else:
-            raise ValueError("The following keys, '{}', are not valid.".format(','.join(result)))
+            raise ValueError("The following keys, '{}', are invalid.".format(','.join(result)))
 
 
 def validate_required_keys_in_dict(dictionary, key_list):
@@ -121,7 +115,7 @@ def validate_url_parameters(request, parameter_list):
 
 
 def failed_response(message, return_code=HTTP_BAD_REQUEST):
-    return jsonify(**{ENVELOPE: {STATUS: APIStatus.FAILED, STATUS_MESSAGE: message}}), return_code
+    return jsonify(**{RESPONSE_ENVELOPE: {RESPONSE_STATUS: APIStatus.FAILED, RESPONSE_STATUS_MESSAGE: message}}), return_code
 
 
 def check_none(s):

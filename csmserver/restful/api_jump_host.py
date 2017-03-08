@@ -36,10 +36,6 @@ from constants import ConnectionType
 
 from utils import get_acceptable_string
 
-from api_utils import STATUS
-from api_utils import STATUS_MESSAGE
-from api_utils import ENVELOPE
-from api_utils import APIStatus
 from api_utils import validate_url_parameters
 from api_utils import convert_json_request_to_list
 from api_utils import validate_required_keys_in_dict
@@ -47,6 +43,10 @@ from api_utils import validate_acceptable_keys_in_dict
 
 from api_constants import HTTP_OK
 from api_constants import HTTP_MULTI_STATUS_ERROR
+from api_constants import RESPONSE_STATUS
+from api_constants import RESPONSE_STATUS_MESSAGE
+from api_constants import RESPONSE_ENVELOPE
+from api_constants import APIStatus
 
 # Acceptable JSON keys
 KEY_HOSTNAME = 'hostname'
@@ -127,16 +127,16 @@ def api_create_jump_hosts(request):
                                        host_or_ip=host_or_ip, port_number=port_number, username=username,
                                        password=password, created_by=g.api_user.username, jumphost=jump_host)
 
-            row[STATUS] = APIStatus.SUCCESS
+            row[RESPONSE_STATUS] = APIStatus.SUCCESS
 
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'jump_host_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {'jump_host_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def api_get_jump_hosts(request):
@@ -170,11 +170,11 @@ def api_get_jump_hosts(request):
             row[KEY_USERNAME] = jumphost.username if jumphost.username else ''
             rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'jump_host_list': rows}})
+    return jsonify(**{RESPONSE_ENVELOPE: {'jump_host_list': rows}})
 
 
 def api_delete_jump_host(hostname):
     db_session = DBSession()
 
     delete_jump_host(db_session, hostname)
-    return jsonify(**{ENVELOPE: {KEY_HOSTNAME: hostname, STATUS: APIStatus.SUCCESS}})
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_HOSTNAME: hostname, RESPONSE_STATUS: APIStatus.SUCCESS}})

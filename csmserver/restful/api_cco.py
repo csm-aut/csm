@@ -22,14 +22,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # ==============================================================================
-from smu_info_loader import SMUInfoLoader
 from flask import jsonify
 
-from api_utils import ENVELOPE
+from api_constants import RESPONSE_ENVELOPE
+
 from api_utils import validate_url_parameters
 from api_utils import failed_response
 
 from api_constants import HTTP_NOT_FOUND
+
+from smu_info_loader import SMUInfoLoader
 
 from utils import is_empty
 
@@ -40,7 +42,7 @@ def api_get_cco_catalog():
     """
     http://localhost:5000/api/v1/cco/catalog
     """
-    return jsonify(**{ENVELOPE: SMUInfoLoader.get_catalog()})
+    return jsonify(**{RESPONSE_ENVELOPE: SMUInfoLoader.get_catalog()})
 
 
 def api_get_cco_software(request):
@@ -80,7 +82,7 @@ def api_get_cco_software(request):
                 rows.append(get_smu_info(sp_info))
 
     if rows:
-        return jsonify(**{ENVELOPE: {'software_list': rows}})
+        return jsonify(**{RESPONSE_ENVELOPE: {'software_list': rows}})
 
     return failed_response(('Unable to get software information for platform {} ' +
                             'and release {}').format(platform, release))
@@ -100,12 +102,12 @@ def api_get_cco_software_entry(request, name_or_id):
     if smu_loader.is_valid:
         smu_info = smu_loader.get_smu_info(name_or_id)
         if smu_info:
-            return jsonify(**{ENVELOPE: get_smu_info(smu_info)})
+            return jsonify(**{RESPONSE_ENVELOPE: get_smu_info(smu_info)})
         else:
             # Now search for the ID instead of name
             smu_info = smu_loader.get_smu_info_by_id(name_or_id)
             if smu_info:
-                return jsonify(**{ENVELOPE: get_smu_info(smu_info)})
+                return jsonify(**{RESPONSE_ENVELOPE: get_smu_info(smu_info)})
 
     return failed_response('Unable to locate {}'.format(name_or_id), return_code=HTTP_NOT_FOUND)
 
