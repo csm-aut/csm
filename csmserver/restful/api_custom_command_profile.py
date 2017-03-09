@@ -32,18 +32,18 @@ from common import delete_custom_command_profile
 
 from database import DBSession
 
-from api_utils import STATUS
-from api_utils import STATUS_MESSAGE
-from api_utils import ENVELOPE
-from api_utils import APIStatus
+from api_constants import RESPONSE_STATUS
+from api_constants import RESPONSE_STATUS_MESSAGE
+from api_constants import RESPONSE_ENVELOPE
+from api_constants import APIStatus
+from api_constants import HTTP_OK
+from api_constants import HTTP_MULTI_STATUS_ERROR
+
 from api_utils import validate_url_parameters
 from api_utils import convert_json_request_to_list
 from api_utils import validate_required_keys_in_dict
 from api_utils import validate_acceptable_keys_in_dict
 from api_utils import convert_value_to_list
-
-from api_constants import HTTP_OK
-from api_constants import HTTP_MULTI_STATUS_ERROR
 
 from utils import is_empty
 from utils import get_acceptable_string
@@ -51,7 +51,7 @@ from utils import get_acceptable_string
 # Acceptable JSON keys
 KEY_PROFILE_NAME = 'profile_name'
 KEY_COMMAND_LIST = 'command_list'
-
+KEY_CREATED_BY = 'created_by'
 
 def api_create_custom_command_profiles(request):
     """
@@ -99,16 +99,16 @@ def api_create_custom_command_profiles(request):
                                                     command_list=command_list,
                                                     created_by=g.api_user.username,
                                                     custom_command_profile=custom_command_profile)
-            row[STATUS] = APIStatus.SUCCESS
+            row[RESPONSE_STATUS] = APIStatus.SUCCESS
 
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'custom_command_profile_list': rows}}), \
+    return jsonify(**{RESPONSE_ENVELOPE: {'custom_command_profile_list': rows}}), \
                   (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
@@ -138,10 +138,10 @@ def api_get_custom_command_profiles(request):
             row = dict()
             row[KEY_PROFILE_NAME] = ccp.profile_name
             row[KEY_COMMAND_LIST] = [] if is_empty(ccp.command_list) else ccp.command_list.split(',')
-            row['created_by'] = ccp.created_by
+            row[KEY_CREATED_BY] = ccp.created_by
             rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'custom_command_profile_list': rows}})
+    return jsonify(**{RESPONSE_ENVELOPE: {'custom_command_profile_list': rows}})
 
 
 def api_delete_custom_command_profile(profile_name):
@@ -149,4 +149,4 @@ def api_delete_custom_command_profile(profile_name):
 
     delete_custom_command_profile(db_session, profile_name)
 
-    return jsonify(**{ENVELOPE: {KEY_PROFILE_NAME: profile_name, STATUS: APIStatus.SUCCESS}})
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_PROFILE_NAME: profile_name, RESPONSE_STATUS: APIStatus.SUCCESS}})

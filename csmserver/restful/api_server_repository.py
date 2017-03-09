@@ -35,17 +35,17 @@ from utils import get_acceptable_string
 
 from database import DBSession
 
-from api_utils import STATUS
-from api_utils import STATUS_MESSAGE
-from api_utils import ENVELOPE
-from api_utils import APIStatus
 from api_utils import validate_url_parameters
 from api_utils import validate_required_keys_in_dict
 from api_utils import convert_json_request_to_list
 from api_utils import validate_acceptable_keys_in_dict
 
 from api_constants import HTTP_OK
-from api_constants import  HTTP_MULTI_STATUS_ERROR
+from api_constants import HTTP_MULTI_STATUS_ERROR
+from api_constants import RESPONSE_STATUS
+from api_constants import RESPONSE_STATUS_MESSAGE
+from api_constants import RESPONSE_ENVELOPE
+from api_constants import APIStatus
 
 from constants import ServerType
 
@@ -187,15 +187,15 @@ def api_create_server_repositories(request):
                                                created_by=g.api_user.username,
                                                server=get_server(db_session, hostname))
 
-            row[STATUS] = APIStatus.SUCCESS
+            row[RESPONSE_STATUS] = APIStatus.SUCCESS
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'server_repository_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {'server_repository_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def api_get_server_repositories(request):
@@ -231,11 +231,11 @@ def api_get_server_repositories(request):
 
             rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'server_repository_list': rows}})
+    return jsonify(**{RESPONSE_ENVELOPE: {'server_repository_list': rows}})
 
 
 def api_delete_server_repositories(hostname):
     db_session = DBSession()
 
     delete_server_repository(db_session, hostname)
-    return jsonify(**{ENVELOPE: {KEY_HOSTNAME: hostname, STATUS: APIStatus.SUCCESS}})
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_HOSTNAME: hostname, RESPONSE_STATUS: APIStatus.SUCCESS}})

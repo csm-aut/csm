@@ -34,11 +34,11 @@ from database import DBSession
 
 from api_constants import HTTP_OK
 from api_constants import HTTP_MULTI_STATUS_ERROR
+from api_constants import RESPONSE_STATUS
+from api_constants import RESPONSE_STATUS_MESSAGE
+from api_constants import RESPONSE_ENVELOPE
+from api_constants import APIStatus
 
-from api_utils import STATUS
-from api_utils import STATUS_MESSAGE
-from api_utils import ENVELOPE
-from api_utils import APIStatus
 from api_utils import validate_url_parameters
 from api_utils import convert_json_request_to_list
 from api_utils import validate_required_keys_in_dict
@@ -98,16 +98,16 @@ def api_create_regions(request):
                                     created_by=g.api_user.username,
                                     region=region)
 
-            row[STATUS] = APIStatus.SUCCESS
+            row[RESPONSE_STATUS] = APIStatus.SUCCESS
 
         except Exception as e:
-            row[STATUS] = APIStatus.FAILED
-            row[STATUS_MESSAGE] = e.message
+            row[RESPONSE_STATUS] = APIStatus.FAILED
+            row[RESPONSE_STATUS_MESSAGE] = e.message
             error_found = True
 
         rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'region_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {'region_list': rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def get_region_server_name_list(region):
@@ -146,11 +146,11 @@ def api_get_regions(request):
             row[KEY_SERVER_REPOSITORIES] = [s.hostname for s in region.servers]
             rows.append(row)
 
-    return jsonify(**{ENVELOPE: {'region_list': rows}})
+    return jsonify(**{RESPONSE_ENVELOPE: {'region_list': rows}})
 
 
 def api_delete_region(name):
     db_session = DBSession()
 
     delete_region(db_session, name)
-    return jsonify(**{ENVELOPE: {KEY_REGION_NAME: name, STATUS: APIStatus.SUCCESS}})
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_REGION_NAME: name, RESPONSE_STATUS: APIStatus.SUCCESS}})
