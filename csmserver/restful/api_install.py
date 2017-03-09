@@ -410,9 +410,6 @@ def api_get_install_request(request):
             elif status in [JobStatus.COMPLETED, JobStatus.FAILED]:
                 table_to_query = InstallJobHistory
                 clauses.append(InstallJobHistory.status == status)
-        else:
-            # FIXME: Give just the scheduled and failed ones for now (in install_job).
-            clauses.append(or_(InstallJob.status == None, InstallJob.status == JobStatus.FAILED))
 
         if hostname:
             host = get_host(db_session, hostname)
