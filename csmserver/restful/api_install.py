@@ -386,8 +386,7 @@ def api_get_install_request(request):
     if utc_offset and '-' not in utc_offset and '+' not in utc_offset:
         utc_offset = "+" + utc_offset.strip()
 
-    table_to_query = 'install_job'
-
+    table_to_query = InstallJob
     if id:
         # Use all() instead of first() so the return is a list type.
         install_jobs = db_session.query(InstallJob).filter(InstallJob.id == id).all()
@@ -396,7 +395,7 @@ def api_get_install_request(request):
             # 1) the install job id may be re-used by other hosts.
             # 2) if the install job was re-submitted.
             install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == id).all()
-            table_to_query = 'install_job_history'
+            table_to_query = InstallJobHistory
             if not install_jobs:
                 raise ValueError("Install id '{}' does not exist in the database.".format(id))
     else:
@@ -423,7 +422,7 @@ def api_get_install_request(request):
             clauses.append(InstallJob.status == (None if status == JobStatus.SCHEDULED else status))
 
         if status == JobStatus.COMPLETED:
-            table_to_query = 'install_job_history'
+            table_to_query = InstallJobHistory
 
         if scheduled_time:
             if not utc_offset:
@@ -449,6 +448,7 @@ def api_get_install_request(request):
         except Exception as e:
             row[RESPONSE_STATUS] = APIStatus.FAILED
             row[RESPONSE_STATUS_MESSAGE] = e.message
+            row[RESPONSE_TRACE] = traceback.format_exc()
             error_found = True
 
         rows.append(row)
@@ -540,7 +540,7 @@ def api_delete_install_job(request):
 
             clauses.append(InstallJob.status == (None if status == JobStatus.SCHEDULED else status))
 
-        install_jobs = get_install_jobs('install_job', db_session, clauses)
+        install_jobs = get_install_jobs(InstallJob, db_session, clauses)
 
     rows = []
     error_found = False
@@ -603,19 +603,18 @@ def api_get_session_log(id):
         raise ValueError("Session log does not exist for install job id '%d'." % id)
 
 
-def get_install_jobs(install_job_table, db_session, clauses):
-
+def get_install_jobs(table_to_query, db_session, clauses):
     if not is_empty(clauses):
-        if db_session.query(install_job_table.id).filter(and_(*clauses)).count() > 5000:
+        if db_session.query(table_to_query.id).filter(and_(*clauses)).count() > 5000:
             raise ValueError("Too many results; please refine your request.")
         else:
-            return db_session.query(install_job_table).filter(and_(*clauses)).\
-                order_by(install_job_table.id.asc()).all()
+            return db_session.query(table_to_query).filter(and_(*clauses)).\
+                order_by(table_to_query.id.asc()).all()
     else:
-        if db_session.query(install_job_table.id).count() > 5000:
+        if db_session.query(table_to_query.id).count() > 5000:
             raise ValueError("Too many results; please refine your request.")
         else:
-            return db_session.query(install_job_table).order_by(install_job_table.id.asc()).all()
+            return db_session.query(table_to_query).order_by(table_to_query.id.asc()).all()
 
 
 def verify_utc_offset(utc_offset):
