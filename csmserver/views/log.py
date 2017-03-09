@@ -51,6 +51,9 @@ from utils import make_file_writable
 from filters import get_datetime_string
 
 from constants import get_log_directory
+from constants import get_csm_data_directory
+from constants import get_doc_central_directory
+from constants import InstallAction
 
 import os
 import io
@@ -168,10 +171,14 @@ def host_session_log(hostname, table, id):
     db_session = DBSession()
 
     record = None
+    doc_central_log_file_path = ''
+
     if table == 'install_job':
         record = db_session.query(InstallJob).filter(InstallJob.id == id).first()
     elif table == 'install_job_history':
         record = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+
+        doc_central_log_file_path = get_doc_central_log_path(record)
     elif table == 'inventory_job_history':
         record = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
 
@@ -207,7 +214,8 @@ def host_session_log(hostname, table, id):
 
     return render_template('host/session_log.html', hostname=hostname, table=table,
                            record_id=id, file_pairs=file_pairs, log_file_contents=log_file_contents,
-                           is_file=os.path.isfile(log_file_path))
+                           is_file=os.path.isfile(log_file_path),
+                           doc_central_log_file_path=doc_central_log_file_path)
 
 
 @log.route('/api/get_session_logs/table/<table>')
@@ -265,3 +273,23 @@ def host_trace(hostname, table, id):
     return render_template('host/trace.html', hostname=hostname, trace=trace)
 
 
+# This route will prompt a file download
+@log.route('/download_doc_central_log')
+@login_required
+def download_doc_central_log():
+    return send_file(os.path.join(get_doc_central_directory(), request.args.get('file_path')), as_attachment=True)
+
+
+def get_doc_central_log_path(install_job):
+    """
+    This method is used to support SIT Doc Central feature
+    :param install_job: must be an install job history instance
+    :return: The aggregated path
+    """
+    doc_central_log_file_path = ''
+    if install_job.install_action == InstallAction.POST_UPGRADE and not is_empty(install_job.load_data('doc_central_log_file_path')): 
+        path = os.path.join(get_doc_central_directory(), install_job.load_data('doc_central_log_file_path'))
+        if os.path.isfile(path):
+            doc_central_log_file_path = path
+
+    return doc_central_log_file_path

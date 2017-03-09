@@ -24,6 +24,7 @@
 # =============================================================================
 from handlers.loader import get_inventory_handler_class
 from handlers.loader import get_install_handler_class
+from handlers.doc_central import handle_doc_central_logging
 from context import InstallContext
 
 from utils import create_log_directory
@@ -115,7 +116,16 @@ class InstallWorkUnit(WorkUnit):
                     self.get_inventory(ctx, logger)
                 except Exception:
                     pass
+
+                # Support Doc Central feature for SIT team
+                if install_job.install_action == InstallAction.PRE_UPGRADE or \
+                        install_job.install_action == InstallAction.INSTALL_ADD:
+                    install_job.save_data("from_release", ctx.host.software_version)
+
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.COMPLETED, process_name)
+
+                # Support Doc Central feature for SIT team - must be done after archive_install_job.
+                handle_doc_central_logging(ctx, logger)
             else:
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
@@ -164,6 +174,7 @@ class InstallWorkUnit(WorkUnit):
         install_job_history.set_status(job_status)
         install_job_history.session_log = install_job.session_log
         install_job_history.created_by = install_job.created_by
+        install_job_history.data = install_job.data
         install_job_history.trace = trace
 
         if ctx is not None:
