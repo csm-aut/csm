@@ -502,7 +502,7 @@ def get_install_job_info(db_session, install_job, utc_offset):
         row[KEY_START_TIME] = install_job.start_time if install_job.start_time else ""
         row[KEY_STATUS_TIME] = install_job.status_time if install_job.status_time else ""
 
-    row[KEY_SOFTWARE_PACKAGES] = install_job.packages if install_job.packages else ""
+    row[KEY_SOFTWARE_PACKAGES] = install_job.packages.split(',') if install_job.packages else [] 
     row[KEY_STATUS] = install_job.status if install_job.status else JobStatus.SCHEDULED
     row[KEY_TRACE] = install_job.trace if install_job.trace else ""
     row[KEY_CREATED_BY] = install_job.created_by if install_job.created_by else ""
