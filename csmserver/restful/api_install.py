@@ -44,6 +44,7 @@ from api_constants import APIStatus
 
 from utils import is_empty
 
+from sqlalchemy import or_
 from sqlalchemy import and_
 
 from database import DBSession
@@ -386,7 +387,6 @@ def api_get_install_request(request):
     if utc_offset and '-' not in utc_offset and '+' not in utc_offset:
         utc_offset = "+" + utc_offset.strip()
 
-    table_to_query = InstallJob
     if id:
         # Use all() instead of first() so the return is a list type.
         install_jobs = db_session.query(InstallJob).filter(InstallJob.id == id).all()
@@ -395,14 +395,32 @@ def api_get_install_request(request):
             # 1) the install job id may be re-used by other hosts.
             # 2) if the install job was re-submitted.
             install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == id).all()
-            table_to_query = InstallJobHistory
             if not install_jobs:
                 raise ValueError("Install id '{}' does not exist in the database.".format(id))
     else:
+        table_to_query = InstallJob
+        if status:
+            if status not in [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS, JobStatus.FAILED, JobStatus.COMPLETED]:
+                raise ValueError("'{}' is an invalid job status.".format(status))
+
+            if status == JobStatus.SCHEDULED:
+                clauses.append(InstallJob.status == None)
+            elif status == JobStatus.IN_PROGRESS:
+                clauses.append(and_(InstallJob.status != None, InstallJob.status != JobStatus.FAILED))
+            elif status in [JobStatus.COMPLETED, JobStatus.FAILED]:
+                table_to_query = InstallJobHistory
+                clauses.append(InstallJobHistory.status == status)
+        else:
+            # FIXME: Give just the scheduled and failed ones for now (in install_job).
+            clauses.append(or_(InstallJob.status == None, InstallJob.status == JobStatus.FAILED))
+
         if hostname:
             host = get_host(db_session, hostname)
             if host:
-                clauses.append(InstallJob.host_id == host.id)
+                if table_to_query == InstallJob:
+                    clauses.append(InstallJob.host_id == host.id)
+                else:
+                    clauses.append(InstallJobHistory.host_id == host.id)
             else:
                 raise ValueError("Host '{}' does not exist in the database.".format(hostname))
 
@@ -413,16 +431,10 @@ def api_get_install_request(request):
                                       InstallAction.INSTALL_DEACTIVATE]:
                 raise ValueError("'{}' is an invalid install action.".format(install_action))
 
-            clauses.append(InstallJob.install_action == install_action)
-
-        if status:
-            if status not in [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS, JobStatus.FAILED, JobStatus.COMPLETED]:
-                raise ValueError("'{}' is an invalid job status.".format(status))
-
-            clauses.append(InstallJob.status == (None if status == JobStatus.SCHEDULED else status))
-
-        if status == JobStatus.COMPLETED:
-            table_to_query = InstallJobHistory
+            if table_to_query == InstallJob:
+                clauses.append(InstallJob.install_action == install_action)
+            else:
+                clauses.append(InstallJobHistory.install_action == install_action)
 
         if scheduled_time:
             if not utc_offset:
@@ -432,7 +444,11 @@ def api_get_install_request(request):
             try:
                 time = datetime.strptime(scheduled_time, "%m-%d-%Y %I:%M %p")
                 time_utc = get_utc_time(time, utc_offset)
-                clauses.append(InstallJob.scheduled_time >= time_utc)
+
+                if table_to_query == InstallJob:
+                    clauses.append(InstallJob.scheduled_time >= time_utc)
+                else:
+                    clauses.append(InstallJobHistory.scheduled_time >= time_utc)
             except:
                 raise ValueError("Invalid scheduled_time: '{}' must be in 'mm-dd-yyyy hh:mm AM|PM' format.".format(time))
 
@@ -502,7 +518,7 @@ def get_install_job_info(db_session, install_job, utc_offset):
         row[KEY_START_TIME] = install_job.start_time if install_job.start_time else ""
         row[KEY_STATUS_TIME] = install_job.status_time if install_job.status_time else ""
 
-    row[KEY_SOFTWARE_PACKAGES] = install_job.packages.split(',') if install_job.packages else [] 
+    row[KEY_SOFTWARE_PACKAGES] = install_job.packages.split(',') if install_job.packages else []
     row[KEY_STATUS] = install_job.status if install_job.status else JobStatus.SCHEDULED
     row[KEY_TRACE] = install_job.trace if install_job.trace else ""
     row[KEY_CREATED_BY] = install_job.created_by if install_job.created_by else ""
