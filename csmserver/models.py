@@ -731,14 +731,24 @@ class InstallJob(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     modified_time = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_by = Column(String(50))
+    data = Column(JSONEncodedDict, default={})
     
     host_id = Column(Integer, ForeignKey('host.id'))     
     user_id = Column(Integer, ForeignKey('user.id'))
     custom_command_profile_ids = Column(String(20))
 
+    def __init__(self):
+        self.data = {}
+
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        return self.data.get(key)
+
+    def save_data(self, key, value):
+        self.data[key] = value
 
 
 class InstallJobHistory(Base):
@@ -758,12 +768,24 @@ class InstallJobHistory(Base):
     session_log = Column(Text)
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
+    data = Column(JSONEncodedDict, default={})
                             
     host_id = Column(Integer, ForeignKey('host.id'))
+
+    def __init__(self):
+        self.data = {}
     
     def set_status(self, status):
         self.status = status        
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        if not self.data:
+            self.data = {}
+        return self.data.get(key)
+
+    def save_data(self, key, value):
+        self.data[key] = value
 
 
 class Region(Base):

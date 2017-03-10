@@ -432,5 +432,28 @@ def get_build_date():
 
     return None
 
+
+def get_config_value(config_file, section, key):
+    module = import_module('ConfigParser')
+    if module is None:
+        module = import_module('configparser')
+
+    config = module.RawConfigParser()
+    config.read(config_file)
+
+    if not config.has_section(section):
+        return None
+    else:
+        section_dict = dict(config.items(section))
+        if key in section_dict.keys():
+            return section_dict[key]
+        else:
+            return None
+
+
 if __name__ == '__main__':
-    print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))
+    #print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))
+
+    from constants import get_csm_data_directory
+    config_path = os.path.join(get_csm_data_directory(), 'config')
+    print(get_config_value(config_path, 'Doc Central', 'doc_central_support_enabled'))

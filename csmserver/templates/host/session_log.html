@@ -186,6 +186,11 @@
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <div class="panel-title">Session Log Files</div>
+                        {% if doc_central_log_file_path %}
+                        <a href="{{ url_for('log.download_doc_central_log') }}?file_path={{ doc_central_log_file_path }}">
+                            <button id="download-doc-central-log" type="button">Download Log for Doc Central</button>
+                        </a>
+                        {% endif %}
                 </div>
                 <div class="panel-body pull-center">
                     <table  class="table table-striped">
