@@ -728,10 +728,10 @@ class InstallJob(Base):
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     modified_time = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_by = Column(String(50))
-    data = Column(JSONEncodedDict, default={})
     
     host_id = Column(Integer, ForeignKey('host.id'))     
     user_id = Column(Integer, ForeignKey('user.id'))
@@ -766,9 +766,9 @@ class InstallJobHistory(Base):
     trace = Column(Text)
     install_job_id = Column(Integer, index=True, unique=False)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(50))
-    data = Column(JSONEncodedDict, default={})
                             
     host_id = Column(Integer, ForeignKey('host.id'))
 
