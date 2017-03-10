@@ -64,7 +64,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                     # asr9k-mgbl-px.pie-5.3.3, hfr-mgbl-px.pie-5.3.3
                     target_list.append('{}-px.pie-{}'.format(package_name, target_version))
 
-        elif software_platform in PlatformFamily.NCS6K:
+        elif software_platform in [PlatformFamily.NCS6K, PlatformFamily.NCS4K]:
             match = re.search('-\d+\.\d+\.\d+', host_package)
             if not match:
                 continue
@@ -73,16 +73,20 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
             if match_internal_name:
                 if '-xr-' in host_package:
                     # ncs6k-mgbl-5.2.4
+                    # ncs4k-mgbl-6.0.2
                     target_list.append('{}-{}'.format(family.lower() + '-mini-x', target_version))
                 else:
                     # ncs6k-mini-x-5.2.4
+                    # ncs4k-mini-x-6.0.2
                     target_list.append('{}-{}'.format(package_name, target_version))
             else:
                 if '-xr-' in host_package:
                     # ncs6k-mini-x.iso-5.2.4
+                    # ncs4k-mini-x.iso-6.0.2
                     target_list.append('ncs6k-mini-x.iso-{}'.format(target_version))
                 else:
                     # ncs6k-mgbl.pkg-5.2.4
+                    # ncs4k-mgbl.pkg-6.0.2
                     target_list.append('{}.pkg-{}'.format(package_name, target_version))
 
         elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
@@ -130,6 +134,7 @@ def is_file_acceptable_for_install_add(filename):
     """
     ASR9K, CRS: .pie, .tar
     NCS6K: .smu, .iso, .pkg, .tar
+    NCS4K: .iso .pkg
     ASR9K-64: .iso, .rpm, .tar
     ASR900: .bin
     """

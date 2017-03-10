@@ -90,6 +90,7 @@ class PlatformFamily:
     ASR900 = 'ASR900'
     CRS = 'CRS'
     NCS1K = 'NCS1K'
+    NCS4K = 'NCS4K'
     NCS5K = 'NCS5K'
     NCS5500 = 'NCS5500'
     NCS6K = 'NCS6K'
