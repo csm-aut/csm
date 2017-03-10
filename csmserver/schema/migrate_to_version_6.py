@@ -38,6 +38,8 @@ sql_statements = [
     'alter table conformance_report_entry change software software_version VARCHAR(20)',
     'alter table system_option add ldap_default_user_privilege VARCHAR(20) default "Viewer"',
     'alter table install_job change column custom_command_profile_id custom_command_profile_ids VARCHAR(20)',
+    'alter table install_job add data TEXT',
+    'alter table install_job_history add data TEXT',
     ]
 
 
