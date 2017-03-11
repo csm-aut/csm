@@ -574,7 +574,7 @@ def api_get_last_successful_inventory_elapsed_time(hostname):
 
     return jsonify(**{'data': [
         {'last_successful_inventory_elapsed_time': get_last_successful_inventory_elapsed_time(host),
-         'status': host.inventory_job[0].status}
+         'inventory_retrieval_status': host.inventory_job[0].status}
     ]})
 
 

@@ -259,7 +259,7 @@ def delete_all_scheduled_installations_for_host(hostname):
     return delete_all_installations_for_host(hostname)
 
 
-def delete_all_installations_for_host(hostname, status=None):
+def delete_all_installations_for_host(hostname, status=JobStatus.SCHEDULED):
     if not can_delete_install(current_user):
         abort(401)
 
@@ -297,8 +297,8 @@ def get_inventory(hostname):
 
     host = get_host(db_session, hostname)
     if host is not None:
-        if not host.inventory_job[0].request_update:
-            host.inventory_job[0].request_update = True
+        if host.inventory_job[0].status not in [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS]:
+            host.inventory_job[0].status = JobStatus.SCHEDULED
             db_session.commit()
             return jsonify({'status': 'OK'})
 

@@ -25,6 +25,7 @@
 import datetime
 
 from database import DBSession
+from sqlalchemy import or_
 from sqlalchemy import and_
 
 from models import InstallJob
@@ -63,24 +64,26 @@ class SoftwareManager(JobManager):
                 return
                 
             install_jobs = db_session.query(InstallJob).filter(
-                InstallJob.scheduled_time <= datetime.datetime.utcnow()).order_by(InstallJob.scheduled_time.asc()).all()
+                and_(InstallJob.scheduled_time <= datetime.datetime.utcnow()),
+                or_(InstallJob.status == JobStatus.SCHEDULED, InstallJob.status == JobStatus.IN_PROGRESS)).\
+                order_by(InstallJob.scheduled_time.asc(), InstallJob.id.asc()).all()
+
             download_job_key_dict = get_download_job_key_dict()
 
             if len(install_jobs) > 0:
                 for install_job in install_jobs:
-                    if install_job.status != JobStatus.FAILED:
-                        # If there is pending download, don't submit the install job
-                        if self.is_pending_on_download(download_job_key_dict, install_job):
+                    # If there is pending download, don't submit the install job
+                    if self.is_pending_on_download(download_job_key_dict, install_job):
+                        continue
+
+                    # This install job has a dependency, check if the expected criteria is met
+                    if install_job.dependency is not None:
+                        dependency_completed = self.get_install_job_dependency_completed(db_session, install_job)
+                        # If the dependency has not been completed, don't proceed
+                        if len(dependency_completed) == 0:
                             continue
 
-                        # This install job has a dependency, check if the expected criteria is met
-                        if install_job.dependency is not None:
-                            dependency_completed = self.get_install_job_dependency_completed(db_session, install_job)
-                            # If the dependency has not been completed, don't proceed
-                            if len(dependency_completed) == 0:
-                                continue
-
-                        self.submit_job(InstallWorkUnit(install_job.host_id, install_job.id))
+                    self.submit_job(InstallWorkUnit(install_job.host_id, install_job.id))
 
         except Exception:
             # print(traceback.format_exc())

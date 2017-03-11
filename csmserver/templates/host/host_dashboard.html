@@ -145,7 +145,7 @@
                     var icon_html = '';
                     if (status == 'failed') {
                         icon_html = '<img src=\"{{ url_for('static', filename='error.png') }}\" title="Install Error - Click to View Session Log">';
-                    } else if (status != null) {
+                    } else if (status == 'in-progress') {
                         icon_html = '<img src=\"{{ url_for('static', filename='spinner.gif') }}\" title="In Progress - Click to View Session Log">';
                     }
 
@@ -405,7 +405,10 @@
                             url: retrieve_software_url,
                             success: function(response) {
                                 if (response.status == 'OK') {
-                                    window.location = return_url;
+                                    var last_successful_inventory_elapsed_time = $('#last_successful_inventory_elapsed_time').html();
+                                    last_successful_inventory_elapsed_time =
+                                        (last_successful_inventory_elapsed_time + '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">');
+                                    $('#last_successful_inventory_elapsed_time').html(last_successful_inventory_elapsed_time)
                                 } else {
                                     bootbox.alert('<img src=\"{{ url_for('static', filename='error.png') }}\">A similar request may be in progress or you are not an authorized user.');
                                 }
@@ -464,18 +467,15 @@
                         $('#host-info-table').html(html);
 
                         last_successful_inventory_elapsed_time = element[0].last_successful_inventory_elapsed_time;
-
-                        if (last_successful_inventory_elapsed_time.indexOf("Pending") > -1) {
-                            $('#last_successful_inventory_elapsed_time').html(
-                                '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">' + last_successful_inventory_elapsed_time);
+                        if (element[0].status == 'scheduled' || element[0].status == 'in-progress') {
+                            last_successful_inventory_elapsed_time =
+                                (last_successful_inventory_elapsed_time + '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">');
+                        } else if (element[0].status == 'failed') {
+                            $('#last_successful_inventory_elapsed_time').css('color', 'red');
                         } else {
-                            if (element[0].status == 'failed') {
-                                $('#last_successful_inventory_elapsed_time').css('color', 'red');
-                            } else {
-                                $('#last_successful_inventory_elapsed_time').removeAttr('style');
-                            }
-                            $('#last_successful_inventory_elapsed_time').html(last_successful_inventory_elapsed_time);
+                            $('#last_successful_inventory_elapsed_time').removeAttr('style');
                         }
+                        $('#last_successful_inventory_elapsed_time').html(last_successful_inventory_elapsed_time);
 
                         new_last_successful_inventory_time = element[0].last_successful_inventory_time;
                         if (new_last_successful_inventory_time != last_successful_inventory_time) {

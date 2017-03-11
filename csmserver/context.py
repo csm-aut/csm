@@ -153,7 +153,7 @@ class InventoryContext(ConnectionContext):
     def post_status(self, message):
         if self.db_session is not None and self.inventory_job is not None:
             try:
-                self.inventory_job.set_status(message)
+                self.inventory_job.set_status_message(message)
                 self.db_session.commit()
             except Exception:
                 self.db_session.rollback()
@@ -291,7 +291,7 @@ class InstallContext(ConnectionContext):
     def post_status(self, message):
         if self.db_session is not None and self.install_job is not None:
             try:
-                self.install_job.set_status(message)
+                self.install_job.set_status_message(message)
                 self.db_session.commit()
             except Exception:
                 self.db_session.rollback()

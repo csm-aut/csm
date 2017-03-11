@@ -97,7 +97,11 @@ def get_download_job_json_dict(db_session, download_jobs):
             else:
                 row['server_repository'] = UNKNOWN
 
-            row['status'] = download_job.status
+            if download_job.status == JobStatus.IN_PROGRESS:
+                row['status'] = download_job.status_message
+            else:
+                row['status'] = download_job.status
+
             row['status_time'] = download_job.status_time
             row['created_by'] = download_job.created_by
 
@@ -238,7 +242,8 @@ def resubmit_download_job(id):
 
     try:
         # Download jobs that are in progress cannot be deleted.
-        download_job.status = None
+        download_job.status = JobStatus.SCHEDULED
+        download_job.status_message = None
         download_job.status_time = None
         db_session.commit()
 
