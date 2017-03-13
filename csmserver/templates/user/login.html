@@ -7,8 +7,10 @@
     $(function() {
         var current_form = null;
 
-        // initial home menu page upon login every time
-        sessionStorage.setItem('menu_selection', 'menu-option-1');
+        if (typeof(sessionStorage) !== "undefined") {
+            // initial home menu page upon login every time
+            sessionStorage.setItem('menu_selection', 'menu-option-1');
+        }
 
         // initialize the show/hide password widget
         $('#password').password();
