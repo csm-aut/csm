@@ -755,9 +755,11 @@ class InstallJob(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return self.data.get(key)
+        return {} if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
         self.data[key] = value
 
 
@@ -790,11 +792,11 @@ class InstallJobHistory(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        if not self.data:
-            self.data = {}
-        return self.data.get(key)
+        return {} if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
         self.data[key] = value
 
 
