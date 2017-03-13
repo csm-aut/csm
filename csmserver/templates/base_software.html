@@ -77,7 +77,7 @@
         $('#search-host-selector').on('change', function(e) {
             var host = $(this).val();
             window.location = "/host_dashboard/hosts/" + host + "/"
-            $.cookie('menu_selection', 'null', { path: '/' });
+            sessionStorage.setItem('menu_selection', '');
         });
 
         function create_dropdown_menu_for_cco() {
@@ -116,32 +116,39 @@
 
         create_dropdown_menu_for_cco();
 
-        var menu_selection = $.cookie('menu_selection');
+        var menu_selection = sessionStorage.menu_selection;
 
         if (menu_selection == undefined) {
             menu_selection = 'menu-option-1';
-        }
-        var current_active_menu_link = $('.menu li.active');
-        if (current_active_menu_link.attr('id') != menu_selection) {
-            current_active_menu_link.removeClass('active');
-            if (menu_selection != 'null') {
-                $('#' + menu_selection).addClass('active');
-            }
+            sessionStorage.setItem('menu_selection', menu_selection);
         }
 
+        function highlight_active_menu_link(menu_selection) {
+            var current_active_menu_link = $('.menu li.active');
+            if (current_active_menu_link.attr('id') != menu_selection) {
+                if (current_active_menu_link) {
+                    current_active_menu_link.removeClass('active');
+                }
+                if (menu_selection) {
+                    $('#' + menu_selection).addClass('active');
+                }
+            }
+        }
+        highlight_active_menu_link(menu_selection);
+
         $('.menu li').on('click', 'a', function() {
-            $.cookie('menu_selection', $(this).parents('li').last().attr('id'), { path: '/' });
+            sessionStorage.setItem('menu_selection', $(this).parents('li').last().attr('id'));
         });
 
         function show_or_hide_navbar_menu() {
-            if ($.cookie("inventory-nav-visibility") == '1') {
-                $('#checkmark-inventory-menu').css('visibility', "visible");
-                $('#nav-inventory').css('visibility', "visible");
-                $('#nav-inventory').css('margin-bottom', "40px");
-            } else {
+            if ($.cookie("inventory-nav-visibility") == '0') {
                 $('#checkmark-inventory-menu').css('visibility', "hidden");
                 $('#nav-inventory').css('visibility', "hidden");
                 $('#nav-inventory').css('margin-bottom', "0px");
+            } else {
+                $('#checkmark-inventory-menu').css('visibility', "visible");
+                $('#nav-inventory').css('visibility', "visible");
+                $('#nav-inventory').css('margin-bottom', "40px");
             }
         }
         show_or_hide_navbar_menu();
@@ -149,10 +156,10 @@
         $('#navbar-menus li').on('click', 'a', function() {
             if ($(this).attr('id') == 'inventory-menu') {
                 var cookie_val = $.cookie("inventory-nav-visibility");
-                if (cookie_val == '1') {
-                    cookie_val = '0';
+                if (cookie_val == '0') {
+                    cookie_val = '1';
                 } else {
-                    cookie_val = '1'; // not only for cookie value of 0, but also for potential recovery in case cookie value is missing
+                    cookie_val = '0'; // if cookie value of 1 or undefined, in both cases, toolbar should have been showing
                 }
                 $.cookie("inventory-nav-visibility", cookie_val, { path: '/' });
                 show_or_hide_navbar_menu();

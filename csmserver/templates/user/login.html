@@ -7,9 +7,8 @@
     $(function() {
         var current_form = null;
 
-        // initial menu settings upon login every time
-        $.cookie('menu_selection', 'menu-option-1', { path: '/' });
-        $.cookie("inventory-nav-visibility", 1, { path: '/' });
+        // initial home menu page upon login every time
+        sessionStorage.setItem('menu_selection', 'menu-option-1');
 
         // initialize the show/hide password widget
         $('#password').password();
