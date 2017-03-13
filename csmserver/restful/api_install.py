@@ -404,9 +404,9 @@ def api_get_install_request(request):
                 raise ValueError("'{}' is an invalid job status.".format(status))
 
             if status == JobStatus.SCHEDULED:
-                clauses.append(InstallJob.status == None)
+                clauses.append(InstallJob.status == JobStatus.SCHEDULED)
             elif status == JobStatus.IN_PROGRESS:
-                clauses.append(and_(InstallJob.status != None, InstallJob.status != JobStatus.FAILED))
+                clauses.append(InstallJob.status == JobStatus.IN_PROGRESS)
             elif status in [JobStatus.COMPLETED, JobStatus.FAILED]:
                 table_to_query = InstallJobHistory
                 clauses.append(InstallJobHistory.status == status)
@@ -551,7 +551,7 @@ def api_delete_install_job(request):
             if status not in [JobStatus.SCHEDULED, JobStatus.FAILED]:
                 raise ValueError("Invalid value for status: must be 'failed' or 'scheduled'.")
 
-            clauses.append(InstallJob.status == (None if status == JobStatus.SCHEDULED else status))
+            clauses.append(InstallJob.status == status)
 
         install_jobs = get_install_jobs(InstallJob, db_session, clauses)
 
@@ -569,7 +569,7 @@ def api_delete_install_job(request):
                 row[KEY_HOSTNAME] = host.hostname
 
             # Only scheduled and failed jobs are deletable.
-            if install_job.status is None or install_job.status == JobStatus.FAILED:
+            if install_job.status == JobStatus.SCHEDULED or install_job.status == JobStatus.FAILED:
                 db_session.delete(install_job)
 
                 # If hostname is not specified, go ahead and delete all the install job's dependencies.

@@ -108,19 +108,22 @@
 
                             $('#last-successful-retrieval').text(elapsed_time);
 
-                            if (elapsed_time.indexOf('Pending') == -1) {
-                                host_software_dialog_spinner.hide();
-                                if (element[0].status == 'failed') {
-                                    $('#last-successful-retrieval').css({'color': 'red'});
+                            host_software_dialog_spinner.hide();
 
-                                } else if (element[0].status == 'completed') {
-                                    $('#last-successful-retrieval').removeAttr('style');
-                                    if (reload_page_after_done) {
-                                        $('#hidden_submit_sn').val('True');
-                                        $('#sn_form').submit();
-                                    }
+                            if (element[0].inventory_retrieval_status == 'failed') {
+                                $('#last-successful-retrieval').css({'color': 'red'});
+
+                            } else if (element[0].inventory_retrieval_status == 'completed') {
+                                $('#last-successful-retrieval').removeAttr('style');
+                                if (reload_page_after_done) {
+                                    $('#hidden_submit_sn').val('True');
+                                    $('#sn_form').submit();
                                 }
-                            } else {
+                            }
+
+                            if (element[0].inventory_retrieval_status == 'scheduled' ||
+                                element[0].inventory_retrieval_status == 'in-progress') {
+
                                 host_software_dialog_spinner.show();
                                 $('#last-successful-retrieval').removeAttr('style');
                             }

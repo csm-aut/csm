@@ -57,7 +57,7 @@ class DownloadWorkUnit(WorkUnit):
     def progress_listener(self, message):
         try:
             if self.download_job is not None and self.db_session is not None:
-                self.download_job.set_status(message)
+                self.download_job.set_status_message(message)
                 self.db_session.commit()
         except Exception:
             pass
@@ -94,7 +94,7 @@ class DownloadWorkUnit(WorkUnit):
                                         MDF_ID=self.download_job.mdf_id,
                                         software_type_ID=self.download_job.software_type_id)
 
-                self.download_job.set_status('Preparing to download from cisco.com.')
+                self.download_job.set_status_message('Preparing to download from cisco.com.')
                 db_session.commit()
 
                 bsd.download(output_file_path, callback=self.progress_listener)
@@ -104,7 +104,7 @@ class DownloadWorkUnit(WorkUnit):
                 tarfile_file_list = get_tarfile_file_list(output_file_path)
 
             # Now transfers to the server repository
-            self.download_job.set_status('Transferring file to server repository.')
+            self.download_job.set_status_message('Transferring file to server repository.')
             db_session.commit()
 
             server = db_session.query(Server).filter(Server.id == self.download_job.server_id).first()
@@ -140,7 +140,6 @@ class DownloadWorkUnit(WorkUnit):
                 return True
         except Exception:
             return False
-
 
     def archive_download_job(self, db_session, download_job, job_status, trace=None):
         download_job.set_status(job_status)

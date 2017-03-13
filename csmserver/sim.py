@@ -22,9 +22,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from sqlalchemy import or_
 from database import DBSession
 from models import logger
 from models import InventoryJob
+
+from constants import JobStatus
 
 from multi_process import JobManager
 from work_units.inventory_work_unit import InventoryWorkUnit
@@ -37,7 +40,8 @@ class InventoryManager(JobManager):
     def dispatch(self):
         db_session = DBSession()
         try:
-            inventory_jobs = db_session.query(InventoryJob).filter(InventoryJob.request_update == True).all()
+            inventory_jobs = db_session.query(InventoryJob).filter(
+                or_(InventoryJob.status == JobStatus.SCHEDULED, InventoryJob.status == JobStatus.IN_PROGRESS)).all()
 
             if len(inventory_jobs) > 0:
                 for inventory_job in inventory_jobs:

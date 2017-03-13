@@ -24,7 +24,11 @@
 # =============================================================================
 from schema.base import BaseMigrate
 from database import DBSession
-from constants import UserPrivilege
+
+from models import InstallJob
+from models import InventoryJob
+from models import DownloadJob
+from constants import JobStatus
 
 sql_statements = [
     'alter table host add location VARCHAR(100)',
@@ -40,6 +44,15 @@ sql_statements = [
     'alter table install_job change column custom_command_profile_id custom_command_profile_ids VARCHAR(20)',
     'alter table install_job add data TEXT',
     'alter table install_job_history add data TEXT',
+    'alter table install_job modify status VARCHAR(20)',
+    'alter table install_job add status_message VARCHAR(200)',
+    'alter table install_job_history modify status VARCHAR(20)',
+    'alter table inventory_job modify status VARCHAR(20)',
+    'alter table inventory_job add status_message VARCHAR(200)',
+    'alter table inventory_job_history modify status VARCHAR(20)',
+    'alter table download_job modify status VARCHAR(20)',
+    'alter table download_job add status_message VARCHAR(200)',
+    'alter table download_job_history modify status VARCHAR(20)',
     ]
 
 
@@ -49,6 +62,40 @@ class SchemaMigrate(BaseMigrate):
 
     def start(self):
         db_session = DBSession()
+
+        try:
+            # Update existing scheduled job status
+            inventory_jobs = db_session.query(InventoryJob)
+            for inventory_job in inventory_jobs:
+                if inventory_job.status == None:
+                    inventory_job.status = JobStatus.SCHEDULED
+
+            db_session.commit()
+        except Exception as e:
+            pass
+
+        try:
+            # Update existing scheduled job status
+            download_jobs = db_session.query(DownloadJob)
+            for download_job in download_jobs:
+                if download_job.status == None:
+                    download_job.status = JobStatus.SCHEDULED
+
+            db_session.commit()
+        except Exception as e:
+            pass
+
+        try:
+            # Update existing scheduled job status
+            install_jobs = db_session.query(InstallJob)
+            for install_job in install_jobs:
+                if install_job.status == None:
+                    install_job.status = JobStatus.SCHEDULED
+
+            db_session.commit()
+        except Exception as e:
+            pass
+
         for sql in sql_statements:
             try:
                 db_session.execute(sql)

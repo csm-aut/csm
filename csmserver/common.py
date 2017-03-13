@@ -273,11 +273,8 @@ def get_last_successful_inventory_elapsed_time(host):
     if host:
         # Last inventory successful time
         inventory_job = host.inventory_job[0]
-        if inventory_job.request_update:
-            return 'Pending Retrieval'
-        else:
-            if inventory_job.last_successful_time:
-                return time_difference_UTC(inventory_job.last_successful_time)
+        if inventory_job and inventory_job.last_successful_time:
+            return time_difference_UTC(inventory_job.last_successful_time)
 
     return ''
 
@@ -502,7 +499,7 @@ def create_or_update_host(db_session, hostname, region_id, location, roles, soft
     """ Create a new host in the Database """
     if host is None:
         host = Host(created_by=created_by)
-        host.inventory_job.append(InventoryJob())
+        host.inventory_job.append(InventoryJob(status=JobStatus.SCHEDULED))
         host.context.append(HostContext())
         db_session.add(host)
 
@@ -797,7 +794,8 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
         install_job.custom_command_profile_ids = ','.join(custom_command_profile_ids) if custom_command_profile_ids else None
 
     # Resets the following fields
-    install_job.status = None
+    install_job.status = JobStatus.SCHEDULED
+    install_job.status_message = None
     install_job.status_time = None
     install_job.session_log = None
     install_job.trace = None
@@ -849,6 +847,7 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
                     cco_filename=cco_filename,
                     pid=smu_meta.pid,
                     mdf_id=smu_meta.mdf_id,
+                    status=JobStatus.SCHEDULED,
                     software_type_id=software_type_id,
                     server_id=server_id,
                     server_directory=server_directory,

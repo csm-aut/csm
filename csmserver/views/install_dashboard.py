@@ -193,7 +193,11 @@ def get_install_job_json_dict(install_jobs):
                 row['server_directory'] = install_job.server_directory
                 row['user_id'] = install_job.user_id
 
-            row['status'] = install_job.status
+            if install_job.status == JobStatus.IN_PROGRESS:
+                row['status'] = install_job.status_message
+            else:
+                row['status'] = install_job.status
+
             row['status_time'] = install_job.status_time
             row['created_by'] = install_job.created_by
 

@@ -94,7 +94,9 @@ class Scheduler(threading.Thread):
 
                 if len(inventory_jobs) > 0:
                     for inventory_job in inventory_jobs:
-                        inventory_job.request_update = True
+                        if inventory_job.status not in [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS]:
+                            inventory_job.status = JobStatus.SCHEDULED
+
                     db_session.commit()
                         
             # Check if there is any housekeeping work to do
@@ -221,7 +223,7 @@ class Scheduler(threading.Thread):
         try:
             create_tar_jobs = db_session.query(CreateTarJob).all()
             for create_tar_job in create_tar_jobs:
-                if create_tar_job.status == JobStatus.COMPLETED or create_tar_job.status == JobStatus.FAILED:
+                if create_tar_job.status in [JobStatus.FAILED, JobStatus.COMPLETED]:
                     db_session.delete(create_tar_job)
 
             db_session.commit()
@@ -234,7 +236,7 @@ class Scheduler(threading.Thread):
         try:
             convert_config_jobs = db_session.query(ConvertConfigJob).all()
             for convert_config_job in convert_config_jobs:
-                if convert_config_job.status == JobStatus.COMPLETED or convert_config_job.status == JobStatus.FAILED:
+                if convert_config_job.status in [JobStatus.FAILED, JobStatus.COMPLETED]:
                     db_session.delete(convert_config_job)
 
             db_session.commit()

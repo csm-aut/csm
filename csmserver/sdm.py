@@ -42,9 +42,8 @@ class DownloadManager(JobManager):
  
         try:
             download_jobs = db_session.query(DownloadJob).all()
-         
             for download_job in download_jobs:
-                if download_job.status != JobStatus.FAILED:
+                if download_job.status in [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS]:
                     self.submit_job(DownloadWorkUnit(download_job.id, download_job.cco_filename))
 
         except Exception:

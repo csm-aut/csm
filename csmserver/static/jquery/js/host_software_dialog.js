@@ -153,16 +153,17 @@ function refresh_host_software(hostname) {
                 var elapsed_time = element[0].last_successful_inventory_elapsed_time;
                 
                 $('#host_software_dialog_last_successful_inventory_elapsed_time').val(elapsed_time);
-                if (element[0].status == 'failed') {
+                if (element[0].inventory_retrieval_status == 'failed') {
                     $('#host_software_dialog_last_successful_inventory_elapsed_time').css({'color' : 'red'});
                 } else {
                     $('#host_software_dialog_last_successful_inventory_elapsed_time').removeAttr('style');
                 }   
-                
-                if (elapsed_time.indexOf('Pending') == -1) {
-                    host_software_dialog_spinner.hide();  
+
+                if (element[0].inventory_retrieval_status == 'scheduled' ||
+                    element[0].inventory_retrieval_status == 'in-progress') {
+                    host_software_dialog_spinner.show();
                 } else {
-                    host_software_dialog_spinner.show(); 
+                    host_software_dialog_spinner.hide();
                 }                     
             });
         }

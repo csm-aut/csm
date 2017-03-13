@@ -653,8 +653,8 @@ class InventoryJob(Base):
     __tablename__ = 'inventory_job'
     
     id = Column(Integer, primary_key=True)
-    request_update = Column(Boolean, default=True)
-    status = Column(String(200))
+    status = Column(String(20))
+    status_message = Column(String(200))
     status_time = Column(DateTime) 
     last_successful_time = Column(DateTime)
     session_log = Column(Text)
@@ -667,13 +667,18 @@ class InventoryJob(Base):
         self.status_time = datetime.datetime.utcnow()
         if self.status == JobStatus.COMPLETED:
             self.last_successful_time = self.status_time
+            self.status_message = None
+
+    def set_status_message(self, status_message):
+        self.status_message = status_message
+        self.status_time = datetime.datetime.utcnow()
 
 
 class InventoryJobHistory(Base):
     __tablename__ = 'inventory_job_history'
     
     id = Column(Integer, primary_key=True)
-    status = Column(String(200))
+    status = Column(String(20))
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
@@ -724,7 +729,8 @@ class InstallJob(Base):
     pending_downloads = Column(Text)
     scheduled_time = Column(DateTime)
     start_time = Column(DateTime)
-    status = Column(String(200))
+    status = Column(String(20))
+    status_message = Column(String(200))
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
@@ -744,10 +750,16 @@ class InstallJob(Base):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
 
+    def set_status_message(self, status_message):
+        self.status_message = status_message
+        self.status_time = datetime.datetime.utcnow()
+
     def load_data(self, key):
-        return self.data.get(key)
+        return {} if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
         self.data[key] = value
 
 
@@ -780,11 +792,11 @@ class InstallJobHistory(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        if not self.data:
-            self.data = {}
-        return self.data.get(key)
+        return {} if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
         self.data[key] = value
 
 
@@ -890,7 +902,8 @@ class DownloadJob(Base):
     software_type_id = Column(String(20))
     server_id = Column(Integer)
     server_directory = Column(String(300))
-    status = Column(String(200))
+    status = Column(String(20))
+    status_message = Column(String(200))
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
@@ -903,6 +916,9 @@ class DownloadJob(Base):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
 
+    def set_status_message(self, status_message):
+        self.status_message = status_message
+        self.status_time = datetime.datetime.utcnow()
 
 class DownloadJobHistory(Base):
     __tablename__ = 'download_job_history'
@@ -915,7 +931,7 @@ class DownloadJobHistory(Base):
     software_type_id = Column(String(20))
     server_id = Column(Integer)
     server_directory = Column(String(300))
-    status = Column(String(200))
+    status = Column(String(20))
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)

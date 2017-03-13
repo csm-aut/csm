@@ -298,8 +298,8 @@ def api_get_scheduled_install_jobs():
     query = db_session.query(InstallJob)\
         .join(Host, Host.id == InstallJob.host_id)
 
-    total_count = query.filter(InstallJob.status == None).count()
-    filtered_count = query.filter(and_(InstallJob.status == None), or_(*clauses)).count()
+    total_count = query.filter(InstallJob.status == JobStatus.SCHEDULED).count()
+    filtered_count = query.filter(and_(InstallJob.status == JobStatus.SCHEDULED), or_(*clauses)).count()
 
     columns = [getattr(Host.hostname, dt_params.sort_order)(),
                getattr(InstallJob.install_action, dt_params.sort_order)(),
@@ -310,7 +310,7 @@ def api_get_scheduled_install_jobs():
                '']
 
     install_jobs = query.order_by(columns[dt_params.column_order])\
-        .filter(and_(InstallJob.status == None), or_(*clauses))\
+        .filter(and_(InstallJob.status == JobStatus.SCHEDULED), or_(*clauses))\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
 
     response = dict()
@@ -342,8 +342,8 @@ def api_get_in_progress_install_jobs():
     query = db_session.query(InstallJob)\
         .join(Host, Host.id == InstallJob.host_id)
 
-    total_count = query.filter(and_(InstallJob.status != None, InstallJob.status != JobStatus.FAILED)).count()
-    filtered_count = query.filter(and_(InstallJob.status != None, InstallJob.status != JobStatus.FAILED), or_(*clauses)).count()
+    total_count = query.filter(InstallJob.status == JobStatus.IN_PROGRESS).count()
+    filtered_count = query.filter(and_(InstallJob.status == JobStatus.IN_PROGRESS), or_(*clauses)).count()
 
     columns = [getattr(Host.hostname, dt_params.sort_order)(),
                getattr(InstallJob.install_action, dt_params.sort_order)(),
@@ -355,7 +355,7 @@ def api_get_in_progress_install_jobs():
                getattr(InstallJob.created_by, dt_params.sort_order)()]
 
     install_jobs = query.order_by(columns[dt_params.column_order])\
-        .filter(and_(InstallJob.status != None, InstallJob.status != JobStatus.FAILED), or_(*clauses))\
+        .filter(and_(InstallJob.status == JobStatus.IN_PROGRESS), or_(*clauses))\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
 
     response = dict()
@@ -472,8 +472,8 @@ def api_get_scheduled_download_jobs():
 
     query = db_session.query(DownloadJob)
 
-    total_count = query.filter(DownloadJob.status == None).count()
-    filtered_count = query.filter(and_(DownloadJob.status == None), or_(*clauses)).count()
+    total_count = query.filter(DownloadJob.status == JobStatus.SCHEDULED).count()
+    filtered_count = query.filter(and_(DownloadJob.status == JobStatus.SCHEDULED), or_(*clauses)).count()
 
     columns = [getattr(DownloadJob.cco_filename, dt_params.sort_order)(),
                getattr(DownloadJob.scheduled_time, dt_params.sort_order)(),
@@ -481,7 +481,7 @@ def api_get_scheduled_download_jobs():
                getattr(DownloadJob.created_by, dt_params.sort_order)()]
 
     download_jobs = query.order_by(columns[dt_params.column_order])\
-        .filter(and_(DownloadJob.status == None), or_(*clauses))\
+        .filter(and_(DownloadJob.status == JobStatus.SCHEDULED), or_(*clauses))\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
 
     response = dict()
@@ -510,8 +510,8 @@ def api_get_in_progress_download_jobs():
 
     query = db_session.query(DownloadJob)
 
-    total_count = query.filter(and_(DownloadJob.status != None, DownloadJob.status != JobStatus.FAILED)).count()
-    filtered_count = query.filter(and_(DownloadJob.status != None, DownloadJob.status != JobStatus.FAILED),
+    total_count = query.filter(and_(DownloadJob.status == JobStatus.IN_PROGRESS)).count()
+    filtered_count = query.filter(and_(DownloadJob.status == JobStatus.IN_PROGRESS),
                                   or_(*clauses)).count()
 
     columns = [getattr(DownloadJob.cco_filename, dt_params.sort_order)(),
@@ -522,7 +522,7 @@ def api_get_in_progress_download_jobs():
                getattr(DownloadJob.created_by, dt_params.sort_order)()]
 
     download_jobs = query.order_by(columns[dt_params.column_order])\
-        .filter(and_(DownloadJob.status != None, DownloadJob.status != JobStatus.FAILED), or_(*clauses))\
+        .filter(and_(DownloadJob.status == JobStatus.IN_PROGRESS), or_(*clauses))\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
 
     response = dict()
