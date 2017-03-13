@@ -42,10 +42,7 @@ from models import DownloadJob
 from models import DownloadJobHistory
 
 from constants import UNKNOWN
-from constants import NAME_CSM
-from constants import NAME_CSMSERVER
-from constants import NAME_CSM_DATA
-from constants import NAME_REPOSITORY
+from constants import DIRECTORY_REPOSITORY
 from constants import JobStatus
 from constants import UserPrivilege
 from constants import get_repository_directory
@@ -69,12 +66,8 @@ def home():
     if not can_install(current_user):
         abort(401)
 
-    absolute_path = os.path.abspath('.')
-    csm_repository_path = absolute_path.replace(NAME_CSM + '/' + NAME_CSMSERVER,
-                                                NAME_CSM_DATA + '/' + NAME_REPOSITORY)
-
     return render_template('host/download_dashboard.html',
-                           csm_repository_path=csm_repository_path,
+                           csm_repository_path=os.path.abspath(DIRECTORY_REPOSITORY),
                            system_option=SystemOption.get(DBSession()))
 
 
