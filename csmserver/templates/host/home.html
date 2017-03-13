@@ -176,15 +176,12 @@
                 "targets": 6,
                 "data": 'last_successful_retrieval',
                 "render": function(data, type, row) {
-                    if (row['inventory_retrieval_status'] == 'failed') {
+                    if (row['inventory_retrieval_status'] == 'in-progress') {
+                        return data + '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">';
+                    } else if (row['inventory_retrieval_status'] == 'failed') {
                         return '<span style="color:red;">' + data + '</span>';
-                    } else {
-                        if (row['inventory_retrieval_status'] == 'scheduled' ||
-                            row['inventory_retrieval_status'] == 'in-progress') {
-                           data = data + '<img src=\"{{ url_for('static', filename='spinner.gif') }}\">';
-                        }
-                        return data;
                     }
+                    return data
                 }
             }, {
                 "targets": 7,
