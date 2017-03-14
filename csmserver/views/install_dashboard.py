@@ -86,13 +86,14 @@ def api_delete_all_scheduled_installations():
     return delete_all_installations()
 
 
-def delete_all_installations(status=None):
+def delete_all_installations(status=JobStatus.SCHEDULED):
     db_session = DBSession()
 
     try:
         install_jobs = db_session.query(InstallJob).filter(InstallJob.status == status)
         for install_job in install_jobs:
             db_session.delete(install_job)
+
             if status == JobStatus.FAILED:
                 delete_install_job_dependencies(db_session, install_job.id)
 
