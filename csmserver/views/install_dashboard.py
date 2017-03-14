@@ -118,8 +118,9 @@ def api_delete_install_job(id):
 
     try:
         # Install jobs that are in progress cannot be deleted.
-        if install_job.status is None or install_job.status == JobStatus.FAILED:
+        if install_job.status in [JobStatus.SCHEDULED, JobStatus.FAILED]:
             db_session.delete(install_job)
+
         delete_install_job_dependencies(db_session, install_job.id)
 
         db_session.commit()
