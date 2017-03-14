@@ -91,7 +91,6 @@ def delete_all_installations(status):
 
     try:
         install_jobs = db_session.query(InstallJob).filter(InstallJob.status == status)
-        print(install_jobs)
         for install_job in install_jobs:
             db_session.delete(install_job)
 
