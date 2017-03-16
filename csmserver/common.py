@@ -118,7 +118,7 @@ def delete_install_job_dependencies(db_session, id):
     deleted = []
     dependencies = db_session.query(InstallJob).filter(InstallJob.dependency == id).all()
     for dependency in dependencies:
-        if dependency.status is None:
+        if dependency.status in [JobStatus.SCHEDULED, JobStatus.FAILED]:
             db_session.delete(dependency)
             deleted.append(dependency.id)
         deleted = list(set((delete_install_job_dependencies(db_session, dependency.id)) + deleted))
