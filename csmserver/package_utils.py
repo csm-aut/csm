@@ -119,8 +119,8 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                         # ncs5k-mini-x.iso-6.1.1
                         target_list.append("{}-{}-{}".format(family.lower(), 'mini-x.iso', target_version))
                     elif software_platform in [PlatformFamily.ASR9K_64]:
-                        # asr9k-mini-x64.iso-6.1.1
-                        target_list.append("{}-{}-{}".format(family.lower(), 'mini-x64.iso', target_version))
+                        # asr9k-mini-x64-6.1.3.iso
+                        target_list.append("{}-{}-{}{}".format(family.lower(), 'mini-x64', target_version), '.iso')
                 else:
                     # asr9k-mgbl-x64-3.0.0.0-r601.x86_64.rpm, ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
                     target_list.append("{}-{}-{}.{}".format(package_name, '\d\.\d\.\d.\d',
