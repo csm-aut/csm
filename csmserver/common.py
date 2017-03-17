@@ -730,7 +730,7 @@ def delete_server_repository(db_session, hostname):
 
 def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=[],
                                  server_id=-1, server_directory='', custom_command_profile_ids=[], dependency=0,
-                                 pending_downloads=[], created_by=None, install_job=None):
+                                 pending_downloads=[], created_by=None, install_job=None, install_job_data={}):
 
     if not type(software_packages) is list:
         raise ValueError('software_packages must be a list type')
@@ -799,6 +799,8 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     install_job.status_time = None
     install_job.session_log = None
     install_job.trace = None
+
+    install_job.data = install_job_data
 
     if install_job.install_action != InstallAction.UNKNOWN:
         db_session.commit()

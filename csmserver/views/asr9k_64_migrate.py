@@ -357,14 +357,16 @@ def migration():
                     server_id = schedule_form.hidden_server.data
                     server_directory = schedule_form.hidden_server_directory.data
                     custom_command_profile_ids = [str(i) for i in schedule_form.custom_command_profile.data]
+                    print type(custom_command_profile_ids)
+                    print str(custom_command_profile_ids)
+                    install_job_data = {}
 
                     if InstallAction.MIGRATION_AUDIT in install_action:
-                        host.context[0].data['hardware_audit_version'] = \
-                            schedule_form.hidden_hardware_audit_version.data
+                        install_job_data['hardware_audit_version'] = schedule_form.hidden_hardware_audit_version.data
 
                     if InstallAction.PRE_MIGRATE in install_action:
-                        host.context[0].data['config_filename'] = schedule_form.hidden_config_filename.data
-                        host.context[0].data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
+                        install_job_data['config_filename'] = schedule_form.hidden_config_filename.data
+                        install_job_data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
 
                     # If the dependency is a previous job id, it's non-negative int string.
                     if int(dependency_list[index]) >= 0:
@@ -386,7 +388,8 @@ def migration():
                                                                        server_id=server_id,
                                                                        server_directory=server_directory,
                                                                        custom_command_profile_ids=custom_command_profile_ids,
-                                                                       dependency=dependency)
+                                                                       dependency=dependency,
+                                                                       install_job_data=install_job_data)
                         print("dependency for install_action = {} is {}".format(install_action[i],
                                                                                 str(dependency)))
                         dependency = new_install_job.id
@@ -495,14 +498,14 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         server_id = schedule_form.hidden_server.data
         server_directory = schedule_form.hidden_server_directory.data
         custom_command_profile_ids = [str(i) for i in schedule_form.custom_command_profile.data]
+        install_job_data = {}
 
         if InstallAction.MIGRATION_AUDIT in install_action:
-            host.context[0].data['hardware_audit_version'] = \
-                schedule_form.hidden_hardware_audit_version.data
+            install_job_data['hardware_audit_version'] = schedule_form.hidden_hardware_audit_version.data
 
         if InstallAction.PRE_MIGRATE in install_action:
-            host.context[0].data['config_filename'] = schedule_form.hidden_config_filename.data
-            host.context[0].data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
+            install_job_data['config_filename'] = schedule_form.hidden_config_filename.data
+            install_job_data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
 
         # install_action is a list object which can only contain one install action
         # at this editing time, accept the selected dependency if any
@@ -512,7 +515,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                      scheduled_time=scheduled_time, software_packages=software_packages,
                                      server_id=server_id, server_directory=server_directory,
                                      custom_command_profile_ids=custom_command_profile_ids, dependency=dependency,
-                                     install_job=install_job)
+                                     install_job=install_job, install_job_data=install_job_data)
 
         return redirect(url_for(return_url, hostname=hostname))
 
@@ -534,12 +537,12 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             schedule_form.install_action.data = install_job.install_action
 
             if install_job.custom_command_profile_ids:
-                ids = [str(id) for id in install_job.custom_command_profile_ids.split(',')]
+                ids = [int(id) for id in install_job.custom_command_profile_ids.split(',')]
                 schedule_form.custom_command_profile.data = ids
 
-            schedule_form.hidden_override_hw_req.data = host.context[0].data.get('override_hw_req')
-            schedule_form.hidden_config_filename.data = host.context[0].data.get('config_filename')
-            schedule_form.hidden_hardware_audit_version.data = host.context[0].data.get('hardware_audit_version')
+            schedule_form.hidden_override_hw_req.data = install_job.data.get('override_hw_req')
+            schedule_form.hidden_config_filename.data = install_job.data.get('config_filename')
+            schedule_form.hidden_hardware_audit_version.data = install_job.data.get('hardware_audit_version')
 
             if install_job.server_id is not None:
                 schedule_form.hidden_server.data = install_job.server_id
@@ -732,7 +735,7 @@ def fill_hardware_audit_version(choices):
 
     versions = supported_hw.keys()
     for version in reversed(versions):
-        choices.append((version, version))
+        choices.append((version, version + ".*"))
 
 
 class ScheduleMigrationForm(Form):

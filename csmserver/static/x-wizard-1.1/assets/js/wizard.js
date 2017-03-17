@@ -149,18 +149,18 @@ function validateSelectPackages(){
 
     }
     if (selected_image < 1) {
-        bootbox.alert("Please select the tar file containing ASR9K-64 image and boot files before continuing. The filename of your ASR9K-64 tar file must match the wildcard expression 'asr9k*.tar*' and contain the suffix three digit ASR9K-64 software version number such as '6.1.1'.");
+        bootbox.alert("Please select the tar file containing ASR9K-64 image and boot files before continuing. The filename of your ASR9K-64 tar file must match the wildcard expression 'asr9k*.tar*' and contain the suffix three digit ASR9K-64 software version number such as '6.1.3'.");
         return false
     } else if (selected_image > 1) {
-        bootbox.alert("Please select only one tar file for ASR9K-64 image and boot files before continuing.");
+        bootbox.alert("Please select only one tar file that contains ASR9K-64 image and boot files before continuing.");
         return false
     }
     //if (selected_smu < 1) {
     //    bootbox.alert("Please select the ASR9K unified FPD SMU for your ASR9K-64 image before continuing.");
     //    return false
     //}else if (selected_smu > 1) {
-    if (selected_smu > 1) {
-        bootbox.alert("Too many packages selected. Please select only the ASR9K-64 image and the ASR9K unified FPD SMU(only if your release version is below 6.1.1) before continuing.");
+    if (selected_smu > 0) {
+        bootbox.alert("Too many packages selected. Please select only the ASR9K-64 tar file before continuing.");
         return false
     }
 

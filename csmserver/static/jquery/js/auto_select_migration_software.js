@@ -32,7 +32,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
     }
 
     if (found == false) {
-        bootbox.alert("No ASR9K-64 tar file found. Please make sure that the filename of your ASR9K-64 tar file matches the wildcard expression 'asr9k*.tar*' and contains the suffix three digit ASR9K-64 software version number such as '6.1.1'.")
+        bootbox.alert("No ASR9K-64 tar file found. Please make sure that the filename of your ASR9K-64 tar file matches the wildcard expression 'asr9k*.tar*' and contains the suffix three digit ASR9K-64 software version number such as '6.1.3'.")
     }
 
 }

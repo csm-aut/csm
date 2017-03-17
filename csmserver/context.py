@@ -175,6 +175,12 @@ class InstallContext(ConnectionContext):
                         if command not in self.custom_commands:
                             self.custom_commands.append(command)
 
+    def load_job_data(self, key):
+        return self.install_job.data.get(key)
+
+    def save_job_data(self, key, value):
+        self.install_job.data[key] = value
+
     @property
     def software_packages(self):
         return self.install_job.packages.split(',')
