@@ -77,7 +77,12 @@ def home():
     smtp_server = get_smtp_server(db_session)
     system_option = SystemOption.get(db_session)
 
-    fill_user_privileges(admin_console_form.ldap_default_user_privilege.choices)
+    if request.method == 'POST' and not is_ldap_supported():
+        # Remove the selector to skip the validation.  During GET, when LDAP is not supported,
+        # the selector is not displayed.  The selector will fail the validation if it is not removed.
+        del admin_console_form.ldap_default_user_privilege
+    else:
+        fill_user_privileges(admin_console_form.ldap_default_user_privilege.choices)
 
     if request.method == 'POST' and \
         smtp_form.validate() and \
@@ -173,11 +178,6 @@ def home():
                 smtp_form.password_placeholder = 'Use Password on File'
             else:
                 smtp_form.password_placeholder = 'No Password Specified'
-
-        if is_ldap_supported():
-            add_validator(admin_console_form.ldap_default_user_privilege, Required)
-        else:
-            remove_validator(admin_console_form.ldap_default_user_privilege, Required)
 
         return render_template('admin/index.html',
                                admin_console_form=admin_console_form,
