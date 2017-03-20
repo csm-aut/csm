@@ -38,6 +38,7 @@ from wtforms import SelectField
 from wtforms import PasswordField
 from wtforms import HiddenField
 from wtforms.validators import required
+from wtforms.validators import Required
 
 from database import DBSession
 
@@ -53,6 +54,9 @@ from models import SMTPServer
 
 from utils import is_empty
 from utils import is_ldap_supported
+
+from forms import add_validator
+from forms import remove_validator
 
 from filters import get_datetime_string
 
@@ -169,6 +173,11 @@ def home():
                 smtp_form.password_placeholder = 'Use Password on File'
             else:
                 smtp_form.password_placeholder = 'No Password Specified'
+
+        if is_ldap_supported():
+            add_validator(admin_console_form.ldap_default_user_privilege, Required)
+        else:
+            remove_validator(admin_console_form.ldap_default_user_privilege, Required)
 
         return render_template('admin/index.html',
                                admin_console_form=admin_console_form,

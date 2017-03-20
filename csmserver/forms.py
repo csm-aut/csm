@@ -151,5 +151,20 @@ class ExportInformationForm(Form):
                                           ExportInformationFormat.MICROSOFT_EXCEL)])
 
 
+def add_validator(field, validator_class):
+    validators = field.validators
+    for v in validators:
+        if isinstance(v, validator_class):
+            return
+
+    validators.append(validator_class())
+
+
+def remove_validator(field, validator_class):
+    validators = field.validators
+    for v in validators:
+        if isinstance(v, validator_class):
+            validators.remove(v)
+
 if __name__ == '__main__':
     pass
