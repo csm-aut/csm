@@ -83,7 +83,13 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                 if '-xr-' in host_package:
                     # ncs6k-mini-x.iso-5.2.4
                     # ncs4k-mini-x.iso-6.0.2
-                    target_list.append('ncs6k-mini-x.iso-{}'.format(target_version))
+                    if software_platform in [PlatformFamily.NCS6K]:
+                        target_list.append('ncs6k-mini-x.iso-{}'.format(target_version))
+                    elif software_platform in [PlatformFamily.NCS4K]:
+                        target_list.append('ncs4k-mini-x.iso-{}'.format(target_version))
+                    else:
+                        # to add new platforms in the future
+                        pass
                 else:
                     # ncs6k-mgbl.pkg-5.2.4
                     # ncs4k-mgbl.pkg-6.0.2
