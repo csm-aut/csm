@@ -140,6 +140,17 @@ class FTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
 
+    def get_connection_info(self):
+        # support non-default port.  server_url is in the form of <server address>:<port>
+        if ':' in self.server.server_url:
+            hostname = self.server.server_url.split(':')[0]
+            port = self.server.server_url.split(':')[1]
+
+            cinfo = {'host': hostname, 'user': self.server.username, 'passwd': self.server.password, 'port': int(port)}
+        else:
+            cinfo = {'host': self.server.server_url, 'user': self.server.username, 'passwd': self.server.password}
+        return cinfo
+
     def listdir(self, ftp):
         _calmonths = dict((x, i + 1) for i, x in
                    enumerate(('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -214,7 +225,8 @@ class FTPServer(ServerImpl):
         is_reachable = False
   
         try:
-            ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
+
+            ftp = ftplib.FTP(**self.get_connection_info())
                    
             remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
             if len(remote_directory) > 0:
@@ -242,7 +254,7 @@ class FTPServer(ServerImpl):
         is_reachable = False
 
         try:
-            ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
+            ftp = ftplib.FTP(**self.get_connection_info())
 
             if not is_empty(self.server.server_directory):
                 ftp.cwd(self.server.server_directory)
@@ -256,7 +268,7 @@ class FTPServer(ServerImpl):
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         with open(source_file_path, 'rb') as file:
             
-            ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
+            ftp = ftplib.FTP(**self.get_connection_info())
                    
             remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
             if len(remote_directory) > 0:
@@ -274,6 +286,17 @@ class SFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
 
+    def get_connection_info(self):
+        # support non-default port.  server_url is in the form of <server address>:<port>
+        if ':' in self.server.server_url:
+            hostname = self.server.server_url.split(':')[0]
+            port = self.server.server_url.split(':')[1]
+
+            cinfo = {'host': hostname, 'username': self.server.username, 'password': self.server.password, 'port': int(port)}
+        else:
+            cinfo = {'host': self.server.server_url, 'username': self.server.username, 'password': self.server.password}
+        return cinfo
+
     def get_file_and_directory_dict(self, sub_directory=None):
         result_list = []
         is_reachable = False
@@ -282,7 +305,8 @@ class SFTPServer(ServerImpl):
             return result_list, is_reachable
         
         try:
-            with pysftp.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
+
+            with pysftp.Connection(**self.get_connection_info()) as sftp:
                 remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
                 if len(remote_directory) > 0:
                     sftp.chdir(remote_directory)
@@ -318,7 +342,7 @@ class SFTPServer(ServerImpl):
             error = 'SFTP supported libraries have not been installed.'
         else:
             try:
-                with pysftp.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
+                with pysftp.Connection(**self.get_connection_info()) as sftp:
                     if not is_empty(self.server.server_directory):
                         sftp.chdir(self.server.server_directory)
 
@@ -332,7 +356,7 @@ class SFTPServer(ServerImpl):
         
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         if SFTP_SUPPORTED:
-            with pysftp.Connection(self.server.server_url, username=self.server.username, password=self.server.password) as sftp:
+            with pysftp.Connection(**self.get_connection_info()) as sftp:
                 remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
                 if len(remote_directory) > 0:
                     sftp.chdir(remote_directory)
