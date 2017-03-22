@@ -199,6 +199,11 @@ def api_get_host_dashboard_scheduled_install(hostname):
             row['session_log'] = install_job.session_log
             row['status'] = install_job.status
 
+            if install_job.data:
+                job_info = install_job.data.get('job_info')
+                if job_info:
+                    row['job_info'] = install_job.id
+
             rows.append(row)
 
     return jsonify(**{'data': rows})

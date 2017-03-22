@@ -273,6 +273,27 @@ def host_trace(hostname, table, id):
     return render_template('host/trace.html', hostname=hostname, trace=trace)
 
 
+@log.route('/api/<table>/job_info/<int:id>/')
+@login_required
+def get_job_info(table, id):
+    db_session = DBSession()
+
+    rows = []
+    if table == 'install_job':
+        table_to_query = InstallJob
+    else:
+        table_to_query = InstallJobHistory
+
+    job = db_session.query(table_to_query).filter(table_to_query.id == id).first()
+    if job.data:
+        job_info = job.data.get('job_info')
+        if job_info:
+            # job_info is a list of job information (warnings/errors)
+            rows = job_info
+
+    return jsonify(**{'data': rows})
+
+
 # This route will prompt a file download
 @log.route('/download_doc_central_log')
 @login_required

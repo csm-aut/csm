@@ -1,0 +1,42 @@
+<script>
+    function display_job_info_dialog(text_ui, table, id) {
+        text_ui.html('');
+        $.ajax({
+            url: "/log/api/" + table + "/job_info/" + id,
+            dataType: 'json',
+            success: function(response) {
+                $.each(response, function(index, element) {
+                    $('#job-info-dialog-title').html('Job Information');
+
+                    var html_code = '';
+                    for (i = 0; i < element.length; i++) {
+                        html_code += newline2linebreak(element[i]) + '<br><hr>';
+                    }
+
+                    text_ui.html('<pre>' + html_code + '</pre>');
+                });
+            }
+        });
+
+        $('#display-job-info-dialog').modal({show: true})
+    }
+</script>
+
+<div id="display-job-info-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">x</button>
+                <h4>
+                    <center><span id="job-info-dialog-title"></span></center>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div id="job-info-contents" style="height:450px; overflow-y:scroll; overflow-y:scroll; word-wrap:break-word;">
+                </div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>

@@ -175,6 +175,20 @@ class InstallContext(ConnectionContext):
                         if command not in self.custom_commands:
                             self.custom_commands.append(command)
 
+    def save_job_info(self, value):
+        key = 'job_info'
+
+        if not self.install_job.data:
+            self.install_job.data = {}
+
+        job_info = self.install_job.data.get(key)
+        if not job_info:
+            job_info = []
+
+        job_info.append(value)
+
+        self.save_job_data(key, job_info)
+
     def load_job_data(self, key):
         return self.install_job.data.get(key)
 
