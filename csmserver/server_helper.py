@@ -140,21 +140,22 @@ class FTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
 
-    def get_connection_info(self):
+    def get_hostname(self):
         # support non-default port.  server_url is in the form of <server address>:<port>
         if ':' in self.server.server_url:
-            hostname = self.server.server_url.split(':')[0]
-            port = self.server.server_url.split(':')[1]
+            return self.server.server_url.split(':')[0]
+        return self.server.server_url
 
-            cinfo = {'host': hostname, 'user': self.server.username, 'passwd': self.server.password, 'port': int(port)}
-        else:
-            cinfo = {'host': self.server.server_url, 'user': self.server.username, 'passwd': self.server.password}
-        return cinfo
+    def get_port(self):
+        # support non-default port.  server_url is in the form of <server address>:<port>
+        if ':' in self.server.server_url:
+            return int(self.server.server_url.split(':')[1])
+        return 21  # default port for FTP
 
     def listdir(self, ftp):
         _calmonths = dict((x, i + 1) for i, x in
-                   enumerate(('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')))
+            enumerate(('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')))
         """
         List the contents of the FTP object's cwd and return two tuples of
 
@@ -226,8 +227,10 @@ class FTPServer(ServerImpl):
   
         try:
 
-            ftp = ftplib.FTP(**self.get_connection_info())
-                   
+            ftp = ftplib.FTP()
+            ftp.connect(self.get_hostname(), self.get_port())
+            ftp.login(self.server.username, self.server.password)
+
             remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
             if len(remote_directory) > 0:
                 ftp.cwd(remote_directory)
@@ -254,7 +257,9 @@ class FTPServer(ServerImpl):
         is_reachable = False
 
         try:
-            ftp = ftplib.FTP(**self.get_connection_info())
+            ftp = ftplib.FTP()
+            ftp.connect(self.get_hostname(), self.get_port())
+            ftp.login(self.server.username, self.server.password)
 
             if not is_empty(self.server.server_directory):
                 ftp.cwd(self.server.server_directory)
@@ -268,7 +273,9 @@ class FTPServer(ServerImpl):
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         with open(source_file_path, 'rb') as file:
             
-            ftp = ftplib.FTP(**self.get_connection_info())
+            ftp = ftplib.FTP()
+            ftp.connect(self.get_hostname(), self.get_port())
+            ftp.login(self.server.username, self.server.password)
                    
             remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
             if len(remote_directory) > 0:
