@@ -297,11 +297,11 @@
         });
 
         $("#install-failed-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'));
+            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
         });
 
         $("#install-completed-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'));
+            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
         });
 
         var install_failed_table = $("#install-failed-datatable").dataTable({
@@ -392,13 +392,18 @@
             if (trace || session_log || job_info) {
                 data = "<center>";
 
+                var session_log_url = "/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log;
+
                 if (job_info) {
-                    data += "<a class='show-job-info' table='" + table + "' job-info-id='" + job_info + "' href='javascript://'>";
+                    data += "<a class='show-job-info' " +
+                        "session-log-url='" + session_log_url + "' " +
+                        "table='" + table + "' " +
+                        "job-info-id='" + job_info + "' href='javascript://'>";
                     data += "<img src='/static/information.png' title='Job Information (warnings or errors)'></a>";
                 }
 
                 if (session_log) {
-                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
+                    data += "<a href='" + session_log_url + "'>";
                     data += "<img src='/static/file.png' title='Session Log'></a>";
                 }
 

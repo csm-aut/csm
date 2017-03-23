@@ -27,24 +27,29 @@
 
         // Use delegate pattern for event
         $("#scheduled-install-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'));
+            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
         });
 
         $("#installation-history-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'));
+            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
         });
 
         function get_log_icon(hostname, table, id, session_log, trace, job_info) {
             if (trace || session_log || job_info) {
                 data = "<center>";
 
+                var session_log_url = "/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log;
+
                 if (job_info) {
-                    data += "<a class='show-job-info' table='" + table + "' job-info-id='" + job_info + "' href='javascript://'>";
+                    data += "<a class='show-job-info' " +
+                        "session-log-url='" + session_log_url + "' " +
+                        "table='" + table + "' " +
+                        "job-info-id='" + job_info + "' href='javascript://'>";
                     data += "<img src='/static/information.png' title='Job Information (warnings or errors)'></a>";
                 }
 
                 if (session_log) {
-                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log + "'>";
+                    data += "<a href='" + session_log_url + "'>";
                     data += "<img src='/static/file.png' title='Session Log'></a>";
                 }
 
@@ -159,8 +164,13 @@
                     var job_info_icon_html = ''
                     var job_status_icon_html = '';
 
+                    var session_log_url = "/log/hosts/" + row['hostname'] + "/install_job/session_log/" + row['install_job_id'] + "?file_path=" + session_log;
+
                     if (job_info) {
-                        job_info_icon_html += "<a class='show-job-info' table='install_job' job-info-id='" + job_info + "' href='javascript://'>";
+                        job_info_icon_html += "<a class='show-job-info' " +
+                            "session-log-url='" + session_log_url + "' " +
+                            "table='install_job' " +
+                            "job-info-id='" + job_info + "' href='javascript://'>";
                         job_info_icon_html += "<img src='/static/information.png' title='Job Information (warnings or errors)'></a>";
                     }
 
@@ -171,7 +181,7 @@
                     }
 
                     if (session_log) {
-                        job_status_icon_html = "<a href='/log/hosts/" + row['hostname'] + "/install_job/session_log/" + row['install_job_id'] + "?file_path=" + session_log + "'>" + job_status_icon_html + "</a>";
+                        job_status_icon_html = "<a href='" + session_log_url + "'>" + job_status_icon_html + "</a>";
                     }
 
                     var icon_html = job_info_icon_html + job_status_icon_html;
