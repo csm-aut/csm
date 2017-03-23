@@ -7,7 +7,7 @@
             success: function(response) {
                 $.each(response, function(index, element) {
                     var image_html = "<img src='/static/file.png' title='Session Log'>"
-                    var html_code = "Following warnings or errors was received during job execution.<br><br>" +
+                    var html_code = "Following information was received during the job execution.<br><br>" +
                         "Click <a href='" + session_log_url + "'>" + image_html + "</a> to view all log files.";
                     $('#job-info-dialog-title').html(html_code);
 
