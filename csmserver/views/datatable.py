@@ -545,7 +545,6 @@ def api_get_failed_download_jobs():
         criteria = '%' + dt_params.search_value + '%'
         clauses.append(DownloadJob.cco_filename.like(criteria))
         clauses.append(DownloadJob.scheduled_time.like(criteria))
-        clauses.append(DownloadJob.status.like(criteria))
         clauses.append(DownloadJob.status_time.like(criteria))
         clauses.append(DownloadJob.created_by.like(criteria))
 
@@ -557,7 +556,6 @@ def api_get_failed_download_jobs():
     columns = [getattr(DownloadJob.cco_filename, dt_params.sort_order)(),
                getattr(DownloadJob.scheduled_time, dt_params.sort_order)(),
                '',
-               getattr(DownloadJob.status, dt_params.sort_order)(),
                getattr(DownloadJob.status_time, dt_params.sort_order)(),
                getattr(DownloadJob.created_by, dt_params.sort_order)(),
                '']
@@ -586,7 +584,6 @@ def api_get_completed_download_jobs():
         criteria = '%' + dt_params.search_value + '%'
         clauses.append(DownloadJobHistory.cco_filename.like(criteria))
         clauses.append(DownloadJobHistory.scheduled_time.like(criteria))
-        clauses.append(DownloadJobHistory.status.like(criteria))
         clauses.append(DownloadJobHistory.status_time.like(criteria))
         clauses.append(DownloadJobHistory.created_by.like(criteria))
 
@@ -598,7 +595,6 @@ def api_get_completed_download_jobs():
     columns = [getattr(DownloadJobHistory.cco_filename, dt_params.sort_order)(),
                getattr(DownloadJobHistory.scheduled_time, dt_params.sort_order)(),
                '',
-               getattr(DownloadJobHistory.status, dt_params.sort_order)(),
                getattr(DownloadJobHistory.status_time, dt_params.sort_order)(),
                getattr(DownloadJobHistory.created_by, dt_params.sort_order)()]
 

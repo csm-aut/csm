@@ -83,7 +83,13 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                 if '-xr-' in host_package:
                     # ncs6k-mini-x.iso-5.2.4
                     # ncs4k-mini-x.iso-6.0.2
-                    target_list.append('ncs6k-mini-x.iso-{}'.format(target_version))
+                    if software_platform in [PlatformFamily.NCS6K]:
+                        target_list.append('ncs6k-mini-x.iso-{}'.format(target_version))
+                    elif software_platform in [PlatformFamily.NCS4K]:
+                        target_list.append('ncs4k-mini-x.iso-{}'.format(target_version))
+                    else:
+                        # to add new platforms in the future
+                        pass
                 else:
                     # ncs6k-mgbl.pkg-5.2.4
                     # ncs4k-mgbl.pkg-6.0.2
@@ -119,8 +125,8 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                         # ncs5k-mini-x.iso-6.1.1
                         target_list.append("{}-{}-{}".format(family.lower(), 'mini-x.iso', target_version))
                     elif software_platform in [PlatformFamily.ASR9K_64]:
-                        # asr9k-mini-x64.iso-6.1.1
-                        target_list.append("{}-{}-{}".format(family.lower(), 'mini-x64.iso', target_version))
+                        # asr9k-mini-x64-6.1.3.iso
+                        target_list.append("{}-{}-{}{}".format(family.lower(), 'mini-x64', target_version, '.iso'))
                 else:
                     # asr9k-mgbl-x64-3.0.0.0-r601.x86_64.rpm, ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm-6.1.1
                     target_list.append("{}-{}-{}.{}".format(package_name, '\d\.\d\.\d.\d',

@@ -209,6 +209,11 @@ def get_install_job_json_dict(install_jobs):
             if install_job.trace is not None:
                 row['trace'] = install_job.id
 
+            if install_job.data:
+                job_info = install_job.data.get('job_info')
+                if job_info:
+                    row['job_info'] = install_job.id
+
             rows.append(row)
 
     return {'data': rows}

@@ -237,7 +237,6 @@
                 { "data": "image_name" },
                 { "data": "scheduled_time" },
                 { "data": "server_repository", "orderable": false },
-                { "data": "status" },
                 { "data": "status_time" },
                 { "data": "download_job_id", "orderable": false },
                 { "data": "created_by" },
@@ -257,24 +256,21 @@
                 "data": 'server_repository'
             }, {
                 "targets": 3,
-                "data": 'status'
-            }, {
-                "targets": 4,
                 "data": 'status_time',
                 "render": function(data, type, row) {
                     return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
-                "targets": 5,
+                "targets": 4,
                 "data": 'download_job_id',
                 "render": function(data, type, row) {
                     return get_log_icon(row['image_name'], 'download_job', row['download_job_id'], row['trace']);
                 }
             }, {
-                "targets": 6,
+                "targets": 5,
                 "data": 'created_by'
             }, {
-                "targets": 7,
+                "targets": 6,
                 "data": 'download_job_id',
                 "render": function(data, type, row) {
                     return '<div class="btn-group">' +
@@ -325,7 +321,6 @@
                 { "data": "image_name" },
                 { "data": "scheduled_time" },
                 { "data": "server_repository", "orderable": false },
-                { "data": "status" },
                 { "data": "status_time" },
                 { "data": "created_by" }
             ],
@@ -343,15 +338,12 @@
                 "data": 'server_repository'
             }, {
                 "targets": 3,
-                "data": 'status'
-            }, {
-                "targets": 4,
                 "data": 'status_time',
                 "render": function(data, type, row) {
                     return getDateStringfromUTCString(data, use_utc_timezone);
                 }
             }, {
-                "targets": 5,
+                "targets": 4,
                 "data": 'created_by'
             }],
             "ajax": {
@@ -499,8 +491,7 @@
                             <th>Image Name</th>
                             <th>Scheduled Time</th>
                             <th>Server Repository</th>
-                            <th>Status</th>
-                            <th>Status Time</th>
+                            <th>Failed Time</th>
                             <th>Log</th>
                             <th>Created By</th>
                             <th>Action</th>
@@ -514,8 +505,7 @@
                                 <th>Image Name</th>
                                 <th>Scheduled Time</th>
                                 <th>Server Repository</th>
-                                <th>Status</th>
-                                <th>Status Time</th>
+                                <th>Completed Time</th>
                                 <th>Created By</th>
                             </tr>
                         </thead>

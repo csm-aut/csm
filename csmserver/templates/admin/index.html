@@ -6,6 +6,10 @@
 <script charset="utf-8">
     $(function() {
 
+        if ("{{ is_ldap_supported }}" == "False") {
+            $("#ldap-panel").hide();
+        }
+
         $('a[href="#general-settings"]').tab('show');
 
         var browse_spinner = $('.browse-spinner');
@@ -171,339 +175,328 @@
 
 {% block main %}
 <div class="container">
-<!-- Main -->
-<form method="post" class="form-horizontal">
-    <div class="row">
-    <!-- upper section -->
-
-    {% if (admin_console_form.errors) or (smtp_form.errors) %}
-    <div class="alert alert-danger">
-        <strong>NOTICE:&nbsp;</strong>
-        The form has validation errors.  Please fix them before saving.
-    </div>
-    {% endif %}
-
-    <div class="container col-sm-12">
-        <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Admin Console</strong></span>
-        <span>&nbsp;</span>
-        <div class="form-actions">
-            <div class="btn-group pull-right">
-                <button type="submit" class="btn btn-primary">Save</button>
+    <!-- Main -->
+    <form method="post" class="form-horizontal">
+        <div class="row">
+            <!-- upper section -->
+            {% if (admin_console_form.errors) or (smtp_form.errors) %}
+            <div class="alert alert-danger">
+                <strong>NOTICE:&nbsp;</strong>
+                The form has validation error(s).  Correct error(s) displayed on required fields under individual tabs before saving.
             </div>
-        </div>
-        <hr>
-        <div class="container col-sm-12">
-            <div class="row">
-                <ul class="nav nav-tabs" id="admin-console-tab">
-                    <li><a data-toggle="tab" href="#general-settings">General</a></li>
-                    <li><a data-toggle="tab" href="#authentication-settings">Authentication</a></li>
-                    <li><a data-toggle="tab" href="#download-settings">CCO</a></li>
-                    <li><a data-toggle="tab" href="#timezone-settings">Time Zone</a></li>
-                    <li><a data-toggle="tab" href="#notification-settings">Notifications</a></li>
-                </ul>
-                <br>
-                <div class="tab-content col-sm-12">
-                    <div id="general-settings" class="tab-pane fade in active">
-                        <!-- Left side, general settings -->
-                        <div class="'container col-sm-6">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <h4>Process Settings</h4>
-                                </div>
-                                <div class="panel-body">
-                                    CSM Server must be restarted in order for the changes below to take place.
-                                    <hr>
-                                    {{ edit_field(admin_console_form.num_inventory_threads, label_field_width="col-sm-8", field_width="col-sm-2", class="form-control") }}
-                                    {{ edit_field(admin_console_form.num_install_threads, label_field_width="col-sm-8", field_width="col-sm-2", class="form-control") }}
-                                    {{ edit_field(admin_console_form.num_download_threads, label_field_width="col-sm-8", field_width="col-sm-2", class="form-control") }}
-                                </div>
-                            </div>
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <h4>Software Inventory Settings</h4>
-                                </div>
-                                <div class="panel-body">
-                                    CSM Server must be restarted in order for the changes below to take place.
-                                    <hr>
-                                    <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
-                                    <div class="form-group ">
-                                        <label class="col-sm-7 control-label" for="{{ admin_console_form.enable_inventory.id }}">{{ admin_console_form.enable_inventory.label.text }}</label>
-                                        <div class=col-sm-5>
-                                            <div class="btn-group btn-toggle" id="enable-inventory-yes-or-no">
-                                                <button type="button" id="enable-inventory-yes-button" class="btn" data-value=1>Yes</button>
-                                                <button type="button" id="enable-inventory-no-button" class="btn" data-value=0>No</button>
-                                            </div>
-                                        </div>
-                                        <input class="form-control" id="{{ admin_console_form.enable_inventory.id }}" name="{{ admin_console_form.enable_inventory.id }}" type="hidden" value="{{ admin_console_form.enable_inventory.data }}">
-                                    </div>
-                                    {{ edit_field(admin_console_form.inventory_hour, label_field_width="col-sm-7", field_width="col-sm-5", class="form-control") }}
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Right side, general settings -->
-                        <div class="container col-sm-6">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <h4>Scheduled Install Settings</h4>
-                                </div>
-                                <div class="panel-body">
-                                    {% set extra_field =
-                                        '<div class="btn-group btn-toggle" id="can-schedule-yes-or-no">
-                                              <button type="button" id="can-schedule-yes-button" class="btn" data-value=1>Yes</button>
-                                              <button type="button" id="can-schedule-no-button" class="btn" data-value=0>No</button>
-                                        </div>'
-                                    %}
-
-                                    {{ edit_field(admin_console_form.can_schedule, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
-
-                                    {% set extra_field =
-                                        '<div class="btn-group btn-toggle" id="can-install-yes-or-no">
-                                            <button type="button" id="can-install-yes-button" class="btn" data-value=1>Yes</button>
-                                            <button type="button" id="can-install-no-button" class="btn" data-value=0>No</button>
-                                        </div>'
-                                    %}
-                                    {{ edit_field(admin_console_form.can_install, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
-                                </div>
-                            </div>
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <h4>Housekeeping Settings</h4>
-                                </div>
-                                <div class="panel-body">
-                                    Once the defined threshold is reached, old information will be purged.
-                                    <hr>
-                                    {{ edit_field(admin_console_form.inventory_history_per_host, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
-                                    {{ edit_field(admin_console_form.install_history_per_host, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
-                                    {{ edit_field(admin_console_form.download_history_per_user, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
-                                    {{ edit_field(admin_console_form.total_system_logs, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
-                                </div>
-                            </div>
-                        </div>
+            {% endif %}
+            <div class="container col-sm-12">
+                <span class="DodgerBlue"><strong><i class="glyphicon glyphicon-cog"></i> Admin Console</strong></span>
+                <span>&nbsp;</span>
+                <div class="form-actions">
+                    <div class="btn-group pull-right">
+                        <button type="submit" class="btn btn-primary">Save</button>
                     </div>
-                    <!-- End General Settings -->
-
-                    <div id="authentication-settings" class="tab-pane fade">
-                        {% if is_ldap_supported %}
-                        <!-- LDAP Panel -->
-                        <div class="container col-sm-6">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <h4>LDAP Authentication</h4>
-                                </div>
-                                <div class="panel-body">
-                                    If enabled, the designated LDAP Server will be used for CSM Server user login authentication.
-                                    An example of an LDAP Server URL is ldaps://ds.cisco.com:636.
-                                    <hr>
-                                    <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
-                                    <div class="form-group ">
-                                        <label class="col-sm-4 control-label" for="{{ admin_console_form.enable_ldap_auth.id }}">{{ admin_console_form.enable_ldap_auth.label.text }}</label>
-                                        <div class=col-sm-5>
-                                            <div class="btn-group btn-toggle" id="enable-ldap-auth-yes-or-no">
-                                                <button type="button" id="enable-ldap-auth-yes-button" class="btn" data-value=1>Yes</button>
-                                                <button type="button" id="enable-ldap-auth-no-button" class="btn" data-value=0>No</button>
-                                            </div>
+                </div>
+                <hr>
+                <div class="container col-sm-12">
+                    <div class="row">
+                        <ul class="nav nav-tabs" id="admin-console-tab">
+                            <li><a data-toggle="tab" href="#general-settings">General</a></li>
+                            <li><a data-toggle="tab" href="#authentication-settings">Authentication</a></li>
+                            <li><a data-toggle="tab" href="#download-settings">CCO</a></li>
+                            <li><a data-toggle="tab" href="#timezone-settings">Time Zone</a></li>
+                            <li><a data-toggle="tab" href="#notification-settings">Notifications</a></li>
+                        </ul>
+                        <br>
+                        <div class="tab-content col-sm-12">
+                            <div id="general-settings" class="tab-pane fade in active">
+                                <!-- Left side, general settings -->
+                                <div class="'container col-sm-6">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>Process Settings</h4>
                                         </div>
-                                        <input class="form-control" id="{{ admin_console_form.enable_ldap_auth.id }}" name="{{ admin_console_form.enable_ldap_auth.id }}" type="hidden" value="{{ admin_console_form.enable_ldap_auth.data }}">
-                                    </div>
-                                    {{ edit_field(admin_console_form.ldap_server_url, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
-                                    {{ edit_field(admin_console_form.ldap_default_user_privilege, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
-                                    <hr>
-                                    To restrict access to certain user group, define the Active Directory Distinguished Names below.  An example may be<br><br>
-                                    CN={},OU=Employees,OU=Cisco Users,DC=cisco,DC=com<br><br>
-                                    '{}' is a placeholder string and will be replaced with the user login name.<p></p>
-
-                                    {{ edit_field(admin_console_form.ldap_server_distinguished_names, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control", placeholder="Optional") }}
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Right side Auth settings -->
-                        <div class="container col-sm-6">
-                            {% else %}
-                            <div class="container col-sm-2"></div>
-                            <!-- Start Auth settings -->
-                            <div class="container col-sm-8">
-                                {% endif %}
-                                <div class="panel panel-default">
-                                    <div class="panel-heading">
-                                        <h4>Host Authentication</h4>
-                                    </div>
-                                    <div class="panel-body">
-                                        If enabled, the default host username and password will be used for device authentication.
-                                        <p></p>
-
-                                        <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
-                                        <div class="form-group ">
-                                            <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_default_host_authentication.id }}">{{ admin_console_form.enable_default_host_authentication.label.text }}</label>
-                                            <div class=col-sm-6>
-                                                <div class="btn-group btn-toggle" id="enable-default-host-authentication-yes-or-no">
-                                                    <button type="button" id="enable-default-host-authentication-yes-button" class="btn" data-value=1>Yes</button>
-                                                    <button type="button" id="enable-default-host-authentication-no-button" class="btn" data-value=0>No</button>
-                                                </div>
-                                            </div>
-                                            <input class="form-control" id="{{ admin_console_form.enable_default_host_authentication.id }}" name="{{ admin_console_form.enable_default_host_authentication.id }}" type="hidden" value="{{ admin_console_form.enable_default_host_authentication.data }}">
+                                        <div class="panel-body">
+                                            CSM Server must be restarted in order for the changes below to take place.
+                                            <hr>
+                                            {{ edit_field(admin_console_form.num_inventory_threads, label_field_width="col-sm-8", field_width="col-sm-2", class="form-control") }}
+                                            {{ edit_field(admin_console_form.num_install_threads, label_field_width="col-sm-8", field_width="col-sm-2", class="form-control") }}
+                                            {{ edit_field(admin_console_form.num_download_threads, label_field_width="col-sm-8", field_width="col-sm-2", class="form-control") }}
                                         </div>
-
-                                        {{ edit_field(admin_console_form.default_host_username, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control") }}
-                                        {{ edit_field(admin_console_form.default_host_password, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control", placeholder=admin_console_form.default_host_password_placeholder) }}
-
-                                        <p></p>
-                                        Apply the Default Host Authentication to:
-                                        <p></p>
-
-                                        <div class="row">
+                                    </div>
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>Software Inventory Settings</h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            CSM Server must be restarted in order for the changes below to take place.
+                                            <hr>
+                                            <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
                                             <div class="form-group ">
-                                                <label class="col-sm-2 control-label" id="label_default_host_authentication_choice"></label>
-                                                <div class=col-sm-10>
-                                                    {{ admin_console_form.default_host_authentication_choice }}
+                                                <label class="col-sm-7 control-label" for="{{ admin_console_form.enable_inventory.id }}">{{ admin_console_form.enable_inventory.label.text }}</label>
+                                                <div class=col-sm-5>
+                                                    <div class="btn-group btn-toggle" id="enable-inventory-yes-or-no">
+                                                        <button type="button" id="enable-inventory-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="enable-inventory-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
                                                 </div>
+                                                <input class="form-control" id="{{ admin_console_form.enable_inventory.id }}" name="{{ admin_console_form.enable_inventory.id }}" type="hidden" value="{{ admin_console_form.enable_inventory.data }}">
                                             </div>
+                                            {{ edit_field(admin_console_form.inventory_hour, label_field_width="col-sm-7", field_width="col-sm-5", class="form-control") }}
                                         </div>
-                                        <hr>
-                                        If enabled, CSM Server User Credential will be used for device authentication during software installation.
-                                        This will not affect the daily host inventory retrieval. It will still use the defined host username and password
-                                        unless the Default Host Authentication is enabled, in such case, the default host username and password will be used.
-                                        <p></p>
-                                        <div class="form-group ">
-                                            <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_user_credential_for_host.id }}">{{ admin_console_form.enable_user_credential_for_host.label.text }}</label>
-                                            <div class=col-sm-6>
-                                                <div class="btn-group btn-toggle" id="enable-user-credential-for-host-yes-or-no">
-                                                    <button type="button" id="enable-user-credential-for-host-yes-button" class="btn" data-value=1>Yes</button>
-                                                    <button type="button" id="enable-user-credential-for-host-no-button" class="btn" data-value=0>No</button>
-                                                </div>
+                                    </div>
+                                </div>
+                                <!-- Right side, general settings -->
+                                <div class="container col-sm-6">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>Scheduled Install Settings</h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            {% set extra_field =
+                                            '
+                                            <div class="btn-group btn-toggle" id="can-schedule-yes-or-no">
+                                                <button type="button" id="can-schedule-yes-button" class="btn" data-value=1>Yes</button>
+                                                <button type="button" id="can-schedule-no-button" class="btn" data-value=0>No</button>
                                             </div>
-                                            <input class="form-control" id="{{ admin_console_form.enable_user_credential_for_host.id }}" name="{{ admin_console_form.enable_user_credential_for_host.id }}" type="hidden" value="{{ admin_console_form.enable_user_credential_for_host.data }}">
+                                            '
+                                            %}
+                                            {{ edit_field(admin_console_form.can_schedule, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
+                                            {% set extra_field =
+                                            '
+                                            <div class="btn-group btn-toggle" id="can-install-yes-or-no">
+                                                <button type="button" id="can-install-yes-button" class="btn" data-value=1>Yes</button>
+                                                <button type="button" id="can-install-no-button" class="btn" data-value=0>No</button>
+                                            </div>
+                                            '
+                                            %}
+                                            {{ edit_field(admin_console_form.can_install, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
+                                        </div>
+                                    </div>
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>Housekeeping Settings</h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            Once the defined threshold is reached, old information will be purged.
+                                            <hr>
+                                            {{ edit_field(admin_console_form.inventory_history_per_host, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
+                                            {{ edit_field(admin_console_form.install_history_per_host, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
+                                            {{ edit_field(admin_console_form.download_history_per_user, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
+                                            {{ edit_field(admin_console_form.total_system_logs, label_field_width="col-sm-8", field_width="col-sm-3", class="form-control") }}
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- End Auth Settings -->
-
-                        <div id="download-settings" class="tab-pane fade">
-                            <div class="container col-sm-2"></div>
-                            <div class="container col-sm-8">
-                                <div class="panel panel-default">
-                                    <div class="panel-heading">
-                                        <h4><span id="cco-panel-title">CCO Connection</span></h4>
+                            <!-- End General Settings -->
+                            <div id="authentication-settings" class="tab-pane fade">
+                                <!-- LDAP Panel -->
+                                <div id="ldap-panel" class="container col-sm-6">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>LDAP Authentication</h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            If enabled, the designated LDAP Server will be used for CSM Server user login authentication.
+                                            An example of an LDAP Server URL is ldaps://ds.cisco.com:636.
+                                            <hr>
+                                            <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+                                            <div class="form-group ">
+                                                <label class="col-sm-4 control-label" for="{{ admin_console_form.enable_ldap_auth.id }}">{{ admin_console_form.enable_ldap_auth.label.text }}</label>
+                                                <div class=col-sm-5>
+                                                    <div class="btn-group btn-toggle" id="enable-ldap-auth-yes-or-no">
+                                                        <button type="button" id="enable-ldap-auth-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="enable-ldap-auth-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
+                                                </div>
+                                                <input class="form-control" id="{{ admin_console_form.enable_ldap_auth.id }}" name="{{ admin_console_form.enable_ldap_auth.id }}" type="hidden" value="{{ admin_console_form.enable_ldap_auth.data }}">
+                                            </div>
+                                            {{ edit_field(admin_console_form.ldap_server_url, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
+                                            {{ edit_field(admin_console_form.ldap_default_user_privilege, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control") }}
+                                            <hr>
+                                            To restrict access to certain user group, define the Active Directory Distinguished Names below.  An example may be<br><br>
+                                            CN={},OU=Employees,OU=Cisco Users,DC=cisco,DC=com<br><br>
+                                            '{}' is a placeholder string and will be replaced with the user login name.
+                                            <p></p>
+                                            {{ edit_field(admin_console_form.ldap_server_distinguished_names, label_field_width="col-sm-4", field_width="col-sm-7", class="form-control", placeholder="Optional") }}
+                                        </div>
                                     </div>
-                                    <div class="panel-body">
-                                        If CCO connection is disabled
-                                        <ul>
-                                            <li>The ability to view DDTS information will be disabled.</li>
-                                            <li>The ability to download software will be disabled.</li>
-                                            <li>A request to retrieve software information will cause CSM Server to retrieve
-                                        previously saved software information from the database instead of from
-                                        CCO. To refresh the database with up-to-date information, click the Retrieve Software information button.</li>
-                                        </ul>
-                                        <hr>
-                                        <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label" for="{{ admin_console_form.enable_cco_lookup.id }}">{{ admin_console_form.enable_cco_lookup.label.text }}</label>
-                                            <div class=col-sm-3>
-                                                <div class="btn-group btn-toggle" id="enable-cco-lookup-yes-or-no">
-                                                    <button type="button" id="enable-cco-lookup-yes-button" class="btn" data-value=1>Yes</button>
-                                                    <button type="button" id="enable-cco-lookup-no-button" class="btn" data-value=0>No</button>
+                                </div>
+                                <!-- Right side Auth settings -->
+                                <div class="container col-sm-6">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>Host Authentication</h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            If enabled, the default host username and password will be used for device authentication.
+                                            <p></p>
+                                            <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+                                            <div class="form-group ">
+                                                <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_default_host_authentication.id }}">{{ admin_console_form.enable_default_host_authentication.label.text }}</label>
+                                                <div class=col-sm-6>
+                                                    <div class="btn-group btn-toggle" id="enable-default-host-authentication-yes-or-no">
+                                                        <button type="button" id="enable-default-host-authentication-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="enable-default-host-authentication-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
+                                                </div>
+                                                <input class="form-control" id="{{ admin_console_form.enable_default_host_authentication.id }}" name="{{ admin_console_form.enable_default_host_authentication.id }}" type="hidden" value="{{ admin_console_form.enable_default_host_authentication.data }}">
+                                            </div>
+                                            {{ edit_field(admin_console_form.default_host_username, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control") }}
+                                            {{ edit_field(admin_console_form.default_host_password, autocomplete="off", label_field_width="col-sm-6", field_width="col-sm-6", class="form-control", placeholder=admin_console_form.default_host_password_placeholder) }}
+                                            <p></p>
+                                            Apply the Default Host Authentication to:
+                                            <p></p>
+                                            <div class="row">
+                                                <div class="form-group ">
+                                                    <label class="col-sm-2 control-label" id="label_default_host_authentication_choice"></label>
+                                                    <div class=col-sm-10>
+                                                        {{ admin_console_form.default_host_authentication_choice }}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class=col-sm-5>
-                                                <button type="button" class="btn btn-primary" id="manual-retrieve-button">Retrieve Software Information</button>
-                                                <span class="browse-spinner">
+                                            <hr>
+                                            If enabled, CSM Server User Credential will be used for device authentication during software installation.
+                                            This will not affect the daily host inventory retrieval. It will still use the defined host username and password
+                                            unless the Default Host Authentication is enabled, in such case, the default host username and password will be used.
+                                            <p></p>
+                                            <div class="form-group ">
+                                                <label class="col-sm-6 control-label" for="{{ admin_console_form.enable_user_credential_for_host.id }}">{{ admin_console_form.enable_user_credential_for_host.label.text }}</label>
+                                                <div class=col-sm-6>
+                                                    <div class="btn-group btn-toggle" id="enable-user-credential-for-host-yes-or-no">
+                                                        <button type="button" id="enable-user-credential-for-host-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="enable-user-credential-for-host-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
+                                                </div>
+                                                <input class="form-control" id="{{ admin_console_form.enable_user_credential_for_host.id }}" name="{{ admin_console_form.enable_user_credential_for_host.id }}" type="hidden" value="{{ admin_console_form.enable_user_credential_for_host.data }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- End Auth Settings -->
+                            <div id="download-settings" class="tab-pane fade">
+                                <div class="container col-sm-2"></div>
+                                <div class="container col-sm-8">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4><span id="cco-panel-title">CCO Connection</span></h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            If CCO connection is disabled
+                                            <ul>
+                                                <li>The ability to view DDTS information will be disabled.</li>
+                                                <li>The ability to download software will be disabled.</li>
+                                                <li>A request to retrieve software information will cause CSM Server to retrieve
+                                                    previously saved software information from the database instead of from
+                                                    CCO. To refresh the database with up-to-date information, click the Retrieve Software information button.
+                                                </li>
+                                            </ul>
+                                            <hr>
+                                            <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+                                            <div class="form-group">
+                                                <label class="col-sm-4 control-label" for="{{ admin_console_form.enable_cco_lookup.id }}">{{ admin_console_form.enable_cco_lookup.label.text }}</label>
+                                                <div class=col-sm-3>
+                                                    <div class="btn-group btn-toggle" id="enable-cco-lookup-yes-or-no">
+                                                        <button type="button" id="enable-cco-lookup-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="enable-cco-lookup-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
+                                                </div>
+                                                <div class=col-sm-5>
+                                                    <button type="button" class="btn btn-primary" id="manual-retrieve-button">Retrieve Software Information</button>
+                                                    <span class="browse-spinner">
                                                     <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
-                                                </span>
-                                            </div>
-                                            <input class="form-control" id="{{ admin_console_form.enable_cco_lookup.id }}" name="{{ admin_console_form.enable_cco_lookup.id }}" type="hidden" value="{{ admin_console_form.enable_cco_lookup.data }}">
-                                            <input class="form-control" id="{{ admin_console_form.cco_lookup_time.id }}" name="{{ admin_console_form.cco_lookup_time.id }}" type="hidden" value="{{ admin_console_form.cco_lookup_time.data }}">
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- End Download Settings -->
-                        <div id="timezone-settings" class="tab-pane fade">
-                            <div class="container col-sm-2"></div>
-                            <div class="container col-sm-8">
-                                <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <h4>Time Zone Setting (UTC vs Local Time Zone)</h4>
-                                </div>
-                                <div class="panel-body">
-                                    By default, local time zone is used on CSM Server UI.  If Coordinated Universal Time (UTC) is selected,
-                                    all time information will be displayed in UTC time zone.
-                                    <p></p>
-                                    <hr>
-                                    <div class="form-group ">
-                                        <label class="col-sm-6 control-label">{{ admin_console_form.use_utc_timezone.label.text }}</label>
-                                        <div class=col-sm-6>
-                                            <div class="btn-group btn-toggle" id="use-utc-timezone-yes-or-no">
-                                                <button type="button" id="use-utc-timezone-yes-button" class="btn" data-value=1>Yes</button>
-                                                <button type="button" id="use-utc-timezone-no-button" class="btn" data-value=0>No</button>
-                                            </div>
-                                        </div>
-                                        <input class="form-control" id="{{ admin_console_form.use_utc_timezone.id }}" name="{{ admin_console_form.use_utc_timezone.id }}" type="hidden" value="{{ admin_console_form.use_utc_timezone.data }}">
-                                    </div>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-                        <!-- End Timezone Settings -->
-                        <div id="notification-settings" class="tab-pane fade">
-                            <div class="container col-sm-2"></div>
-                            <div class="container col-sm-8">
-                                <div class="panel panel-default">
-                                    <div class="panel-heading">
-                                        <h4>Email Notification Settings</h4>
-                                    </div>
-                                    <div class="panel-body">
-                                        <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
-                                        <div class="form-group ">
-                                            <label class="col-sm-5 control-label" for="{{ admin_console_form.enable_email_notify.id }}">{{ admin_console_form.enable_email_notify.label.text }}</label>
-                                            <div class=col-sm-6>
-                                                <div class="btn-group btn-toggle" id="enable-email-notify-yes-or-no">
-                                                    <button type="button" id="enable-email-notify-yes-button" class="btn" data-value=1>Yes</button>
-                                                    <button type="button" id="enable-email-notify-no-button" class="btn" data-value=0>No</button>
+                                                    </span>
                                                 </div>
+                                                <input class="form-control" id="{{ admin_console_form.enable_cco_lookup.id }}" name="{{ admin_console_form.enable_cco_lookup.id }}" type="hidden" value="{{ admin_console_form.enable_cco_lookup.data }}">
+                                                <input class="form-control" id="{{ admin_console_form.cco_lookup_time.id }}" name="{{ admin_console_form.cco_lookup_time.id }}" type="hidden" value="{{ admin_console_form.cco_lookup_time.data }}">
                                             </div>
-                                            <input class="form-control" id="{{ admin_console_form.enable_email_notify.id }}" name="{{ admin_console_form.enable_email_notify.id }}" type="hidden" value="{{ admin_console_form.enable_email_notify.data }}">
                                         </div>
-                                        {{ edit_field(smtp_form.server, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control",
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- End Download Settings -->
+                            <div id="timezone-settings" class="tab-pane fade">
+                                <div class="container col-sm-2"></div>
+                                <div class="container col-sm-8">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>Time Zone Setting (UTC vs Local Time Zone)</h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            By default, local time zone is used on CSM Server UI.  If Coordinated Universal Time (UTC) is selected,
+                                            all time information will be displayed in UTC time zone.
+                                            <p></p>
+                                            <hr>
+                                            <div class="form-group ">
+                                                <label class="col-sm-6 control-label">{{ admin_console_form.use_utc_timezone.label.text }}</label>
+                                                <div class=col-sm-6>
+                                                    <div class="btn-group btn-toggle" id="use-utc-timezone-yes-or-no">
+                                                        <button type="button" id="use-utc-timezone-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="use-utc-timezone-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
+                                                </div>
+                                                <input class="form-control" id="{{ admin_console_form.use_utc_timezone.id }}" name="{{ admin_console_form.use_utc_timezone.id }}" type="hidden" value="{{ admin_console_form.use_utc_timezone.data }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- End Timezone Settings -->
+                            <div id="notification-settings" class="tab-pane fade">
+                                <div class="container col-sm-2"></div>
+                                <div class="container col-sm-8">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <h4>Email Notification Settings</h4>
+                                        </div>
+                                        <div class="panel-body">
+                                            <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+                                            <div class="form-group ">
+                                                <label class="col-sm-5 control-label" for="{{ admin_console_form.enable_email_notify.id }}">{{ admin_console_form.enable_email_notify.label.text }}</label>
+                                                <div class=col-sm-6>
+                                                    <div class="btn-group btn-toggle" id="enable-email-notify-yes-or-no">
+                                                        <button type="button" id="enable-email-notify-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="enable-email-notify-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
+                                                </div>
+                                                <input class="form-control" id="{{ admin_console_form.enable_email_notify.id }}" name="{{ admin_console_form.enable_email_notify.id }}" type="hidden" value="{{ admin_console_form.enable_email_notify.data }}">
+                                            </div>
+                                            {{ edit_field(smtp_form.server, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control",
                                             placeholder="localhost") }}
-                                        {{ edit_field(smtp_form.server_port, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control",
+                                            {{ edit_field(smtp_form.server_port, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control",
                                             placeholder="Blank for Default") }}
-                                        {{ edit_field(smtp_form.sender, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
-
-                                        <legend>Logon Information</legend>
-                                        <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
-                                        <div class="form-group ">
-                                            <label class="col-sm-5 control-label" for="{{ smtp_form.use_authentication.id }}">{{ smtp_form.use_authentication.label.text }}</label>
-                                            <div class=col-sm-6>
-                                                <div class="btn-group btn-toggle" id="use-authentication-yes-or-no">
-                                                    <button type="button" id="use-authentication-yes-button" class="btn" data-value=1>Yes</button>
-                                                    <button type="button" id="use-authentication-no-button" class="btn" data-value=0>No</button>
+                                            {{ edit_field(smtp_form.sender, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
+                                            <legend>Logon Information</legend>
+                                            <!-- do this for proper alignment with other UI elements, edit_field() won't work here -->
+                                            <div class="form-group ">
+                                                <label class="col-sm-5 control-label" for="{{ smtp_form.use_authentication.id }}">{{ smtp_form.use_authentication.label.text }}</label>
+                                                <div class=col-sm-6>
+                                                    <div class="btn-group btn-toggle" id="use-authentication-yes-or-no">
+                                                        <button type="button" id="use-authentication-yes-button" class="btn" data-value=1>Yes</button>
+                                                        <button type="button" id="use-authentication-no-button" class="btn" data-value=0>No</button>
+                                                    </div>
                                                 </div>
+                                                <input class="form-control" id="{{ smtp_form.use_authentication.id }}" name="{{ smtp_form.use_authentication.id }}" type="hidden" value="{{ smtp_form.use_authentication.data }}">
                                             </div>
-                                            <input class="form-control" id="{{ smtp_form.use_authentication.id }}" name="{{ smtp_form.use_authentication.id }}" type="hidden" value="{{ smtp_form.use_authentication.data }}">
-                                        </div>
-                                        {{ edit_field(smtp_form.username, autocomplete="off", label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
-                                        {{ edit_field(smtp_form.password, autocomplete="off", label_field_width="col-sm-5", field_width="col-sm-6", class="form-control",
+                                            {{ edit_field(smtp_form.username, autocomplete="off", label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
+                                            {{ edit_field(smtp_form.password, autocomplete="off", label_field_width="col-sm-5", field_width="col-sm-6", class="form-control",
                                             placeholder=smtp_form.password_placeholder) }}
-                                        {{ edit_field(smtp_form.secure_connection, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
-                                        <!--
-                                            <div class="btn-group pull-right">
-                                            <button id="install-history-button" type="button" class="btn btn-primary">Send Test Email</button>
-                                            </div>
-                                            -->
+                                            {{ edit_field(smtp_form.secure_connection, label_field_width="col-sm-5", field_width="col-sm-6", class="form-control") }}
+                                            <!--
+                                                <div class="btn-group pull-right">
+                                                <button id="install-history-button" type="button" class="btn btn-primary">Send Test Email</button>
+                                                </div>
+                                                -->
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <!-- End Notification Settings -->
                         </div>
-                        <!-- End Notification Settings -->
+                        <!-- End all tab contents -->
                     </div>
-                    <!-- End all tab contents -->
                 </div>
             </div>
+            <!-- /upper section -->
         </div>
-        <!-- /upper section -->
-</form>
-</div> <!--/Main -->
+    </form>
+</div>
+<!--/Main -->
 {% endblock %}

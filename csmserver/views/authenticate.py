@@ -41,6 +41,7 @@ from wtforms import SelectField
 from wtforms import PasswordField
 from wtforms import HiddenField
 from wtforms.validators import required
+from wtforms.validators import Required
 
 from database import DBSession
 
@@ -56,7 +57,8 @@ from models import SystemOption
 from models import UserPrivilege
 from models import CSMMessage
 
-from wtforms.validators import Required
+from forms import add_validator
+from forms import remove_validator
 
 from utils import get_base_url
 from utils import get_return_url
@@ -242,22 +244,6 @@ def user_delete(username):
     db_session.commit()
 
     return jsonify({'status': 'OK'})
-
-
-def add_validator(field, validator_class):
-    validators = field.validators
-    for v in validators:
-        if isinstance(v, validator_class):
-            return
-
-    validators.append(validator_class())
-
-
-def remove_validator(field, validator_class):
-    validators = field.validators
-    for v in validators:
-        if isinstance(v, validator_class):
-            validators.remove(v)
 
 
 @authenticate.route('/api/acknowledge_csm_message', methods=['POST'])

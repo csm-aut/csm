@@ -731,7 +731,8 @@ def api_assign_software_profile_to_hosts():
             for host in hosts:
                 host.software_profile_id = software_profile_id
             db_session.commit()
-            message = str(len(hosts)) + ' hosts has been updated.'
+            message = ('%d hosts have been updated.' % len(hosts)) if len(hosts) > 1 else \
+                ('%d host has been updated.' % len(hosts))
         except Exception as e:
             return jsonify({'status': e.message})
 

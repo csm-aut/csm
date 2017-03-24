@@ -38,6 +38,7 @@ from wtforms import SelectField
 from wtforms import PasswordField
 from wtforms import HiddenField
 from wtforms.validators import required
+from wtforms.validators import Required
 
 from database import DBSession
 
@@ -53,6 +54,9 @@ from models import SMTPServer
 
 from utils import is_empty
 from utils import is_ldap_supported
+
+from forms import add_validator
+from forms import remove_validator
 
 from filters import get_datetime_string
 
@@ -75,9 +79,7 @@ def home():
 
     fill_user_privileges(admin_console_form.ldap_default_user_privilege.choices)
 
-    if request.method == 'POST' and \
-        smtp_form.validate() and \
-        admin_console_form.validate():
+    if request.method == 'POST' and smtp_form.validate() and admin_console_form.validate():
 
         if smtp_server is None:
             smtp_server = SMTPServer()

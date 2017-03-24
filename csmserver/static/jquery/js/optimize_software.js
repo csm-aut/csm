@@ -41,8 +41,8 @@ function display_optimized_dialog(lines, target_control) {
 
     bootbox.dialog({
         message: lines,
-        title: "Click 'Accept' to include all missing pre-requisites, minus any supersedes if any.<br>" +
-            "Click 'Accept excludes Unrecognized' to exclude entries marked as unrecognized if any.<br>" +
+        title: "Click 'Accept' to include all missing pre-requisites and remove all superseded packages, if any.<br>" +
+            "Click 'Accept (Remove Unrecognized)' to remove entries marked as Unrecognized, if any. <br>" +
             "Entries classified as SMU/SP/Package will be included automatically.",
         buttons: {       
             success: {
@@ -53,7 +53,7 @@ function display_optimized_dialog(lines, target_control) {
                 }
             },
             primary: {
-                label: "Accept Excludes Unrecognized",
+                label: "Accept (Remove Unrecognized)",
                 className: "btn-primary",
                 callback: function() {
                     accept_optimized_list(true, target_control);
