@@ -285,7 +285,7 @@
                 <li id="menu-option-6"><a class="nav-link" href="{{ url_for('inventory.dashboard') }}">Inventory Dashboard</a></li>
                 <li id="menu-option-7"><a class="nav-link" href="{{ url_for('inventory.query_add_inventory') }}">Query/Add Inventory</a></li>
                 <li id="menu-option-8"><a class="nav-link" href="{{ url_for('inventory.search_inventory') }}">Search</a></li>
-                {% if current_user.privilege == 'Admin'%}
+                {% if current_user.privilege == 'Admin' or current_user.privilege == 'Network Admin'%}
                     <li id="menu-option-9"><a class="nav-link" href="{{ url_for('inventory.import_inventory') }}">Import Inventory</a></li>
                 {% endif %}
             {% endif %}

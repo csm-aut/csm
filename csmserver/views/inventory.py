@@ -47,7 +47,7 @@ from wtforms.widgets import TextArea
 from wtforms.validators import Length
 from wtforms.validators import required
 
-from common import get_last_successful_inventory_elapsed_time
+from common import get_last_successful_inventory_elapsed_time, can_create
 
 from constants import UNKNOWN
 from constants import ExportInformationFormat
@@ -126,7 +126,7 @@ def query_add_inventory():
         # we update/create or delete the inventory
         else:
 
-            if current_user.privilege != UserPrivilege.ADMIN:
+            if not can_create(current_user):
                 error_msg = "User not authorized to create, update or delete inventory."
 
             # there is restriction on front end - serial_number submitted cannot be empty string, double check here
@@ -537,8 +537,9 @@ def export_inventory_dashboard():
 @inventory.route('/import_inventory')
 @login_required
 def import_inventory():
-    if current_user.privilege != UserPrivilege.ADMIN:
-        abort(401)
+    if request.method == 'POST' and request.form.validate():
+        if not can_create(current_user):
+            abort(401)
 
     form = ImportInventoryForm(request.form)
 
@@ -558,7 +559,7 @@ def api_import_inventory():
                                                         (for noting duplicated serial numbers)
            or status: errors in the imported data separated by comma's
     """
-    if current_user.privilege != UserPrivilege.ADMIN:
+    if not can_create(current_user):
         abort(401)
     importable_header = [HEADER_FIELD_SERIAL_NUMBER, HEADER_FIELD_MODEL_NAME, HEADER_FIELD_NOTES]
     general_notes = request.form['general_notes']
