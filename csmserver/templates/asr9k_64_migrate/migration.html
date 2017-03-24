@@ -85,7 +85,15 @@
             }
 
             $('#scheduled-time-UTC').val(function(index, value) {
-                $('#scheduled-time').val(current_time);
+                if (value == 'None' || value.length == 0) {
+                    $('#scheduled-time').val(current_time);
+                } else {
+                    if (use_utc_timezone) {
+                        $('#scheduled-time').val(value);
+                    } else {
+                        $('#scheduled-time').val(convertToLocaleString(value));
+                    }
+                }
             });
 
             config_handler({{ input_filename | tojson }}, {{ err_msg | tojson }});
@@ -284,6 +292,12 @@
                 }
                 if ($('#wizard-dialog .nav-tabs .active').text() == "PRE-MIGRATE" && validateSelectPackages() == false) {
                     return false;
+                }
+
+                if (use_utc_timezone) {
+                    $('#scheduled-time-UTC').val($('#scheduled-time').val());
+                } else {
+                    $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
                 }
 
                 on_submit();

@@ -136,6 +136,13 @@ function validateSelectPackages(){
     var selected_items = server_software_selector.get_selected_items();
     var unselected_items = server_software_selector.get_unselected_items();
 
+    if (selected_items.length > 2) {
+        bootbox.alert("Too many packages selected. Only two files are allowed:" +
+            " 1. The ASR9K-64 tar file;" +
+            " 2. The crypto key generation txt file - optional.");
+        return false
+    }
+
     for (var index in selected_items) {
         if (selected_items[index].match("asr9k.*\.tar.*\\d\\.\\d\\.\\d.*")) {
             selected_image++;

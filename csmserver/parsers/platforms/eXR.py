@@ -316,16 +316,12 @@ class EXRInventoryParser(BaseInventoryParser):
 
     def process_inventory(self, ctx):
         """
-        For ASR9K-64, NCS4K, NCS6K and NCS5500
+        For ASR9K-64, NCS6K and NCS5500
         Chassis most likely shows up first in the
         output of "admin show inventory".
         Example for ASR9K-64:
         Name: Rack 0                Descr: ASR-9904 AC Chassis
         PID: ASR-9904-AC            VID: V01                   SN: FOX1746GHJ9
-
-        Example for NCS4K:
-        Name: Rack 0                Descr: NCS 4016 shelf assembly - DC Power
-        PID: NCS4016-SA-DC          VID: V01                   SN: SAL1931LDUG
 
         Example for NCS6K:
         Name: Rack 0                Descr: NCS 6008 - 8-Slot Chassis
@@ -357,16 +353,20 @@ class EXRInventoryParser(BaseInventoryParser):
         return
 
 
-class NCS1K5KIOSXRvInventoryParser(EXRInventoryParser):
+class NCS1K4K5KIOSXRvInventoryParser(EXRInventoryParser):
 
     def process_inventory(self, ctx):
         """
-        For NCS1K, NCS5K and IOSXRv9K
+        For NCS1K, NCS4K, NCS5K and IOSXRv9K
         Chassis most likely shows up first in the
         output of "admin show inventory".
         Example for NCS1K:
         Name: Rack 0                Descr: Network Convergence System 1000 Controller
         PID: NCS1002                VID: V01                   SN: CHANGE-ME-
+
+        Example for NCS4K:
+        Name: Rack 0                Descr: NCS 4016 shelf assembly - DC Power
+        PID: NCS4016-SA-DC          VID: V01                   SN: SAL1931LDUG
 
         Example for NCS5K:
         Name: Rack 0                Descr:

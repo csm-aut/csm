@@ -18,8 +18,9 @@ function auto_select_software(hostname, selector, target_release, match_internal
     }
 
     var required_image_regex = "asr9k.*\.tar.*\\d\\.\\d\\.\\d.*";
+    var crypto_key_file_regex = "crypto_auto_key_gen.txt";
 
-    selector.select_partial_match([required_image_regex]);
+    selector.select_partial_match([required_image_regex, crypto_key_file_regex]);
     var selected_package_list = selector.get_selected_items();
 
     var found = false;
