@@ -27,8 +27,7 @@ import re
 from models import Package
 from models import ModulePackageState
 from constants import PackageState
-from base import BaseSoftwarePackageParser, BaseInventoryParser
-from models import get_db_session_logger
+from base import BaseSoftwarePackageParser
 
 
 class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
@@ -310,88 +309,3 @@ class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
             trunks[module] = trunk
 
         return trunks
-
-
-class EXRInventoryParser(BaseInventoryParser):
-
-    def process_inventory(self, ctx):
-        """
-        For ASR9K-64, NCS6K and NCS5500
-        Chassis most likely shows up first in the
-        output of "admin show inventory".
-        Example for ASR9K-64:
-        Name: Rack 0                Descr: ASR-9904 AC Chassis
-        PID: ASR-9904-AC            VID: V01                   SN: FOX1746GHJ9
-
-        Example for NCS6K:
-        Name: Rack 0                Descr: NCS 6008 - 8-Slot Chassis
-        PID: NCS-6008               VID: V01                   SN: FLM17476JWA
-
-        Example for NCS5500:
-        Name: Rack 0                Descr: NCS5500 8 Slot Single Chassis
-        PID: NCS-5508               VID: V01                   SN: FGE194714QX
-
-        """
-        if not ctx.load_data('cli_show_inventory'):
-            return
-        inventory_output = ctx.load_data('cli_show_inventory')[0]
-
-        inventory_data = self.parse_inventory_output(inventory_output)
-
-        chassis_indices = []
-
-        for idx in xrange(0, len(inventory_data)):
-            if self.REGEX_RACK.match(inventory_data[idx]['name']) and \
-                    self.REGEX_CHASSIS.search(inventory_data[idx]['description']):
-                chassis_indices.append(idx)
-
-        if chassis_indices:
-            return self.store_inventory(ctx, inventory_data, chassis_indices)
-
-        logger = get_db_session_logger(ctx.db_session)
-        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
-        return
-
-
-class NCS1K4K5KIOSXRvInventoryParser(EXRInventoryParser):
-
-    def process_inventory(self, ctx):
-        """
-        For NCS1K, NCS4K, NCS5K and IOSXRv9K
-        Chassis most likely shows up first in the
-        output of "admin show inventory".
-        Example for NCS1K:
-        Name: Rack 0                Descr: Network Convergence System 1000 Controller
-        PID: NCS1002                VID: V01                   SN: CHANGE-ME-
-
-        Example for NCS4K:
-        Name: Rack 0                Descr: NCS 4016 shelf assembly - DC Power
-        PID: NCS4016-SA-DC          VID: V01                   SN: SAL1931LDUG
-
-        Example for NCS5K:
-        Name: Rack 0                Descr:
-        PID: NCS-5002               VID: V01                   SN: FOC1946R0DH
-
-        Example for IOSXRv:
-        NAME: "Rack 0", DESCR: "Cisco XRv9K Virtual Router"
-        PID: R-IOSXRV9000-CH   , VID: V01, SN: DA55BD5FAC9
-        """
-        if not ctx.load_data('cli_show_inventory'):
-            return
-        inventory_output = ctx.load_data('cli_show_inventory')[0]
-
-        inventory_data = self.parse_inventory_output(inventory_output)
-
-        chassis_indices = []
-
-        for idx in xrange(0, len(inventory_data)):
-            if self.REGEX_RACK.match(inventory_data[idx]['name']):
-                chassis_indices.append(idx)
-
-        if chassis_indices:
-            return self.store_inventory(ctx, inventory_data, chassis_indices)
-
-        logger = get_db_session_logger(ctx.db_session)
-        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
-        return
-

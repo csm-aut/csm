@@ -507,8 +507,6 @@ class HostInventory(BaseInventoryModel):
     # Entity to parent : many to one
     # parent_id = Column(Integer, ForeignKey(id), index=True)
 
-    position = Column(Integer, index=True)
-
     location = Column(String(50))
     model_name = Column(String(50))
     name = Column(String(100))
@@ -527,7 +525,7 @@ class HostInventory(BaseInventoryModel):
                             )
     """
     def __init__(self, db_session, host_id=None, location="", model_name="", hardware_revision="",
-                 name="", serial_number="", description="", position=-1):
+                 name="", serial_number="", description=""):
         self.host_id = host_id
         self.location = location
         self.model_name = model_name
@@ -535,7 +533,6 @@ class HostInventory(BaseInventoryModel):
         self.name = name
         self.serial_number = serial_number
         self.description = description
-        self.position = position
 
         self.update_inventory(db_session)
         return

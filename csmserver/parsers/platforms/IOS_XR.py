@@ -27,7 +27,6 @@ import re
 from models import Package
 from constants import PackageState
 from base import BaseSoftwarePackageParser, BaseInventoryParser
-from models import get_db_session_logger
 
 
 class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
@@ -107,72 +106,9 @@ class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
 
 class ASR9KInventoryParser(BaseInventoryParser):
 
-    REGEX_SATELLITE_CHASSIS = re.compile(r'satellite chassis', flags=re.IGNORECASE)
-
     def parse_inventory_output(self, output):
         """
         Get everything except for the Generic Fan inventories from the inventory data
         """
         return [m.groupdict() for m in self.REGEX_BASIC_PATTERN.finditer(output)
                 if 'Generic Fan' not in m.group('description')]
-
-    def process_inventory(self, ctx):
-        """
-        For ASR9K IOS-XR.
-        There is only one chassis in this case. It most likely shows up last in the
-        output of "admin show inventory".
-        Example:
-        NAME: "chassis ASR-9006-AC", DESCR: "ASR 9006 4 Line Card Slot Chassis with V1 AC PEM"
-        PID: ASR-9006-AC, VID: V01, SN: FOX1523H7HA
-        """
-        if not ctx.load_data('cli_show_inventory'):
-            return
-        inventory_output = ctx.load_data('cli_show_inventory')[0]
-
-        inventory_data = self.parse_inventory_output(inventory_output)
-
-        chassis_indices = []
-
-        for idx in xrange(0, len(inventory_data)):
-            if self.REGEX_CHASSIS.search(inventory_data[idx]['name']) and \
-                    (not self.REGEX_SATELLITE_CHASSIS.search(inventory_data[idx]['name'])) and \
-                    self.REGEX_CHASSIS.search(inventory_data[idx]['description']):
-                chassis_indices.append(idx)
-
-        if chassis_indices:
-            return self.store_inventory(ctx, inventory_data, chassis_indices)
-
-        logger = get_db_session_logger(ctx.db_session)
-        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
-        return
-
-
-class CRSInventoryParser(BaseInventoryParser):
-
-    def process_inventory(self, ctx):
-        """
-        For CRS.
-        There can be more than one chassis in this case.
-        Example for CRS:
-        NAME: "Rack 0 - Chassis", DESCR: "CRS 16 Slots Line Card Chassis for CRS-16/S-B"
-        PID: CRS-16-LCC-B, VID: V03, SN: FXS1804Q576
-        """
-        if not ctx.load_data('cli_show_inventory'):
-            return
-        inventory_output = ctx.load_data('cli_show_inventory')[0]
-
-        inventory_data = self.parse_inventory_output(inventory_output)
-
-        chassis_indices = []
-
-        for idx in xrange(0, len(inventory_data)):
-            if self.REGEX_CHASSIS.search(inventory_data[idx]['name']) and \
-                    self.REGEX_CHASSIS.search(inventory_data[idx]['description']):
-                chassis_indices.append(idx)
-
-        if chassis_indices:
-            return self.store_inventory(ctx, inventory_data, chassis_indices)
-
-        logger = get_db_session_logger(ctx.db_session)
-        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
-        return

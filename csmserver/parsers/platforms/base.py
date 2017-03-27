@@ -42,7 +42,6 @@ class BaseSoftwarePackageParser(object):
 
 
 class BaseInventoryParser(object):
-    __metaclass__ = abc.ABCMeta
 
     REGEX_BASIC_PATTERN = re.compile(r'NAME:\s*"?(?P<name>.*?)"?,?\s*DESCR:\s*"?(?P<description>.*?)"?\W*PID:\s*(?P<model_name>.*?)\s*,?\s*VID:\s*(?P<hardware_revision>.*?)\s*,?\s*SN:\s*(?!NAME)(?P<serial_number>\S*)\s*',
                                      flags=re.MULTILINE | re.IGNORECASE)
@@ -73,7 +72,6 @@ class BaseInventoryParser(object):
         """
         return [m.groupdict() for m in self.REGEX_BASIC_PATTERN.finditer(output)]
 
-    @abc.abstractmethod
     def process_inventory(self, ctx):
         """
         Store newly retrieved inventory information for a host in database for the below structure:
@@ -82,51 +80,21 @@ class BaseInventoryParser(object):
 
         Not for tree structured inventory storage.
         """
-        pass
+        if not ctx.load_data('cli_show_inventory'):
+            return
+        inventory_output = ctx.load_data('cli_show_inventory')[0]
 
-    def store_inventory(self, ctx, inventory_data, chassis_indices):
+        inventory_data = self.parse_inventory_output(inventory_output)
+
+        return self.store_inventory(ctx, inventory_data)
+
+    def store_inventory(self, ctx, inventory_data):
         """
         Store/update the processed inventory data in database
         :param ctx: context object
         :param inventory_data: parsed inventory data as a list of dictionaries
-        :param chassis_indices: a list of index/indices of chassis inventory dictionary in inventory_data
         :return: None
         """
-        if len(chassis_indices) == 0 or len(chassis_indices) > len(inventory_data):
-            logger = get_db_session_logger(ctx.db_session)
-            logger.exception('index/indices of chassis found in inventory output is out of range for host ' +
-                             '{}.'.format(ctx.host.hostname))
-            return
-
-        # Assign the ordering or "position" of inventory in output from show inventory
-        # to each inventory entry, but adjust the ordering so that chassis always have
-        # negative position(s) (so as to mark corresponding inventory as chassis)
-        # and non-chassis always have consecutive non-negative positions in ascending order,
-        # It goes like this - if there is only one chassis, its position will be -1,
-        # the non-chassis inventories will have positions starting from 0
-        # If there are multiple chassis, for example 3 chassis, chassis 0 will have position -3,
-        # chassis 1 will have position -2, chassis 2 will have position -1, non-chassis will
-        # still have positions starting from 0
-        chassis_position = 0 - len(chassis_indices)
-        for chassis_idx in chassis_indices:
-            inventory_data[chassis_idx]['position'] = chassis_position
-            chassis_position += 1
-
-        idx = 0
-        position = 0
-        rack_number = 0
-        while idx < len(inventory_data):
-            if rack_number < len(chassis_indices):
-                if idx == chassis_indices[rack_number]:
-                    rack_number += 1
-                else:
-                    inventory_data[idx]['position'] = position
-                    position += 1
-            else:
-                inventory_data[idx]['position'] = position
-                position += 1
-            idx += 1
-
         db_session = DBSession()
         # this is necessary for now because somewhere in the thread, can be
         # anywhere in the code, the db_session was not closed - to be found out later.
@@ -212,34 +180,25 @@ class BaseInventoryParser(object):
         """
         new_inventories = []
         for retrieved_inventory_data in inventory_data:
-            # if this inventory data belongs to a chassis
-            if retrieved_inventory_data.get('position') < 0:
-                self.set_extra_params_for_inventory(retrieved_inventory_data, host_id, is_chassis=True)
-            else:
-                self.set_extra_params_for_inventory(retrieved_inventory_data, host_id)
+            self.set_extra_params_for_inventory(retrieved_inventory_data, host_id)
             new_inventories.append(HostInventory(db_session, **retrieved_inventory_data))
         db_session.add_all(new_inventories)
         db_session.commit()
 
-    def set_extra_params_for_inventory(self, inventory_dict, host_id, is_chassis=False):
+    def set_extra_params_for_inventory(self, inventory_dict, host_id):
         """
         Set the additional parameters for initializing a HostInventory row in database.
         :param inventory_dict: the inventory dictionary that's going to be used for
                                initializing a HostInventory object.
         :param host_id: id of the host in database to which the inventory info belongs to.
-        :param is_chassis: True is the inventory is a chassis. False if it's not a chassis.
         :return: None
         """
         inventory_dict['host_id'] = host_id
-        if is_chassis:
-            rack_match = self.REGEX_RACK.search(inventory_dict['name'])
-            if rack_match:
-                inventory_dict['location'] = rack_match.group(0)
+
+        rack_match = self.REGEX_RACK.search(inventory_dict['name'])
+        if rack_match:
+            inventory_dict['location'] = rack_match.group(0)
         else:
             location_match = self.REGEX_LOCATION.search(inventory_dict['name'])
             if location_match:
                 inventory_dict['location'] = location_match.group(0)
-            else:
-                rack_match = self.REGEX_RACK.search(inventory_dict['name'])
-                if rack_match:
-                    inventory_dict['location'] = rack_match.group(0)

@@ -25,10 +25,8 @@
 import re
 
 from models import Package
-from models import ModulePackageState
 from constants import PackageState
-from base import BaseSoftwarePackageParser, BaseInventoryParser
-from models import get_db_session_logger
+from base import BaseSoftwarePackageParser
 import logging
 
 
@@ -135,34 +133,3 @@ class IOSSoftwarePackageParser(BaseSoftwarePackageParser):
                 # logging.warning('module = %s, pkg = %s', module, pkg)
 
         return trunks
-
-
-class IOSInventoryParser(BaseInventoryParser):
-    REGEX_CHASSIS = re.compile(r'.*chassis$', flags=re.IGNORECASE)
-
-    def process_inventory(self, ctx):
-        """
-        For ASR900 IOS.
-        Example:
-        NAME: "A901-6CZ-FT-A Chassis", DESCR: "A901-6CZ-FT-A Chassis"
-        PID: A901-6CZ-FT-A     , VID: V01 , SN: CAT1650U01P
-        """
-        if not ctx.load_data('cli_show_inventory'):
-            return
-        inventory_output = ctx.load_data('cli_show_inventory')[0]
-
-        inventory_data = self.parse_inventory_output(inventory_output)
-
-        chassis_indices = []
-
-        for idx in xrange(0, len(inventory_data)):
-            if self.REGEX_CHASSIS.match(inventory_data[idx]['name']) and \
-                    self.REGEX_CHASSIS.match(inventory_data[idx]['description']):
-                chassis_indices.append(idx)
-
-        if chassis_indices:
-            return self.store_inventory(ctx, inventory_data, chassis_indices)
-
-        logger = get_db_session_logger(ctx.db_session)
-        logger.exception('Failed to find chassis in inventory output for host {}.'.format(ctx.host.hostname))
-        return
