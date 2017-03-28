@@ -372,6 +372,7 @@
                 bootbox.alert("Server Repository has not been specified.");
                 return false;
             }
+
             check_server_reachability_before_proceeding($('#dialog_server').val(), $('#dialog_server_directory').val());
         });
 
@@ -396,7 +397,7 @@
                             server_id: server_id,
                             server_directory: server_directory,
                             software_packages: software_packages,
-                            spinner: browse_spinner,
+                            spinner: spinner,
                             install_actions: null,
                             check_missing_file_on_server: server_id > -1,
                             callback: on_finish_validate,
