@@ -186,7 +186,7 @@
         var download_in_progress_table = $("#download-in-progress-datatable").dataTable({
             "serverSide": true,
             "order": [
-                [3, "asc"]
+                [1, "asc"]
             ],
             "columns": [
                 { "data": "image_name" },
@@ -231,7 +231,7 @@
         var download_failed_table = $("#download-failed-datatable").dataTable({
             "serverSide": true,
             "order": [
-                [4, "desc"]
+                [3, "desc"]
             ],
             "columns": [
                 { "data": "image_name" },
@@ -315,7 +315,7 @@
         var download_completed_table = $("#download-completed-datatable").dataTable({
             "serverSide": true,
             "order": [
-                [4, "desc"]
+                [3, "desc"]
             ],
             "columns": [
                 { "data": "image_name" },

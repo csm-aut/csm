@@ -72,61 +72,78 @@ class BSDServiceHandler(BaseServiceHandler):
         response = self.send_meta_data_request(access_token, UDI)
         if response is not None:
             self.debug_print('response', response.text) 
-            
-            json_text = response.json() 
-            metadata_trans_ID = self.get_json_value(json_text, BSD_METADATA_TRANS_ID)          
-            image_GUID = self.get_json_value(json_text, BSD_IMAGE_GUID)
-            image_size = self.get_json_value(json_text, BSD_IMAGE_SIZE)
-            exception_code = self.get_json_value(json_text, BSD_EXCEPTION_CODE)
-            exception_message = self.get_json_value(json_text, BSD_EXCEPTION_MESSAGE)
 
-            self.debug_print('Exception Code', exception_code)
-            self.debug_print('Exception Message', exception_message)
+            download_succeeded = False
+            exception_code_list = []
+            exception_message_list = []
 
-            if exception_code is None and exception_message is None:
-                if metadata_trans_ID is not None and image_GUID is not None:
-                    response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
-                    if response is not None:
-                        self.debug_print('response', response.text)
-                        
-                        json_text = response.json() 
-                        download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
-                        download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
-                        
-                        # When download_url is null, it may be that the user needs to
-                        # acknowledge the EULA or K9 agreement.
-                        if download_url is None:
-                            eula = self.get_json_value(json_text, BSD_EULA_FORM)
-                            k9 = self.get_json_value(json_text, BSD_K9_FORM)
-                            if eula is not None:
-                                response = self.send_EULA_request(access_token, download_session_ID)
-                                self.debug_print('EULA response', response.text)
-                            elif k9 is not None:
-                                response = self.send_K9_request(access_token, download_session_ID)
-                                self.debug_print('K9 response', response.text)
-                                
-                            response = self.send_download_request(access_token, UDI, self.MDF_ID,
-                                                                  metadata_trans_ID, image_GUID)
-                            if response is not None:
-                                self.debug_print('After accepting EULA or K9', response.text)
-                                
-                                json_text = response.json() 
-                                download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL) 
-                                download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID) 
-                        
-                        self.debug_print('download_url', download_url)
-                        self.debug_print('download_session', download_session_ID) 
-                         
-                        if download_url is not None and download_session_ID is not None:
-                            self.send_get_image(access_token, download_url, output_file_path,
-                                                self.image_name, image_size, callback)
-                        else:                      
-                            message = 'User "' + self.username + '" may not have software download privilege on cisco.com.'       
-                            raise Exception(message)
-                            
-            else:
-                message = 'ASD Service hit exception (code: {}, message: {}).'.format(exception_code,
-                                                                                      exception_message)
+            json_text = response.json()
+
+            image_details = self.get_json_value(json_text, BSD_IMAGE_DETAILS)
+            metadata_trans_ID = self.get_json_value(json_text, BSD_METADATA_TRANS_ID)
+
+            # image_details may contain a collection of records including Is_Deleted if any.
+            for image_detail_json in image_details:
+
+                image_GUID = self.get_json_value(image_detail_json, BSD_IMAGE_GUID)
+                image_size = self.get_json_value(image_detail_json, BSD_IMAGE_SIZE)
+                exception_code = self.get_json_value(image_detail_json, BSD_EXCEPTION_CODE)
+                exception_message = self.get_json_value(image_detail_json, BSD_EXCEPTION_MESSAGE)
+
+                self.debug_print('Exception Code', exception_code)
+                self.debug_print('Exception Message', exception_message)
+
+                if exception_code is None and exception_message is None:
+                    if metadata_trans_ID is not None and image_GUID is not None:
+                        response = self.send_download_request(access_token, UDI, self.MDF_ID, metadata_trans_ID, image_GUID)
+                        if response is not None:
+                            self.debug_print('response', response.text)
+
+                            json_text = response.json()
+                            download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL)
+                            download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID)
+
+                            # When download_url is null, it may be that the user needs to
+                            # acknowledge the EULA or K9 agreement.
+                            if download_url is None:
+                                eula = self.get_json_value(json_text, BSD_EULA_FORM)
+                                k9 = self.get_json_value(json_text, BSD_K9_FORM)
+                                if eula is not None:
+                                    response = self.send_EULA_request(access_token, download_session_ID)
+                                    self.debug_print('EULA response', response.text)
+                                elif k9 is not None:
+                                    response = self.send_K9_request(access_token, download_session_ID)
+                                    self.debug_print('K9 response', response.text)
+
+                                response = self.send_download_request(access_token, UDI, self.MDF_ID,
+                                                                      metadata_trans_ID, image_GUID)
+                                if response is not None:
+                                    self.debug_print('After accepting EULA or K9', response.text)
+
+                                    json_text = response.json()
+                                    download_url = self.get_json_value(json_text, BSD_DOWNLOAD_URL)
+                                    download_session_ID = self.get_json_value(json_text, BSD_DOWNLOAD_SESSION_ID)
+
+                            self.debug_print('download_url', download_url)
+                            self.debug_print('download_session', download_session_ID)
+
+                            if download_url is not None and download_session_ID is not None:
+                                self.send_get_image(access_token, download_url, output_file_path,
+                                                    self.image_name, image_size, callback)
+                                download_succeeded = True
+                            else:
+                                message = 'User "' + self.username + '" may not have software download privilege on cisco.com.'
+                                raise Exception(message)
+                    else:
+                        message = 'Unknown metadata_trans_ID or image GUID.'
+                        raise Exception(message)
+                else:
+                    exception_code_list.append(exception_code)
+                    exception_message_list.append(exception_message)
+
+            if not download_succeeded:
+                message = 'ASD Service hit exception (code: {}, message: {}).'.format(exception_code_list,
+                                                                                      exception_message_list)
                 self.logger.error(message)
                 raise Exception(message)
     
