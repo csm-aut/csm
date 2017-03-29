@@ -2,9 +2,9 @@
 function getToday()
 {
     var today = new Date();    
-    //return formatMMDDYYYY(today.getFullYear(), today.getMonth(), today.getDate()) + ' ' + formatAMPM(today.getHours(), today.getMinutes());
-    return formatYYYYMMDD(today.getFullYear(), today.getMonth(), today.getDate()) + ' ' +
-        formatHHMMSS(today.getHours(), today.getMinutes(), today.getSeconds());
+    return formatMMDDYYYY(today.getFullYear(), today.getMonth(), today.getDate()) + ' ' + formatAMPM(today.getHours(), today.getMinutes());
+    //return formatYYYYMMDD(today.getFullYear(), today.getMonth(), today.getDate()) + ' ' +
+    //    formatHHMMSS(today.getHours(), today.getMinutes(), today.getSeconds());
 }
 
 function compareDateString(datetime1, datetime2)
@@ -24,10 +24,10 @@ function convertToUTCString(dateString)
     if (dateString == null) return dateString;
     
     var localeDate = new Date(dateString);
-    //return formatMMDDYYYY(localeDate.getUTCFullYear(), localeDate.getUTCMonth(), localeDate.getUTCDate()) + ' ' +
-    //    formatAMPM(localeDate.getUTCHours(), localeDate.getUTCMinutes());
-    return formatYYYYMMDD(localeDate.getUTCFullYear(), localeDate.getUTCMonth(), localeDate.getUTCDate()) + ' ' +
-        formatHHMMSS(localeDate.getUTCHours(), localeDate.getUTCMinutes(), localeDate.getUTCSeconds());
+    return formatMMDDYYYY(localeDate.getUTCFullYear(), localeDate.getUTCMonth(), localeDate.getUTCDate()) + ' ' +
+        formatAMPM(localeDate.getUTCHours(), localeDate.getUTCMinutes());
+    //return formatYYYYMMDD(localeDate.getUTCFullYear(), localeDate.getUTCMonth(), localeDate.getUTCDate()) + ' ' +
+    //    formatHHMMSS(localeDate.getUTCHours(), localeDate.getUTCMinutes(), localeDate.getUTCSeconds());
 }
 
 /**
@@ -57,10 +57,10 @@ function getPrettyUTCString(dateString)
     } else {
         utcDate = new Date(dateString);
     }
-    //return formatMMDDYYYY(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate()) + ' ' +
-    //    formatAMPM(utcDate.getUTCHours(), utcDate.getUTCMinutes()) + ' UTC';
-    return formatYYYYMMDD(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate()) + ' ' +
-        formatHHMMSS(utcDate.getUTCHours(), utcDate.getUTCMinutes(), utcDate.getUTCSeconds()) + ' UTC';
+    return formatMMDDYYYY(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate()) + ' ' +
+        formatAMPM(utcDate.getUTCHours(), utcDate.getUTCMinutes()) + ' UTC';
+    //return formatYYYYMMDD(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate()) + ' ' +
+    //    formatHHMMSS(utcDate.getUTCHours(), utcDate.getUTCMinutes(), utcDate.getUTCSeconds()) + ' UTC';
 }
 
 
@@ -71,7 +71,7 @@ function getPrettyUTCString(dateString)
 function convertToLocaleString(dateString)
 {
     if (dateString == null) return dateString;
-    
+
     var utcDate = '';
     // If the date suffix is not GMT, indicate it is a GMT (a.k.a UTC) time.
     if (dateString.indexOf('GMT') == -1) {
@@ -80,10 +80,10 @@ function convertToLocaleString(dateString)
         utcDate = new Date(dateString); 
     }
 
-    //return formatMMDDYYYY(utcDate.getFullYear(), utcDate.getMonth(), utcDate.getDate()) + ' ' +
-    //    formatAMPM(utcDate.getHours(), utcDate.getMinutes());
-    return formatYYYYMMDD(utcDate.getFullYear(), utcDate.getMonth(), utcDate.getDate()) + ' ' +
-        formatHHMMSS(utcDate.getHours(), utcDate.getMinutes(), utcDate.getSeconds());
+    return formatMMDDYYYY(utcDate.getFullYear(), utcDate.getMonth(), utcDate.getDate()) + ' ' +
+        formatAMPM(utcDate.getHours(), utcDate.getMinutes());
+    //return formatYYYYMMDD(utcDate.getFullYear(), utcDate.getMonth(), utcDate.getDate()) + ' ' +
+    //    formatHHMMSS(utcDate.getHours(), utcDate.getMinutes(), utcDate.getSeconds());
 }
 
 function formatYYYYMMDD(year, month, date)

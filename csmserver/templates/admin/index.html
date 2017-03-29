@@ -5,6 +5,7 @@
 {% block head %}
 <script charset="utf-8">
     $(function() {
+        var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
 
         if ("{{ is_ldap_supported }}" == "False") {
             $("#ldap-panel").hide();
