@@ -715,27 +715,11 @@
     <div class="container">
         <div class="row">
             <ul class="nav nav-tabs" id="host-dashboard-tab">
-                <li><a data-toggle="tab" href="#inventory">Inventory</a></li>
                 <li><a data-toggle="tab" href="#installation-history">Installation History</a></li>
                 <li><a data-toggle="tab" href="#retrieval-history">Retrieval History</a></li>
+                <li><a data-toggle="tab" href="#inventory">Inventory</a></li>
             </ul>
             <div class="tab-content">
-                <div id="inventory" class="tab-pane fade in active">
-                    <div class="container col-sm-12" style="margin-top: 10px">
-                         <table cellspacing="0" class="display table" id="inventory-datatable">
-                            <thead>
-                                <tr>
-                                    <th>Location</th>
-                                    <th>Model Name</th>
-                                    <th>Name</th>
-                                    <th>Description</th>
-                                    <th>Serial Number</th>
-                                    <th>VID</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
                 <div id="installation-history" class="tab-pane fade">
                     <div class="container col-sm-12" style="margin-top: 10px">
                         <table cellspacing="0" class="display table" id="installation-history-datatable">
@@ -769,6 +753,22 @@
                         </table>
                     </div>
                     <!-- /Inventory Job History Table -->
+                </div>
+                <div id="inventory" class="tab-pane fade in active">
+                    <div class="container col-sm-12" style="margin-top: 10px">
+                         <table cellspacing="0" class="display table" id="inventory-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Model Name</th>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Serial Number</th>
+                                    <th>VID</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
