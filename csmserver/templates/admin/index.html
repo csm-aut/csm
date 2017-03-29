@@ -247,7 +247,7 @@
                                 <div class="container col-sm-6">
                                     <div class="panel panel-default">
                                         <div class="panel-heading">
-                                            <h4>Scheduled Install Settings</h4>
+                                            <h4>Software Installation Settings</h4>
                                         </div>
                                         <div class="panel-body">
                                             {% set extra_field =
@@ -258,7 +258,7 @@
                                             </div>
                                             '
                                             %}
-                                            {{ edit_field(admin_console_form.can_schedule, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
+                                            {{ edit_field(admin_console_form.can_schedule, label_field_width="col-sm-8", class="form-control", extra_field=extra_field) }}
                                             {% set extra_field =
                                             '
                                             <div class="btn-group btn-toggle" id="can-install-yes-or-no">
@@ -267,7 +267,7 @@
                                             </div>
                                             '
                                             %}
-                                            {{ edit_field(admin_console_form.can_install, label_field_width="col-sm-6", class="form-control", extra_field=extra_field) }}
+                                            {{ edit_field(admin_console_form.can_install, label_field_width="col-sm-8", class="form-control", extra_field=extra_field) }}
                                         </div>
                                     </div>
                                     <div class="panel panel-default">
