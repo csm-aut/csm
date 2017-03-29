@@ -331,18 +331,11 @@
                 var install_actions = $('#install_action').val();
 
                 if ($('#hidden_edit').val() == 'False') {
-                    if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) || has_one_of_these(install_actions, [PRE_MIGRATE])) {
-                      get_qualified_hosts_and_submit_form('');
-                    } else {
-                        if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
-                            get_qualified_hosts_and_submit_form(PRE_MIGRATE);
-
-                        } else {
-                            get_qualified_hosts_and_submit_form(MIGRATE_SYSTEM);
-                        }
-                    }
+                    get_qualified_hosts_and_submit_form(install_actions);
                 } else {
-                    submit_form_on_successfully_download_config_conversion_tool();
+                    if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                        submit_form_on_successfully_download_config_conversion_tool();
+                    }
                 }
 
 
@@ -389,9 +382,27 @@
                 });
             }
 
-            function get_qualified_hosts_and_submit_form(dependency) {
+            function get_qualified_hosts_and_submit_form(install_actions) {
 
                 submit_spinner.show();
+
+                var need_to_download_config_conversion_tool = false;
+
+                if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                    need_to_download_config_conversion_tool = true;
+                }
+
+                var dependency = '';
+                if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) || has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                    dependency = '';
+                } else {
+                    if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
+                        dependency = PRE_MIGRATE;
+
+                    } else {
+                        dependency = MIGRATE_SYSTEM;
+                    }
+                }
 
                 $.ajax({
                     url: "/asr9k_64_migrate/api/get_dependencies/",
@@ -488,7 +499,12 @@
                                                   callback: function() {
                                                       $('#hidden_hosts').val(qualified_hosts);
                                                       $('#hidden_dependency').val(new_dependency_list);
-                                                      submit_form_on_successfully_download_config_conversion_tool();
+                                                      if (need_to_download_config_conversion_tool) {
+                                                          submit_form_on_successfully_download_config_conversion_tool();
+                                                      } else {
+                                                          submit_spinner.hide();
+                                                          $('#form').submit();
+                                                      }
                                                   }
 
                                                 },
@@ -504,7 +520,12 @@
 
                                 } else {
                                     $('#hidden_dependency').val(element[0].dependency_list.join());
-                                    submit_form_on_successfully_download_config_conversion_tool();
+                                    if (need_to_download_config_conversion_tool) {
+                                        submit_form_on_successfully_download_config_conversion_tool();
+                                    } else {
+                                        submit_spinner.hide();
+                                        $('#form').submit();
+                                    }
                                 }
                             });
                     },
