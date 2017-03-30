@@ -33,7 +33,7 @@ class BaseMigrate(object):
     def update_schema_version(self):
         db_session = DBSession()
         system_version = SystemVersion.get(db_session)
-        # system_version.schema_version = self.version
+        system_version.schema_version = self.version
         db_session.commit()
 
     def execute(self):
