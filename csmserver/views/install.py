@@ -445,23 +445,23 @@ def api_get_reload_list():
     """
     # The software packages/SMUs/SPs selected by the user to install
     package_list = request.args.get('package_list').split()
-
     rows = []
     if not is_empty(package_list):
         # Identify the platform and release
         platform, release = SMUInfoLoader.get_platform_and_release(package_list)
         if platform != UNKNOWN and release != UNKNOWN:
             smu_loader = SMUInfoLoader(platform, release)
-            if smu_loader.is_valid:
-                for package_name in package_list:
-                    if 'mini' in package_name:
-                        rows.append({'entry': package_name, 'description': ''})
-                    else:
-                        # Strip the suffix
-                        smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
-                        if smu_info is not None:
-                            if "Reload" in smu_info.impact or "Reboot" in smu_info.impact:
-                                rows.append({'entry': package_name, 'description': smu_info.description})
+
+        for package_name in package_list:
+            if any(s in package_name for s in ['mini']):
+                rows.append({'entry': package_name, 'description': ''})
+            else:
+                if smu_loader.is_valid:
+                    # Strip the suffix
+                    smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
+                    if smu_info is not None:
+                        if any(s in smu_info.impact for s in ['Reload', 'Reboot']):
+                            rows.append({'entry': package_name, 'description': smu_info.description})
 
     return jsonify(**{'data': rows})
 
