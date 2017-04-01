@@ -445,7 +445,10 @@ def api_get_reload_list():
     """
     # The software packages/SMUs/SPs selected by the user to install
     package_list = request.args.get('package_list').split()
+
     rows = []
+    smu_loader = None
+
     if not is_empty(package_list):
         # Identify the platform and release
         platform, release = SMUInfoLoader.get_platform_and_release(package_list)
