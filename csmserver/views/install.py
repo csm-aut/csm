@@ -456,7 +456,7 @@ def api_get_reload_list():
             if any(s in package_name for s in ['mini']):
                 rows.append({'entry': package_name, 'description': ''})
             else:
-                if smu_loader.is_valid:
+                if smu_loader and smu_loader.is_valid:
                     # Strip the suffix
                     smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
                     if smu_info is not None:
