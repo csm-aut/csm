@@ -69,7 +69,7 @@ def convert_config(db_session, http_request, template, schedule_form):
         return render_template(template, config_form=config_form,
                                input_filename="", err_msg=err_msg, schedule_form=schedule_form,
                                install_action=get_install_migrations_dict(),
-                               server_time=datetime.datetime.utcnow())
+                               server_time=datetime.datetime.utcnow(), system_option=SystemOption.get(db_session))
 
     # check if the post request has the file part
     if 'file' not in http_request.files:
@@ -78,7 +78,7 @@ def convert_config(db_session, http_request, template, schedule_form):
                                input_filename="", err_msg="Internal error - No file.",
                                schedule_form=schedule_form,
                                install_action=get_install_migrations_dict(),
-                               server_time=datetime.datetime.utcnow(),)
+                               server_time=datetime.datetime.utcnow(), system_option=SystemOption.get(db_session))
 
     input_file = http_request.files['file']
     # if user does not select file, browser also
@@ -89,7 +89,7 @@ def convert_config(db_session, http_request, template, schedule_form):
                                input_filename="", err_msg="Internal error - No selected file.",
                                schedule_form=schedule_form,
                                install_action=get_install_migrations_dict(),
-                               server_time=datetime.datetime.utcnow(),)
+                               server_time=datetime.datetime.utcnow(), system_option=SystemOption.get(db_session))
 
     config_conversion_path = get_config_conversion_path()
     create_directory(config_conversion_path)
@@ -101,7 +101,7 @@ def convert_config(db_session, http_request, template, schedule_form):
     return render_template(template, config_form=config_form,
                            input_filename=input_file.filename, err_msg="", schedule_form=schedule_form,
                            install_action=get_install_migrations_dict(),
-                           server_time=datetime.datetime.utcnow())
+                           server_time=datetime.datetime.utcnow(), system_option=SystemOption.get(db_session))
 
 
 @asr9k_64_migrate.route('/api/convert_config_file')
@@ -389,7 +389,8 @@ def migration():
                                                                        server_directory=server_directory,
                                                                        custom_command_profile_ids=custom_command_profile_ids,
                                                                        dependency=dependency,
-                                                                       install_job_data=install_job_data)
+                                                                       install_job_data=install_job_data,
+                                                                       created_by=current_user.username)
                         print("dependency for install_action = {} is {}".format(install_action[i],
                                                                                 str(dependency)))
                         dependency = new_install_job.id
@@ -515,7 +516,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                      scheduled_time=scheduled_time, software_packages=software_packages,
                                      server_id=server_id, server_directory=server_directory,
                                      custom_command_profile_ids=custom_command_profile_ids, dependency=dependency,
-                                     install_job=install_job, install_job_data=install_job_data)
+                                     install_job=install_job, install_job_data=install_job_data,
+                                     created_by=current_user.username)
 
         return redirect(url_for(return_url, hostname=hostname))
 
@@ -734,8 +736,10 @@ def fill_hardware_audit_version(choices):
         supported_hw = json.load(data_file)
 
     versions = supported_hw.keys()
-    for version in reversed(versions):
-        choices.append((version, version + ".*"))
+
+    for i in range(len(versions)-1, 0, -1):
+        choices.append((versions[i], versions[i] + ".*"))
+    choices.append((versions[0], versions[0] + ".* and onwards"))
 
 
 class ScheduleMigrationForm(Form):
