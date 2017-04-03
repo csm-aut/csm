@@ -61,7 +61,7 @@ $('.wizard-card').bootstrapWizard({
 });
 
 $('#on-finish-submit').click(function(e) {
-    if (!validate()) {
+    if (!validate(install_actions)) {
         return false;
     }
 
