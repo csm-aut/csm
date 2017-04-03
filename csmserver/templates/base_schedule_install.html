@@ -176,7 +176,7 @@ $(function() {
     });
 
     // Initialize the UI state
-    toggle_ui();
+    toggle_ui(install_actions);
 
     $('#install_action').on('change', function(e) {
         // Remember the selected install actions.
@@ -191,7 +191,9 @@ $(function() {
         } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
             $("#install_action").val([INSTALL_DEACTIVATE]).trigger('change');
         }
-        toggle_ui();
+
+        toggle_ui(install_actions);
+
     });
 
     function add_optgroup(control, opt_group_name, class_name, options) {
@@ -226,7 +228,7 @@ $(function() {
     }
 
 
-    function toggle_ui() {
+    function toggle_ui(install_actions) {
         should_enable_widget_panel(install_actions);
         $('#add-widget-panel').hide();
         $('#activate-widget-panel').hide();
@@ -297,8 +299,8 @@ $(function() {
 
     function get_server_cookie(region_id) {
         if (region_id != -1) {
-            var server = $.cookie('region-' + region_id + '-server');
-            return (server == null ? -1 : server);
+            var server_id = $.cookie('region-' + region_id + '-server');
+            return (server_id == null ? -1 : server_id);
         }
         return -1;
     }
@@ -364,10 +366,10 @@ $(function() {
     // Called when the Schedule (i.e. submit) button is clicked but before the
     // form actually being submitted.  Returning false will stop the submission.
     $('#on-submit').click(function(e) {
-        return validate();
+        return validate(install_actions);
     });
 
-    function validate() {
+    function validate(install_actions) {
         if (install_actions == null) {
             bootbox.alert("Install Action has not been specified.");
             return false;
@@ -404,6 +406,7 @@ $(function() {
 
     // Called by the $('#form').submit() function.
     function on_final_submit(current_form, hostname) {
+
         var validate_object = {
             form: current_form,
             hostname: hostname,
@@ -411,7 +414,12 @@ $(function() {
             server_directory: $('#hidden_server_directory').val(),
             software_packages: $('#software_packages').val(),
             spinner: submit_spinner,
-            install_actions: $('#install_action').val(),
+
+            // FIXME: There is an issue of using $('#install_action').val() here during Edit Mode.
+            // For unknown reason, it returns null.  Thus, the global variable install_actions is
+            // used here for the time being.  Need to revisit the logic post v3.4.
+
+            install_actions: install_actions,
             check_missing_file_on_server: $('#hidden_server').val() > -1,
             callback: on_finish_validate,
             pending_downloads: null,
@@ -419,16 +427,14 @@ $(function() {
         };
 
         // If hostname is null, this method is called by Batch Installs
-        if (has_one_of_these($('#install_action').val(), [INSTALL_ADD])) {
+        if (has_one_of_these(install_actions, [INSTALL_ADD])) {
             on_validate_prerequisites_and_files_on_server(validate_object);
-        } else if (has_one_of_these($('#install_action').val(), [INSTALL_ACTIVATE])) {
-
+        } else if (has_one_of_these(install_actions, [INSTALL_ACTIVATE])) {
             // Check for packages that may cause router to reload during Activate.
             // Turn off check_missing_file_on_server as it is only used for
             // Install Add.
             validate_object.check_missing_file_on_server = false;
             check_need_reload(validate_object);
-
         } else {
             // Turn on the spinner.  This will be useful for batch scheduling.
             if (validate_object.spinner != null ) validate_object.spinner.show();
@@ -457,9 +463,9 @@ $(function() {
         var server_directory = get_server_directory_cookie(region_id);
 
         if ($('#hidden_server').val() != -1) {
-          server_id = $('#hidden_server').val();
-          if ($('#hidden_server_directory').val().length > 0) {
-            server_directory = $('#hidden_server_directory').val()
+            server_id = $('#hidden_server').val();
+            if ($('#hidden_server_directory').val().length > 0) {
+                server_directory = $('#hidden_server_directory').val()
             }
         }
 
@@ -533,11 +539,11 @@ $(function() {
         write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
         write_target_release_cookie(region_id, $('#server_dialog_target_software').val());
 
-        toggle_ui();
+        toggle_ui(install_actions);
     });
 
     $('#on-select-server-submit').click(function(e) {
-        if ($('#server_modal_dialog_server').val() == -1) {
+        if ($('#server_modal_dialog_server').val() == -1 || $('#server_modal_dialog_server').val() == null) {
             bootbox.alert("Server Repository has not been specified.");
             return false;
         }
@@ -550,7 +556,7 @@ $(function() {
         write_server_cookie(region_id, $('#hidden_server').val());
         write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
 
-        toggle_ui();
+        toggle_ui(install_actions);
     });
 
     $('#server_modal_dialog_server').on('change', function(e) {
@@ -608,7 +614,7 @@ $(function() {
         write_server_cookie(region_id, $('#hidden_server').val());
         write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
 
-        toggle_ui();
+        toggle_ui(install_actions);
     });
 
     //----------------------------------------------------------------------------------------//
@@ -628,7 +634,7 @@ $(function() {
 
         update_software_packages(new_software_packages);
 
-        toggle_ui();
+        toggle_ui(install_actions);
     });
 
     //----------------------------------------------------------------------------------------//  
@@ -641,7 +647,7 @@ $(function() {
     $('#on-host-software-submit').click(function(e) {
         update_software_packages(host_software_selector.get_selected_items());
         write_target_release_cookie(region_id, $('#host_software_dialog_target_software').val());
-        toggle_ui();
+        toggle_ui(install_actions);
     });
 
     //----------------------------------------------------------------------------------------//

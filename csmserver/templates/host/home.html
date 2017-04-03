@@ -68,7 +68,8 @@
                 [0, "asc"],
                 [1, "asc"]
             ],
-            "scrollY": "350px",
+            "scrollY": "250px",
+            "iDisplayLength": 200,
             "sDom": 'ft',
             "columnDefs": [{
                 "targets": 0,
@@ -193,7 +194,7 @@
         });
 
         function refresh_host_platform_table() {
-             host_platform_table.api().ajax.url("/home/api/get_host_platform_version/region/" + get_region_from_cookie()).load();
+             host_platform_table.api().ajax.url("/home/api/get_host_platform_version/region/" + get_region_from_cookie()).load(null, false);
         }
 
         function refresh_region_name() {

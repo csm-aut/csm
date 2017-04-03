@@ -12,8 +12,8 @@
     <li><a href="{{ url_for('static', filename='documents/admin_tools.pdf') }}">Admin Tools</a></li>
     {% endif %}
     <li><a href="{{ url_for('static', filename='documents/tools.pdf') }}">Tools</a></li>
-    <li><a href="{{ url_for('static', filename='documents/migrate_to_asr9k_64.pdf') }}">ASR9K to ASR9K-64 Migration</a></li>
-    <li><a href="{{ url_for('static', filename='documents/additional_topics.pdf') }}">Additional Topics</a></li>
+    <li><a href="{{ url_for('static', filename='documents/inventory_manager.pdf') }}">Inventory Manager</a></li>
+    <li><a href="{{ url_for('static', filename='documents/migration_to_asr9k_64.pdf') }}">ASR9K to ASR9K-64 Migration</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('static', filename='documents/api_guide.pdf') }}">API Guide</a></li>
     <li class="divider"></li>
@@ -219,7 +219,6 @@
                         {{ help_menu() }}
                     </ul>
                 </li>
-                <li><a href="{{ url_for('authenticate.logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                         <div class="btn-group">
@@ -234,6 +233,7 @@
                         <li><a href='#' id='inventory-menu'><b id='checkmark-inventory-menu'>&#10003</b>&nbsp;&nbsp;Inventory Manager</a></li>
                     </ul>
                 </li>
+                <li><a href="{{ url_for('authenticate.logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right menu">
                 <li id="menu-option-5" class="dropdown">
