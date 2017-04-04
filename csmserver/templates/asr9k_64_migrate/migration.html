@@ -305,6 +305,7 @@
             });
 
             function on_submit() {
+
                 if (use_utc_timezone) {
                     $('#scheduled-time-UTC').val($('#scheduled-time').val());
                 } else {
@@ -335,6 +336,8 @@
                 } else {
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                         submit_form_on_successfully_download_config_conversion_tool();
+                    } else {
+                        $('#form').submit();
                     }
                 }
 
