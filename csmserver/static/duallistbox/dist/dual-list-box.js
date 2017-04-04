@@ -403,7 +403,7 @@
       unselected.find('option').each(function() {
           var found = false;
 
-          for (i = 0; i < data_list.length; i++) {
+          for (var i = 0; i < data_list.length; i++) {
               if ($(this).text().match(data_list[i])) {
                   found = true;
                   break;
@@ -428,7 +428,7 @@
       unselected.find('option').each(function() {
         var found = false;
 
-        for (i = 0; i < data_list.length; i++) {
+        for (var i = 0; i < data_list.length; i++) {
           if ($(this).text().match(data_list[i])) {
             found = true;
             break;
@@ -494,7 +494,13 @@
     };
     
     function filtering(select, search) {
-        var regex = new RegExp(search,'gi');
+        try {
+            var regex = new RegExp(search,'gi');
+        } catch(err) {
+            select.empty();
+            return
+        }
+
         var options = $(select).data('options');
         
         select.empty();       
