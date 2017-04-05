@@ -137,7 +137,8 @@
                 $('<option>', {
                     value: item[options.value],
                     text: text,
-                    selected: (selected.some(function (e) { return e[options.value] === item[options.value] }) === true)
+                    selected: (selected.some(function (e) { return e[options.value] === item[options.value] }) === true),
+                    style: "width:200%"
                 }).appendTo(options.element);
             });
 
@@ -156,7 +157,8 @@
                 $('<option>', {
                     value: options[key].value,
                     text:  options[key].text,
-                    selected: false
+                    selected: false,
+                    style: "width:200%"
                 }).appendTo($(select));                          
                 
             }
@@ -253,14 +255,14 @@
                 '       <h4><span class="unselected-title"></span> <small>- showing <span class="unselected-count"></span></small></h4>' +
                 '       <input class="filter form-control filter-unselected" type="text" placeholder="Filter" style="margin-bottom: 5px;">' +
                 (options.horizontal == false ? '' : createHorizontalButtons(1, options.moveAllBtn)) +
-                '       <select class="unselected ' + options.selectClass + '" style="height: 180px; width: 100%;" multiple></select>' +
+                '       <select class="unselected ' + options.selectClass + '" style="height: 180px; width: 100%;overflow-x: scroll;" multiple></select>' +
                 '   </div>' +
                 (options.horizontal == false ? createVerticalButtons(options.moveAllBtn) : '') +
                 (options.horizontal == false ? '   <div class="col-md-5">' : '   <div class="col-md-6">') +
                 '       <h4><span class="selected-title"></span> <small>- showing <span class="selected-count"></span></small></h4>' +
                 '       <input class="filter form-control filter-selected" type="text" placeholder="Filter" style="margin-bottom: 5px;">' +
                 (options.horizontal == false ? '' : createHorizontalButtons(2, options.moveAllBtn)) +
-                '       <select class="selected ' + options.selectClass + '" style="height: 180px; width: 100%;" multiple></select>' +
+                '       <select class="selected ' + options.selectClass + '" style="height: 180px; width: 100%;overflow-x: scroll;" multiple></select>' +
                 '   </div>');
 
         $(options.parentElement + ' .selected').prop('name', $(options.element).prop('name'));
@@ -471,7 +473,8 @@
                 $('<option>', {
                     value: item[plugin_options.value],
                     text:  item[plugin_options.text],
-                    selected: false
+                    selected: false,
+                    style: "width:200%"
                 }).appendTo(select);
                 
                 cached_options[item[plugin_options.value]] = { value: item[plugin_options.value], text: item[plugin_options.text] };
@@ -508,7 +511,8 @@
           if(options[key].text.match(regex) != null) {
               $('<option>', {
                   value: options[key].value,
-                  text:  options[key].text
+                  text:  options[key].text,
+                  style: "width:200%"
               }).appendTo($(select));   
           }
         }
