@@ -64,11 +64,17 @@
                     if (data == '0'){
                         return data
                     }
-                    return '<a class="show-model-name-details" model_name="' + row['model_name'] + '" href="javascript://">' + data + '</a>';
+                    return '<a class="show-in-use-model-name-details" model_name="' + row['model_name'] + '" href="javascript://">' + data + '</a>';
                 }
             }, {
                 "targets": 2,
-                "data": 'available_count'
+                "data": 'available_count',
+                "render": function(data, type, row) {
+                    if (data == '0'){
+                        return data
+                    }
+                    return '<a class="show-available-model-name-details" model_name="' + row['model_name'] + '" href="javascript://">' + data + '</a>';
+                }
             }],
             "ajax": {
                 "url": "/inventory/api/get_model_name_summary/" + prepare_region_from_cookie_for_rest_api()
@@ -201,8 +207,11 @@
         $("#chassis-summary-table").on("click", ".show-chassis-details", function() {
             display_chassis_details_dialog($(this).attr('chassis'));
         });
-        $("#model-name-summary-table").on("click", ".show-model-name-details", function() {
-            display_model_name_details_dialog($(this).attr('model_name'));
+        $("#model-name-summary-table").on("click", ".show-in-use-model-name-details", function() {
+            display_in_use_model_name_details_dialog($(this).attr('model_name'));
+        });
+        $("#model-name-summary-table").on("click", ".show-available-model-name-details", function() {
+            display_available_model_name_details_dialog($(this).attr('model_name'));
         });
         $("#host-no-serial-number-table").on("click", ".show-host-no-serial-number-details", function() {
             display_host_no_serial_number_details_dialog($(this).attr('hostname'));
@@ -218,11 +227,18 @@
             display_chassis_details(chassis)
         }
 
-        function display_model_name_details_dialog(model_name) {
-            $('#display-model-name-details-dialog').modal({
+        function display_in_use_model_name_details_dialog(model_name) {
+            $('#display-in-use-model-name-details-dialog').modal({
                 show: true
             });
-            display_model_name_details(model_name)
+            display_in_use_model_name_details(model_name)
+        }
+
+        function display_available_model_name_details_dialog(model_name) {
+            $('#display-available-model-name-details-dialog').modal({
+                show: true
+            });
+            display_available_model_name_details(model_name)
         }
 
         function display_serial_number_details_dialog(serial_number) {
@@ -396,14 +412,14 @@
         }
 
 
-        function display_model_name_details(model_name) {
+        function display_in_use_model_name_details(model_name) {
             if (model_name == "") {
-                $('#model-name-title').text('Model Name: (Undefined PID)');
+                $('#in-use-model-name-details-title').text('Model Name: (Undefined PID)');
             } else {
-                $('#model-name-title').text('Model Name: ' + model_name);
+                $('#in-use-model-name-details-title').text('Model Name: ' + model_name);
             }
 
-            $("#model-name-details-table").DataTable({
+            $("#in-use-model-name-details-table").DataTable({
                 destroy: true,
                 "serverSide": true,
                 "ajax": {
@@ -478,6 +494,55 @@
                             return data;
                         }
                     }
+                }]
+            });
+
+        }
+
+        function display_available_model_name_details(model_name) {
+            if (model_name == "") {
+                $('#available-model-name-details-title').text('Model Name: (Undefined PID)');
+            } else {
+                $('#available-model-name-details-title').text('Model Name: ' + model_name);
+            }
+
+            $("#available-model-name-details-table").DataTable({
+                destroy: true,
+                "serverSide": true,
+                "ajax": {
+                    "url": "{{ url_for('datatable.api_search_inventory') }}",
+                    "data": function (d) {
+                        d.available = true;
+                        var region_id = prepare_region_from_cookie_for_rest_api();
+                        if (region_id != 0) {
+                            d.region_ids = region_id.toString();
+                        }
+                        d.model_names = model_name;
+                        define_column_names(d);
+                    }
+                },
+                "columns": [
+                    { "data": "serial_number" },
+                    { "data": "vid" },
+                    { "data": "description" },
+                    { "data": "notes"}
+                ],
+                "order": [
+                    [0, "asc"]
+                ],
+                "pageLength": 10,
+                "columnDefs": [{
+                    "targets": 0,
+                    "data": 'serial_number'
+                }, {
+                    "targets": 1,
+                    "data": 'vid'
+                }, {
+                    "targets": 2,
+                    "data": 'description'
+                }, {
+                    "targets": 3,
+                    "data": 'notes'
                 }]
             });
 
@@ -880,19 +945,19 @@ comma-delimited email address(es) here.</pre>
         </form>
     </div>
 </div>
-<div id="display-model-name-details-dialog" class="modal" role="dialog">
+<div id="display-in-use-model-name-details-dialog" class="modal" role="dialog">
     <div class="modal-dialog" style="width: 1300px;">
         <form method="post" class="form-horizontal">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal">x</button>
                     <h4>
-                        <center><span id="model-name-title"></span></center>
+                        <center><span id="in-use-model-name-details-title"></span></center>
                     </h4>
                 </div>
                 <div class="modal-body">
                     <div style="height:570px; overflow-y: scroll;">
-                        <table class="display table" id="model-name-details-table">
+                        <table class="display table" id="in-use-model-name-details-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -906,6 +971,35 @@ comma-delimited email address(es) here.</pre>
                                     <th>Region</th>
                                     <th>Location</th>
                                     <th>Last Successful Retrieval</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+<div id="display-available-model-name-details-dialog" class="modal" role="dialog">
+    <div class="modal-dialog" style="width: 1000px;">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>
+                        <center><span id="available-model-name-details-title"></span></center>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div style="height:570px; overflow-y: scroll;">
+                        <table class="display table" id="available-model-name-details-table">
+                            <thead>
+                                <tr>
+                                    <th>Serial Number</th>
+                                    <th>VID</th>
+                                    <th>Description</th>
+                                    <th>Notes</th>
                                 </tr>
                             </thead>
                         </table>
