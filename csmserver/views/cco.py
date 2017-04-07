@@ -47,6 +47,7 @@ from models import logger
 from models import SMUInfo
 from models import Preferences
 
+from common import get_host
 from common import get_user_by_id
 from common import get_server_list
 from common import fill_servers
@@ -60,6 +61,7 @@ from forms import ExportInformationForm
 from forms import BrowseServerDialogForm
 
 from constants import UNKNOWN
+from constants import PlatformFamily
 from constants import BUG_SEARCH_URL
 from constants import get_repository_directory
 from constants import ExportInformationFormat
@@ -74,6 +76,7 @@ from smu_info_loader import SMUInfoLoader
 from utils import is_empty
 from utils import get_file_list
 from utils import get_json_value
+from utils import get_software_platform
 from utils import comma_delimited_str_to_list
 
 from report_writer import ExportSoftwareInfoHTMLConciseWriter
@@ -469,7 +472,22 @@ def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_su
     """
     file_list = get_file_list(get_repository_directory(), '.' + file_suffix)
 
-    host_packages = [] if hostname is None else get_host_active_packages(hostname)
+    host_packages = [] if is_empty(hostname) else get_host_active_packages(hostname)
+
+    check_package_bundles = False
+
+    if not is_empty(hostname):
+        db_session = DBSession()
+        host = get_host(db_session, hostname)
+
+        if host is not None:
+            software_platform = get_software_platform(host.family, host.os_type)
+
+            # Only for ASR9K, other platforms do not follow the definition of package_bundles
+            # (i.e., the values values in the package_bundles cannot be used to compare with
+            # the package list on the device).
+            if software_platform == PlatformFamily.ASR9K:
+                check_package_bundles = True
 
     rows = []
     for smu_info in smu_info_list:
@@ -501,10 +519,10 @@ def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_su
             row['uncompressed_image_size'] = smu_info.uncompressed_image_size
             row['is_installed'] = installed
 
-            if not is_empty(hostname) and SMU_INDICATOR in smu_info.name:
+            row['is_applicable'] = True
+
+            if check_package_bundles and SMU_INDICATOR in smu_info.name:
                 row['is_applicable'] = is_smu_applicable(host_packages, smu_info.package_bundles)
-            else:
-                row['is_applicable'] = True
 
             rows.append(row)
 

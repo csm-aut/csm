@@ -27,6 +27,7 @@ import re
 
 from constants import PlatformFamily
 from utils import get_software_platform
+from utils import replace_multiple
 
 
 def get_target_software_package_list(family, os_type, host_packages, target_version, match_internal_name=False):
@@ -157,4 +158,4 @@ def is_external_file_a_release_software(filename):
 
 
 def strip_smu_file_extension(filename):
-    return filename.replace('.pie', '').replace('.smu', '')
+    return replace_multiple(filename, {'.pie': '', '.smu': '', '.rpm': ''})

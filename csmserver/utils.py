@@ -451,9 +451,9 @@ def get_config_value(config_file, section, key):
             return None
 
 
-if __name__ == '__main__':
-    #print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))
+def replace_multiple(text, dictionary):
+    return reduce(lambda a, kv: a.replace(*kv), dictionary.iteritems(), text)
 
-    from constants import get_csm_data_directory
-    config_path = os.path.join(get_csm_data_directory(), 'config')
-    print(get_config_value(config_path, 'Doc Central', 'doc_central_support_enabled'))
+if __name__ == '__main__':
+    print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))
+
