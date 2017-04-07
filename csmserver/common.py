@@ -877,12 +877,7 @@ def is_pending_on_download(db_session, filename, server_id, server_directory):
 
 
 # Accepts an array containing paths to specific files
-def download_session_logs(file_list):
-    if hasattr(current_user, 'username'):
-        username = current_user.username
-    else:
-        username = g.api_user.username
-
+def download_session_logs(file_list, username):
     temp_user_dir = create_temp_user_directory(username)
     session_zip_path = os.path.normpath(os.path.join(temp_user_dir, "session_logs"))
     zip_file = os.path.join(session_zip_path, "session_logs.zip")

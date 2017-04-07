@@ -142,7 +142,7 @@ def download_session_log():
 @login_required
 def api_download_session_logs():
     file_list = request.args.getlist('file_list[]')[0].split(',')
-    return download_session_logs(file_list)
+    return download_session_logs(file_list, current_user.username)
 
 
 @log.route('/api/get_session_log_file_diff')

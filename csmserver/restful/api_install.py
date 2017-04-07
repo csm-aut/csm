@@ -109,7 +109,8 @@ ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
 
 # Supported install actions
 supported_install_actions = ordered_install_actions + [InstallAction.INSTALL_REMOVE,
-                                                       InstallAction.INSTALL_DEACTIVATE]
+                                                       InstallAction.INSTALL_DEACTIVATE,
+                                                       InstallAction.INSTALL_REMOVE_ALL_INACTIVE]
 
 
 def api_create_install_request(request):
@@ -255,7 +256,7 @@ def api_create_install_request(request):
             row[KEY_HOSTNAME] = hostname
 
             host_id = get_host(db_session, hostname).id
-            utc_scheduled_time = install_request[KEY_UTC_SCHEDULED_TIME].strftime("%m/%d/%Y %I:%M %p")
+            utc_scheduled_time = install_request[KEY_UTC_SCHEDULED_TIME].strftime("%m-%d-%Y %I:%M %p")
 
             server_id = -1
             if KEY_SERVER_REPOSITORY in install_request.keys():
@@ -303,7 +304,6 @@ def api_create_install_request(request):
         except Exception as e:
             row[RESPONSE_STATUS] = APIStatus.FAILED
             row[RESPONSE_STATUS_MESSAGE] = e.message
-            row[RESPONSE_TRACE] = traceback.format_exc()
             error_found = True
 
         rows.append(row)
@@ -337,11 +337,14 @@ def get_dependency_id(db_session, implicit_dependency_list, install_request, hos
             else:
                 raise ValueError("Dependency '{}' does not exist in the database.".format(dependency))
         else:
+            error_message = None
             # dependency is specified as an install action string.
             if hostname in implicit_dependency_list.keys():
                 for id, action, utc_time in implicit_dependency_list[hostname]:
                     if action == dependency and utc_time <= utc_scheduled_time:
                         return id
+                    else:
+                        error_message = "The dependency '{}' requested has a later scheduled time.".format(dependency)
 
             # Check the database since the hostname and install action are not found in the cache.
             install_jobs = db_session.query(InstallJob).filter(and_(InstallJob.host_id == host_id,
@@ -349,8 +352,13 @@ def get_dependency_id(db_session, implicit_dependency_list, install_request, hos
             for install_job in install_jobs:
                 if install_job.scheduled_time <= utc_scheduled_time:
                     return install_job.id
+                else:
+                    raise ValueError("The dependency '{}' requested has a later scheduled time.".format(dependency))
 
-            raise ValueError("'{}' is an invalid dependency.".format(dependency))
+            if error_message:
+                raise ValueError(error_message)
+            else:
+                raise ValueError("'{}' is an invalid dependency or dependency does not belong to the same host.".format(dependency))
 
     else:
         # Check to see if implicit dependency needs to be applied here.
@@ -591,7 +599,8 @@ def api_delete_install_job(request):
 
         rows.append(row)
 
-    return jsonify(**{RESPONSE_ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_INSTALL_JOB_LIST: rows}}), \
+                  (HTTP_OK if not error_found else HTTP_MULTI_STATUS_ERROR)
 
 
 def api_get_session_log(id):
@@ -611,7 +620,7 @@ def api_get_session_log(id):
         log_dir = os.path.join(get_log_directory(), install_job.session_log)
         file_list = [os.path.join(log_dir, f) for f in os.listdir(log_dir)]
 
-        return download_session_logs(file_list)
+        return download_session_logs(file_list, g.api_user.username)
     else:
         raise ValueError("Session log does not exist for install job id '%d'." % id)
 
