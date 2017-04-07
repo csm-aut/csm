@@ -7,12 +7,15 @@
     <script>
 
     $(function() {
+        $('#import-spinner').hide();
+
         $('#on-finish-submit').on('click', function(e) {
             var trimmed_data = trim_lines($('#data_list').val());
             if (!trimmed_data) {
                 bootbox.alert('<img src="/static/error.png">&nbsp; Please input data.');
                 return false;
             }
+            $('#import-spinner').show();
             $.ajax({
                 url: "/inventory/api/import_inventory",
                 type: "POST",
@@ -22,6 +25,7 @@
                     data_list: trimmed_data
                 },
                 success: function(data) {
+                    $('#import-spinner').hide();
                     if (data.status == 'OK') {
                         if (data.unimported_inventory.length == 0) {
                             bootbox.alert("Data has been imported successfully!", function() {
@@ -159,6 +163,9 @@
                         <div class="pull-left">
                             <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
                         </div>
+                        <span class="import-spinner">
+                            <center><img id="import-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center>
+                        </span>
                         <div class="clearfix"></div>
                     </div>
                 </form>
