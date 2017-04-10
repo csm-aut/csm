@@ -1,87 +1,330 @@
-<!--
-This HTML file requires a corresponding make_conform_dialog.js file
-
-Caller must provide the following WTForms elements with the following IDs
-
--->
-
-{% from 'host/common.html' import edit_field %}
 {% from 'share/select_server.html' import select_server %}
 
-{% macro make_conform_dialog(cco_lookup_enabled, server, server_directory, server_time, install_actions, software_packages, custom_command_profile, scheduled_time, scheduled_time_UTC) %}
+<script>
 
-<div id="make-conform-dialog" data-hostname="" data-cco-lookup-enabled="{{ cco_lookup_enabled }}" data-server-time="{{ server_time }}" class="modal" role="dialog">
+    var make_conform_dialog_spinner;
+    var host_software_platform = null;
+    var host_software_version = null;
+
+    $(function() {
+        // These constant values must match the CSM definitions
+        var PRE_UPGRADE = "Pre-Upgrade";
+        var INSTALL_ADD = "Add";
+        var INSTALL_ACTIVATE = "Activate";
+        var POST_UPGRADE = "Post-Upgrade";
+        var INSTALL_COMMIT = "Commit";
+        var ALL = "ALL";
+
+        make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
+        make_conform_dialog_spinner.hide();
+
+        $('#server-repository-panel').hide();
+
+        $('#custom-command-profile-panel').hide();
+
+        var server_time_as_locale_time = convertToLocaleString($('#make-conform-dialog').attr('data-server-time'));
+
+        $("#install_action").select2({});
+
+        $("#custom_command_profile").select2({
+            placeholder: 'Optional'
+        });
+
+        var datetimepicker = $(".form_datetime").datetimepicker({
+            format: "mm/dd/yyyy HH:ii P",
+            //format: "yyyy-mm-dd hh:ii:ss",
+            showMeridian: true,
+            autoclose: true,
+            todayBtn: true,
+            pickerPosition: "top-left",
+            todayHighlight: true
+        });
+
+        $('#install_action').on('change', function(e) {
+            var install_actions = $(this).val();
+
+            if (has_one_of_these(install_actions, [ALL])) {
+                $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
+            }
+
+            if (has_one_of_these(install_actions, [INSTALL_ADD, ALL])) {
+                display_selected_server_info();
+            } else {
+                $('#server-repository-panel').hide();
+            }
+
+            if (has_one_of_these(install_actions, [PRE_UPGRADE, POST_UPGRADE, ALL])) {
+                $('#custom-command-profile-panel').show();
+            } else {
+                $('#custom-command-profile-panel').hide();
+            }
+
+        });
+
+
+        // Use delegate pattern for event
+        $('#server-repository-panel').on('click', '#server-edit', function(e) {
+
+            $('#select-server-dialog').modal({
+                show: true,
+                backdrop: 'static'
+            })
+        });
+
+        function display_selected_server_info() {
+            $('#server-repository-panel').show();
+
+            var html_code = '';
+            var server_name = $('#select_server option:selected').text();
+            var server_directory = $('#select_server_directory').val();
+
+            html_code = '<table>';
+            html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + server_name;
+            html_code += '&nbsp;&nbsp;<a id="server-edit" href="javascript://"><img src="/static/edit.png" title="Edit"></a></td></tr>';
+
+            // FIXME: Somehow server_directory = null even though it is reset in display_make_conform_dialog().
+            if (server_directory != null && server_directory.length > 0) {
+                html_code += '<tr><td><span style="color: Gray;">Server Directory:&nbsp;</span></td><td>' + server_directory + '</td></tr>';
+            }
+            html_code += '</table>';
+
+            $('#server-repository-panel').html(html_code);
+        }
+
+        $('#on-select-server-submit').click(function(e) {
+            if ($('#select_server').val() == -1) {
+                bootbox.alert("Server Repository has not been specified.");
+            }
+
+            display_selected_server_info();
+        });
+
+        $('#on-finish-submit').on('click', function(e) {
+            var install_actions = $('#install_action').val();
+            var server_id = $('#select_server').val();
+
+            if (install_actions == null) {
+                bootbox.alert("Install Action has not been specified.");
+                return false;
+            }
+
+            if (has_one_of_these(install_actions, [INSTALL_ADD]) && server_id == -1) {
+                $('#select-server-dialog').modal({
+                    show: true,
+                    backdrop: 'static'
+                })
+                return false;
+            }
+
+            var software_packages = $('#software_packages').val().trim();
+            if (!validate_package_count_restriction(host_software_platform, host_software_version, software_packages)) {
+                return false;
+            }
+
+            on_submit_install_jobs();
+
+            return false;
+        });
+
+        function on_submit_install_jobs() {
+            var hostname = $('#make-conform-dialog').data('hostname');
+            var cco_lookup_enabled = $('#make-conform-dialog').data('cco-lookup-enabled') == 'True';
+
+            var validate_object = {
+                form: null,
+                hostname: hostname,
+                server_id: $('#select_server').val(),
+                server_directory: $('#select_server_directory').val(),
+                software_packages: $('#software_packages').val(),
+                spinner: make_conform_dialog_spinner,
+                install_actions: $('#install_action').val(),
+                check_missing_file_on_server: $('#select_server').val() > -1,
+                callback: submit_install_jobs,
+                pending_downloads: null,
+                cco_lookup_enabled: cco_lookup_enabled
+            };
+
+            if (has_one_of_these($('#install_action').val(), [INSTALL_ADD])) {
+                on_validate_prerequisites_and_files_on_server(validate_object);
+            } else if (has_one_of_these($('#install_action').val(), [INSTALL_ACTIVATE])) {
+                // Check for packages that may cause router to reload during Activate.
+                // Turn off check_missing_file_on_server as it is only used for
+                // Install Add.
+                validate_object.check_missing_file_on_server = false;
+                check_need_reload(validate_object);
+
+            } else {
+                submit_install_jobs(validate_object);
+            }
+        }
+
+        function submit_install_jobs(validate_object) {
+            if (use_utc_timezone) {
+                $('#scheduled-time-UTC').val($('#scheduled-time').val());
+            } else {
+                $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
+            }
+
+            // Update the software packages textarea
+            $('#software_packages').val(validate_object.software_packages);
+
+            var hostname = $('#make-conform-dialog').data('hostname');
+            var install_action = $('#install_action').val();
+
+            if ($('#custom_command_profile').val() != null) {
+                var custom_command_string = $('#custom_command_profile').val().join(",");
+            } else {
+                var custom_command_string = $('#custom_command_profile').val();
+            }
+
+            $.ajax({
+                url: "/conformance/api/create_install_jobs",
+                dataType: 'json',
+                type: "POST",
+                data: {
+                    hostname: hostname,
+                    install_action: install_action,
+                    scheduled_time_UTC: $('#scheduled-time-UTC').val(),
+                    software_packages: trim_lines($('#software_packages').val()),
+                    server: $('#select_server').val(),
+                    server_directory: $('#select_server_directory').val(),
+                    pending_downloads: validate_object.pending_downloads,
+                    custom_command_profile: custom_command_string
+                },
+                success: function(data) {
+                    if (data.status == 'OK') {
+                        if (install_action.length == 1) {
+                            bootbox.alert('The request scheduled installation has been submitted for ' + hostname + '.');
+                        } else {
+                            bootbox.alert('The request scheduled installations have been submitted for ' + hostname + '.');
+                        }
+                        $('#make-conform-dialog').modal('hide');
+                    } else {
+                        bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
+                    }
+                }
+            });
+        }
+
+    });
+
+
+    function display_make_conform_dialog(hostname, software_platform, software_version, missing_packages) {
+        $.ajax({
+            url: "/host_dashboard/api/is_host_valid/" + hostname,
+            dataType: 'json',
+            success: function(response) {
+                if (response.status == 'OK') {
+                    host_software_platform  = software_platform;
+                    host_software_version = software_version;
+
+                    // Reset variables
+                    $("#install_action").val(null).trigger("change");
+                    $('#select_server').val(-1);
+                    $('#select_server_directory').val('');
+
+                    $('#make-conform-dialog').data('hostname', hostname)
+                    $('#make-conform-dialog-title').html(hostname);
+                    $('#software_packages').val(comma2newline(missing_packages));
+
+                    // Initialize the server repository selector
+                    initialize_server_by_hostname(hostname);
+
+                    $('#make-conform-dialog').modal({
+                        show: true,
+                        backdrop: 'static'
+                    });
+
+                } else {
+                    bootbox.alert('Host ' + hostname + ' does not exist in the database.');
+                }
+            }
+        });
+
+
+    }
+
+</script>
+
+
+<div id="make-conform-dialog" data-hostname="" data-cco-lookup-enabled="{{ system_option.enable_cco_lookup }}" data-server-time="{{ server_time }}" class="modal" role="dialog">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-body">
-                <button type="button" class="close" data-dismiss="modal">x</button>
-                <!-- <div class="wizard-container"> -->
-                <div class="card wizard-card csm-blue" id="make-conform-dialog-wizard">
-                    <form class="form-horizontal" method="post">
-                        <div class="wizard-header">
-                            <h3>
-                                Make Conform: <span id="make-conform-dialog-title"></span><br>
-                            </h3>
-                        </div>
-                        <ul>
-                            <li><a href="#dialog_general" data-toggle="tab">GENERAL</a></li>
-                            <li><a href="#dialog_server_repository" data-toggle="tab">SERVER REPOSITORY</a></li>
-                        </ul>
-                        <div class="tab-content">
-                            <div class="tab-pane" id="dialog_general">
-
-                                <div class="form-group ">
-                                    <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
-                                    <div class=col-sm-6>
-                                        <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
-                                            <optgroup label="Install">
-                                                {% for install_action in install_actions %}
-                                                    <option value="{{ install_action }}">{{ install_action }}</option>
-                                                {% endfor %}
-                                            </optgroup>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {{ edit_field(software_packages, class="form-control", spellcheck="false", rows="10") }}
-
-                                <div class="form-group ">
-                                    <label id="label_scheduled_time" class="col-sm-4 control-label">{{ scheduled_time.label() }}</label>
-                                    <div class="col-sm-6">
-                                        <div  class="input-group date form_datetime">
-                                            <input id="scheduled-time" name="{{ scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
-                                            <input id="scheduled-time-UTC" name="{{ scheduled_time_UTC.name }}" value="{{ scheduled_time_UTC.data }}" class="form-control" type="hidden">
-                                            <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
-                                        </div>
-                                    </div>
-                                </div>
-				                <div id="custom-command-profile-panel">
-                                	{{ edit_field(custom_command_profile, class="form-control", field_width="col-sm-6", style="width: 100%") }}
-				                </div>
-
-                            </div>
-                            <div class="tab-pane" id="dialog_server_repository">
-                                 <h4 class="info-text">Skip the server repository selection if there is no Install Add action.</h4>
-                                {{ select_server(server, server_directory) }}
-                            </div>
-                        </div>
-                        <div class="wizard-footer">
-                            <div class="pull-right">
-                                <img id="make-conform-dialog-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
-                                <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
-                                <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
-                            </div>
-                            <div class="pull-left">
-                                <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
-                            </div>
-                            <div class="clearfix"></div>
-                        </div>
-                    </form>
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h3><center>Make Conform: <span id="make-conform-dialog-title"></span></center></h3>
                 </div>
-                <!-- wizard container -->
+                <div class="modal-body">
+                    <div class="form-group ">
+                        <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
+                        <div class=col-sm-6>
+                            <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
+                                <optgroup label="Install">
+                                    {% for install_action in install_actions %}
+                                        <option value="{{ install_action }}">{{ install_action }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{ edit_field(make_conform_dialog_form.software_packages, class="form-control", spellcheck="false", rows="10") }}
+
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label"></label>
+                        <div id="server-repository-panel" class="col-sm-8">
+                        </div>
+                    </div>
+
+                    <div class="form-group ">
+                        <label id="label_scheduled_time" class="col-sm-4 control-label">{{ make_conform_dialog_form.scheduled_time.label() }}</label>
+                        <div class="col-sm-6">
+                            <div  class="input-group date form_datetime">
+                                <input id="scheduled-time" name="{{ make_conform_dialog_form.scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
+                                <input id="scheduled-time-UTC" name="{{ make_conform_dialog_form.scheduled_time_UTC.name }}" value="{{ make_conform_dialog_form.scheduled_time_UTC.data }}" class="form-control" type="hidden">
+                                <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="custom-command-profile-panel">
+                        {{ edit_field(make_conform_dialog_form.custom_command_profile, class="form-control", field_width="col-sm-6", style="width: 100%") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <img id="make-conform-dialog-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-finish-submit" class="btn btn-primary" data-dismiss="modal">Schedule</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
-{% endmacro %}
+<div id="select-server-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Select Server Repository</h4>
+                </div>
+                <div class="modal-body">
+                    {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

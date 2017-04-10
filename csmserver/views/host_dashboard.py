@@ -308,3 +308,16 @@ def get_inventory(hostname):
             return jsonify({'status': 'OK'})
 
     return jsonify({'status': 'Failed'})
+
+
+@host_dashboard.route('/api/is_host_valid/<hostname>')
+@login_required
+def api_is_host_valid(hostname):
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if host is not None:
+        return jsonify({'status': 'OK'})
+
+    return jsonify({'status': 'Failed'})
+
