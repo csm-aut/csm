@@ -177,10 +177,10 @@ def delete_all_scheduled_downloads():
     if not can_delete_install(current_user):
         abort(401)
 
-    return delete_all_downloads()
+    return delete_all_downloads(status=JobStatus.SCHEDULED)
 
 
-def delete_all_downloads(status=None):
+def delete_all_downloads(status):
     db_session = DBSession()
 
     try:
@@ -210,7 +210,7 @@ def delete_download_job(id):
 
     try:
         # Download jobs that are in progress cannot be deleted.
-        if download_job.status is None or download_job.status == JobStatus.FAILED:
+        if download_job.status in [JobStatus.SCHEDULED, JobStatus.FAILED]:
             db_session.delete(download_job)
             db_session.commit()
 
