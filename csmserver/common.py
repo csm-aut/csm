@@ -733,13 +733,16 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
                                  pending_downloads=[], created_by=None, install_job=None, install_job_data={}):
 
     if not type(software_packages) is list:
-        raise ValueError('software_packages must be a list type')
+        raise ValueError('software_packages must be a list type.')
 
     if not type(custom_command_profile_ids) is list:
-        raise ValueError('custom_command_profile_ids must be a list type')
+        raise ValueError('custom_command_profile_ids must be a list type.')
 
     if not type(pending_downloads) is list:
-        raise ValueError('pending_downloads must be a list type')
+        raise ValueError('pending_downloads must be a list type.')
+
+    if created_by is None:
+        raise ValueError('created_by is None.')
 
     # This is a new install_job
     if install_job is None:

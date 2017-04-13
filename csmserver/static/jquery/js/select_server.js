@@ -109,7 +109,30 @@ $(function() {
 
 });
 
-function initialize_server_by_hostname(hostname) {
+function initialize_servers() {
+    // Now, gets the servers for the selected region
+    $('#select_server').empty().append('<option value=-1></option>');
+
+    $.ajax({
+        url: "/api/get_servers",
+        dataType: 'json',
+        success: function(data) {
+            $.each(data, function(index, element) {
+                for (i = 0; i < element.length; i++) {
+                    var server_id = element[i].server_id;
+                    var hostname = element[i].hostname;
+
+                    $('#select_server').append('<option value="' + server_id + '">' + hostname + '</option>');
+                }
+            });
+        },
+        error: function(xhr, status, errorThrown) {
+            bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
+        }
+    });
+}
+
+function initialize_servers_by_hostname(hostname) {
     // Now, gets the servers for the selected region
     $('#select_server').empty().append('<option value=-1></option>');
 
@@ -132,7 +155,7 @@ function initialize_server_by_hostname(hostname) {
     });
 }
 
-function initialize_server_by_region(region_id) {
+function initialize_servers_by_region(region_id) {
     // Now, gets the servers for the selected region
     $('#select_server').empty().append('<option value=-1></option>');
 

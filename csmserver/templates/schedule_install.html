@@ -30,9 +30,9 @@ $('.wizard-card').bootstrapWizard({
         if (index == 1) {
             populate_region_server();
 
-            selected_hosts = host_selector.get_selected_items();
+            var selected_hosts = host_selector.get_selected_items();
             if (selected_hosts.length == 0) {
-                bootbox.alert("Host has not been specified.");
+                bootbox.alert("No host has been selected.");
                 return false;
             }
             $('#hidden_selected_hosts').val(selected_hosts);

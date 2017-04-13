@@ -3,10 +3,27 @@
 <script>
 
     var make_conform_dialog_spinner;
-    var host_software_platform = null;
     var host_software_version = null;
 
     $(function() {
+        var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
+
+        if (use_utc_timezone) {
+            $('#label_scheduled_time').text('Scheduled Time (UTC)');
+        } else {
+            $('#label_scheduled_time').text('Scheduled Time');
+        }
+
+        // server_time is always in UTC format.
+        var current_time = "{{ server_time | datetime_string }}";
+        if (!use_utc_timezone) {
+            current_time = convertToLocaleString(current_time);
+        }
+
+        $('#scheduled-time-UTC').val(function(index, value) {
+            $('#scheduled-time').val(current_time);
+        });
+
         // These constant values must match the CSM definitions
         var PRE_UPGRADE = "Pre-Upgrade";
         var INSTALL_ADD = "Add";
@@ -19,10 +36,7 @@
         make_conform_dialog_spinner.hide();
 
         $('#server-repository-panel').hide();
-
         $('#custom-command-profile-panel').hide();
-
-        var server_time_as_locale_time = convertToLocaleString($('#make-conform-dialog').attr('data-server-time'));
 
         $("#install_action").select2({});
 
@@ -88,7 +102,7 @@
             }
             html_code += '</table>';
 
-            $('#server-repository-panel').html(html_code);
+            $('#server-repository-info').html(html_code);
         }
 
         $('#on-select-server-submit').click(function(e) {
@@ -121,14 +135,13 @@
                 return false;
             }
 
-            on_submit_install_jobs();
+            on_make_conform();
 
             return false;
         });
 
-        function on_submit_install_jobs() {
+        function on_make_conform() {
             var hostname = $('#make-conform-dialog').data('hostname');
-            var cco_lookup_enabled = $('#make-conform-dialog').data('cco-lookup-enabled') == 'True';
 
             var validate_object = {
                 form: null,
@@ -139,7 +152,7 @@
                 spinner: make_conform_dialog_spinner,
                 install_actions: $('#install_action').val(),
                 check_missing_file_on_server: $('#select_server').val() > -1,
-                callback: submit_install_jobs,
+                callback: make_conform,
                 pending_downloads: null,
                 cco_lookup_enabled: cco_lookup_enabled
             };
@@ -154,11 +167,11 @@
                 check_need_reload(validate_object);
 
             } else {
-                submit_install_jobs(validate_object);
+                make_conform(validate_object);
             }
         }
 
-        function submit_install_jobs(validate_object) {
+        function make_conform(validate_object) {
             if (use_utc_timezone) {
                 $('#scheduled-time-UTC').val($('#scheduled-time').val());
             } else {
@@ -169,27 +182,20 @@
             $('#software_packages').val(validate_object.software_packages);
 
             var hostname = $('#make-conform-dialog').data('hostname');
-            var install_action = $('#install_action').val();
-
-            if ($('#custom_command_profile').val() != null) {
-                var custom_command_string = $('#custom_command_profile').val().join(",");
-            } else {
-                var custom_command_string = $('#custom_command_profile').val();
-            }
 
             $.ajax({
-                url: "/conformance/api/create_install_jobs",
+                url: "/conformance/api/make_conform",
                 dataType: 'json',
                 type: "POST",
                 data: {
                     hostname: hostname,
-                    install_action: install_action,
+                    install_actions: $('#install_action').val(),
                     scheduled_time_UTC: $('#scheduled-time-UTC').val(),
                     software_packages: trim_lines($('#software_packages').val()),
-                    server: $('#select_server').val(),
+                    server_id: $('#select_server').val(),
                     server_directory: $('#select_server_directory').val(),
                     pending_downloads: validate_object.pending_downloads,
-                    custom_command_profile: custom_command_string
+                    custom_command_profile_ids: $('#custom_command_profile').val()
                 },
                 success: function(data) {
                     if (data.status == 'OK') {
@@ -228,7 +234,7 @@
                     $('#software_packages').val(comma2newline(missing_packages));
 
                     // Initialize the server repository selector
-                    initialize_server_by_hostname(hostname);
+                    initialize_servers_by_hostname(hostname);
 
                     $('#make-conform-dialog').modal({
                         show: true,
@@ -247,7 +253,7 @@
 </script>
 
 
-<div id="make-conform-dialog" data-hostname="" data-cco-lookup-enabled="{{ system_option.enable_cco_lookup }}" data-server-time="{{ server_time }}" class="modal" role="dialog">
+<div id="make-conform-dialog" data-hostname="" class="modal" role="dialog">
     <div class="modal-dialog">
         <form method="post" class="form-horizontal">
             <div class="modal-content">
@@ -271,9 +277,9 @@
 
                     {{ edit_field(make_conform_dialog_form.software_packages, class="form-control", spellcheck="false", rows="10") }}
 
-                    <div class="form-group">
+                    <div id="server-repository-panel" class="form-group">
                         <label class="col-sm-4 control-label"></label>
-                        <div id="server-repository-panel" class="col-sm-8">
+                        <div id="server-repository-info" class="col-sm-8">
                         </div>
                     </div>
 
@@ -293,10 +299,10 @@
                 </div>
                 <div class="modal-footer">
                     <div class="form-actions">
-                        <img id="make-conform-dialog-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                         <div class="btn col-sm-offset-4">
                             <button id="on-finish-submit" class="btn btn-primary" data-dismiss="modal">Schedule</button>
                             <button class="btn" data-dismiss="modal">Cancel</button>
+                            <img id="make-conform-dialog-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                         </div>
                     </div>
                 </div>

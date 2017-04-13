@@ -17,22 +17,6 @@
         var conformance_report_spinner = $('#conformance-report-spinner');
         conformance_report_spinner.hide();
 
-        if (use_utc_timezone) {
-            $('#label_scheduled_time').text('Scheduled Time (UTC)');
-        } else {
-            $('#label_scheduled_time').text('Scheduled Time');
-        }
-
-        // server_time is always in UTC format.
-        var current_time = "{{ server_time | datetime_string }}";
-        if (!use_utc_timezone) {
-            current_time = convertToLocaleString(current_time);
-        }
-
-        $('#scheduled-time-UTC').val(function(index, value) {
-            $('#scheduled-time').val(current_time);
-        });
-
         var msg = $('#import-software-profile-form').data("msg");
             if( msg != '' ) {
                 bootbox.alert(msg);
@@ -476,9 +460,13 @@
             display_make_conform_dialog(hostname, software_platform, software_version, missing_packages);
         });
 
-        $('#export-software-profile').on("click", function(){
+        $('#export-software-profile').on("click", function() {
             export_sw_profiles_table.api().ajax.url("/conformance/api/get_software_profiles").load();
             $('#export-software-profile-dialog').modal({show:true, backdrop:'static'});
+        });
+
+        $('#batch-make-conform').on("click", function() {
+           display_batch_make_conform_dialog($('#conformance_reports').val());
         });
 
         $('#export-sw-profiles-check-all').click(function () {
@@ -625,6 +613,7 @@
 {% include 'conformance/assign_software_profile_to_hosts_dialog.html' %}
 {% include 'conformance/view_software_profile_assignments_dialog.html' %}
 {% include 'conformance/make_conform_dialog.html' %}
+{% include 'conformance/batch_make_conform_dialog.html' %}
 
 <div id="export-conformance-report-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
@@ -779,7 +768,7 @@
                         </div>
                         <div class="btn-group pull-right">
                             <button id="batch-make-conform" type="button" class="btn btn-default">
-                                Batch Make Conform
+                                Make Conform
                             </button>
                             <button id="export" type="button" class="btn btn-default">        
                                 Export

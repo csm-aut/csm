@@ -1,0 +1,350 @@
+{% from 'share/select_server.html' import select_server %}
+
+<script>
+
+    var batch_hosts_selector;
+    var make_conform_dialog_spinner;
+    var selected_report_id;
+
+    $(function() {
+
+        if (use_utc_timezone) {
+            $('#label_batch_scheduled_time').text('Scheduled Time (UTC)');
+        } else {
+            $('#label_batch_scheduled_time').text('Scheduled Time');
+        }
+
+        // server_time is always in UTC format.
+        var current_time = "{{ server_time | datetime_string }}";
+        if (!use_utc_timezone) {
+            current_time = convertToLocaleString(current_time);
+        }
+
+        $('#batch-scheduled-time-UTC').val(function(index, value) {
+            $('#batch-scheduled-time').val(current_time);
+        });
+
+        // These constant values must match the CSM definitions
+        var PRE_UPGRADE = "Pre-Upgrade";
+        var INSTALL_ADD = "Add";
+        var INSTALL_ACTIVATE = "Activate";
+        var POST_UPGRADE = "Post-Upgrade";
+        var INSTALL_COMMIT = "Commit";
+        var ALL = "ALL";
+
+        make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
+        make_conform_dialog_spinner.hide();
+
+        $("#batch_install_action").select2({});
+
+        $("#batch_custom_command_profile").select2({
+            placeholder: 'Optional'
+        });
+
+        $('#batch-make-conform-dialog-wizard').bootstrapWizard({
+            'tabClass': 'nav nav-pills',
+            'nextSelector': '.btn-next',
+            'previousSelector': '.btn-previous',
+
+            onInit : function(tab, navigation, index){
+                //check number of tabs and fill the entire row
+                var $total = navigation.find('li').length;
+                $width = 100/$total;
+                $display_width = $(document).width();
+
+                if($display_width < 600 && $total > 3){
+                    $width = 50;
+                }
+                navigation.find('li').css('width',$width + '%');
+            },
+            onNext: function(tab, navigation, index){
+                if (index == 1){
+                    if (batch_hosts_selector.get_selected_items().length == 0) {
+                        bootbox.alert("No host has been selected.");
+                        return false;
+                    }
+                }
+            },
+            onTabClick : function(tab, navigation, index){
+                // Disable the possibility to click on tabs
+                return false;
+            },
+            onTabShow: function(tab, navigation, index) {
+                var $total = navigation.find('li').length;
+                var $current = index+1;
+
+                var wizard = navigation.closest('.wizard-card');
+
+                // If it's the last tab then hide the last button and show the finish instead
+                if($current >= $total) {
+                    $(wizard).find('.btn-next').hide();
+                    $(wizard).find('.btn-finish').show();
+                } else {
+                    $(wizard).find('.btn-next').show();
+                    $(wizard).find('.btn-finish').hide();
+                }
+            }
+        });
+
+
+        batch_hosts_selector = $('#batch-hosts-selector').DualListBox();
+
+        var datetimepicker = $(".form_datetime").datetimepicker({
+            format: "mm/dd/yyyy HH:ii P",
+            //format: "yyyy-mm-dd hh:ii:ss",
+            showMeridian: true,
+            autoclose: true,
+            todayBtn: true,
+            pickerPosition: "top-left",
+            todayHighlight: true
+        });
+
+        $('#batch-server-repository-panel').hide();
+        $('#batch-custom-command-profile-panel').hide();
+
+        $('#batch_install_action').on('change', function(e) {
+            var install_actions = $(this).val();
+
+            if (has_one_of_these(install_actions, [ALL])) {
+                $("#batch_install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
+            }
+
+            if (has_one_of_these(install_actions, [INSTALL_ADD, ALL])) {
+                display_batch_selected_server_info();
+            } else {
+                $('#batch-server-repository-panel').hide();
+            }
+
+            if (has_one_of_these(install_actions, [PRE_UPGRADE, POST_UPGRADE, ALL])) {
+                $('#batch-custom-command-profile-panel').show();
+            } else {
+                $('#batch-custom-command-profile-panel').hide();
+            }
+
+        });
+
+
+        // Use delegate pattern for event
+        $('#batch-server-repository-panel').on('click', '#server-edit', function(e) {
+
+            $('#batch-select-server-dialog').modal({
+                show: true,
+                backdrop: 'static'
+            })
+        });
+
+        function display_batch_selected_server_info() {
+            $('#batch-server-repository-panel').show();
+
+            var html_code = '';
+            var server_name = $('#select_server option:selected').text();
+            var server_directory = $('#select_server_directory').val();
+
+            html_code = '<table>';
+            html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + server_name;
+            html_code += '&nbsp;&nbsp;<a id="server-edit" href="javascript://"><img src="/static/edit.png" title="Edit"></a></td></tr>';
+
+            // FIXME: Somehow server_directory = null even though it is reset in display_make_conform_dialog().
+            if (server_directory != null && server_directory.length > 0) {
+                html_code += '<tr><td><span style="color: Gray;">Server Directory:&nbsp;</span></td><td>' + server_directory + '</td></tr>';
+            }
+            html_code += '</table>';
+
+            $('#batch-server-repository-info').html(html_code);
+        }
+
+        $('#on-select-server-submit').click(function(e) {
+            if ($('#select_server').val() == -1) {
+                bootbox.alert("Server Repository has not been specified.");
+            }
+
+            display_batch_selected_server_info();
+        });
+
+        $('#on-batch-make-conform-dialog-submit').on('click', function(e) {
+            var install_actions = $('#batch_install_action').val();
+            var server_id = $('#select_server').val();
+
+            if (install_actions == null) {
+                bootbox.alert("Install Action has not been specified.");
+                return false;
+            }
+
+            if (has_one_of_these(install_actions, [INSTALL_ADD]) && server_id == -1) {
+                $('#batch-select-server-dialog').modal({
+                    show: true,
+                    backdrop: 'static'
+                })
+                return false;
+            }
+
+            if (use_utc_timezone) {
+                $('#batch-scheduled-time-UTC').val($('#batch-scheduled-time').val());
+            } else {
+                $('#batch-scheduled-time-UTC').val(convertToUTCString($('#batch-scheduled-time').val()));
+            }
+
+            $.ajax({
+                url: "/conformance/api/batch_make_conform",
+                dataType: 'json',
+                type: "POST",
+                data: {
+                    report_id: selected_report_id,
+                    hostnames: batch_hosts_selector.get_selected_items(),
+                    install_actions: install_actions,
+                    scheduled_time_UTC: $('#batch-scheduled-time-UTC').val(),
+                    server_id: $('#select_server').val(),
+                    server_directory: $('#select_server_directory').val(),
+                    custom_command_profile_ids: $('#batch_custom_command_profile').val()
+                },
+                success: function(data) {
+                    if (data.status == 'OK') {
+                        $('#batch-make-conform-dialog').modal('hide');
+                        bootbox.alert('Requested install actions have been submitted.');
+                    } else {
+                        bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
+                    }
+                }
+            });
+        });
+    });
+
+
+    function display_batch_make_conform_dialog(report_id) {
+        selected_report_id = report_id;
+
+        // Go to the first page especially when the dialog is re-used.
+        $('a[href="#batch_make_conform_dialog_select_hosts"]').tab('show');
+
+        $('#batch-make-conform-dialog').modal({
+            show: true,
+            backdrop: 'static'
+        });
+
+        initialize_servers();
+        populate_host_duallist(report_id);
+    }
+
+    function populate_host_duallist(report_id) {
+        $.ajax({
+            url: "/conformance/api/get_non_conforming_hosts/report/" + report_id,
+            dataType: 'json',
+            success: function(data) {
+                var available_hosts = []
+                $.each(data, function(index, element) {
+                    for (i = 0; i < element.length; i++) {
+                        available_hosts.push({
+                            'id': element[i].hostname,
+                            'name': element[i].hostname
+                        });
+                    }
+                });
+                batch_hosts_selector.initialize(available_hosts);
+            }
+        });
+    }
+
+</script>
+
+<div id="batch-make-conform-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="close" data-dismiss="modal">x</button>
+                <!-- <div class="wizard-container"> -->
+                <div class="card wizard-card csm-blue" id="batch-make-conform-dialog-wizard">
+                    <form class="form-horizontal" method="post">
+                        <div class="wizard-header">
+                            <h3>
+                                Batch Make Conform <br>
+                            </h3>
+                        </div>
+                        <ul>
+                            <li><a href="#batch_make_conform_dialog_select_hosts" data-toggle="tab">SELECT HOSTS</a></li>
+                            <li><a href="#batch_make_conform_dialog_select_install_action" data-toggle="tab">SELECT INSTALL ACTION</a></li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane" id="batch_make_conform_dialog_select_hosts">
+                                <div class="col-sm-12">
+                                    <div class="form-group row">
+                                        <select id="batch-hosts-selector" name="batch-hosts-selector" multiple="multiple" data-title="Non-Conforming-Hosts" data-json=false></select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane" id="batch_make_conform_dialog_select_install_action">
+                                <div class="form-group ">
+                                    <label class="col-sm-4 control-label" id="label_batch_install_action">Install Action</label>
+                                    <div class=col-sm-6>
+                                        <select class="form-control" id="batch_install_action" multiple name="batch_install_action" style="width: 100%">
+                                            <optgroup label="Install">
+                                                {% for install_action in install_actions %}
+                                                    <option value="{{ install_action }}">{{ install_action }}</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div id="batch-server-repository-panel" class="form-group">
+                                    <label class="col-sm-4 control-label"></label>
+                                    <div id="batch-server-repository-info" class="col-sm-8">
+                                    </div>
+                                </div>
+
+                                <div class="form-group ">
+                                    <label id="label_batch_scheduled_time" class="col-sm-4 control-label">{{ batch_make_conform_dialog_form.batch_scheduled_time.label() }}</label>
+                                    <div class="col-sm-6">
+                                        <div  class="input-group date form_datetime">
+                                            <input id="batch-scheduled-time" name="{{ batch_make_conform_dialog_form.batch_scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
+                                            <input id="batch-scheduled-time-UTC" name="{{ batch_make_conform_dialog_form.batch_scheduled_time_UTC.name }}" value="{{ batch_make_conform_dialog_form.batch_scheduled_time_UTC.data }}" class="form-control" type="hidden">
+                                            <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="batch-custom-command-profile-panel">
+                                    {{ edit_field(batch_make_conform_dialog_form.batch_custom_command_profile, class="form-control", field_width="col-sm-6", style="width: 100%") }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="wizard-footer">
+                            <div class="pull-right">
+                                <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                                <input id='on-batch-make-conform-dialog-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                            </div>
+                            <div class="pull-left">
+                                <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                    </form>
+                </div>
+                <!-- wizard container -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="batch-select-server-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">x</button>
+                    <h4>Select Server Repository</h4>
+                </div>
+                <div class="modal-body">
+                    {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button class="btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

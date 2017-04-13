@@ -166,14 +166,19 @@ def home():
             return redirect(url_for(".home"))
 
     db_session = DBSession()
+
     conformance_form = ConformanceForm(request.form)
     assign_software_profile_to_hosts_form = AssignSoftwareProfileToHostsForm(request.form)
     view_host_software_profile_form = ViewHostSoftwareProfileForm(request.form)
     conformance_report_dialog_form = ConformanceReportDialogForm(request.form)
     make_conform_dialog_form = MakeConformDialogForm(request.form)
-    fill_custom_command_profiles(db_session, make_conform_dialog_form.custom_command_profile.choices)
-    select_server_form = SelectServerForm(request.form)
+    batch_make_conform_dialog_form = BatchMakeConformDialogForm(request.form)
 
+    fill_custom_command_profiles(db_session, make_conform_dialog_form.custom_command_profile.choices)
+    fill_custom_command_profiles(db_session, batch_make_conform_dialog_form.batch_custom_command_profile.choices)
+
+    select_server_form = SelectServerForm(request.form)
+    batch_select_server_form = BatchSelectServerForm(request.form)
     export_conformance_report_form = ExportConformanceReportForm(request.form)
     export_conformance_report_form.include_host_packages.data = True
     export_conformance_report_form.exclude_conforming_hosts.data = True
@@ -187,8 +192,10 @@ def home():
                                             InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
                                             InstallAction.INSTALL_COMMIT, InstallAction.ALL],
                            make_conform_dialog_form=make_conform_dialog_form,
+                           batch_make_conform_dialog_form=batch_make_conform_dialog_form,
                            export_conformance_report_form=export_conformance_report_form,
                            select_server_form=select_server_form,
+                           batch_select_server_form=batch_select_server_form,
                            server_time=datetime.datetime.utcnow(),
                            system_option=SystemOption.get(DBSession()))
 
@@ -599,6 +606,22 @@ def api_get_conformance_report_datetime(id):
     ]})
 
 
+@conformance.route('/api/get_non_conforming_hosts/report/<int:id>')
+@login_required
+def api_get_non_conforming_hosts(id):
+    rows = []
+    db_session = DBSession()
+
+    conformance_report_entries = db_session.query(ConformanceReportEntry).\
+        filter(ConformanceReportEntry.conformance_report_id == id).all()
+
+    for conformance_report_entry in conformance_report_entries:
+        if conformance_report_entry.conformed == 'No':
+            rows.append({'hostname': conformance_report_entry.hostname})
+
+    return jsonify(**{'data': rows})
+
+
 @conformance.route('/api/get_conformance_report_software_profile_packages/report/<int:id>')
 @login_required
 def api_get_conformance_report_software_profile_packages(id):
@@ -652,19 +675,93 @@ def get_conformance_report_by_user(db_session, username):
         ConformanceReport.created_time.desc()).all()
 
 
-@conformance.route('/api/create_install_jobs', methods=['POST'])
+@conformance.route('/api/batch_make_conform', methods=['POST'])
 @login_required
-def api_create_install_jobs():
+def api_batch_make_conform():
+    try:
+        db_session = DBSession()
+
+        report_id = request.form['report_id']
+        hostnames = request.form.getlist('hostnames[]')
+        install_actions = request.form.getlist('install_actions[]')
+        scheduled_time = request.form['scheduled_time_UTC']
+        server_id = request.form['server_id']
+        server_directory = request.form['server_directory']
+        custom_command_profile_ids = request.form.getlist('custom_command_profile_ids[]')
+
+        print('report_id', report_id)
+        print('hostnames', hostnames)
+        print('install_actions', install_actions)
+        print('server_id', server_id)
+        print('server_directory', server_directory)
+        print('scheduled_time', scheduled_time)
+        print('custom_command', custom_command_profile_ids)
+
+        conformance_report_entries = db_session.query(ConformanceReportEntry).\
+            filter(ConformanceReportEntry.conformance_report_id == report_id).all()
+
+        if len(conformance_report_entries) == 0:
+            return jsonify({'status': 'The selected conformance report has no entries.'})
+
+        if len(hostnames) == 0:
+            return jsonify({'status': 'No host was selected during Make Conform.'})
+
+        entry_dict = dict()
+        for conformance_report_entry in conformance_report_entries:
+            entry_dict[conformance_report_entry.hostname] = conformance_report_entry
+
+        error_messages = []
+        for hostname in hostnames:
+            try:
+                conformance_report_entry = entry_dict.get(hostname)
+                if conformance_report_entry:
+                    software_packages = conformance_report_entry.missing_packages.split(',')
+                    host = get_host(db_session, hostname)
+
+                    server_id = 13
+                    server_directory = '/usr/local'
+
+                    # The dependency on each install action is already indicated in the implicit ordering in the selector.
+                    # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
+                    # have Pre-Upgrade (predecessor) as the dependency.
+                    dependency = 0
+                    for install_action in install_actions:
+                        new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
+                                                                       install_action=install_action,
+                                                                       scheduled_time=scheduled_time,
+                                                                       software_packages=software_packages,
+                                                                       server_id=server_id, server_directory=server_directory,
+                                                                       custom_command_profile_ids=custom_command_profile_ids,
+                                                                       dependency=dependency,
+                                                                       created_by=current_user.username)
+                        dependency = new_install_job.id
+            except Exception as e:
+                logger.exception('api_batch_make_conform() hit exception - hostname = {}.'.format(hostname))
+                error_messages.append('Unable to create install job for host "' + hostname + '".')
+
+        if len(error_messages) > 0:
+            return jsonify({'status': '<br>'.join(error_messages)})
+
+    except Exception as e:
+        logger.exception('api_batch_make_conform() hit exception')
+        return jsonify({'status': 'Failed - ' + e.message})
+
+    return jsonify({'status': 'OK'})
+
+
+@conformance.route('/api/make_conform', methods=['POST'])
+@login_required
+def api_make_conform():
     db_session = DBSession()
 
     hostname = request.form['hostname']
-    install_action = request.form.getlist('install_action[]')
+    install_actions = request.form.getlist('install_actions[]')
     scheduled_time = request.form['scheduled_time_UTC']
     software_packages = request.form['software_packages'].split()
-    server_id = request.form['server']
+    server_id = request.form['server_id']
     server_directory = request.form['server_directory']
     pending_downloads = request.form['pending_downloads'].split()
-    custom_command_profile_ids = [str(i) for i in request.form['custom_command_profile'].split()]
+    custom_command_profile_ids = request.form.getlist('custom_command_profile_ids[]')
 
     host = get_host(db_session, hostname)
 
@@ -673,21 +770,22 @@ def api_create_install_jobs():
         # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
         # have Pre-Upgrade (predecessor) as the dependency.
         dependency = 0
-        for one_install_action in install_action:
+        for install_action in install_actions:
             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
-                                                           install_action=one_install_action,
+                                                           install_action=install_action,
                                                            scheduled_time=scheduled_time,
                                                            software_packages=software_packages,
                                                            server_id=server_id, server_directory=server_directory,
                                                            pending_downloads=pending_downloads,
                                                            custom_command_profile_ids=custom_command_profile_ids,
-                                                           dependency=dependency)
+                                                           dependency=dependency,
+                                                           created_by=current_user.username)
             dependency = new_install_job.id
 
         return jsonify({'status': 'OK'})
     except Exception as e:
-        logger.exception('api_create_install_job hit exception')
-        return jsonify({'status': 'Failed Reason: ' + e.message})
+        logger.exception('api_make_conform() hit exception')
+        return jsonify({'status': 'Failed - ' + e.message})
 
 
 @conformance.route('/export_software_profiles', methods=['POST'])
@@ -807,3 +905,15 @@ class MakeConformDialogForm(Form):
     scheduled_time_UTC = HiddenField('Scheduled Time')
     software_packages = TextAreaField('Software Packages')
     custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[('', '')])
+
+
+class BatchMakeConformDialogForm(Form):
+    batch_install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
+    batch_scheduled_time = StringField('Scheduled Time', [required()])
+    batch_scheduled_time_UTC = HiddenField('Scheduled Time')
+    batch_custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[('', '')])
+
+
+class BatchSelectServerForm(Form):
+    batch_select_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
+    batch_select_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])

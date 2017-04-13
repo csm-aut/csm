@@ -67,9 +67,9 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
 
 <div id="software-packages-panel">
     {{ edit_field(form.software_packages, class="form-control", spellcheck="false", rows="5") }}
-    <div class="form-group">
+    <div id="server-repository-panel" class="form-group">
         <label class="col-sm-4 control-label"></label>
-        <div id="server-repository-panel" class="col-sm-8">                  
+        <div id="server-repository-info" class="col-sm-8">
         </div>
     </div>
 </div>
@@ -444,18 +444,19 @@ $(function() {
 
     function display_selected_server_info() {
         var html_code = '';
+        var server_name = $('#hidden_server_name').val();
+        var server_directory = $('#hidden_server_directory').val();
 
-        if ($('#hidden_server').val() != -1) {
-            html_code = '<table>';
-            html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + $('#hidden_server_name').val();
-            html_code += '&nbsp;&nbsp;<a id="server-edit" href="javascript://"><img src="/static/edit.png" title="Edit"></a></td></tr>';
+        html_code = '<table>';
+        html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + server_name;
+        html_code += '&nbsp;&nbsp;<a id="server-edit" href="javascript://"><img src="/static/edit.png" title="Edit"></a></td></tr>';
 
-            if ($('#hidden_server_directory').val().length > 0) {
-                html_code += '<tr><td><span style="color: Gray;">Server Directory:&nbsp;</span></td><td>' + $('#hidden_server_directory').val() + '</td></tr>';
-            }
-            html_code += '</table>';
+        if (server_directory != null && server_directory.length > 0) {
+            html_code += '<tr><td><span style="color: Gray;">Server Directory:&nbsp;</span></td><td>' + server_directory + '</td></tr>';
         }
-        $('#server-repository-panel').html(html_code);
+        html_code += '</table>';
+
+        $('#server-repository-info').html(html_code);
     }
 
     function get_server_id_server_directory(region_id) {
