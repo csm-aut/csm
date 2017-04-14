@@ -1,12 +1,13 @@
-{% from 'share/select_server.html' import select_server %}
 
 <script>
 
     var batch_hosts_selector;
-    var make_conform_dialog_spinner;
+    var batch_select_server_repo;
+    var batch_make_conform_dialog_spinner;
     var selected_report_id;
 
     $(function() {
+        batch_select_server_repo = $('#batch-select-server').SelectServerRepo();
 
         if (use_utc_timezone) {
             $('#label_batch_scheduled_time').text('Scheduled Time (UTC)');
@@ -32,8 +33,8 @@
         var INSTALL_COMMIT = "Commit";
         var ALL = "ALL";
 
-        make_conform_dialog_spinner = $('#make-conform-dialog-spinner');
-        make_conform_dialog_spinner.hide();
+        batch_make_conform_dialog_spinner = $('#batch-make-conform-dialog-spinner');
+        batch_make_conform_dialog_spinner.hide();
 
         $("#batch_install_action").select2({});
 
@@ -137,8 +138,8 @@
             $('#batch-server-repository-panel').show();
 
             var html_code = '';
-            var server_name = $('#select_server option:selected').text();
-            var server_directory = $('#select_server_directory').val();
+            var server_name = batch_select_server_repo.get_server_name();
+            var server_directory = batch_select_server_repo.get_server_directory();
 
             html_code = '<table>';
             html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + server_name;
@@ -153,8 +154,8 @@
             $('#batch-server-repository-info').html(html_code);
         }
 
-        $('#on-select-server-submit').click(function(e) {
-            if ($('#select_server').val() == -1) {
+        $('#on-batch-select-server-submit').click(function(e) {
+            if (batch_select_server_repo.get_server_id() == -1) {
                 bootbox.alert("Server Repository has not been specified.");
             }
 
@@ -163,7 +164,7 @@
 
         $('#on-batch-make-conform-dialog-submit').on('click', function(e) {
             var install_actions = $('#batch_install_action').val();
-            var server_id = $('#select_server').val();
+            var server_id = batch_select_server_repo.get_server_id();
 
             if (install_actions == null) {
                 bootbox.alert("Install Action has not been specified.");
@@ -193,8 +194,8 @@
                     hostnames: batch_hosts_selector.get_selected_items(),
                     install_actions: install_actions,
                     scheduled_time_UTC: $('#batch-scheduled-time-UTC').val(),
-                    server_id: $('#select_server').val(),
-                    server_directory: $('#select_server_directory').val(),
+                    server_id: batch_select_server_repo.get_server_id(),
+                    server_directory: batch_select_server_repo.get_server_directory(),
                     custom_command_profile_ids: $('#batch_custom_command_profile').val()
                 },
                 success: function(data) {
@@ -221,7 +222,7 @@
             backdrop: 'static'
         });
 
-        initialize_servers();
+        batch_select_server_repo.initialize_servers();
         populate_host_duallist(report_id);
     }
 
@@ -311,6 +312,7 @@
                             <div class="pull-right">
                                 <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
                                 <input id='on-batch-make-conform-dialog-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                                <img id="batch-make-conform-dialog-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                             </div>
                             <div class="pull-left">
                                 <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
@@ -334,12 +336,12 @@
                     <h4>Select Server Repository</h4>
                 </div>
                 <div class="modal-body">
-                    {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                    <div><div id="batch-select-server" data-name="batch-select-server"></div></div>
                 </div>
                 <div class="modal-footer">
                     <div class="form-actions">
                         <div class="btn col-sm-offset-4">
-                            <button id="on-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
+                            <button id="on-batch-select-server-submit" type="submit" class="btn btn-primary" data-dismiss="modal">OK</button>
                             <button class="btn" data-dismiss="modal">Cancel</button>
                         </div>
                     </div>

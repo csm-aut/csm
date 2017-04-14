@@ -1,19 +1,20 @@
 {% extends 'base_software.html' %}
 
 {% from 'host/common.html' import edit_field %}
-{% from 'share/select_server.html' import select_server %}
 
 {% block head %}
 
+<script src="/static/jquery/js/select_server_repo.js"></script>
 <script src="/static/jquery/js/select_files.js"></script>
-<script src="/static/jquery/js/select_server.js"></script>
 
 <script>
 
 $(function() {
     var browse_spinner = $('#browse-spinner');
     browse_spinner.hide();
-    initialize_servers_by_region(0);
+
+    var select_server_repo = $('#select-server').SelectServerRepo();
+    select_server_repo.initialize_servers_by_region(0);
 
     $('.wizard-card').bootstrapWizard({
         'tabClass': 'nav nav-pills',
@@ -105,7 +106,7 @@ $(function() {
             return false;
         }
 
-        if ($('#select_server').val() == -1) {
+        if (select_server_repo.get_server_id() == -1) {
             bootbox.alert('Server repository has not been specified.');
             browse_spinner.hide();
             return false;
@@ -132,9 +133,8 @@ $(function() {
                 source_tars: source_tars,
                 tar_contents: tar_contents,
                 additional_packages: additional_packages,
-                server: $('#select_server').val(),
-                server_name: $('#select_server').text(),
-                server_directory: $('#select_server_directory').val(),
+                server_id: select_server_repo.get_server_id(),
+                server_directory: select_server_repo.get_server_directory(),
                 new_tar_name: new_tar_name
             },
             success: function(data) {
@@ -269,7 +269,7 @@ $(function() {
                             <div class="col-sm-12">
                                 <h4 class="info-text">Select the destination server repository for uploading the new tar file.</h4>
                                 {{ edit_field(form.new_tar_name, class="form-control") }}
-                                {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                                <div><div id="select-server" data-name="select-server"></div></div>
                             </div>
                             <div id="progress" align="center" margin-top="3cm">
                                 <img id="browse-spinner" src="{{ url_for('static', filename='spinner.gif') }}">

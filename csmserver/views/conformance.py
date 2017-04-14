@@ -75,7 +75,6 @@ from filters import get_datetime_string
 from smu_info_loader import SMUInfoLoader
 
 from forms import ServerDialogForm
-from forms import SelectServerForm
 
 from utils import is_empty
 from utils import create_temp_user_directory
@@ -177,8 +176,6 @@ def home():
     fill_custom_command_profiles(db_session, make_conform_dialog_form.custom_command_profile.choices)
     fill_custom_command_profiles(db_session, batch_make_conform_dialog_form.batch_custom_command_profile.choices)
 
-    select_server_form = SelectServerForm(request.form)
-    batch_select_server_form = BatchSelectServerForm(request.form)
     export_conformance_report_form = ExportConformanceReportForm(request.form)
     export_conformance_report_form.include_host_packages.data = True
     export_conformance_report_form.exclude_conforming_hosts.data = True
@@ -194,8 +191,6 @@ def home():
                            make_conform_dialog_form=make_conform_dialog_form,
                            batch_make_conform_dialog_form=batch_make_conform_dialog_form,
                            export_conformance_report_form=export_conformance_report_form,
-                           select_server_form=select_server_form,
-                           batch_select_server_form=batch_select_server_form,
                            server_time=datetime.datetime.utcnow(),
                            system_option=SystemOption.get(DBSession()))
 
@@ -689,14 +684,6 @@ def api_batch_make_conform():
         server_directory = request.form['server_directory']
         custom_command_profile_ids = request.form.getlist('custom_command_profile_ids[]')
 
-        print('report_id', report_id)
-        print('hostnames', hostnames)
-        print('install_actions', install_actions)
-        print('server_id', server_id)
-        print('server_directory', server_directory)
-        print('scheduled_time', scheduled_time)
-        print('custom_command', custom_command_profile_ids)
-
         conformance_report_entries = db_session.query(ConformanceReportEntry).\
             filter(ConformanceReportEntry.conformance_report_id == report_id).all()
 
@@ -717,9 +704,6 @@ def api_batch_make_conform():
                 if conformance_report_entry:
                     software_packages = conformance_report_entry.missing_packages.split(',')
                     host = get_host(db_session, hostname)
-
-                    server_id = 13
-                    server_directory = '/usr/local'
 
                     # The dependency on each install action is already indicated in the implicit ordering in the selector.
                     # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
@@ -912,8 +896,3 @@ class BatchMakeConformDialogForm(Form):
     batch_scheduled_time = StringField('Scheduled Time', [required()])
     batch_scheduled_time_UTC = HiddenField('Scheduled Time')
     batch_custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[('', '')])
-
-
-class BatchSelectServerForm(Form):
-    batch_select_server = SelectField('Server Repository', coerce=int, choices=[(-1, '')])
-    batch_select_server_directory = SelectField('Server Directory', coerce=str, choices=[('', '')])

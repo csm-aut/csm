@@ -38,8 +38,6 @@ from wtforms import Form
 from wtforms import StringField
 from wtforms.validators import Length, required
 
-from forms import SelectServerForm
-
 from utils import get_tarfile_file_list, get_file_list, untar, make_file_writable
 
 from constants import get_repository_directory, get_temp_directory
@@ -73,11 +71,8 @@ def jump_host_list():
 @tools.route('/create_tar_file')
 @login_required
 def create_tar_file():
-    select_server_form = SelectServerForm(request.form)
     create_tar_form = CreateTarForm(request.form)
-    return render_template('tools/create_tar_file.html',
-                           select_server_form = select_server_form,
-                           form=create_tar_form)
+    return render_template('tools/create_tar_file.html', form=create_tar_form)
 
 
 @tools.route('/api/create_tar_job')
@@ -87,7 +82,7 @@ def api_create_tar_job():
 
     form = CreateTarForm(request.form)
 
-    server_id = request.args.get('server')
+    server_id = request.args.get('server_id')
     server_directory = request.args.get('server_directory')
     source_tars = request.args.getlist('source_tars[]')
     contents = request.args.getlist('tar_contents[]')

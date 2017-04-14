@@ -1,11 +1,12 @@
-{% from 'share/select_server.html' import select_server %}
 
 <script>
-
+    var select_server_repo;
     var make_conform_dialog_spinner;
     var host_software_version = null;
 
     $(function() {
+        select_server_repo = $('#select-server').SelectServerRepo();
+
         var cco_lookup_enabled = "{{ system_option.enable_cco_lookup }}";
 
         if (use_utc_timezone) {
@@ -89,8 +90,8 @@
             $('#server-repository-panel').show();
 
             var html_code = '';
-            var server_name = $('#select_server option:selected').text();
-            var server_directory = $('#select_server_directory').val();
+            var server_name = select_server_repo.get_server_name();
+            var server_directory = select_server_repo.get_server_directory();
 
             html_code = '<table>';
             html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + server_name;
@@ -106,7 +107,7 @@
         }
 
         $('#on-select-server-submit').click(function(e) {
-            if ($('#select_server').val() == -1) {
+            if (select_server_repo.get_server_id() == -1) {
                 bootbox.alert("Server Repository has not been specified.");
             }
 
@@ -114,8 +115,9 @@
         });
 
         $('#on-finish-submit').on('click', function(e) {
+
             var install_actions = $('#install_action').val();
-            var server_id = $('#select_server').val();
+            var server_id = select_server_repo.get_server_id();
 
             if (install_actions == null) {
                 bootbox.alert("Install Action has not been specified.");
@@ -146,12 +148,12 @@
             var validate_object = {
                 form: null,
                 hostname: hostname,
-                server_id: $('#select_server').val(),
-                server_directory: $('#select_server_directory').val(),
+                server_id: select_server_repo.get_server_id() ,
+                server_directory: select_server_repo.get_server_directory(),
                 software_packages: $('#software_packages').val(),
                 spinner: make_conform_dialog_spinner,
                 install_actions: $('#install_action').val(),
-                check_missing_file_on_server: $('#select_server').val() > -1,
+                check_missing_file_on_server: select_server_repo.get_server_id() > -1,
                 callback: make_conform,
                 pending_downloads: null,
                 cco_lookup_enabled: cco_lookup_enabled
@@ -192,8 +194,8 @@
                     install_actions: $('#install_action').val(),
                     scheduled_time_UTC: $('#scheduled-time-UTC').val(),
                     software_packages: trim_lines($('#software_packages').val()),
-                    server_id: $('#select_server').val(),
-                    server_directory: $('#select_server_directory').val(),
+                    server_id: select_server_repo.get_server_id(),
+                    server_directory: select_server_repo.get_server_directory(),
                     pending_downloads: validate_object.pending_downloads,
                     custom_command_profile_ids: $('#custom_command_profile').val()
                 },
@@ -226,20 +228,17 @@
 
                     // Reset variables
                     $("#install_action").val(null).trigger("change");
-                    $('#select_server').val(-1);
-                    $('#select_server_directory').val('');
 
                     $('#make-conform-dialog').data('hostname', hostname)
                     $('#make-conform-dialog-title').html(hostname);
                     $('#software_packages').val(comma2newline(missing_packages));
 
-                    // Initialize the server repository selector
-                    initialize_servers_by_hostname(hostname);
-
                     $('#make-conform-dialog').modal({
                         show: true,
                         backdrop: 'static'
                     });
+
+                    select_server_repo.initialize_servers_by_hostname(hostname);
 
                 } else {
                     bootbox.alert('Host ' + hostname + ' does not exist in the database.');
@@ -320,7 +319,7 @@
                     <h4>Select Server Repository</h4>
                 </div>
                 <div class="modal-body">
-                    {{ select_server(select_server_form.select_server, select_server_form.select_server_directory) }}
+                    <div><div id="select-server" data-name="select-server"></div></div>
                 </div>
                 <div class="modal-footer">
                     <div class="form-actions">
