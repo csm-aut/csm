@@ -64,6 +64,8 @@
                         bootbox.alert("No host has been selected.");
                         return false;
                     }
+                    // re-initialize
+                    display_batch_selected_server_info();
                 }
             },
             onTabClick : function(tab, navigation, index){
@@ -145,7 +147,6 @@
             html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + server_name;
             html_code += '&nbsp;&nbsp;<a id="server-edit" href="javascript://"><img src="/static/edit.png" title="Edit"></a></td></tr>';
 
-            // FIXME: Somehow server_directory = null even though it is reset in display_make_conform_dialog().
             if (server_directory != null && server_directory.length > 0) {
                 html_code += '<tr><td><span style="color: Gray;">Server Directory:&nbsp;</span></td><td>' + server_directory + '</td></tr>';
             }
@@ -224,6 +225,7 @@
 
         batch_select_server_repo.initialize_servers();
         populate_host_duallist(report_id);
+
     }
 
     function populate_host_duallist(report_id) {

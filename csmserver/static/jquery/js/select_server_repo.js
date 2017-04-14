@@ -181,28 +181,7 @@
      * Initialize the plugin with all the available system server repositories.
      **/
     $.fn.initialize_servers = function() {
-        var options = $(this).data('options');
-        var select_server_ui = $(options.parent_element + ' .select_server');
-
-        select_server_ui.empty().append('<option value=-1></option>');
-
-        $.ajax({
-            url: "/api/get_servers",
-            dataType: 'json',
-            success: function(data) {
-                $.each(data, function(index, element) {
-                    for (i = 0; i < element.length; i++) {
-                        var server_id = element[i].server_id;
-                        var hostname = element[i].hostname;
-
-                        select_server_ui.append('<option value="' + server_id + '">' + hostname + '</option>');
-                    }
-                });
-            },
-            error: function(xhr, status, errorThrown) {
-                bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
-            }
-        });
+        $(this).initialize_servers_by_region(0);
     }
 
     /**
@@ -211,8 +190,10 @@
     $.fn.initialize_servers_by_hostname = function(hostname) {
         var options = $(this).data('options');
         var select_server_ui = $(options.parent_element + ' .select_server');
+        var select_server_directory_ui = $(options.parent_element + ' .select_server_directory');
 
         select_server_ui.empty().append('<option value=-1></option>');
+        select_server_directory_ui.empty().append('<option value=""></option>');
 
         $.ajax({
             url: "/api/get_servers/host/" + hostname,
@@ -239,8 +220,10 @@
     $.fn.initialize_servers_by_region = function (region_id) {
         var options = $(this).data('options');
         var select_server_ui = $(options.parent_element + ' .select_server');
+        var select_server_directory_ui = $(options.parent_element + ' .select_server_directory');
 
         select_server_ui.empty().append('<option value=-1></option>');
+        select_server_directory_ui.empty().append('<option value=""></option>');
 
         $.ajax({
             url: "/api/get_servers/region/" + region_id,
