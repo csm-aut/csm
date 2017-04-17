@@ -37,7 +37,7 @@ def get_parser_factory(software_platform, os_type):
                                PlatformFamily.NCS4K,
                                PlatformFamily.NCS5K,
                                PlatformFamily.IOSXRv,
-                               PlatformFamily.ASR9K_64,
+                               PlatformFamily.ASR9K_X64,
                                PlatformFamily.NCS6K,
                                PlatformFamily.NCS5500]:
         return EXRParserFactory()

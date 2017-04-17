@@ -187,7 +187,7 @@
                     var icon_html = job_info_icon_html + job_status_icon_html;
 
                     if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
-                        return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit/">' + data + '</a>&nbsp;' + icon_html;
+                        return '<a href="/asr9k_x64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit/">' + data + '</a>&nbsp;' + icon_html;
                     } else {
                         return '<a href="/install/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit/">' + data + '</a>&nbsp;' + icon_html;
                     }

@@ -41,7 +41,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
     """
 
     target_list = []
-    # ASR9K and ASR9K-64 belong to the same family, but are different software platforms
+    # ASR9K and ASR9K-X64 belong to the same family, but are different software platforms
     software_platform = get_software_platform(family, os_type)
 
     for host_package in host_packages:
@@ -96,7 +96,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                     # ncs4k-mgbl.pkg-6.0.2
                     target_list.append('{}.pkg-{}'.format(package_name, target_version))
 
-        elif software_platform in [PlatformFamily.ASR9K_64, PlatformFamily.NCS1K,
+        elif software_platform in [PlatformFamily.ASR9K_X64, PlatformFamily.NCS1K,
                                    PlatformFamily.NCS5K, PlatformFamily.NCS5500]:
             # asr9k-xr-6.1.1, ncs5500-xr-6.0.1
             match = re.search('-\d\.\d\.\d.\d', host_package)
@@ -111,7 +111,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                                              PlatformFamily.NCS5500]:
                         # ncs5k-mini-x-6.1.1
                         target_list.append("{}-{}-{}".format(family.lower(), 'mini-x', target_version))
-                    elif software_platform in [PlatformFamily.ASR9K_64]:
+                    elif software_platform in [PlatformFamily.ASR9K_X64]:
                         # asr9k-mini-x64-6.1.1
                         target_list.append("{}-{}-{}".format(family.lower(), 'mini-x64', target_version))
                 else:
@@ -125,7 +125,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                                              PlatformFamily.NCS5500]:
                         # ncs5k-mini-x.iso-6.1.1
                         target_list.append("{}-{}-{}".format(family.lower(), 'mini-x.iso', target_version))
-                    elif software_platform in [PlatformFamily.ASR9K_64]:
+                    elif software_platform in [PlatformFamily.ASR9K_X64]:
                         # asr9k-mini-x64-6.1.3.iso
                         target_list.append("{}-{}-{}{}".format(family.lower(), 'mini-x64', target_version, '.iso'))
                 else:
@@ -142,7 +142,7 @@ def is_file_acceptable_for_install_add(filename):
     ASR9K, CRS: .pie, .tar
     NCS6K: .smu, .iso, .pkg, .tar
     NCS4K: .iso .pkg
-    ASR9K-64: .iso, .rpm, .tar
+    ASR9K-X64: .iso, .rpm, .tar
     ASR900: .bin
     """
     acceptable_file_types = ['.pie', '.rpm', '.tar', '.smu', '.iso', '.pkg', '.bin']

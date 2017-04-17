@@ -50,7 +50,7 @@ NOX_64_BINARY = "nox-linux-64.bin"
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
 
-asr9k_64_migrate = Blueprint('asr9k_64_migrate', __name__, url_prefix='/asr9k_64_migrate')
+asr9k_x64_migrate = Blueprint('asr9k_x64_migrate', __name__, url_prefix='/asr9k_x64_migrate')
 
 
 def get_config_conversion_path():
@@ -104,7 +104,7 @@ def convert_config(db_session, http_request, template, schedule_form):
                            server_time=datetime.datetime.utcnow(), system_option=SystemOption.get(db_session))
 
 
-@asr9k_64_migrate.route('/api/convert_config_file')
+@asr9k_x64_migrate.route('/api/convert_config_file')
 @login_required
 def convert_config_file():
     filename = request.args.get('filename', '', type=str)
@@ -125,7 +125,7 @@ def convert_config_file():
     return jsonify({'status': 'OK', 'job_id': job_id})
 
 
-@asr9k_64_migrate.route('/api/get_config_conversion_progress')
+@asr9k_x64_migrate.route('/api/get_config_conversion_progress')
 @login_required
 def get_config_conversion_progress():
 
@@ -140,7 +140,7 @@ def get_config_conversion_progress():
     return jsonify(status='OK', progress=convert_config_job.status)
 
 
-@asr9k_64_migrate.route('/api/get_file')
+@asr9k_x64_migrate.route('/api/get_file')
 @login_required
 def get_file():
     which_file = request.args.get('file_number', 0, type=int)
@@ -168,7 +168,7 @@ def get_file():
     return jsonify(**{'data': 'file does not exist.'})
 
 
-@asr9k_64_migrate.route('/api/get_analysis')
+@asr9k_x64_migrate.route('/api/get_analysis')
 @login_required
 def process_config_conversion_output():
     filename = request.args.get('filename', '', type=str)
@@ -212,7 +212,7 @@ def process_config_conversion_output():
     return send_from_directory(config_conversion_path, html_file, cache_timeout=0)
 
 
-@asr9k_64_migrate.route('/upload_config_to_server_repository')
+@asr9k_x64_migrate.route('/upload_config_to_server_repository')
 def upload_config_to_server_repository():
     server_id = request.args.get('server_id', -1, type=int)
     server_directory = request.args.get('server_directory', '', type=str)
@@ -310,7 +310,7 @@ def upload_files_to_server_repository(sourcefile, server, selected_server_direct
     return 'OK'
 
 
-@asr9k_64_migrate.route('/migration', methods=['GET', 'POST'])
+@asr9k_x64_migrate.route('/migration', methods=['GET', 'POST'])
 @login_required
 def migration():
     # only operator and above can schedule migration
@@ -333,7 +333,7 @@ def migration():
     if request.method == 'POST':
         print(str(config_form.data))
         if config_form.hidden_submit_config_form.data == "True":
-            return convert_config(db_session, request, 'asr9k_64_migrate/migration.html', schedule_form)
+            return convert_config(db_session, request, 'asr9k_x64_migrate/migration.html', schedule_form)
 
         # Retrieves from the multi-select box
         hostnames = schedule_form.hidden_hosts.data.split(',')
@@ -399,7 +399,7 @@ def migration():
 
         return redirect(url_for(return_url))
     else:
-        return render_template('asr9k_64_migrate/migration.html',
+        return render_template('asr9k_x64_migrate/migration.html',
                                schedule_form=schedule_form,
                                install_action=get_install_migrations_dict(),
                                server_time=datetime.datetime.utcnow(),
@@ -455,7 +455,7 @@ def init_config_form(db_session, http_request, get=False):
     return config_form
 
 
-@asr9k_64_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
+@asr9k_x64_migrate.route('/hosts/<hostname>/schedule_install/<int:id>/edit/', methods=['GET', 'POST'])
 @login_required
 def host_schedule_install_migration_edit(hostname, id):
     # only operator and above can edit migration
@@ -571,18 +571,18 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             if install_job.scheduled_time is not None:
                 schedule_form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
 
-    return render_template('asr9k_64_migrate/migration.html', schedule_form=schedule_form, system_option=SystemOption.get(db_session),
+    return render_template('asr9k_x64_migrate/migration.html', schedule_form=schedule_form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url, install_action=get_install_migrations_dict(), input_filename="",
                            err_msg="")
 
 
-@asr9k_64_migrate.route('/select_host.html')
+@asr9k_x64_migrate.route('/select_host.html')
 def select_host():
-    return render_template('asr9k_64_migrate/select_host.html')
+    return render_template('asr9k_x64_migrate/select_host.html')
 
 
-@asr9k_64_migrate.route('/api/get_dependencies/')
+@asr9k_x64_migrate.route('/api/get_dependencies/')
 @login_required
 def get_dependencies():
     db_session = DBSession()
@@ -676,7 +676,7 @@ def download_latest_config_migration_tool():
     return True, 'None'
 
 
-@asr9k_64_migrate.route('/api/get_latest_config_migration_tool/')
+@asr9k_x64_migrate.route('/api/get_latest_config_migration_tool/')
 @login_required
 def get_latest_config_migration_tool():
     """Check if the latest NoX is in file. Download if not."""
@@ -732,7 +732,7 @@ def fill_hardware_audit_version(choices):
     del choices[:]
     choices.append(('', ''))
 
-    with open('./asr9k_64bit/migration_supported_hw.json') as data_file:
+    with open('./asr9k_x64/migration_supported_hw.json') as data_file:
         supported_hw = json.load(data_file)
 
     versions = supported_hw.keys()
@@ -773,7 +773,7 @@ class ScheduleMigrationForm(Form):
 
     hidden_dependency = HiddenField('')
 
-    hardware_audit_version = SelectField('ASR9K-64 Software Version', coerce=str, choices=[('Any', 'Any')])
+    hardware_audit_version = SelectField('ASR9K-X64 Software Version', coerce=str, choices=[('Any', 'Any')])
     hidden_hardware_audit_version = HiddenField('')
 
 

@@ -3,9 +3,9 @@
 {% from 'host/common.html' import log_icon %}
 {% from 'host/common.html' import trace_icon %}
 {% from 'share/select_region_hosts.html' import select_region_hosts %}
-{% from 'asr9k_64_migrate/config_conversion.html' import config_conversion_gui, config_output_modal %}
-{% from 'asr9k_64_migrate/schedule_migration.html' import schedule_migration_gui %}
-{% from 'asr9k_64_migrate/schedule_migration.html' import schedule_migration_wizard %}
+{% from 'asr9k_x64_migrate/config_conversion.html' import config_conversion_gui, config_output_modal %}
+{% from 'asr9k_x64_migrate/schedule_migration.html' import schedule_migration_gui %}
+{% from 'asr9k_x64_migrate/schedule_migration.html' import schedule_migration_wizard %}
 
 {% block head %}
     <meta charset="utf-8"/>
@@ -250,7 +250,7 @@
                         add_new_tab("hardware-audit", "SELECT SOFTWARE VERSION");
                         document.getElementById("wizard-header").innerHTML = "<h3>Migration Audit<br></h3>";
                     } else {
-                        document.getElementById("wizard-header").innerHTML = "<h3>Migrate to ASR9K-64<br></h3>";
+                        document.getElementById("wizard-header").innerHTML = "<h3>Migrate to ASR9K-X64<br></h3>";
                     }
 
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
@@ -360,7 +360,7 @@
                 submit_spinner.show();
 
                 $.ajax({
-                    url: "/asr9k_64_migrate/api/get_latest_config_migration_tool/",
+                    url: "/asr9k_x64_migrate/api/get_latest_config_migration_tool/",
                     dataType: 'json',
                     success: function (response) {
                         if (response.status == 'Failed') {
@@ -408,7 +408,7 @@
                 }
 
                 $.ajax({
-                    url: "/asr9k_64_migrate/api/get_dependencies/",
+                    url: "/asr9k_x64_migrate/api/get_dependencies/",
                     dataType: 'json',
                     data: {hosts : $('#hidden_hosts').val(), dependency : dependency},
                     success: function (response) {

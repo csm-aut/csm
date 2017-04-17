@@ -105,7 +105,7 @@ XML_TAG_TAR = 'tar'
 # Any additions to this list will require modifying
 # get_cco_supported_platform() and get_cco_supported_release()
 CCO_PLATFORM_ASR9K = 'asr9k_px'
-CCO_PLATFORM_ASR9K_64 = 'asr9k_x64'
+CCO_PLATFORM_ASR9K_X64 = 'asr9k_x64'
 CCO_PLATFORM_CRS = 'crs_px'
 CCO_PLATFORM_NCS4K = 'ncs4k'
 CCO_PLATFORM_NCS5K = 'ncs5k'
@@ -116,7 +116,7 @@ CCO_PLATFORM_NCS4K_SYSADMIN = 'ncs4k_sysadmin'
 CCO_PLATFORM_NCS5K_SYSADMIN = 'ncs5k_sysadmin'
 CCO_PLATFORM_NCS5500_SYSADMIN = 'ncs5500_sysadmin'
 CCO_PLATFORM_NCS6K_SYSADMIN = 'ncs6k_sysadmin'
-CCO_PLATFORM_ASR9K_64_SYSADMIN = 'asr9k_x64_sysadmin'
+CCO_PLATFORM_ASR9K_X64_SYSADMIN = 'asr9k_x64_sysadmin'
 
 
 class SMUInfoLoader(object):
@@ -144,8 +144,8 @@ class SMUInfoLoader(object):
     def get_cco_supported_platform(self, platform):
         if platform == PlatformFamily.ASR9K:
             return CCO_PLATFORM_ASR9K
-        elif platform == PlatformFamily.ASR9K_64:
-            return CCO_PLATFORM_ASR9K_64
+        elif platform == PlatformFamily.ASR9K_X64:
+            return CCO_PLATFORM_ASR9K_X64
         elif platform == PlatformFamily.CRS:
             return CCO_PLATFORM_CRS
         elif platform == PlatformFamily.NCS4K:
@@ -597,14 +597,14 @@ class SMUInfoLoader(object):
 
                     # External Name: asr9k-mgbl-x64-3.0.0.0-r612.x86_64.rpm
                     # Internal Name: asr9k-mgbl-x64-3.0.0.0-r612
-                    platform = CCO_PLATFORM_ASR9K_64
+                    platform = CCO_PLATFORM_ASR9K_X64
                     release = SMUInfoLoader.get_release_from_rxxx(package_name)
 
                 elif any(s in package_name for s in ['asr9k-sysadmin', 'asr9k-xr']):
 
                     # External Name:
                     # Internal Name: asr9k-sysadmin-6.2.1, asr9k-xr-6.2.1
-                    platform = CCO_PLATFORM_ASR9K_64_SYSADMIN
+                    platform = CCO_PLATFORM_ASR9K_X64_SYSADMIN
 
                 elif ('hfr' in package_name or 'CRS' in package_name) and '-px' in package_name:
 
@@ -659,8 +659,8 @@ class SMUInfoLoader(object):
                         platform = CCO_PLATFORM_NCS6K
 
                 if release == UNKNOWN and platform in [CCO_PLATFORM_ASR9K,
-                                                       CCO_PLATFORM_ASR9K_64,
-                                                       CCO_PLATFORM_ASR9K_64_SYSADMIN,
+                                                       CCO_PLATFORM_ASR9K_X64,
+                                                       CCO_PLATFORM_ASR9K_X64_SYSADMIN,
                                                        CCO_PLATFORM_CRS,
                                                        CCO_PLATFORM_NCS4K,
                                                        CCO_PLATFORM_NCS4K_SYSADMIN,

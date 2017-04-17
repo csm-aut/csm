@@ -84,7 +84,7 @@ class ConnectionType:
 
 class PlatformFamily:
     ASR9K = 'ASR9K'
-    ASR9K_64 = 'ASR9K-64'
+    ASR9K_X64 = 'ASR9K-X64'
     ASR900 = 'ASR900'
     CRS = 'CRS'
     NCS1K = 'NCS1K'

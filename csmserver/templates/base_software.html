@@ -13,7 +13,7 @@
     {% endif %}
     <li><a href="{{ url_for('static', filename='documents/tools.pdf') }}">Tools</a></li>
     <li><a href="{{ url_for('static', filename='documents/inventory_manager.pdf') }}">Inventory Manager</a></li>
-    <li><a href="{{ url_for('static', filename='documents/migration_to_asr9k_64.pdf') }}">ASR9K to ASR9K-64 Migration</a></li>
+    <li><a href="{{ url_for('static', filename='documents/migration_to_asr9k_x64.pdf') }}">ASR9K to ASR9K-X64 Migration</a></li>
     <li class="divider"></li>
     <li><a href="{{ url_for('static', filename='documents/api_guide.pdf') }}">API Guide</a></li>
     <li class="divider"></li>
@@ -34,7 +34,7 @@
     <li class="divider"></li>
     <li><a href="{{ url_for('custom_command.home') }}">Custom Command Profile</a></li>
     <li class="divider"></li>
-    <li><a href="{{ url_for('asr9k_64_migrate.migration') }}">ASR9K to ASR9K-64 Migration</a></li>
+    <li><a href="{{ url_for('asr9k_x64_migrate.migration') }}">ASR9K to ASR9K-X64 Migration</a></li>
     {% endif %}
 {% endmacro %}
 

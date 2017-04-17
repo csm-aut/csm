@@ -178,7 +178,7 @@
                     "data": 'install_action',
                     "render": function ( data, type, row ) {
                       if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
-                        return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
+                        return '<a href="/asr9k_x64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
                       } else {
                         return '<a href="/install/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
                       }
@@ -331,7 +331,7 @@
                 "data": 'install_action',
                 "render": function ( data, type, row ) {
                   if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
-                    return '<a href="/asr9k_64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
+                    return '<a href="/asr9k_x64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
                   } else {
                     return '<a href="/install/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit?return_url=install_dashboard.home">' + data + '</a>'
 

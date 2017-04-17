@@ -64,7 +64,7 @@ from views.cco import cco
 from views.log import log
 from views.install import install
 from views.authenticate import authenticate
-from views.asr9k_64_migrate import asr9k_64_migrate
+from views.asr9k_x64_migrate import asr9k_x64_migrate
 from views.conformance import conformance
 from views.inventory import inventory, update_select2_options
 from views.tools import tools
@@ -89,7 +89,7 @@ app.register_blueprint(log)
 app.register_blueprint(install)
 app.register_blueprint(authenticate)
 app.register_blueprint(restful_api)
-app.register_blueprint(asr9k_64_migrate)
+app.register_blueprint(asr9k_x64_migrate)
 app.register_blueprint(conformance)
 app.register_blueprint(inventory)
 app.register_blueprint(tools)
