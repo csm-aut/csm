@@ -172,6 +172,7 @@ class InstallWorkUnit(WorkUnit):
         install_job_history.scheduled_time = install_job.scheduled_time
         install_job_history.start_time = install_job.start_time
         install_job_history.set_status(job_status)
+        install_job_history.dependency = install_job.dependency
         install_job_history.session_log = install_job.session_log
         install_job_history.created_by = install_job.created_by
         install_job_history.data = install_job.data

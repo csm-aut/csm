@@ -402,6 +402,10 @@ def get_user_list(db_session):
     return db_session.query(User).order_by(User.fullname.asc()).all()
 
 
+def get_install_job_by_id(db_session, job_id):
+    return db_session.query(InstallJob).filter(InstallJob.id == job_id).first()
+
+
 def get_smtp_server(db_session):
     return db_session.query(SMTPServer).first()
 
@@ -730,7 +734,7 @@ def delete_server_repository(db_session, hostname):
 
 def create_or_update_install_job(db_session, host_id, install_action, scheduled_time, software_packages=[],
                                  server_id=-1, server_directory='', custom_command_profile_ids=[], dependency=0,
-                                 pending_downloads=[], created_by=None, install_job=None, install_job_data={}):
+                                 pending_downloads=[], created_by=None, install_job_data={}, install_job=None):
 
     if not type(software_packages) is list:
         raise ValueError('software_packages must be a list type.')
@@ -749,6 +753,11 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
         install_job = InstallJob()
         install_job.host_id = host_id
         db_session.add(install_job)
+
+    if len(install_job_data) > 0:
+        # Copy keys to existing install job data field if the job exists
+        for key, value in install_job_data.items():
+            install_job.save_data(key, value)
 
     install_job.install_action = install_action
 
@@ -785,9 +794,18 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
                 install_job_packages.append(software_package)
 
     install_job.packages = ','.join(install_job_packages)
+
+    if dependency > 0:
+        dependency_job = get_install_job_by_id(db_session, dependency)
+        if dependency_job is not None:
+            install_job.save_data('dependency_scheduled_time', get_datetime_string(dependency_job.scheduled_time))
+        else:
+            dependency = 0
+
     install_job.dependency = dependency if dependency > 0 else None
 
     user = get_user(db_session, created_by)
+
     install_job.created_by = created_by
     install_job.user_id = None if user is None else user.id
 
@@ -802,8 +820,6 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     install_job.status_time = None
     install_job.session_log = None
     install_job.trace = None
-
-    install_job.data = install_job_data
 
     if install_job.install_action != InstallAction.UNKNOWN:
         db_session.commit()

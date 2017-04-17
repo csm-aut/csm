@@ -36,6 +36,8 @@ from models import get_download_job_key_dict
 from constants import JobStatus
 
 from multi_process import JobManager
+from filters import get_datetime_string
+
 from work_units.install_work_unit import InstallWorkUnit
 
 
@@ -47,13 +49,24 @@ class SoftwareManager(JobManager):
     In order for a scheduled install job to proceed, its dependency must be successfully completed
     and is present in the InstallJobHistory table.  It is possible that the dependency (install_job_id) 
     has multiple entries in the table.  This can happen when it takes multiple tries for the dependency 
-    to become successful (i.e. after couple failed attempts).
+    to become successful (i.e. after couple failed attempts).  it is also possible that the install job id
+    previously deleted from the install_job table will be re-used by the database.  Thus, there is a need
+    to also check the dependency_scheduled_time previously saved in the data field.
     """
     def get_install_job_dependency_completed(self, db_session, install_job):
-        return db_session.query(InstallJobHistory).filter(and_(
-           InstallJobHistory.install_job_id == install_job.dependency, 
-           InstallJobHistory.host_id == install_job.host_id,
-           InstallJobHistory.status == JobStatus.COMPLETED)).all()
+        install_history_jobs = db_session.query(InstallJobHistory).filter(and_(
+                                                InstallJobHistory.install_job_id == install_job.dependency,
+                                                InstallJobHistory.host_id == install_job.host_id,
+                                                InstallJobHistory.status == JobStatus.COMPLETED)).all()
+
+        if len(install_history_jobs) > 0:
+            for install_history_job in install_history_jobs:
+                dependency_scheduled_time = install_job.load_data('dependency_scheduled_time')
+                if dependency_scheduled_time is not None and \
+                        get_datetime_string(install_history_job.scheduled_time) == dependency_scheduled_time:
+                    return True
+
+        return False
         
     def dispatch(self):
         db_session = DBSession()
@@ -78,9 +91,7 @@ class SoftwareManager(JobManager):
 
                     # This install job has a dependency, check if the expected criteria is met
                     if install_job.dependency is not None:
-                        dependency_completed = self.get_install_job_dependency_completed(db_session, install_job)
-                        # If the dependency has not been completed, don't proceed
-                        if len(dependency_completed) == 0:
+                        if not self.get_install_job_dependency_completed(db_session, install_job):
                             continue
 
                     self.submit_job(InstallWorkUnit(install_job.host_id, install_job.id))
