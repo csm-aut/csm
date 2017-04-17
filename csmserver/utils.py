@@ -106,6 +106,9 @@ def get_datetime(date_string, format=None):
                 match = re.search('\d+/\d+/\d+ \d+:\d+ [A|P]M', date_string)
                 if match:
                     format = "%m/%d/%Y %I:%M %p"
+                else:
+                    # FIXME: Best effort for now.
+                    format = "%m-%d-%Y %I:%M %p"
 
         return datetime.datetime.strptime(date_string, format)
     except:
