@@ -105,6 +105,9 @@ class InstallWorkUnit(WorkUnit):
 
             ctx.operation_id = self.get_last_operation_id(db_session, install_job)
 
+            # Reset the data field especially for a re-submitted job.
+            install_job.data = {}
+
             db_session.commit()
 
             handler = handler_class()
