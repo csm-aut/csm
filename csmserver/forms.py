@@ -123,7 +123,7 @@ class ServerForm(Form):
     password = PasswordField('Password')
     server_directory = StringField('Home Directory')
     vrf = StringField('VRF')
-    destination_on_host = StringField('Destination on Host (e.g. /harddisk:)')
+    destination_on_host = StringField('Destination on Host (e.g. disk0:)')
 
 
 class RegionForm(Form):
