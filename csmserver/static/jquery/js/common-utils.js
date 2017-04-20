@@ -379,7 +379,7 @@ function check_missing_files_on_server(validate_object) {
                             missing_file_list += element[i].smu_entry + ' (Downloadable) ' + description + '<br>';
                             downloadable_file_list += element[i].cco_filename + '\n';
                         } else {
-                            missing_file_list += element[i].smu_entry + ' (Not Downloadable) ' + description + '<br>';
+                            missing_file_list += '<font color="red">' + element[i].smu_entry + ' (Not Downloadable) ' + description + '</font><br>';
                         }
                     }
                 });
