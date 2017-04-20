@@ -184,7 +184,7 @@ def get_install_job_json_dict(install_jobs):
 
             # Retrieve the pending download status of the scheduled download job.
             # The install job has not been started if its status is None.
-            if install_job.status is None:
+            if install_job.status == JobStatus.SCHEDULED:
                 row['dependency'] = get_download_job_status(download_job_key_dict, install_job, row['dependency'])
 
             row['start_time'] = install_job.start_time
