@@ -103,8 +103,6 @@ class InstallWorkUnit(WorkUnit):
             install_job.set_status(JobStatus.IN_PROGRESS)
             install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
 
-            ctx.operation_id = self.get_last_operation_id(db_session, install_job)
-
             # Reset the data field especially for a re-submitted job.
             install_job.data = {}
 
@@ -146,25 +144,6 @@ class InstallWorkUnit(WorkUnit):
         logger.exception('InstallManager hit exception - hostname = %s, install job =  %s',
                          host.hostname if host is not None else 'Unknown', self.job_id)
 
-    def get_last_operation_id(self, db_session, install_activate_job, trace=None):
-
-        if install_activate_job.install_action == InstallAction.INSTALL_ACTIVATE:
-            install_add_job = get_last_completed_install_job_for_install_action(db_session,
-                                                                                install_activate_job.host_id,
-                                                                                InstallAction.INSTALL_ADD)
-            if install_add_job is not None:
-                # Check if Last Install Add and Activate have the same packages.
-                # If they have, then return the operation id.
-                install_add_packages = install_add_job.packages.split(',') if not is_empty(install_add_job.packages) else []
-                install_activate_packages = install_activate_job.packages.split(',') if not is_empty(install_activate_job.packages) else []
-                if len(install_add_packages) == len(install_activate_packages):
-                    for install_activate_package in install_activate_packages:
-                        if install_activate_package not in install_add_packages:
-                            return -1
-                    return install_add_job.operation_id
-
-        return -1
-
     def archive_install_job(self, db_session, logger, ctx, host, install_job, job_status, process_name, trace=None):
 
         install_job_history = InstallJobHistory()
@@ -180,9 +159,6 @@ class InstallWorkUnit(WorkUnit):
         install_job_history.created_by = install_job.created_by
         install_job_history.data = install_job.data
         install_job_history.trace = trace
-
-        if ctx is not None:
-            install_job_history.operation_id = ctx.operation_id
 
         # Only delete the install job if it is completed successfully.
         # Failed job should still be retained in the InstallJob table.

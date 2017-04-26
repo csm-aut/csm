@@ -22,6 +22,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+import collections
+
 from constants import ServerType
 
 from models import Server
@@ -163,7 +165,6 @@ class InstallContext(ConnectionContext):
     def __init__(self, db_session, host, install_job):
         ConnectionContext.__init__(self, db_session, host)
         self.install_job = install_job
-        self._operation_id = -1
 
         self.custom_commands = []
         custom_command_profile_ids = self.install_job.custom_command_profile_ids
@@ -219,16 +220,26 @@ class InstallContext(ConnectionContext):
     def custom_commands(self, value):
         self._custom_commands = value
 
-    @property
-    def operation_id(self):
-        return self._operation_id
+    def _generate_operation_id_key(self, tar_files):
+        if isinstance(tar_files, collections.Iterable):
+            return "_".join(sorted(tar_files)) + "_operation_id"
+        return None
+
+    def get_operation_id(self, tar_files):
+        key = self._generate_operation_id_key(tar_files)
+        if key:
+            return self.load_data(key)
+        return None
     
-    @operation_id.setter
-    def operation_id(self, value):
-        try:
-            self._operation_id = int(value)
-        except Exception:
-            self._operation_id = -1
+    def set_operation_id(self, tar_files, value):
+        key = self._generate_operation_id_key(tar_files)
+        if key:
+            try:
+                print "saving key {} as {}".format(key, value)
+                self.save_data(key, int(value))
+            except Exception:
+                self.save_data(key, -1)
+        return
 
     @property
     def host_urls(self):

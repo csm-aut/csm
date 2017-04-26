@@ -771,7 +771,6 @@ class InstallJobHistory(Base):
     start_time = Column(DateTime)
     status = Column(String(200))
     status_time = Column(DateTime) 
-    operation_id = Column(Integer, default=-1)
     trace = Column(Text)
     install_job_id = Column(Integer, index=True, unique=False)
     session_log = Column(Text)
