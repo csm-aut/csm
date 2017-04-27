@@ -103,8 +103,8 @@ class InstallWorkUnit(WorkUnit):
             install_job.set_status(JobStatus.IN_PROGRESS)
             install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
 
-            # Reset the data field especially for a re-submitted job.
-            install_job.data = {}
+            # Reset the job_info field especially for a re-submitted job.
+            install_job.save_data('job_info', [])
 
             db_session.commit()
 
