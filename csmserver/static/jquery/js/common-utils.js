@@ -199,7 +199,7 @@ function check_missing_prerequisite(validate_object) {
         url: "/install/api/get_missing_prerequisite_list",
         dataType: 'json',
         data: {
-            smu_list: trim_lines(validate_object.software_packages),
+            package_list: trim_lines(validate_object.software_packages),
             hostname: validate_object.hostname
         },
         success: function(data) {
@@ -360,7 +360,7 @@ function check_missing_files_on_server(validate_object) {
         url: "/install/api/get_missing_files_on_server/" + validate_object.server_id,
         dataType: 'json',
         data: {
-            smu_list: trim_lines(validate_object.software_packages),
+            package_list: trim_lines(validate_object.software_packages),
             server_directory: validate_object.server_directory
         },
         success: function(response) {
@@ -399,48 +399,6 @@ function check_missing_files_on_server(validate_object) {
                         display_unable_to_download_dialog(validate_object, missing_file_list);
                     }
                 }
-            }
-        },
-        error: function(XMLHttpRequest, textStatus, errorThrown) {
-            if (validate_object.spinner != null ) validate_object.spinner.hide();
-        }
-    });
-}
-
-function check_tars_downloadable(validate_object) {
-    if (validate_object.spinner != null ) validate_object.spinner.show();
-
-    // Only '.pie' or '.tar' files should be checked
-
-    $.ajax({
-        url: "/install/api/check_is_tar_downloadable",
-        dataType: 'json',
-        data: {
-            smu_list: trim_lines(validate_object.software_packages)
-        },
-        success: function(response) {
-            var missing_file_count = 0;
-            var missing_file_list = '';
-            var downloadable_file_list = '';
-
-            $.each(response, function(index, element) {
-                missing_file_count = element.length;
-                for (i = 0; i < element.length; i++) {
-                    var description = (element[i].description.length > 0) ? ' - ' + element[i].description : '';
-                    if (element[i].is_downloadable) {
-                        missing_file_list += element[i].smu_entry + ' (Downloadable) ' + description + '<br>';
-                        downloadable_file_list += element[i].cco_filename + '\n';
-                    } else {
-                        missing_file_list += element[i].smu_entry + ' (Not Downloadable) ' + description + '<br>';
-                    }
-                }
-            });
-
-            // There is no missing files, go ahead and submit
-            if (missing_file_count == 0) {
-                validate_object.callback(validate_object);
-            } else {
-                display_downloadable_tar_files(validate_object, missing_file_list, downloadable_file_list);
             }
         },
         error: function(XMLHttpRequest, textStatus, errorThrown) {

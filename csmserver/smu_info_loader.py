@@ -45,15 +45,19 @@ The releases are expected to be in this format x.x.x (e.g. 5.3.0)
 from xml.dom import minidom
 
 from database import DBSession
+
 from models import SMUMeta
 from models import SMUInfo
-
 from models import CCOCatalog
 from models import logger
 from models import SystemOption
+from models import PackageToSMU
+
 from constants import UNKNOWN
 from constants import PackageType
 from constants import PlatformFamily
+
+from utils import is_empty
 
 from smu_advisor import get_smus_exclude_supersedes_include_prerequisites
 from collections import OrderedDict
@@ -96,6 +100,9 @@ XML_TAG_COMPRESSED_IMAGE_SIZE = 'compressedImageSize'
 XML_TAG_UNCOMPRESSED_IMAGE_SIZE = 'unCompressedImageSize'
 XML_TAG_CCO_FILE_NAME = 'ccoFileName'
 XML_TAG_COMPOSITE_DDTS = "compositeDDTS"  # Only SP has this attribute
+XML_TAG_PACKAGE_NAMES = 'packageNames'
+XML_TAG_PACKAGE_MD5 = 'packageMD5'
+
 XML_TAG_SMU = 'smu'
 XML_TAG_SP = 'sp'
 XML_TAG_SMU_INTRANSIT = 'smuIntransit'
@@ -106,12 +113,16 @@ XML_TAG_TAR = 'tar'
 # get_cco_supported_platform() and get_cco_supported_release()
 CCO_PLATFORM_ASR9K = 'asr9k_px'
 CCO_PLATFORM_ASR9K_X64 = 'asr9k_x64'
+CCO_PLATFORM_XRV9K = 'xrv9k'
 CCO_PLATFORM_CRS = 'crs_px'
+CCO_PLATFORM_NCS1K = 'ncs1k'
 CCO_PLATFORM_NCS4K = 'ncs4k'
 CCO_PLATFORM_NCS5K = 'ncs5k'
 CCO_PLATFORM_NCS5500 = 'ncs5500'
 CCO_PLATFORM_NCS6K = 'ncs6k'
 
+CCO_PLATFORM_XRV9K_SYSADMIN = 'xrv9k_sysadmin'
+CCO_PLATFORM_NCS1K_SYSADMIN = 'ncs1k_sysadmin'
 CCO_PLATFORM_NCS4K_SYSADMIN = 'ncs4k_sysadmin'
 CCO_PLATFORM_NCS5K_SYSADMIN = 'ncs5k_sysadmin'
 CCO_PLATFORM_NCS5500_SYSADMIN = 'ncs5500_sysadmin'
@@ -136,10 +147,11 @@ class SMUInfoLoader(object):
         if not SystemOption.get(DBSession()).enable_cco_lookup:
             from_cco = False
 
-        if from_cco:
-            self.get_smu_info_from_cco(self.platform, self.release)
-        else:
-            self.get_smu_info_from_db(self.platform, self.release)
+        if self.platform != UNKNOWN and self.release != UNKNOWN:
+            if from_cco:
+                self.get_smu_info_from_cco(self.platform, self.release)
+            else:
+                self.get_smu_info_from_db(self.platform, self.release)
 
     def get_cco_supported_platform(self, platform):
         if platform == PlatformFamily.ASR9K:
@@ -192,7 +204,7 @@ class SMUInfoLoader(object):
             # This can happen if the given platform and release is not valid.
             # The load() method calls get_smu_info_from_db and failed.
             if not self.is_valid:
-                logger.error('get_smu_info_from_cco() hit exception, platform_release=' + platform_release)
+                logger.error('get_smu_info_from_cco() hit error, platform_release=' + platform_release)
                 return
 
             db_smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform_release).first()
@@ -206,6 +218,7 @@ class SMUInfoLoader(object):
 
             if save_to_db:
                 db_session.add(self.smu_meta)
+                self.create_package_to_smu_xref(db_session)
             else:
                 db_smu_meta.retrieval_time = datetime.datetime.utcnow()
 
@@ -213,6 +226,17 @@ class SMUInfoLoader(object):
 
         except Exception:
             logger.exception('get_smu_info_from_cco() hit exception, platform_release=' + platform_release)
+
+    def create_package_to_smu_xref(self, db_session):
+        for smu_info in self.smu_meta.smu_info:
+            if not is_empty(smu_info.package_names):
+                for package_name in smu_info.package_names.split(','):
+                    package_to_smu = SMUInfoLoader.get_package_smu_from_package_name(db_session, package_name)
+                    if package_to_smu is None:
+                        db_session.add(PackageToSMU(package_name=package_name, smu_name=smu_info.name))
+                    else:
+                        if package_to_smu.smu_name != smu_info.name:
+                            package_to_smu.smu_name = smu_info.name
 
     @property
     def is_valid(self):
@@ -277,6 +301,12 @@ class SMUInfoLoader(object):
             smu_info.cco_filename = self.getChildElementText(node, XML_TAG_CCO_FILE_NAME)
             smu_info.functional_areas = self.getChildElementText(node, XML_TAG_FUNCTIONAL_AREAS)
             smu_info.package_bundles = self.getChildElementText(node, XML_TAG_PACKAGE_BUNDLES)
+            smu_info.package_names = self.getChildElementText(node, XML_TAG_PACKAGE_NAMES)
+            smu_info.package_md5 = self.getChildElementText(node, XML_TAG_PACKAGE_MD5)
+
+            if is_empty(smu_info.package_names):
+                smu_info.package_names = smu_info.name + '.' + self.file_suffix
+
             smu_info.compressed_image_size = self.get_int_value(
                 self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
             smu_info.uncompressed_image_size = self.get_int_value(
@@ -394,6 +424,23 @@ class SMUInfoLoader(object):
                 results.append(smu_info.ddts)
 
         return results
+
+    @classmethod
+    def get_package_names_from_smu_name(cls, db_session, smu_name):
+        """
+        For eXR platforms which are using RPM.  It is possible that a SMU may contain multiple RPM images.
+        This information is store in a xref table called ImageToSMU.
+        """
+        return db_session.query(PackageToSMU.package_name).filter(PackageToSMU.smu_name == smu_name).all()
+
+    @classmethod
+    def get_smu_name_from_package_name(cls, db_session, package_name):
+        package_to_smu = SMUInfoLoader.get_package_smu_from_package_name(db_session, package_name)
+        return None if package_to_smu is None else package_to_smu.smu_name
+
+    @classmethod
+    def get_package_smu_from_package_name(cls, db_session, package_name):
+        return db_session.query(PackageToSMU).filter(PackageToSMU.package_name == package_name).first()
 
     @classmethod
     def get_cco_file_package_type(cls, db_session, name):
@@ -568,6 +615,11 @@ class SMUInfoLoader(object):
         return UNKNOWN
 
     @classmethod
+    def get_loader_from_package(cls, package_name):
+        platform, release = SMUInfoLoader.get_platform_and_release(package_name)
+        return SMUInfoLoader(platform, release)
+
+    @classmethod
     def get_platform_and_release(cls, package_name):
         """
         Given a package_name, return the software platform and release that can be used to load an XML file.
@@ -575,107 +627,131 @@ class SMUInfoLoader(object):
 
         'Unknown' may be returned for invalid platform or release.
         """
-        package_list = None
-        if isinstance(package_name, str):
-            package_list = [package_name]
-        elif isinstance(package_name, list):
+        if isinstance(package_name, list):
             package_list = list(package_name)
+        else:
+            package_list = [package_name]
 
-        if package_list:
-            for package_name in package_list:
-                platform = UNKNOWN
-                release = UNKNOWN
+        for package_name in package_list:
+            platform = UNKNOWN
+            release = UNKNOWN
 
-                if 'asr9k' in package_name and '-px' in package_name or 'ASR9K-iosxr' in package_name:
+            if 'asr9k' in package_name and '-px' in package_name or 'ASR9K-iosxr' in package_name:
+                # Release Software Name: ASR9K-iosxr-px-k9-5.3.1.tar
+                # External Name: asr9k-mcast-px.pie-5.3.2 | asr9k-px-5.3.3.CSCuy81837.pie
+                # Internal Name: disk0:asr9k-mcast-px-5.3.2 | disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
+                platform = CCO_PLATFORM_ASR9K
 
-                    # Release Software Name: ASR9K-iosxr-px-k9-5.3.1.tar
-                    # External Name: asr9k-mcast-px.pie-5.3.2 | asr9k-px-5.3.3.CSCuy81837.pie
-                    # Internal Name: disk0:asr9k-mcast-px-5.3.2 | disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
-                    platform = CCO_PLATFORM_ASR9K
+            elif 'asr9k' in package_name and 'x64' in package_name:
 
-                elif 'asr9k' in package_name and 'x64' in package_name:
+                # External Name: asr9k-mgbl-x64-3.0.0.0-r612.x86_64.rpm
+                # Internal Name: asr9k-mgbl-x64-3.0.0.0-r612
+                platform = CCO_PLATFORM_ASR9K_X64
+                release = SMUInfoLoader.get_release_from_rxxx(package_name)
 
-                    # External Name: asr9k-mgbl-x64-3.0.0.0-r612.x86_64.rpm
-                    # Internal Name: asr9k-mgbl-x64-3.0.0.0-r612
-                    platform = CCO_PLATFORM_ASR9K_X64
+            elif any(s in package_name for s in ['asr9k-sysadmin', 'asr9k-xr']):
+
+                # External Name:
+                # Internal Name: asr9k-sysadmin-6.2.1, asr9k-xr-6.2.1
+                platform = CCO_PLATFORM_ASR9K_X64_SYSADMIN
+
+            elif 'xrv9k' in package_name:
+
+                if any(s in package_name for s in ['xrv9k-sysadmin', 'xvr9k-xr']):
+                    # External Name:
+                    # Internal Name:
+                    platform = CCO_PLATFORM_XRV9K_SYSADMIN
+                else:
+                    # External Name:
+                    # Internal Name:
+                    platform = CCO_PLATFORM_XRV9K
+
+            elif ('hfr' in package_name or 'CRS' in package_name) and '-px' in package_name:
+
+                # Release Software Name: CRS-iosxr-px-6.1.2.tar
+                # Internal Name: disk0:hfr-mini-px-4.2.1 | disk0:hfr-px-4.2.3.CSCtz89449
+                platform = CCO_PLATFORM_CRS
+
+            elif 'ncs1k' in package_name:
+
+                if any(s in package_name for s in ['ncs1k-sysadmin', 'ncs1k-xr']):
+                    # External Name:
+                    # Internal Name: ncs1k-sysadmin-6.3.1, ncs1k-xr-6.3.1
+                    platform = CCO_PLATFORM_NCS1K_SYSADMIN
+                else:
+                    # External Name: ncs1k-mgbl.pkg-6.1.3
+                    # Internal Name: ncs1k-k9sec-3.1.0.0-r631, ncs1k-os-support-3.0.0.2-r631.CSCve05411
+                    platform = CCO_PLATFORM_NCS1K
                     release = SMUInfoLoader.get_release_from_rxxx(package_name)
 
-                elif any(s in package_name for s in ['asr9k-sysadmin', 'asr9k-xr']):
+            elif 'ncs4k' in package_name:
 
+                if any(s in package_name for s in ['ncs4k-sysadmin', 'ncs4k-xr']):
                     # External Name:
-                    # Internal Name: asr9k-sysadmin-6.2.1, asr9k-xr-6.2.1
-                    platform = CCO_PLATFORM_ASR9K_X64_SYSADMIN
+                    # Internal Name: ncs4k-sysadmin-6.1.12
+                    platform = CCO_PLATFORM_NCS4K_SYSADMIN
+                else:
+                    # External Name: ncs4k-mgbl.pkg-6.1.2
+                    # Internal Name: ncs4k-mgbl-6.1.2
+                    platform = CCO_PLATFORM_NCS4K
 
-                elif ('hfr' in package_name or 'CRS' in package_name) and '-px' in package_name:
+            elif 'ncs5k' in package_name:
 
-                    # Release Software Name: CRS-iosxr-px-6.1.2.tar
-                    # Internal Name: disk0:hfr-mini-px-4.2.1 | disk0:hfr-px-4.2.3.CSCtz89449
-                    platform = CCO_PLATFORM_CRS
+                if any(s in package_name for s in ['ncs5k-sysadmin', 'ncs5k-xr']):
+                    # External Name:
+                    # Internal Name: ncs5k-sysadmin-6.1.2, ncs5k-xr-6.1.2
+                    platform = CCO_PLATFORM_NCS5K_SYSADMIN
+                else:
+                    # External Name: ncs5k-mgbl-3.0.0.0-r612.x86_64.rpm, ncs5k-6.0.1.CSCva07993.rpm
+                    # Internal Name: ncs5k-mgbl-3.0.0.0-r612
+                    platform = CCO_PLATFORM_NCS5K
+                    release = SMUInfoLoader.get_release_from_rxxx(package_name)
 
-                elif 'ncs4k' in package_name:
+            elif 'ncs5500' in package_name:
 
-                    if any(s in package_name for s in ['ncs4k-sysadmin', 'ncs4k-xr']):
-                        # External Name:
-                        # Internal Name: ncs4k-sysadmin-6.1.12
-                        platform = CCO_PLATFORM_NCS4K_SYSADMIN
-                    else:
-                        # External Name: ncs4k-mgbl.pkg-6.1.2
-                        # Internal Name: ncs4k-mgbl-6.1.2
-                        platform = CCO_PLATFORM_NCS4K
+                if any(s in package_name for s in ['ncs5500-sysadmin', 'ncs5500-xr']):
+                    # External Name:
+                    # Internal Name: ncs5500-sysadmin-6.1.2, ncs5500-xr-6.1.2
+                    platform = CCO_PLATFORM_NCS5500_SYSADMIN
+                else:
+                    # External Name: ncs5500-mgbl-3.0.0.0-r612.x86_64.rpm
+                    # Internal Name: ncs5500-mgbl-3.0.0.0-r612
+                    platform = CCO_PLATFORM_NCS5500
+                    release = SMUInfoLoader.get_release_from_rxxx(package_name)
 
-                elif 'ncs5k' in package_name:
+            elif 'ncs6k' in package_name:
 
-                    if any(s in package_name for s in ['ncs5k-sysadmin', 'ncs5k-xr']):
-                        # External Name:
-                        # Internal Name: ncs5k-sysadmin-6.1.2, ncs5k-xr-6.1.2
-                        platform = CCO_PLATFORM_NCS5K_SYSADMIN
-                    else:
-                        # External Name: ncs5k-mgbl-3.0.0.0-r612.x86_64.rpm, ncs5k-6.0.1.CSCva07993.rpm
-                        # Internal Name: ncs5k-mgbl-3.0.0.0-r612
-                        platform = CCO_PLATFORM_NCS5K
-                        release = SMUInfoLoader.get_release_from_rxxx(package_name)
+                if any(s in package_name for s in ['ncs6k-sysadmin', 'ncs6k-xr']):
+                    # External Name: ncs6k-sysadmin.iso-5.2.4
+                    # Internal Name: ncs6k-sysadmin-5.2.4, ncs6k-xr-5.2.4
+                    platform = CCO_PLATFORM_NCS6K_SYSADMIN
+                else:
+                    # External Name: ncs6k-mgbl.pkg-5.2.4
+                    # Internal Name: ncs6k-mgbl-5.2.4
+                    platform = CCO_PLATFORM_NCS6K
 
-                elif 'ncs5500' in package_name:
+            if release == UNKNOWN and platform in [CCO_PLATFORM_ASR9K,
+                                                   CCO_PLATFORM_ASR9K_X64,
+                                                   CCO_PLATFORM_ASR9K_X64_SYSADMIN,
+                                                   CCO_PLATFORM_XRV9K,
+                                                   CCO_PLATFORM_XRV9K_SYSADMIN,
+                                                   CCO_PLATFORM_CRS,
+                                                   CCO_PLATFORM_NCS1K,
+                                                   CCO_PLATFORM_NCS1K_SYSADMIN,
+                                                   CCO_PLATFORM_NCS4K,
+                                                   CCO_PLATFORM_NCS4K_SYSADMIN,
+                                                   CCO_PLATFORM_NCS5K,
+                                                   CCO_PLATFORM_NCS5K_SYSADMIN,
+                                                   CCO_PLATFORM_NCS5500,
+                                                   CCO_PLATFORM_NCS5500_SYSADMIN,
+                                                   CCO_PLATFORM_NCS6K,
+                                                   CCO_PLATFORM_NCS6K_SYSADMIN]:
 
-                    if any(s in package_name for s in ['ncs5500-sysadmin', 'ncs5500-xr']):
-                        # External Name:
-                        # Internal Name: ncs5500-sysadmin-6.1.2, ncs5500-xr-6.1.2
-                        platform = CCO_PLATFORM_NCS5500_SYSADMIN
-                    else:
-                        # External Name: ncs5500-mgbl-3.0.0.0-r612.x86_64.rpm
-                        # Internal Name: ncs5500-mgbl-3.0.0.0-r612
-                        platform = CCO_PLATFORM_NCS5500
-                        release = SMUInfoLoader.get_release_from_rxxx(package_name)
+                matches = re.findall("\d+\.\d+\.\d+", package_name)
+                release = matches[0] if matches else UNKNOWN
 
-                elif 'ncs6k' in package_name:
-
-                    if any(s in package_name for s in ['ncs6k-sysadmin', 'ncs6k-xr']):
-                        # External Name: ncs6k-sysadmin.iso-5.2.4
-                        # Internal Name: ncs6k-sysadmin-5.2.4, ncs6k-xr-5.2.4
-                        platform = CCO_PLATFORM_NCS6K_SYSADMIN
-                    else:
-                        # External Name: ncs6k-mgbl.pkg-5.2.4
-                        # Internal Name: ncs6k-mgbl-5.2.4
-                        platform = CCO_PLATFORM_NCS6K
-
-                if release == UNKNOWN and platform in [CCO_PLATFORM_ASR9K,
-                                                       CCO_PLATFORM_ASR9K_X64,
-                                                       CCO_PLATFORM_ASR9K_X64_SYSADMIN,
-                                                       CCO_PLATFORM_CRS,
-                                                       CCO_PLATFORM_NCS4K,
-                                                       CCO_PLATFORM_NCS4K_SYSADMIN,
-                                                       CCO_PLATFORM_NCS5K,
-                                                       CCO_PLATFORM_NCS5K_SYSADMIN,
-                                                       CCO_PLATFORM_NCS5500,
-                                                       CCO_PLATFORM_NCS5500_SYSADMIN,
-                                                       CCO_PLATFORM_NCS6K,
-                                                       CCO_PLATFORM_NCS6K_SYSADMIN]:
-
-                    matches = re.findall("\d+\.\d+\.\d+", package_name)
-                    release = matches[0] if matches else UNKNOWN
-
-                if platform != UNKNOWN and release != UNKNOWN:
-                    return platform, release
+            if platform != UNKNOWN and release != UNKNOWN:
+                return platform, release
 
         return UNKNOWN, UNKNOWN
 

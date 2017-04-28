@@ -184,6 +184,17 @@
         $(this).initialize_servers_by_region(0);
     }
 
+    $.fn.select_server = function(server_id, server_directory) {
+        var options = $(this).data('options');
+        var select_server_ui = $(options.parent_element + ' .select_server');
+        var select_server_directory_ui = $(options.parent_element + ' .select_server_directory');
+
+        if (server_id != null && server_id != -1) {
+            select_server_ui.val(server_id);
+            retrieve_file_list(server_id, select_server_directory_ui, server_directory);
+        }
+    }
+
     /**
      * Initialize the plugin with server repositories that are available to this host (i.e. for the region).
      **/
@@ -218,6 +229,10 @@
      * Initialize the plugin with server repositories that are available to this region.
      **/
     $.fn.initialize_servers_by_region = function (region_id) {
+        if (region_id < 0) {
+            region_id = 0;
+        }
+
         var options = $(this).data('options');
         var select_server_ui = $(options.parent_element + ' .select_server');
         var select_server_directory_ui = $(options.parent_element + ' .select_server_directory');

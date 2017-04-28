@@ -62,7 +62,6 @@ from forms import HostScheduleInstallForm
 from flask.ext.login import login_required
 from flask.ext.login import current_user
 
-from constants import UNKNOWN
 from constants import JobStatus
 from constants import PlatformFamily
 from constants import InstallAction
@@ -74,7 +73,8 @@ from filters import get_datetime_string
 
 from server_helper import get_server_impl
 
-from smu_utils import get_download_info_dict
+from smu_utils import get_smu_name_dict
+from smu_utils import get_smu_info_dict
 from smu_utils import get_missing_prerequisite_list
 
 from smu_info_loader import SMUInfoLoader
@@ -362,35 +362,33 @@ def api_get_server_file_dict(server_id):
 @login_required
 def api_get_missing_files_on_server(server_id):
     """
-    Given a SMU list, return the ones that are missing in the server repository.
+    Given a package list, return the ones that are missing in the server repository.
     """
     rows = []
-    smu_list = request.args.get('smu_list').split()
+    package_list = request.args.get('package_list').split()
     server_directory = request.args.get('server_directory')
 
     server_file_dict, is_reachable = get_server_file_dict(server_id, server_directory)
-
-    # Identify if the SMUs are downloadable on CCO or not.
-    # If they are engineering SMUs, they cannot be downloaded.
-    download_info_dict, smu_loader = get_download_info_dict(smu_list)
-
     if is_reachable:
-        for smu_name, cco_filename in download_info_dict.items():
-            if not is_smu_on_server_repository(server_file_dict, smu_name):
-                description = ''
-                if smu_loader.is_valid:
-                    smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
-                    description = '' if smu_info is None else smu_info.description
-                    # If selected package is on CCO
-                    if cco_filename is not None and smu_info.status == 'Posted':
-                        rows.append({'smu_entry': smu_name, 'description': description,
-                                     'cco_filename': cco_filename, 'is_downloadable': True})
+        smu_loader = SMUInfoLoader.get_loader_from_package(package_list)
+        if smu_loader.is_valid:
+            smu_info_dict = get_smu_info_dict(DBSession(), smu_loader, package_list)
+
+            for package_name, smu_info in smu_info_dict.items():
+                if not is_smu_on_server_repository(server_file_dict, package_name):
+                    if smu_info is None:
+                        rows.append({'smu_entry': package_name, 'description': '', 'is_downloadable': False})
                     else:
-                        rows.append({'smu_entry': smu_name, 'description': description,
-                                     'is_downloadable': False})
-                else:
-                    rows.append({'smu_entry': smu_name, 'description': description,
-                                 'is_downloadable': False})
+                        # If selected package is on CCO
+                        if smu_info.status == 'Posted':
+                            rows.append({'smu_entry': package_name, 'description': smu_info.description,
+                                         'cco_filename': smu_info.cco_filename, 'is_downloadable': True})
+                        else:
+                            rows.append({'smu_entry': package_name, 'description': smu_info.description,
+                                         'is_downloadable': False})
+        else:
+            for package_name in package_list:
+                rows.append({'smu_entry': package_name, 'description': '', 'is_downloadable': False})
     else:
         return jsonify({'status': 'Failed'})
 
@@ -410,28 +408,42 @@ def host_packages_contains(host_packages, smu_name):
 @login_required
 def api_get_missing_prerequisite_list():
     """
-    Given a SMU list, return any missing pre-requisites.  The
-    SMU entries returned also have the file extension appended.
+    Given a package list, return the missing pre-requisities.
+    An example of a package list:
+        asr9k-px-6.1.3.CSCvd54775.pie
+        ncs5500-k9sec-2.2.0.2-r613.CSCvd18741.x86_64.rpm
     """
     hostname = request.args.get('hostname')
-    # The SMUs selected by the user to install
-    smu_list = request.args.get('smu_list').split()
+    package_list = request.args.get('package_list').split()
 
     rows = []
-    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
-    if platform != UNKNOWN and release != UNKNOWN:
-        smu_loader = SMUInfoLoader(platform, release)
+    smu_loader = SMUInfoLoader.get_loader_from_package(package_list)
 
-        prerequisite_list = get_missing_prerequisite_list(smu_list)
+    if smu_loader.is_valid:
+        smu_name_dict = get_smu_name_dict(DBSession(), package_list)
+
+        smu_name_list = []
+        for package_name, smu_name in smu_name_dict.items():
+            smu_info = smu_loader.get_smu_info(smu_name)
+            if smu_info:
+                smu_name_list.append(smu_info.name)
+
+        prerequisite_list = get_missing_prerequisite_list(smu_loader, smu_name_list)
         host_packages = get_host_active_packages(hostname)
 
+        # smu_name examples: asr9k-px-6.1.3.CSCvd54775, ncs5500-6.1.3.CSCvd18741
         for smu_name in prerequisite_list:
-            # If the missing pre-requisites have not been installed
-            # (i.e. not in the Active/Active-Committed), include them.
-            if not host_packages_contains(host_packages, smu_name):
-                smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
-                description = '' if smu_info is None else smu_info.description
-                rows.append({'smu_entry': smu_name, 'description': description})
+            smu_info = smu_loader.get_smu_info(smu_name)
+            if smu_info is not None:
+                description = smu_info.description
+
+                # If the missing pre-requisites have not been installed
+                # (i.e. not in the Active/Active-Committed), include them.
+                if not is_empty(smu_info.package_names):
+                    for package_name in smu_info.package_names.split(','):
+                        # FIXME: Need reviewing the code in this method
+                        if not host_packages_contains(host_packages, package_name):
+                            rows.append({'smu_entry': package_name, 'description': description})
 
     return jsonify(**{'data': rows})
 
@@ -447,47 +459,18 @@ def api_get_reload_list():
     package_list = request.args.get('package_list').split()
 
     rows = []
-    smu_loader = None
 
     if not is_empty(package_list):
-        # Identify the platform and release
-        platform, release = SMUInfoLoader.get_platform_and_release(package_list)
-        if platform != UNKNOWN and release != UNKNOWN:
-            smu_loader = SMUInfoLoader(platform, release)
+        smu_loader = SMUInfoLoader.get_loader_from_package(package_list)
+        smu_info_dict = get_smu_info_dict(DBSession(), smu_loader, package_list)
 
-        for package_name in package_list:
+        for package_name, smu_info in smu_info_dict.items():
             if any(s in package_name for s in ['mini']):
                 rows.append({'entry': package_name, 'description': ''})
             else:
-                if smu_loader and smu_loader.is_valid:
-                    # Strip the suffix
-                    smu_info = smu_loader.get_smu_info(package_name.replace('.' + smu_loader.file_suffix, ''))
-                    if smu_info is not None:
-                        if any(s in smu_info.impact for s in ['Reload', 'Reboot']):
-                            rows.append({'entry': package_name, 'description': smu_info.description})
-
-    return jsonify(**{'data': rows})
-
-
-@install.route('/api/check_is_tar_downloadable')
-def check_is_tar_downloadable():
-    rows = []
-    smu_list = request.args.get('smu_list').split()
-
-    # Identify if the SMUs are downloadable on CCO or not.
-    # If they are engineering SMUs, they cannot be downloaded.
-    download_info_dict, smu_loader = get_download_info_dict(smu_list)
-
-    for smu_name, cco_filename in download_info_dict.items():
-        smu_info = smu_loader.get_smu_info(smu_name.replace('.' + smu_loader.file_suffix, ''))
-        description = '' if smu_info is None else smu_info.description
-        # If selected TAR on CCO
-        if cco_filename is not None and smu_info.status == 'Posted':
-            rows.append({'smu_entry': smu_name, 'description': description,
-                         'cco_filename': cco_filename, 'is_downloadable': True})
-        else:
-            rows.append({'smu_entry': smu_name, 'description': description,
-                         'is_downloadable': False})
+                if smu_info is not None:
+                    if any(s in smu_info.impact for s in ['Reload', 'Reboot']):
+                        rows.append({'entry': package_name, 'description': smu_info.description})
 
     return jsonify(**{'data': rows})
 
@@ -600,6 +583,7 @@ def api_get_host_packages_by_states(hostname):
         for package_state in package_states:
             packages_list = db_session.query(Package).filter(
                 and_(Package.host_id == host.id, Package.state == package_state)). order_by(Package.name).all()
+
             if len(packages_list) > 0:
                 packages.extend(packages_list)
 

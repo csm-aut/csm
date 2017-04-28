@@ -536,7 +536,8 @@ def fixup_software_profile_packages(software_profile_packages):
     result_dict = dict()
 
     for software_profile_package in software_profile_packages:
-        package_name_to_match = strip_smu_file_extension(software_profile_package)
+        # FIXME: Need platform specific logic
+        package_name_to_match = strip_smu_file_extension(software_profile_package).replace('.x86_64', '')
 
         if 'asr9000v' in package_name_to_match:
             package_name_to_match = package_name_to_match.replace('asr9000v', '9000v')

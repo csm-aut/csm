@@ -22,12 +22,17 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from database import DBSession
+
 from constants import UNKNOWN
 from constants import PackageType
+
 from smu_info_loader import SMUInfoLoader
+
 from smu_advisor import get_excluded_supersede_list 
 from smu_advisor import get_missing_required_prerequisites
 from smu_advisor import get_dict_from_list
+
 from utils import multiple_replace
 
 SMU_INDICATOR = 'CSC'
@@ -91,83 +96,89 @@ def get_smu_lookup_name(name):
     return name
 
 
-def get_unique_set_from_dict(smu_info_dict):
+def union_set_from_dict(smu_info_dict):
     """
     The smu_info_dict has the following format
        smu name ->  set()
     """
-    resultant_set = set()
+    result_set = set()
     for smu_set in smu_info_dict.values():
-        for smu_name in smu_set:
-            if smu_name not in resultant_set:
-                resultant_set.add(smu_name)
+        result_set = result_set.union(smu_set)
             
-    return resultant_set
+    return result_set
 
 
-def get_missing_prerequisite_list(smu_list):
-    result_list = []   
-    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
-    
-    if platform == UNKNOWN or release == UNKNOWN:
-        return result_list
-    
-    # Load the SMU information
-    smu_loader = SMUInfoLoader(platform, release)
-    smu_info_list= []
-    smu_name_set = set()
-    
-    for line in smu_list:
-        smu_name = get_smu_lookup_name(line)
-        smu_info = smu_loader.get_smu_info(smu_name)
-        
-        if smu_info is None or smu_name in smu_name_set:  
-            continue
+def get_missing_prerequisite_list(smu_loader, smu_name_list):
+    """
+    :param smu_loader: A valid SMUInfoLoader instance
+    :param smu_name_list: A list of SMU names.  For example,
+                                 asr9k-px-6.1.3.CSCvd54775
+                                 ncs5500-6.1.3.CSCvd07722
+    :return: Returns a list SMU names that are the missing pre-requisites if any.
+    """
+    result_list = []
 
-        smu_name_set.add(smu_name)
-        smu_info_list.append(smu_info)
-        
-    if len(smu_info_list) > 0:
-        # Exclude all the superseded SMUs in smu_info_list
-        excluded_supersede_list = get_excluded_supersede_list(smu_info_list)
-       
-        missing_required_prerequisite_dict = \
-            get_missing_required_prerequisites(smu_loader, excluded_supersede_list)
-        
-        missing_required_prerequisite_set = get_unique_set_from_dict(missing_required_prerequisite_dict)
-        for pre_requisite_smu in missing_required_prerequisite_set:
-            result_list.append(pre_requisite_smu + '.' + smu_loader.file_suffix)
+    if smu_loader.is_valid:
+        smu_info_dict = dict()
+
+        for smu_name in smu_name_list:
+            smu_info = smu_loader.get_smu_info(smu_name)
+
+            if smu_info is not None:
+                smu_info_dict[smu_name] = smu_info
+
+        if len(smu_info_dict) > 0:
+            # Exclude all the superseded SMUs in smu_info_list
+            excluded_supersede_list = get_excluded_supersede_list(smu_info_dict.values())
+
+            missing_required_prerequisite_dict = \
+                get_missing_required_prerequisites(smu_loader, excluded_supersede_list)
+
+            missing_required_prerequisite_set = union_set_from_dict(missing_required_prerequisite_dict)
+            for pre_requisite_smu in missing_required_prerequisite_set:
+                result_list.append(pre_requisite_smu)
                 
     return result_list
 
 
-def get_download_info_dict(smu_list):
+def get_smu_name_dict(db_session, package_list):
     """
-    Given a SMU list, return a dictionary which contains
-    key: smu name in smu_list
-    value: cco filename  (can be None if smu_name is not in the XML file)
+    Given a package list, return a dictionary.  If a package name cannot be resolved to a SMU name, its value will be None.
+
+    :param package_list: A list of package names
+        asr9k-px-6.1.3.CSCvd54775.pie
+        ncs5500-k9sec-2.2.0.2-r613.CSCvd18741.x86_64.rpm
+    :return: A dictionary
+        key: package_name, value: asr9k-px-6.1.3.CSCvd54775
+        key: package_name, value: ncs5500-6.1.3.CSCvd18741
     """
-    download_info_dict = {}
-    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
-    
-    if platform == UNKNOWN or release == UNKNOWN:
-        return download_info_dict, None
-    
-    # Load the SMU information
-    smu_loader = SMUInfoLoader(platform, release)
-    for smu_name in smu_list:
-        lookup_name = get_smu_lookup_name(smu_name)
-        smu_info = smu_loader.get_smu_info(lookup_name)
-        if smu_info is not None:
-            # Return back the same name (i.e. smu_name)
-            download_info_dict[smu_name] = smu_info.cco_filename
-        else:
-            download_info_dict[smu_name] = None
-            
-    return download_info_dict, smu_loader
+    smu_name_dict = dict()
+
+    for package_name in package_list:
+        smu_name_dict[package_name] = SMUInfoLoader.get_smu_name_from_package_name(db_session, package_name=package_name)
+
+    return smu_name_dict
 
 
-def get_optimized_list(smu_list):
+def get_smu_info_dict(db_session, smu_loader, package_list):
+    """
+    Given a package list, return a dictionary.  If a package name cannot be resolved to a SMU name, its value will be None.
+    :param db_session: A DBSession instance
+    :param smu_loader: A SMUInfoLoader instance
+    :param package_list: A list of package names
+    :return: A dictionary
+        key: package_name, value: SMUInfo
+    """
+    smu_info_dict = dict()
+
+    for package_name in package_list:
+        smu_name = SMUInfoLoader.get_smu_name_from_package_name(db_session, package_name=package_name)
+        smu_info_dict[package_name] = smu_loader.get_smu_info(smu_name)
+
+    return smu_info_dict
+
+
+def get_optimized_list(package_to_optimize_list):
     """
     Returns the validated list given the SMU/SP list.
     A smu_list may contain packages, SMUs, SPs, or junk texts.
@@ -175,72 +186,62 @@ def get_optimized_list(smu_list):
     unrecognized_list = []
     package_list = []
     result_list = []
-    
-    # Identify the platform and release
-    platform, release = SMUInfoLoader.get_platform_and_release(smu_list)
-    
-    if platform == UNKNOWN or release == UNKNOWN:
-        for line in smu_list:
-            result_list.append({'smu_entry': line, 'is': 'Unrecognized', 'description': ''})
-        return result_list
-    
-    # Load the SMU information
-    smu_loader = SMUInfoLoader(platform, release)
-    
-    file_suffix = smu_loader.file_suffix
-    smu_info_list = []
-    smu_name_set = set()
-    
-    for line in smu_list:
-        smu_name = get_smu_lookup_name(line)
-        smu_info = smu_loader.get_smu_info(smu_name)
-        
-        if smu_info is None:
-            # Check if the entry is a package type
-            platform, release = SMUInfoLoader.get_platform_and_release(smu_name)
-            if platform == UNKNOWN:
-                unrecognized_list.append(smu_name)
+
+    smu_loader = SMUInfoLoader.get_loader_from_package(package_to_optimize_list)
+    if smu_loader.is_valid:
+        smu_info_list = []
+        smu_info_dict = get_smu_info_dict(DBSession(), smu_loader, package_to_optimize_list)
+
+        for package_name, smu_info in smu_info_dict.items():
+            if smu_info is None:
+                # Check if the entry is a package type
+                platform, release = SMUInfoLoader.get_platform_and_release(package_name)
+                if platform == UNKNOWN:
+                    unrecognized_list.append(package_name)
+                else:
+                    package_list.append(package_name)
             else:
-                package_list.append(smu_name)
-            continue
-        
-        if smu_name in smu_name_set:
-            continue
-    
-        smu_name_set.add(smu_name)
-        smu_info_list.append(smu_info)
-        
-    if len(smu_info_list) > 0:
-        # Exclude all the superseded SMUs in smu_info_list
-        excluded_supersede_list = get_excluded_supersede_list(smu_info_list)
-       
-        missing_required_prerequisite_dict = \
-            get_missing_required_prerequisites(smu_loader, excluded_supersede_list)
-        
-        missing_required_prerequisite_set = get_unique_set_from_dict(missing_required_prerequisite_dict)
-        for pre_requisite_smu in missing_required_prerequisite_set:
-            pre_requisite_smu_info = smu_loader.get_smu_info(pre_requisite_smu)
-            description = pre_requisite_smu_info.description if pre_requisite_smu_info is not None else ''
-            result_list.append({'smu_entry': pre_requisite_smu + '.' + file_suffix,
-                                'is': 'Pre-requisite', 'description':description})
-                
-        excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
-        
-        for smu_info in smu_info_list:
-            if smu_info.name not in excluded_supersede_dict:
-                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix,
-                                    'is': 'Superseded', 'description': smu_info.description})
-            else:
-                result_list.append({'smu_entry': smu_info.name + '.' + file_suffix,
-                                    'is': 'SMU/SP', 'description': smu_info.description})
-    
-    if len(package_list) > 0:
-        for entry in package_list:
-            result_list.append({'smu_entry': entry, 'is': 'Package', 'description': ''})
-            
-    if len(unrecognized_list) > 0:
-        for entry in unrecognized_list:
-            result_list.append({'smu_entry': entry, 'is': 'Unrecognized', 'description': ''})
+                smu_info_list.append(smu_info)
+
+        if len(smu_info_list) > 0:
+            # Exclude all the superseded SMUs in smu_info_list
+            excluded_supersede_list = get_excluded_supersede_list(smu_info_list)
+
+            missing_required_prerequisite_dict = \
+                get_missing_required_prerequisites(smu_loader, excluded_supersede_list)
+
+            missing_required_prerequisite_set = union_set_from_dict(missing_required_prerequisite_dict)
+            for pre_requisite_smu in missing_required_prerequisite_set:
+                pre_requisite_smu_info = smu_loader.get_smu_info(pre_requisite_smu)
+                description = pre_requisite_smu_info.description if pre_requisite_smu_info is not None else ''
+
+                for package_name in pre_requisite_smu_info.package_names.split(','):
+                    result_list.append({'smu_entry': package_name,
+                                        'is': 'Pre-requisite', 'description': description})
+
+            excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
+
+            for smu_info in smu_info_list:
+                if smu_info.name not in excluded_supersede_dict:
+                    for package_name in smu_info.package_names.split(','):
+                        result_list.append({'smu_entry': package_name,
+                                            'is': 'Superseded', 'description': smu_info.description})
+                else:
+                    for package_name in smu_info.package_names.split(','):
+                        result_list.append({'smu_entry': package_name,
+                                            'is': 'SMU/SP', 'description': smu_info.description})
+
+        if len(package_list) > 0:
+            for package_name in package_list:
+                result_list.append({'smu_entry': package_name, 'is': 'Package', 'description': ''})
+
+        if len(unrecognized_list) > 0:
+            for package_name in unrecognized_list:
+                result_list.append({'smu_entry': package_name, 'is': 'Unrecognized', 'description': ''})
+
+    else:
+        for package_name in package_to_optimize_list:
+            result_list.append({'smu_entry': package_name, 'is': 'Unrecognized', 'description': ''})
 
     return result_list
 

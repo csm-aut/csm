@@ -90,6 +90,7 @@ from smu_utils import get_optimized_list
 from cisco_service.bug_service import BugServiceHandler
 from cisco_service.bsd_service import BSDServiceHandler
 
+
 cco = Blueprint('cco', __name__, url_prefix='/cco')
 
 
@@ -502,8 +503,9 @@ def get_smu_or_sp_list(hostname, hide_installed_packages, smu_info_list, file_su
         include = False if (hide_installed_packages == 'true' and installed) else True
         if include:
             row = dict()
-            row['ST'] = 'True' if smu_info.name + '.' + file_suffix in file_list else 'False'
-            row['package_name'] = smu_info.name + '.' + file_suffix
+            image_name = smu_info.name + '.' + file_suffix
+            row['ST'] = 'True' if image_name in file_list else 'False'
+            row['package_name'] = image_name if is_empty(smu_info.package_names) else smu_info.package_names
             row['posted_date'] = smu_info.posted_date.split()[0]
             row['ddts'] = smu_info.ddts
             row['ddts_url'] = BUG_SEARCH_URL + smu_info.ddts

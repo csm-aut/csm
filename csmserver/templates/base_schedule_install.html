@@ -66,7 +66,7 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
 </div>
 
 <div id="software-packages-panel">
-    {{ edit_field(form.software_packages, class="form-control", spellcheck="false", rows="5") }}
+    {{ edit_field(form.software_packages, class="form-control", wrap="off", style="overflow:scroll;resize: none", spellcheck="false", rows="5") }}
     <div id="server-repository-panel" class="form-group">
         <label class="col-sm-4 control-label"></label>
         <div id="server-repository-info" class="col-sm-8">
@@ -109,6 +109,7 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
 <script src="/static/jquery/js/server_software_dialog.js"></script>
 <script src="/static/jquery/js/install_history_dialog.js"></script>
 <script src="/static/jquery/js/host_software_dialog.js"></script>
+<script src="/static/jquery/js/select_server_repo.js"></script>
 
 <style>
     .modal-dialog {
@@ -157,6 +158,9 @@ $(function() {
     var submit_spinner = $('#submit-spinner');
     submit_spinner.hide();
 
+    select_server_repo = $('#select-server').SelectServerRepo();
+    select_server_repo.initialize_servers_by_region(region_id);
+
     $("#install_action").select2({
         placeholder: 'Select Desirable Install Action(s)'
     });
@@ -164,6 +168,8 @@ $(function() {
     $("#custom_command_profile").select2({
         placeholder: 'Optional'
     });
+
+    $('#server-repository-panel').hide();
 
     var datetimepicker = $(".form_datetime").datetimepicker({
         format: "mm/dd/yyyy HH:ii P",
@@ -190,6 +196,12 @@ $(function() {
             $("#install_action").val([INSTALL_REMOVE_ALL_INACTIVE]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
             $("#install_action").val([INSTALL_DEACTIVATE]).trigger('change');
+        }
+
+        if (has_one_of_these(install_actions, [INSTALL_ADD, ALL])) {
+            display_selected_server_info($('#hidden_server_name').val(), $('#hidden_server_directory').val());
+        } else {
+            $('#server-repository-panel').hide();
         }
 
         toggle_ui(install_actions);
@@ -273,8 +285,6 @@ $(function() {
         } else {
             $('#dependency-panel').show();
         }
-
-        display_selected_server_info();
     }
 
     function should_enable_widget_panel(install_actions) {
@@ -442,10 +452,21 @@ $(function() {
         }
     }
 
-    function display_selected_server_info() {
+    function set_selected_server_info(server_id, server_name, server_directory) {
+        $('#hidden_server').val(server_id);
+        $('#hidden_server_name').val(server_name);
+        $('#hidden_server_directory').val(server_directory);
+
+        write_server_cookie(region_id, $('#hidden_server').val());
+        write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
+
+        display_selected_server_info($('#hidden_server_name').val(), $('#hidden_server_directory').val());
+    }
+
+    function display_selected_server_info(server_name, server_directory) {
+        $('#server-repository-panel').show();
+
         var html_code = '';
-        var server_name = $('#hidden_server_name').val();
-        var server_directory = $('#hidden_server_directory').val();
 
         html_code = '<table>';
         html_code += '<tr><td><span style="color: Gray;">Server Repository:&nbsp;</span></td><td>' + server_name;
@@ -476,17 +497,12 @@ $(function() {
     // Use delegate pattern for event
     $('#server-repository-panel').on('click', '#server-edit', function(e) {
 
-        var server_values = get_server_id_server_directory(region_id);
-
-        if (server_values[0] && server_values[1] != -1) {
-            $('#server_modal_dialog_server').val(server_values[0]);
-            server_software_retrieve_file_list(server_values[0], $('#dialog_server_directory'), server_values[1]);
-        }
-
         $('#select-server-dialog').modal({
             show: true,
             backdrop: 'static'
         })
+        var server_values = get_server_id_server_directory(region_id);
+        select_server_repo.select_server(server_values[0], server_values[1]);
     });
 
     function on_finish_validate(validate_object) {
@@ -532,33 +548,23 @@ $(function() {
         update_software_packages(server_software_selector.get_selected_items());
 
         // Record the newly selected server repository
-        $('#hidden_server').val($('#server_dialog_server').val());
-        $('#hidden_server_name').val($('#server_dialog_server option:selected').text());
-        $('#hidden_server_directory').val($('#server_dialog_server_directory').val());
+        set_selected_server_info($('#server_dialog_server').val(),
+            $('#server_dialog_server option:selected').text(), $('#server_dialog_server_directory').val())
 
-        write_server_cookie(region_id, $('#hidden_server').val());
-        write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
         write_target_release_cookie(region_id, $('#server_dialog_target_software').val());
 
         toggle_ui(install_actions);
     });
 
     $('#on-select-server-submit').click(function(e) {
-        if ($('#server_modal_dialog_server').val() == -1 || $('#server_modal_dialog_server').val() == null) {
+        if (select_server_repo.get_server_id() == -1) {
             bootbox.alert("Server Repository has not been specified.");
-            return false;
         }
 
-        // Record the newly selected server repository
-        $('#hidden_server').val($('#server_modal_dialog_server').val());
-        $('#hidden_server_name').val($('#server_modal_dialog_server option:selected').text());
-        $('#hidden_server_directory').val($('#dialog_server_directory').val());
-
-        write_server_cookie(region_id, $('#hidden_server').val());
-        write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
-
-        toggle_ui(install_actions);
+        set_selected_server_info(select_server_repo.get_server_id(),
+            select_server_repo.get_server_name(), select_server_repo.get_server_directory());
     });
+
 
     $('#server_modal_dialog_server').on('change', function(e) {
         server_id = $('#server_modal_dialog_server').val();
@@ -607,15 +613,9 @@ $(function() {
 
         update_software_packages(new_software_packages);
 
-        // Record the newly selected server repository      
-        $('#hidden_server').val($('#cisco_dialog_server').val());
-        $('#hidden_server_name').val($('#cisco_dialog_server option:selected').text());
-        $('#hidden_server_directory').val($('#cisco_dialog_server_directory').val());
-
-        write_server_cookie(region_id, $('#hidden_server').val());
-        write_server_directory_cookie(region_id, $('#hidden_server_directory').val());
-
-        toggle_ui(install_actions);
+        // Record the newly selected server repository
+        set_selected_server_info($('#cisco_dialog_server').val(),
+            $('#cisco_dialog_server option:selected').text(), $('#cisco_dialog_server_directory').val())
     });
 
     //----------------------------------------------------------------------------------------//
@@ -624,7 +624,7 @@ $(function() {
         display_install_history_dialog(hostname_list);
     }
 
-    $('#on-install-history-submit').click(function(e) {
+    $('#on-install-history-dialog-submit').click(function(e) {
         var new_software_packages = [];
         $('.check').each(function(index) {
             if (this.checked) {
@@ -645,7 +645,7 @@ $(function() {
         display_host_software_dialog(region_id, hostname_list, filter, target_release);
     }
 
-    $('#on-host-software-submit').click(function(e) {
+    $('#on-host-software-dialog-submit').click(function(e) {
         update_software_packages(host_software_selector.get_selected_items());
         write_target_release_cookie(region_id, $('#host_software_dialog_target_software').val());
         toggle_ui(install_actions);
@@ -719,23 +719,7 @@ $(function() {
                     <h4>Select Server Repository</h4>
                 </div>
                 <div class="modal-body">
-                    <div class="form-group ">
-                        <label class="col-sm-4 control-label"></label>
-                        <div class="col-sm-8"><label class="col-sm-4 control-label"></label></div>
-                    </div>
-                    {{ edit_field(form.server_modal_dialog_server, field_width="col-sm-8", class="form-control") }}
-                    <div class="form-group ">
-                        <label class="col-sm-4 control-label" id="label_dialog_server_directory" for="dialog_server_directory">Server Directory</label>
-                        <div class=col-sm-6>
-                            <select class="form-control" id="dialog_server_directory" name="dialog_server_directory">
-                                <option value=""></option>
-                            </select>
-                        </div>
-                        <a href="javascript://">
-                        <img id='dialog-move-up' src="/static/up_arrow.png" title="Go to Parent Folder">
-                        <img id='dialog-reset-server-directory' src="/static/remove.png" title="Reset Server Directory">
-                        </a>
-                    </div>
+                    <div><div id="select-server" data-name="select-server"></div></div>
                 </div>
                 <div class="modal-footer">
                     <div class="form-actions">
@@ -749,5 +733,6 @@ $(function() {
         </form>
     </div>
 </div>
+
 
 {% endblock %}

@@ -48,6 +48,7 @@
         });
 
         function display_trace_dialog(id) {
+            $('#trace-content').html('');
             $.ajax({
                 url: "/log/api/logs/" + id + "/trace",
                 dataType: 'json',

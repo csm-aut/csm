@@ -213,7 +213,7 @@
                 "data": 'host_packages',
                 "render": function(data, type, row) {
                     if (data.length > 0) {
-                        var html_code = ''
+                        var html_code = '';
                         var array = data.split(',');
 
                         for (i = 0; i < array.length; i++) {
@@ -248,12 +248,16 @@
                 "targets": 6,
                 "data": 'conformed',
                 "render": function(data, type, row) {
-                    return '<button type="button" style="line-height: 10px;" class="btn btn-default make-conform-button" ' +
-                        'data-hostname="' + row['hostname'] + '"' +
-                        'data-software-platform="' + row['software_platform'] + '"' +
-                        'data-software-version="' + row['software_version'] + '"' +
-                        'data-missing-packages="' + row['missing_packages'] + '"' +
-                        '>Make Conform</button>';
+                    if (data == 'Yes') {
+                        return '(No Action)';
+                    } else {
+                        return '<button type="button" style="line-height: 10px;" class="btn btn-default make-conform-button" ' +
+                            'data-hostname="' + row['hostname'] + '"' +
+                            'data-software-platform="' + row['software_platform'] + '"' +
+                            'data-software-version="' + row['software_version'] + '"' +
+                            'data-missing-packages="' + row['missing_packages'] + '"' +
+                            '>Make Conform</button>';
+                    }
                 }
             }],
             "ajax": {

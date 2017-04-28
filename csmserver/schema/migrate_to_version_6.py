@@ -47,13 +47,17 @@ sql_statements = [
     'alter table install_job modify status VARCHAR(20)',
     'alter table install_job add status_message VARCHAR(200)',
     'alter table install_job_history modify status VARCHAR(20)',
-    'alter table install_job_history drop column operation_id',
     'alter table inventory_job modify status VARCHAR(20)',
     'alter table inventory_job add status_message VARCHAR(200)',
     'alter table inventory_job_history modify status VARCHAR(20)',
+    'alter table install_job_history drop column operation_id',
     'alter table download_job modify status VARCHAR(20)',
     'alter table download_job add status_message VARCHAR(200)',
     'alter table download_job_history modify status VARCHAR(20)',
+    'alter table smu_info add package_names TEXT',
+    'alter table smu_info add package_md5 TEXT',
+    'delete from smu_info',
+    'delete from smu_meta'
     ]
 
 

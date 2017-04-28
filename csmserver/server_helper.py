@@ -132,8 +132,13 @@ class TFTPServer(ServerImpl):
             path = self.server.server_directory
         else:
             path = os.path.join(self.server.server_directory, sub_directory)
-            
-        shutil.copy(source_file_path, os.path.join(path, dest_filename))
+
+        destination_file_path = os.path.join(path, dest_filename)
+        try:
+            shutil.copy(source_file_path, destination_file_path)
+        except shutil.Error:
+            logger.exception('upload_file() hit exception - source: {}, destination: {}.'.format(source_file_path,
+                                                                                                 destination_file_path))
             
         
 class FTPServer(ServerImpl):

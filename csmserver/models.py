@@ -970,7 +970,7 @@ class SMUInfo(Base):
     __tablename__ = 'smu_info'
 
     id = Column(String(100), primary_key=True)
-    name = Column(String(50))
+    name = Column(String(50), index=True)
     status = Column(String(20))
     type = Column(String(20)) # Recommended, Optional, PSIRT
     package_type = Column(String(20)) 
@@ -991,6 +991,8 @@ class SMUInfo(Base):
     superseded_by = Column(Text)
     prerequisites = Column(Text)
     prerequisite_to = Column(Text)
+    package_names = Column(Text)
+    package_md5 = Column(Text)
     platform_release = Column(String(40), ForeignKey('smu_meta.platform_release'))
 
     @property
@@ -1003,6 +1005,13 @@ class SMUInfo(Base):
     @cco_filename.setter
     def cco_filename(self, value):
         self._cco_filename = value
+
+
+class PackageToSMU(Base):
+    __tablename__ = 'package_to_smu'
+
+    package_name = Column(String(100), primary_key=True)
+    smu_name = Column(String(100))
 
 
 class SystemVersion(Base): 
