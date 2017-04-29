@@ -141,23 +141,20 @@ def get_missing_prerequisite_list(smu_loader, smu_name_list):
     return result_list
 
 
-def get_smu_name_dict(db_session, package_list):
+def get_peer_packages(db_session, smu_loader, package_name):
     """
-    Given a package list, return a dictionary.  If a package name cannot be resolved to a SMU name, its value will be None.
-
-    :param package_list: A list of package names
-        asr9k-px-6.1.3.CSCvd54775.pie
-        ncs5500-k9sec-2.2.0.2-r613.CSCvd18741.x86_64.rpm
-    :return: A dictionary
-        key: package_name, value: asr9k-px-6.1.3.CSCvd54775
-        key: package_name, value: ncs5500-6.1.3.CSCvd18741
+    On eXR platforms, a SMU may contain multiple RPMs.  Not only does CSM need
+    to check for missing pre-requisite, but also missing peers in the same SMU.
+    :param db_session: A DBSession instance
+    :param smu_loader: A SMUInfoLoader instance
+    :param package_name: A package name
+    :return: Returns the peer packages
     """
-    smu_name_dict = dict()
-
-    for package_name in package_list:
-        smu_name_dict[package_name] = SMUInfoLoader.get_smu_name_from_package_name(db_session, package_name=package_name)
-
-    return smu_name_dict
+    smu_name = SMUInfoLoader.get_smu_name_from_package_name(db_session, package_name=package_name)
+    smu_info = smu_loader.get_smu_info(smu_name)
+    if smu_info is not None:
+        return smu_info.package_names.split(',')
+    return []
 
 
 def get_smu_info_dict(db_session, smu_loader, package_list):
@@ -166,6 +163,8 @@ def get_smu_info_dict(db_session, smu_loader, package_list):
     :param db_session: A DBSession instance
     :param smu_loader: A SMUInfoLoader instance
     :param package_list: A list of package names
+              asr9k-px-6.1.3.CSCvd54775.pie
+              ncs5500-k9sec-2.2.0.2-r613.CSCvd18741.x86_64.rpm
     :return: A dictionary
         key: package_name, value: SMUInfo
     """
@@ -186,6 +185,8 @@ def get_optimized_list(package_to_optimize_list):
     unrecognized_list = []
     package_list = []
     result_list = []
+    db_session = DBSession()
+    missing_peer_packages_dict = dict()
 
     smu_loader = SMUInfoLoader.get_loader_from_package(package_to_optimize_list)
     if smu_loader.is_valid:
@@ -206,7 +207,6 @@ def get_optimized_list(package_to_optimize_list):
         if len(smu_info_list) > 0:
             # Exclude all the superseded SMUs in smu_info_list
             excluded_supersede_list = get_excluded_supersede_list(smu_info_list)
-
             missing_required_prerequisite_dict = \
                 get_missing_required_prerequisites(smu_loader, excluded_supersede_list)
 

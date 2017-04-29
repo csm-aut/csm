@@ -157,6 +157,8 @@ def api_get_smu_details(smu_id):
         row['description'] = smu_info.description
         row['functional_areas'] = smu_info.functional_areas
         row['impact'] = smu_info.impact
+        row['package_names'] = smu_info.package_names
+        row['package_md5'] = smu_info.package_md5
         row['package_bundles'] = smu_info.package_bundles
         row['compressed_image_size'] = str(smu_info.compressed_image_size)
         row['uncompressed_image_size'] = str(smu_info.uncompressed_image_size)
@@ -233,8 +235,8 @@ def api_get_ddts_details(ddts_id):
         if get_json_value(bug_info, 'known_affected_releases') else None
     info['known_fixed_releases'] = get_json_value(bug_info, 'known_fixed_releases').replace(' ', '<br>') \
         if get_json_value(bug_info, 'known_fixed_releases') else None
-    info['ErrorDescription'] = get_json_value(bug_info, 'ErrorDescription')
-    info['SuggestedAction'] = get_json_value(bug_info, 'SuggestedAction')
+    info['error_description'] = get_json_value(bug_info, 'ErrorDescription')
+    info['suggested_action'] = get_json_value(bug_info, 'SuggestedAction')
 
     return jsonify(**{'data': info})
 

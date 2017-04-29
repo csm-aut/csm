@@ -94,6 +94,7 @@ function display_smu_details(table, title, smu_id) {
                     html += create_html_table_row('Status', element[0].status);
                     html += create_html_table_row('Compressed Image Size', element[0].compressed_image_size);
                     html += create_html_table_row('Uncompressed Image Size', element[0].uncompressed_image_size);
+                    html += create_html_table_row('Package Names', element[0].package_names);
                     html += create_html_table_row('Package Bundles', element[0].package_bundles);
                     html += create_html_table_row('Constituent DDTS', element[0].composite_DDTS);
                     html += create_hyperlink_html_table_row('Pre-requisites', element[0].prerequisites_smu_ids, element[0].prerequisites);
@@ -125,8 +126,8 @@ function display_ddts_details(table, title, ddts_id, ddts_spinner) {
                 html += create_html_table_row_with_commas('Known Affected Releases', element['known_affected_releases']);
                 html += create_html_table_row_with_commas('Known Fixed Releases', element['known_fixed_releases']);
                 html += create_html_table_row_with_commas('Support Cases', element['support_case_count']);
-                html += create_html_table_row_with_commas('Error Description', element['ErrorDescription']);
-                html += create_html_table_row_with_commas('Suggested Action', element['SuggestedAction']);
+                html += create_html_table_row_with_commas('Error Description', element['error_description']);
+                html += create_html_table_row_with_commas('Suggested Action', element['suggested_action']);
                 html += create_html_table_row_with_commas('Error', element['ErrorMsg']);
 
                 ddts_spinner.hide();

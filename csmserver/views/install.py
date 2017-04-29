@@ -73,8 +73,8 @@ from filters import get_datetime_string
 
 from server_helper import get_server_impl
 
-from smu_utils import get_smu_name_dict
 from smu_utils import get_smu_info_dict
+from smu_utils import get_peer_packages
 from smu_utils import get_missing_prerequisite_list
 
 from smu_info_loader import SMUInfoLoader
@@ -396,7 +396,7 @@ def api_get_missing_files_on_server(server_id):
 
 
 def host_packages_contains(host_packages, smu_name):
-    smu_name = strip_smu_file_extension(smu_name)
+    smu_name = strip_smu_file_extension(smu_name).replace('.x86_64', '')
     for package in host_packages:
         # Performs a partial match
         if smu_name in package:
@@ -417,18 +417,26 @@ def api_get_missing_prerequisite_list():
     package_list = request.args.get('package_list').split()
 
     rows = []
+    db_session = DBSession()
+    missing_peer_packages_dict = dict()
     smu_loader = SMUInfoLoader.get_loader_from_package(package_list)
 
     if smu_loader.is_valid:
-        smu_name_dict = get_smu_name_dict(DBSession(), package_list)
+        smu_info_dict = get_smu_info_dict(DBSession(), smu_loader, package_list)
 
-        smu_name_list = []
-        for package_name, smu_name in smu_name_dict.items():
-            smu_info = smu_loader.get_smu_info(smu_name)
-            if smu_info:
-                smu_name_list.append(smu_info.name)
+        smu_name_set = set()
+        for package_name, smu_info in smu_info_dict.items():
+            if smu_info is not None:
+                smu_name_set.add(smu_info.name)
+                # On eXR platforms, a SMU may contain multiple RPMs.  Not only does CSM need
+                # to check for missing pre-requisite, but also missing peers in the same SMU.
+                peer_package_list = get_peer_packages(db_session, smu_loader, package_name)
+                for peer_package_name in peer_package_list:
+                    # if peer_package is not in the original package_list. Add it.
+                    if peer_package_name not in package_list:
+                        missing_peer_packages_dict[peer_package_name] = smu_info.description
 
-        prerequisite_list = get_missing_prerequisite_list(smu_loader, smu_name_list)
+        prerequisite_list = get_missing_prerequisite_list(smu_loader, list(smu_name_set))
         host_packages = get_host_active_packages(hostname)
 
         # smu_name examples: asr9k-px-6.1.3.CSCvd54775, ncs5500-6.1.3.CSCvd18741
@@ -444,6 +452,11 @@ def api_get_missing_prerequisite_list():
                         # FIXME: Need reviewing the code in this method
                         if not host_packages_contains(host_packages, package_name):
                             rows.append({'smu_entry': package_name, 'description': description})
+
+        # add the missing peer packages
+        for peer_package_name, description in missing_peer_packages_dict.items():
+            if not host_packages_contains(host_packages, peer_package_name):
+                rows.append({'smu_entry': peer_package_name, 'description': description})
 
     return jsonify(**{'data': rows})
 
