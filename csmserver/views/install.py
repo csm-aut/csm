@@ -370,25 +370,27 @@ def api_get_missing_files_on_server(server_id):
 
     server_file_dict, is_reachable = get_server_file_dict(server_id, server_directory)
     if is_reachable:
-        smu_loader = SMUInfoLoader.get_loader_from_package(package_list)
-        if smu_loader.is_valid:
-            smu_info_dict = get_smu_info_dict(DBSession(), smu_loader, package_list)
+        for package_name in package_list:
+            if not is_smu_on_server_repository(server_file_dict, package_name):
+                smu_loader = SMUInfoLoader.get_loader_from_package(package_list)
+                if smu_loader.is_valid:
+                    smu_info_dict = get_smu_info_dict(DBSession(), smu_loader, package_list)
 
-            for package_name, smu_info in smu_info_dict.items():
-                if not is_smu_on_server_repository(server_file_dict, package_name):
-                    if smu_info is None:
+                    for package_name, smu_info in smu_info_dict.items():
+                        if not is_smu_on_server_repository(server_file_dict, package_name):
+                            if smu_info is None:
+                                rows.append({'smu_entry': package_name, 'description': '', 'is_downloadable': False})
+                            else:
+                                # If selected package is on CCO
+                                if smu_info.status == 'Posted':
+                                    rows.append({'smu_entry': package_name, 'description': smu_info.description,
+                                                 'cco_filename': smu_info.cco_filename, 'is_downloadable': True})
+                                else:
+                                    rows.append({'smu_entry': package_name, 'description': smu_info.description,
+                                                 'is_downloadable': False})
+                else:
+                    for package_name in package_list:
                         rows.append({'smu_entry': package_name, 'description': '', 'is_downloadable': False})
-                    else:
-                        # If selected package is on CCO
-                        if smu_info.status == 'Posted':
-                            rows.append({'smu_entry': package_name, 'description': smu_info.description,
-                                         'cco_filename': smu_info.cco_filename, 'is_downloadable': True})
-                        else:
-                            rows.append({'smu_entry': package_name, 'description': smu_info.description,
-                                         'is_downloadable': False})
-        else:
-            for package_name in package_list:
-                rows.append({'smu_entry': package_name, 'description': '', 'is_downloadable': False})
     else:
         return jsonify({'status': 'Failed'})
 
