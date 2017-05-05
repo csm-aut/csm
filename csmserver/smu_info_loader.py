@@ -732,25 +732,29 @@ class SMUInfoLoader(object):
                     # Internal Name: ncs6k-mgbl-5.2.4
                     platform = CCO_PLATFORM_NCS6K
 
-            if release == UNKNOWN and platform in [CCO_PLATFORM_ASR9K,
-                                                   CCO_PLATFORM_ASR9K_X64,
-                                                   CCO_PLATFORM_ASR9K_X64_SYSADMIN,
-                                                   CCO_PLATFORM_XRV9K,
-                                                   CCO_PLATFORM_XRV9K_SYSADMIN,
-                                                   CCO_PLATFORM_CRS,
-                                                   CCO_PLATFORM_NCS1K,
-                                                   CCO_PLATFORM_NCS1K_SYSADMIN,
-                                                   CCO_PLATFORM_NCS4K,
-                                                   CCO_PLATFORM_NCS4K_SYSADMIN,
-                                                   CCO_PLATFORM_NCS5K,
-                                                   CCO_PLATFORM_NCS5K_SYSADMIN,
-                                                   CCO_PLATFORM_NCS5500,
-                                                   CCO_PLATFORM_NCS5500_SYSADMIN,
-                                                   CCO_PLATFORM_NCS6K,
-                                                   CCO_PLATFORM_NCS6K_SYSADMIN]:
+            if release == UNKNOWN:
+                if platform in [CCO_PLATFORM_ASR9K,
+                                CCO_PLATFORM_ASR9K_X64,
+                                CCO_PLATFORM_ASR9K_X64_SYSADMIN,
+                                CCO_PLATFORM_CRS,
+                                CCO_PLATFORM_NCS1K,
+                                CCO_PLATFORM_NCS1K_SYSADMIN,
+                                CCO_PLATFORM_NCS4K,
+                                CCO_PLATFORM_NCS4K_SYSADMIN,
+                                CCO_PLATFORM_NCS5K,
+                                CCO_PLATFORM_NCS5K_SYSADMIN,
+                                CCO_PLATFORM_NCS5500,
+                                CCO_PLATFORM_NCS5500_SYSADMIN,
+                                CCO_PLATFORM_NCS6K,
+                                CCO_PLATFORM_NCS6K_SYSADMIN]:
 
-                matches = re.findall("\d+\.\d+\.\d+", package_name)
-                release = matches[0] if matches else UNKNOWN
+                    matches = re.findall("\d+\.\d+\.\d+", package_name)
+                    release = matches[0] if matches else UNKNOWN
+
+                elif platform in [CCO_PLATFORM_XRV9K, CCO_PLATFORM_XRV9K_SYSADMIN]:
+                    matches = re.findall("r(\d{3})", package_name)
+                    release = '.'.join(matches[0]) if matches else UNKNOWN
+
 
             if platform != UNKNOWN and release != UNKNOWN:
                 return platform, release
