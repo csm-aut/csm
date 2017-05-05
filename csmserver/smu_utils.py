@@ -190,7 +190,7 @@ def get_optimized_list(package_to_optimize_list):
 
     smu_loader = SMUInfoLoader.get_loader_from_package(package_to_optimize_list)
     if smu_loader.is_valid:
-        smu_info_list = []
+        smu_info_list = set()
         smu_info_dict = get_smu_info_dict(DBSession(), smu_loader, package_to_optimize_list)
 
         for package_name, smu_info in smu_info_dict.items():
@@ -202,7 +202,7 @@ def get_optimized_list(package_to_optimize_list):
                 else:
                     package_list.append(package_name)
             else:
-                smu_info_list.append(smu_info)
+                smu_info_list.add(smu_info)
 
         if len(smu_info_list) > 0:
             # Exclude all the superseded SMUs in smu_info_list
