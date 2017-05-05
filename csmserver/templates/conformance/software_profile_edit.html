@@ -14,7 +14,6 @@
 {% block head %}
 
 <script src="/static/jquery/js/smu_info_dialog.js"></script>
-<script src="/static/jquery/js/optimize_software.js"></script>
 <script src="/static/jquery/js/server_software_dialog.js"></script>
 <script src="/static/jquery/js/cisco_software_dialog.js"></script>
 
@@ -131,6 +130,7 @@
 
 {% block main %}
 
+{% include 'share/optimize_software_dialog.html' %}
 {{ cisco_software_dialog(system_option.enable_cco_lookup) }}
 {{ server_software_dialog(server_dialog_form.server_dialog_server, server_dialog_form.server_dialog_server_directory, server_dialog_form.server_dialog_target_software) }}
  
@@ -156,7 +156,7 @@
                 </div>
             </div>
             
-            {{ edit_field(form.software_packages, class="form-control", spellcheck="false", rows="10") }}
+            {{ edit_field(form.software_packages, class="form-control", wrap="off", style="overflow:scroll;resize: none", spellcheck="false", rows="10") }}
             
             <div class="form-actions">
                 <div class="btn col-sm-offset-5">

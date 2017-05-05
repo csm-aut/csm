@@ -556,11 +556,11 @@ def is_smu_applicable(host_packages, required_package_bundles):
     return True
 
 
-@cco.route('/api/optimize_software')
+@cco.route('/api/optimize_software', methods=['POST'])
 @login_required
 def api_optimize_software():
-    smu_list = request.args.get('smu_list').split()
-    return jsonify(**{'data': get_optimized_list(smu_list)})
+    package_list = request.form.getlist('package_list[]')
+    return jsonify(**{'data': get_optimized_list(package_list)})
 
 
 @cco.route('/api/validate_cisco_user', methods=['POST'])

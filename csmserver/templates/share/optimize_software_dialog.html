@@ -1,0 +1,136 @@
+<script>
+
+var package_to_optimize_list = '';
+var optimized_spinner;
+var optimized_software_datatable;
+var optimized_source_textarea_ui;
+var optimized_target_textarea_ui;
+
+$(function() {
+
+    $('#on-accept').on('click', function(e) {
+        accept_optimized_list(false, optimized_target_textarea_ui);
+    });
+
+    $('#on-accept-remove-unrecognized').on('click', function(e) {
+        accept_optimized_list(true, optimized_target_textarea_ui);
+    });
+
+    $('.on-cancel').on('click', function(e) {
+        if (optimized_spinner) { optimized_spinner.hide() };
+    });
+
+    optimized_software_datatable = $("#optimized-software-datatable").dataTable({
+        "order": [
+            [0, "asc"]
+        ],
+        "scrollY": "250px",
+        "columnDefs": [{
+            "targets": 0,
+            "data": 'is',
+            "render": function(data, type, row) {
+                if (data == 'Pre-requisite') {
+                    data = 'A Missing ' + data;
+                }
+                return data;
+            }
+        }, {
+            "targets": 1,
+            "data": 'smu_entry'
+        }, {
+            "targets": 2,
+            "data": 'description'
+        }],
+        "ajax": {
+            "url": "/cco/api/optimize_software",
+            "type": 'POST',
+            "data": get_data
+        },
+    });
+
+});
+
+function optimize_software(source_textarea_ui, target_textarea_ui, spinner) {
+    optimized_spinner = spinner;
+    optimized_source_textarea_ui = source_textarea_ui;
+    optimized_target_textarea_ui = target_textarea_ui;
+
+    if (optimized_spinner) { optimized_spinner.show() };
+
+    package_to_optimize_list = source_textarea_ui.val();
+
+    optimized_software_datatable.api().ajax.reload();
+
+    $('#optimize-software-dialog').modal({show:true, backdrop:'static'});
+}
+
+function get_data() {
+    return { package_list: convert_lines_to_list(package_to_optimize_list) }
+}
+
+
+function accept_optimized_list(exclude_unrecognized, optimized_target_textarea_ui) {
+    var result_list = [];
+
+    var rows = optimized_software_datatable.fnGetNodes();
+
+    for (var i = 0; i < rows.length; i++)
+    {
+        var is = $(rows[i]).find("td:eq(0)").html();
+        var entry = $(rows[i]).find("td:eq(1)").html();
+
+        if (is.indexOf('Pre-requisite') >= 0) {
+            result_list.push(entry);
+        } else if (is.indexOf('Superseded') >= 0 || (exclude_unrecognized && is.indexOf('Unrecognized') >= 0)) {
+            continue;
+        } else {
+            result_list.push(entry);
+        }
+    }
+
+    optimized_target_textarea_ui.val(convert_list_to_lines(result_list));
+
+    if (optimized_spinner) { optimized_spinner.hide() };
+}
+
+</script>
+
+<div id="optimize-software-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <form method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close on-cancel" data-dismiss="modal">x</button>
+                    <h4>
+                        Click 'Accept' to include all missing pre-requisites and remove all superseded packages, if any.<br>
+                        Click 'Accept (Remove Unrecognized)' to remove entries marked as Unrecognized, if any. <br>
+                        Entries classified as SMU/SP/Package will be included automatically.
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <table class="display table" id="optimized-software-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Package</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-accept" class="btn btn-success" data-dismiss="modal">Accept</button>
+                            <button id="on-accept-remove-unrecognized" class="btn btn-primary" data-dismiss="modal">Accept (Remove Unrecognized)</button>
+                            <button class="on-cancel btn" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
