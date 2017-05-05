@@ -642,7 +642,9 @@ class SMUInfoLoader(object):
                 # Internal Name: disk0:asr9k-mcast-px-5.3.2 | disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
                 platform = CCO_PLATFORM_ASR9K
 
-            elif 'asr9k' in package_name and 'x64' in package_name:
+            # FIXME: Check for '64' for iosxr-os-asr9k-64-5.0.0.1-r613.CSCvc01618.x86_64.rpm
+            # The argument to this function should probably use the SMU name which has standard format
+            elif 'asr9k' in package_name and ('x64' in package_name or '64' in package_name):
 
                 # External Name: asr9k-mgbl-x64-3.0.0.0-r612.x86_64.rpm
                 # Internal Name: asr9k-mgbl-x64-3.0.0.0-r612
