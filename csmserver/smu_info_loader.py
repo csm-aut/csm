@@ -734,8 +734,6 @@ class SMUInfoLoader(object):
 
             if release == UNKNOWN:
                 if platform in [CCO_PLATFORM_ASR9K,
-                                CCO_PLATFORM_ASR9K_X64,
-                                CCO_PLATFORM_ASR9K_X64_SYSADMIN,
                                 CCO_PLATFORM_CRS,
                                 CCO_PLATFORM_NCS1K,
                                 CCO_PLATFORM_NCS1K_SYSADMIN,
@@ -751,7 +749,10 @@ class SMUInfoLoader(object):
                     matches = re.findall("\d+\.\d+\.\d+", package_name)
                     release = matches[0] if matches else UNKNOWN
 
-                elif platform in [CCO_PLATFORM_XRV9K, CCO_PLATFORM_XRV9K_SYSADMIN]:
+                elif platform in [CCO_PLATFORM_ASR9K_X64,
+                                  CCO_PLATFORM_ASR9K_X64_SYSADMIN,
+                                  CCO_PLATFORM_XRV9K,
+                                  CCO_PLATFORM_XRV9K_SYSADMIN]:
                     matches = re.findall("r(\d{3})", package_name)
                     release = '.'.join(matches[0]) if matches else UNKNOWN
 
