@@ -609,9 +609,9 @@ class SMUInfoLoader(object):
     @classmethod
     def get_release_from_rxxx(cls, package_name):
         """ Return the release as x.x.x given a package_name with release informaton in '-rxxx' format """
-        matches = re.findall("-r\d\d\d", package_name)
+        matches = re.findall("-r(\d{3})", package_name)
         if matches:
-            return ".".join(matches[0][2:])
+            return ".".join(matches[0])
         return UNKNOWN
 
     @classmethod
@@ -646,10 +646,11 @@ class SMUInfoLoader(object):
             # The argument to this function should probably use the SMU name which has standard format
             elif 'asr9k' in package_name and ('x64' in package_name or '64' in package_name):
 
-                # External Name: asr9k-mgbl-x64-3.0.0.0-r612.x86_64.rpm
-                # Internal Name: asr9k-mgbl-x64-3.0.0.0-r612
+                # External Name: asr9k-mgbl-x64-3.0.0.0-r612.x86_64.rpm, asr9k-mini-x64-6.2.1.iso
+                # Internal Name: asr9k-mgbl-x64-3.0.0.0-r612, asr9k-mini-x64-6.3.1
                 platform = CCO_PLATFORM_ASR9K_X64
-                release = SMUInfoLoader.get_release_from_rxxx(package_name)
+                if "mini" not in package_name:
+                    release = SMUInfoLoader.get_release_from_rxxx(package_name)
 
             elif any(s in package_name for s in ['asr9k-sysadmin', 'asr9k-xr']):
 
@@ -661,12 +662,14 @@ class SMUInfoLoader(object):
 
                 if any(s in package_name for s in ['xrv9k-sysadmin', 'xvr9k-xr']):
                     # External Name:
-                    # Internal Name:
+                    # Internal Name: xrv9k-sysadmin-6.1.1, xrv9k-xr-6.1.1
                     platform = CCO_PLATFORM_XRV9K_SYSADMIN
                 else:
-                    # External Name:
-                    # Internal Name:
+                    # External Name: xrv9k-k9sec-3.0.0.1-r611.CSCvd41122.x86_64.rpm, xrv9k-mini-x-6.1.2.iso
+                    # Internal Name: ?, xrv9k-mini-x-6.1.2
                     platform = CCO_PLATFORM_XRV9K
+                    if "mini" not in package_name:
+                        release = SMUInfoLoader.get_release_from_rxxx(package_name)
 
             elif ('hfr' in package_name or 'CRS' in package_name) and '-px' in package_name:
 
@@ -732,30 +735,25 @@ class SMUInfoLoader(object):
                     # Internal Name: ncs6k-mgbl-5.2.4
                     platform = CCO_PLATFORM_NCS6K
 
-            if release == UNKNOWN:
-                if platform in [CCO_PLATFORM_ASR9K,
-                                CCO_PLATFORM_CRS,
-                                CCO_PLATFORM_NCS1K,
-                                CCO_PLATFORM_NCS1K_SYSADMIN,
-                                CCO_PLATFORM_NCS4K,
-                                CCO_PLATFORM_NCS4K_SYSADMIN,
-                                CCO_PLATFORM_NCS5K,
-                                CCO_PLATFORM_NCS5K_SYSADMIN,
-                                CCO_PLATFORM_NCS5500,
-                                CCO_PLATFORM_NCS5500_SYSADMIN,
-                                CCO_PLATFORM_NCS6K,
-                                CCO_PLATFORM_NCS6K_SYSADMIN]:
+            if release == UNKNOWN and platform in [CCO_PLATFORM_ASR9K,
+                                                   CCO_PLATFORM_ASR9K_X64,
+                                                   CCO_PLATFORM_ASR9K_X64_SYSADMIN,
+                                                   CCO_PLATFORM_XRV9K,
+                                                   CCO_PLATFORM_XRV9K_SYSADMIN,
+                                                   CCO_PLATFORM_CRS,
+                                                   CCO_PLATFORM_NCS1K,
+                                                   CCO_PLATFORM_NCS1K_SYSADMIN,
+                                                   CCO_PLATFORM_NCS4K,
+                                                   CCO_PLATFORM_NCS4K_SYSADMIN,
+                                                   CCO_PLATFORM_NCS5K,
+                                                   CCO_PLATFORM_NCS5K_SYSADMIN,
+                                                   CCO_PLATFORM_NCS5500,
+                                                   CCO_PLATFORM_NCS5500_SYSADMIN,
+                                                   CCO_PLATFORM_NCS6K,
+                                                   CCO_PLATFORM_NCS6K_SYSADMIN]:
 
                     matches = re.findall("\d+\.\d+\.\d+", package_name)
                     release = matches[0] if matches else UNKNOWN
-
-                elif platform in [CCO_PLATFORM_ASR9K_X64,
-                                  CCO_PLATFORM_ASR9K_X64_SYSADMIN,
-                                  CCO_PLATFORM_XRV9K,
-                                  CCO_PLATFORM_XRV9K_SYSADMIN]:
-                    matches = re.findall("r(\d{3})", package_name)
-                    release = '.'.join(matches[0]) if matches else UNKNOWN
-
 
             if platform != UNKNOWN and release != UNKNOWN:
                 return platform, release
