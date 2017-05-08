@@ -32,6 +32,7 @@ from common import get_host
 from common import create_or_update_host
 from common import delete_host
 from common import get_region
+from common import get_region_list
 from common import get_region_id_to_name_dict
 from common import get_jump_host_id_to_name_dict
 from common import get_software_profile_id_to_name_dict
@@ -51,6 +52,7 @@ from api_utils import get_total_pages
 from api_utils import validate_url_parameters
 from api_utils import failed_response
 from api_utils import check_none
+from api_utils import write_log
 from api_utils import convert_json_request_to_list
 from api_utils import validate_required_keys_in_dict
 from api_utils import convert_value_to_list
@@ -63,6 +65,8 @@ from api_constants import RESPONSE_ENVELOPE
 from api_constants import RESPONSE_STATUS
 from api_constants import RESPONSE_STATUS_MESSAGE
 from api_constants import APIStatus
+
+import json
 
 # Acceptable JSON keys
 KEY_HOSTNAME = 'hostname'
@@ -113,7 +117,7 @@ def api_create_hosts(request):
     error_found = False
 
     # Pre-fetched information to speed up bulk host creation.
-    region_dict = get_region_name_to_id_dict(db_session)
+    # region_dict = get_region_name_to_id_dict(db_session)
     jump_host_dict = get_jump_host_name_to_id_dict(db_session)
     software_profile_dict = get_software_profile_name_to_id_dict(db_session)
 
@@ -140,9 +144,23 @@ def api_create_hosts(request):
                 # These are the required fields for a new host creation.
                 validate_required_keys_in_dict(data, [KEY_REGION, KEY_CONNECTION_TYPE, KEY_TS_OR_IP])
 
-            value = get_id_from_value('Region', region_dict, data, KEY_REGION)
-            region_id = value if value is not None else \
-                (None if host is None else host.region_id)
+            region_name = data.get(KEY_REGION)
+            # If region name is None, it is treated as an update to the existing host.
+            if region_name is None and host is not None:
+                region_id = host.region_id
+            else:
+                region = get_region(db_session, region_name)
+                if region is None:
+                    regions = get_region_list(db_session)
+                    write_log(json.dumps(data) + ' Exiting Regions: ' + ','.join([r.name for r in regions]))
+                    raise ValueError('Region "{}" does not exist in the database.'.format(region_name))
+
+                region_id = region.id
+
+
+            #value = get_id_from_value('Region', region_dict, data, KEY_REGION)
+            #region_id = value if value is not None else \
+            #    (None if host is None else host.region_id)
 
             value = get_id_from_value('Jump host', jump_host_dict, data, KEY_JUMP_HOST)
             jump_host_id = value if value is not None else \

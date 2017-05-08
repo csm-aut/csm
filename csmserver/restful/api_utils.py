@@ -34,6 +34,10 @@ from api_constants import RESPONSE_STATUS_MESSAGE
 from api_constants import RESPONSE_ENVELOPE
 from api_constants import APIStatus
 
+from constants import get_temp_directory
+
+import os
+import datetime
 import math
 
 def get_total_pages(db_session, table, clauses):
@@ -120,3 +124,12 @@ def failed_response(message, return_code=HTTP_BAD_REQUEST):
 
 def check_none(s):
     return s if s else ""
+
+
+def write_log(data, prefix='robot'):
+    date_string = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S_%f")
+
+    output_file_path = os.path.join(get_temp_directory(), '{}_{}'.format(prefix, str(date_string)))
+
+    with open(output_file_path, 'w') as fd:
+        fd.write(data)

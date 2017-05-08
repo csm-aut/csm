@@ -44,6 +44,7 @@ from api_utils import convert_json_request_to_list
 from api_utils import validate_required_keys_in_dict
 from api_utils import validate_acceptable_keys_in_dict
 from api_utils import convert_value_to_list
+from api_utils import write_log
 
 from utils import get_acceptable_string
 
@@ -98,6 +99,8 @@ def api_create_regions(request):
                                     created_by=g.api_user.username,
                                     region=region)
 
+            write_log('Region "{}" created.'.format(region_name))
+
             row[RESPONSE_STATUS] = APIStatus.SUCCESS
 
         except Exception as e:
@@ -149,8 +152,10 @@ def api_get_regions(request):
     return jsonify(**{RESPONSE_ENVELOPE: {'region_list': rows}})
 
 
-def api_delete_region(name):
+def api_delete_region(region_name):
     db_session = DBSession()
 
-    delete_region(db_session, name)
-    return jsonify(**{RESPONSE_ENVELOPE: {KEY_REGION_NAME: name, RESPONSE_STATUS: APIStatus.SUCCESS}})
+    delete_region(db_session, region_name)
+    write_log('Region "{}" delete.'.format(region_name))
+
+    return jsonify(**{RESPONSE_ENVELOPE: {KEY_REGION_NAME: region_name, RESPONSE_STATUS: APIStatus.SUCCESS}})
