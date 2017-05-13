@@ -13,7 +13,7 @@
             var delete_user = $(this).attr('delete-user');
 
             if (current_user == delete_user) {
-                bootbox.alert("You are allowed to delete your own user record.");
+                bootbox.alert("Deleting your own user record is not permitted.");
                 return
             }
 

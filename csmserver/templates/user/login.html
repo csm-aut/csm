@@ -5,7 +5,6 @@
 {% block head %}
 <script>
     $(function() {
-        var current_form = null;
 
         if (typeof(sessionStorage) !== "undefined") {
             // initial home menu page upon login every time
@@ -15,100 +14,13 @@
         // initialize the show/hide password widget
         $('#password').password();
 
-        $('#form').submit(function() {
-            current_form = this;
-            display_message_dialog();
-
-            return false;
-        });
-
-        function display_message_dialog() {
-
-            $.ajax({
-                url: "{{ url_for('authenticate.api_get_csm_message') }}",
-                dataType: 'json',
-                type: "POST",
-                data: {
-                    username: $('#username').val(),
-                    password: $('#password').val()
-                },
-                success: function(data) {
-                    $.each(data, function(index, element) {
-                        if (element.length > 0) {
-                            var html = '';
-
-                            for (i = 0; i < element.length; i++) {
-                                html += "<b>" + element[i].date + "</b><br>";
-                                html += element[i].message + "<br><br>";
-                            }
-
-                            $('#csm-message').html(html);
-                            $('#csm-message-dialog').modal({
-                                show: true,
-                                backdrop: 'static'
-                            });
-                        } else {
-                            submit_form();
-                        }
-                    });
-                }
-            });
-        }
-
-        $("#on-acknowledge-submit").on("click", function() {
-            $.ajax({
-                url: "{{ url_for('authenticate.api_acknowledge_csm_message') }}",
-                dataType: 'json',
-                type: "POST",
-                data: {
-                    username: $('#username').val(),
-                    password: $('#password').val()
-                },
-                success: function(data) {
-                    submit_form();
-                }
-            });
-
-        });
-
-        $("#on-cancel").on("click", function() {
-            submit_form();
-        });
-
-        function submit_form() {
-            current_form.submit();
-        }
-
     });
 </script>
 {% endblock %}
 
 {% block main %}
-<div id="csm-message-dialog" class="modal" role="dialog">
-    <div style="width:800px;" class="modal-dialog">
-        <form method="post" class="form-horizontal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4>Notification from Cisco</h4>
-                </div>
-                <div class="modal-body">
-                    <div style="height:350px; overflow-y: scroll;" id="csm-message"></div>
-                </div>
-                <div class="modal-footer">
-                    Once the notification is acknowledged, it will not be displayed again.
-                    <div class="form-actions">
-                        <div class="btn col-sm-offset-4">
-                            <button id="on-acknowledge-submit" class="btn btn-primary" data-dismiss="modal">Acknowledge</button>
-                            <button id="on-cancel" onclick="submit_form();" class="btn" data-dismiss="modal">Later</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
 <div class="row">
-    <div class="well col-sm-offset-3 col-sm-6"">
+    <div class="well col-sm-offset-3 col-sm-6">
         {% if error_message %}
         <div class="alert alert-danger alert-error">
             <a href="#" class="close" data-dismiss="alert">&times;</a>

@@ -29,7 +29,6 @@ from sqlalchemy.engine.url import URL
 from salts import encode, decode
 from utils import import_module
 
-from constants import get_csm_data_directory
 import os
 
 # DO NOT MODIFY THESE STRINGS.  THEY ARE USED FOR ENCRYPTION.
@@ -96,7 +95,6 @@ def get_database_settings():
 
     # The database.ini should be in the csm_data directory which should be at the same level as the csm directory.
     config.read(os.path.join(os.getcwd(), 'database.ini'))
-    # config.read(os.path.join(get_csm_data_directory(), 'database.ini'))
 
     db_dict = dict(config.items('Database'))
     username = decode(ENCRYPT, db_dict['username'])
@@ -123,6 +121,7 @@ db_settings = get_database_settings()
 create_database_if_not_exists(db_settings)
 
 DATABASE_CONNECTION_INFO = URL(**db_settings)
+
 # Create the database engine
 engine = create_engine(DATABASE_CONNECTION_INFO, pool_size=20, pool_recycle=3600,
                        convert_unicode=True, encoding='latin1', echo=ENABLE_DEBUG)

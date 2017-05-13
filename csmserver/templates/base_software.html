@@ -53,6 +53,10 @@
 {% block base_head %}
 
 <script charset="utf-8">
+    var turn_on_alert = false;
+    var alert_timer = null;
+    var cms_messages = null;
+
     $(function() {
         $('#search-host-selector').select2({
             placeholder: "Search a host",
@@ -175,6 +179,84 @@
 
         });
 
+        $("#alert-icon").on("click", "#csm-alert-dialog", function() {
+            if (csm_messages != null) {
+                var html = '';
+
+                for (i = 0; i < csm_messages.length; i++) {
+                    html += "<b>" + csm_messages[i].date + "</b><br>";
+                    html += csm_messages[i].message + "<br><br>";
+                }
+
+                $('#csm-message').html(html);
+                $('#csm-message-dialog').modal({show: true, backdrop: 'static'});
+            }
+        });
+
+        enable_alert(false);
+        check_csm_messages();
+
+        function check_csm_messages() {
+            $.ajax({
+                url: "{{ url_for('authenticate.api_get_csm_message') }}",
+                dataType: 'json',
+                type: "POST",
+                success: function(data) {
+                    $.each(data, function(index, element) {
+                        if (element.length > 0) {
+                            csm_messages = element;
+                            start_blinking_alert();
+                        } else {
+                            csm_messages = null;
+                            stop_blinking_alert();
+                        }
+                    });
+                }
+            });
+        }
+
+        function enable_alert(enabled) {
+            if (enabled) {
+                $('.glyphicon-bell').css("color", "red");
+            } else {
+                $('.glyphicon-bell').css("color", "");
+            }
+        }
+
+        function start_blinking_alert() {
+            $('#alert-icon').html('<a href="#" id="csm-alert-dialog"><span class="glyphicon glyphicon-bell" title="Click to view alerts" style="top:5px;"></span></a>');
+            alert_timer = setInterval(function () {
+                if (turn_on_alert) {
+                    turn_on_alert = false;
+                    enable_alert(true);
+                } else {
+                    turn_on_alert = true;
+                    enable_alert(false);
+                }
+            }, 1000);
+        }
+
+        function stop_blinking_alert() {
+            if (alert_timer != null) {
+                clearInterval(alert_timer);
+                alert_timer = null;
+            }
+            //enable_alert(false);
+            $('#alert-icon').html('');
+        }
+
+        $("#on-acknowledge-submit").on("click", function() {
+            $.ajax({
+                url: "{{ url_for('authenticate.api_acknowledge_csm_message') }}",
+                dataType: 'json',
+                type: "POST",
+                success: function(data) {
+                    $('#csm-message-dialog-form').hide();
+                    stop_blinking_alert();
+                }
+            });
+        });
+
     });
 
 </script>
@@ -182,119 +264,147 @@
 {% endblock %}
 
 {% block menu_bar %}
-
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-
-        <div class="navbar-header">
-            <a class="navbar-brand" style="padding:10px; padding-left: 30px;" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
-            <a class="navbar-brand" href="#">CSM Server</a>
-        </div>
-
-        <div class="navbar-collapse collapse">
-            <ul class="nav navbar-nav menu">
-                {% if current_user.is_authenticated() %}
-                <li id="menu-option-1"><a href="{{ url_for('home') }}">Home</a></li>
-                <ul class="nav navbar-nav">
-                    <li id="menu-option-2" class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO<b class="caret"></b></a>
-                        <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
-                    </li>
-                </ul>
-                <li id="menu-option-3" class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Dashboards<b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                        <li><a href="{{ url_for('install_dashboard.home') }}">Install Dashboard</a></li>
-                        <li class="divider"></li>
-                        <li><a href="{{ url_for('download_dashboard.home') }}">CCO Download Dashboard</a></li>
-                    </ul>
-                </li>
-                <li id="menu-option-4"><a href="{{ url_for('conformance.home') }}">Conformance</a></li>
-                {% endif %}
-            </ul>
-            {% if current_user.is_authenticated() %}
-            <ul class="nav navbar-nav navbar-right">
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Help<b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                        {{ help_menu() }}
-                    </ul>
-                </li>
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                        <div class="btn-group">
-                            <button type="button" class="navbar-toggle" style="padding: 0px 0px;margin-top: 0px;margin-bottom: 0px;">
-                                <span class="icon-bar"></span>
-                                <span class="icon-bar"></span>
-                                <span class="icon-bar"></span>
-                            </button>
-                        </div>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-right" id="navbar-menus">
-                        <li><a href='#' id='inventory-menu'><b id='checkmark-inventory-menu'>&#10003</b>&nbsp;&nbsp;Inventory Manager</a></li>
-                    </ul>
-                </li>
-                <li><a href="{{ url_for('authenticate.logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
-            </ul>
-            <ul class="nav navbar-nav navbar-right menu">
-                <li id="menu-option-5" class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
-                    {% if current_user.privilege == 'Admin' %}
-                    <ul class="dropdown-menu multi-column columns-2">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <ul class="multi-column-dropdown">
-                                    {{ non_admin_tools_menu() }}
-                                </ul>
-                            </div>
-                            <div class="col-sm-6">
-                                <ul class="multi-column-dropdown">
-                                    {{ admin_tools_menu() }}
-                                </ul>
-                            </div>
-                        </div>
-                    </ul>
-                    {% else %}
-                    <ul class="dropdown-menu">
-                        {{ non_admin_tools_menu() }}
-                    </ul>
-                    {% endif %}
-                </li>
-            </ul>
-            <form class="navbar-form navbar-left pull-right" role="search">
-                <div class="form-group" style="padding:5px">
-                    <input type="hidden" class="select2" id="search-host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
-                    </select>
+<div id="csm-message-dialog" class="modal" role="dialog">
+    <div style="width:800px;" class="modal-dialog">
+        <form id="csm-message-dialog-form" method="post" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4>Notification from Cisco</h4>
                 </div>
-            </form>
-            {% endif %}
-        </div>
+                <div class="modal-body">
+                    <div style="height:350px; overflow-y: scroll;" id="csm-message"></div>
+                </div>
+                <div class="modal-footer">
+                    Once the notification is acknowledged, it will not be displayed again.
+                    <div class="form-actions">
+                        <div class="btn col-sm-offset-4">
+                            <button id="on-acknowledge-submit" class="btn btn-primary" data-dismiss="modal">Acknowledge</button>
+                            <button id="on-cancel" onclick="submit_form();" class="btn" data-dismiss="modal">Later</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
-        <!--/.nav-collapse -->
+<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+
+    <div class="navbar-header">
+        <a class="navbar-brand" style="padding:10px; padding-left: 30px;" href="#"><img src="{{ url_for('static', filename='logo.png') }}"></a>
+        <a class="navbar-brand" href="#">CSM Server</a>
     </div>
 
-    <!-- inventory navbar below -->
-    {% if current_user.is_authenticated() %}
-    <div class="navbar container navbar-default" style="visibility:hidden;width:100%;" id="nav-inventory" role="navigation">
-
-        <div class="navbar-header" style="margin-top:16px;padding-left: 30px;padding-right: 10px;">
-            <i class="glyphicon glyphicon-tags"></i>
-        </div>
-
+    <div class="navbar-collapse collapse">
         <ul class="nav navbar-nav menu">
             {% if current_user.is_authenticated() %}
-                <li id="menu-option-6"><a class="nav-link" href="{{ url_for('inventory.dashboard') }}">Inventory Dashboard</a></li>
-                <li id="menu-option-7"><a class="nav-link" href="{{ url_for('inventory.query_add_inventory') }}">Query/Add Inventory</a></li>
-                <li id="menu-option-8"><a class="nav-link" href="{{ url_for('inventory.search_inventory') }}">Search</a></li>
-                {% if current_user.privilege == 'Admin' or current_user.privilege == 'Network Admin'%}
-                    <li id="menu-option-9"><a class="nav-link" href="{{ url_for('inventory.import_inventory') }}">Import Inventory</a></li>
-                {% endif %}
+            <li id="menu-option-1"><a href="{{ url_for('home') }}">Home</a></li>
+            <ul class="nav navbar-nav">
+                <li id="menu-option-2" class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">CCO<b class="caret"></b></a>
+                    <ul id="dropdown-menu" class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"></ul>
+                </li>
+            </ul>
+            <li id="menu-option-3" class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Dashboards<b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{{ url_for('install_dashboard.home') }}">Install Dashboard</a></li>
+                    <li class="divider"></li>
+                    <li><a href="{{ url_for('download_dashboard.home') }}">CCO Download Dashboard</a></li>
+                </ul>
+            </li>
+            <li id="menu-option-4"><a href="{{ url_for('conformance.home') }}">Conformance</a></li>
             {% endif %}
         </ul>
+        {% if current_user.is_authenticated() %}
+        <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Help<b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    {{ help_menu() }}
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                    <div class="btn-group">
+                        <button type="button" class="navbar-toggle" style="padding: 0px 0px;margin-top: 0px;margin-bottom: 0px;">
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                    </div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-right" id="navbar-menus">
+                    <li><a href='#' id='inventory-menu'><b id='checkmark-inventory-menu'>&#10003</b>&nbsp;&nbsp;Inventory Manager</a></li>
+                </ul>
+            </li>
 
+            <li><a href="{{ url_for('authenticate.logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
+
+            <li id="alert-icon">
+
+            </li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right menu">
+            <li id="menu-option-5" class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools<b class="caret"></b></a>
+                {% if current_user.privilege == 'Admin' %}
+                <ul class="dropdown-menu multi-column columns-2">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <ul class="multi-column-dropdown">
+                                {{ non_admin_tools_menu() }}
+                            </ul>
+                        </div>
+                        <div class="col-sm-6">
+                            <ul class="multi-column-dropdown">
+                                {{ admin_tools_menu() }}
+                            </ul>
+                        </div>
+                    </div>
+                </ul>
+                {% else %}
+                <ul class="dropdown-menu">
+                    {{ non_admin_tools_menu() }}
+                </ul>
+                {% endif %}
+            </li>
+        </ul>
+        <form class="navbar-form navbar-left pull-right" role="search">
+            <div class="form-group" style="padding:5px">
+                <input type="hidden" class="select2" id="search-host-selector" style="width:200px;margin-left:2em;margin-top:.4em;">
+                </select>
+            </div>
+        </form>
+        {% endif %}
     </div>
-    {% else %}
-        <div style="padding-bottom: 46px"></div>
-    {% endif %}
-        <!--/.nav-collapse -->
+
+    <!--/.nav-collapse -->
+</div>
+
+<!-- inventory navbar below -->
+{% if current_user.is_authenticated() %}
+<div class="navbar container navbar-default" style="visibility:hidden;width:100%;" id="nav-inventory" role="navigation">
+
+    <div class="navbar-header" style="margin-top:16px;padding-left: 30px;padding-right: 10px;">
+        <i class="glyphicon glyphicon-tags"></i>
+    </div>
+
+    <ul class="nav navbar-nav menu">
+        {% if current_user.is_authenticated() %}
+            <li id="menu-option-6"><a class="nav-link" href="{{ url_for('inventory.dashboard') }}">Inventory Dashboard</a></li>
+            <li id="menu-option-7"><a class="nav-link" href="{{ url_for('inventory.query_add_inventory') }}">Query/Add Inventory</a></li>
+            <li id="menu-option-8"><a class="nav-link" href="{{ url_for('inventory.search_inventory') }}">Search</a></li>
+            {% if current_user.privilege == 'Admin' or current_user.privilege == 'Network Admin'%}
+                <li id="menu-option-9"><a class="nav-link" href="{{ url_for('inventory.import_inventory') }}">Import Inventory</a></li>
+            {% endif %}
+        {% endif %}
+    </ul>
+
+</div>
+{% else %}
+    <div style="padding-bottom: 46px"></div>
+{% endif %}
+    <!--/.nav-collapse -->
 
 {% endblock %}
