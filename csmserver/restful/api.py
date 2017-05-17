@@ -63,7 +63,7 @@ HTTP Return Codes:
 @restful_api.route('/v1/token')
 @auth.login_required
 def get_auth_token():
-    token = g.api_user.generate_auth_token(600)
+    token = g.api_user.generate_auth_token(1800)
     return jsonify({'token': token.decode('ascii')})
 
 
@@ -92,6 +92,7 @@ def verify_password(username_or_token, password):
 @auth.login_required
 def api_hosts():
     try:
+        DBSession().close()
         if request.method == 'POST':
             if not can_create(g.api_user):
                 return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
@@ -106,6 +107,7 @@ def api_hosts():
 @auth.login_required
 def host_delete(hostname):
     try:
+        DBSession().close()
         if not can_delete(g.api_user):
             return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         return api_host.api_delete_host(hostname)
@@ -119,6 +121,7 @@ def host_delete(hostname):
 @auth.login_required
 def api_regions():
     try:
+        DBSession().close()
         if request.method == 'POST':
             if not can_create(g.api_user):
                 return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
@@ -133,6 +136,7 @@ def api_regions():
 @auth.login_required
 def region_delete(name):
     try:
+        DBSession().close()
         if not can_delete(g.api_user):
             return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         else:
@@ -147,6 +151,7 @@ def region_delete(name):
 @auth.login_required
 def api_jump_hosts():
     try:
+        DBSession().close()
         if request.method == 'POST':
             if not can_create(g.api_user):
                 return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
@@ -161,6 +166,7 @@ def api_jump_hosts():
 @auth.login_required
 def jump_host_delete(hostname):
     try:
+        DBSession().close()
         if not can_delete(g.api_user):
             return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         return api_jump_host.api_delete_jump_host(hostname)
@@ -174,6 +180,7 @@ def jump_host_delete(hostname):
 @auth.login_required
 def api_server_repositories():
     try:
+        DBSession().close()
         if request.method == 'POST':
             if not can_create(g.api_user):
                 return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
@@ -188,6 +195,7 @@ def api_server_repositories():
 @auth.login_required
 def server_repository_delete(hostname):
     try:
+        DBSession().close()
         if not can_delete(g.api_user):
             return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         else:
@@ -203,6 +211,7 @@ def server_repository_delete(hostname):
 @auth.login_required
 def get_cco_catalog():
     try:
+        DBSession().close()
         return api_cco.api_get_cco_catalog()
     except Exception as e:
         return failed_response(e.message)
@@ -212,6 +221,7 @@ def get_cco_catalog():
 @auth.login_required
 def get_cco_software():
     try:
+        DBSession().close()
         return api_cco.api_get_cco_software(request)
     except Exception as e:
         return failed_response(e.message)
@@ -221,6 +231,7 @@ def get_cco_software():
 @auth.login_required
 def get_cco_software_entry(name_or_id):
     try:
+        DBSession().close()
         return api_cco.api_get_cco_software_entry(request, name_or_id)
     except Exception as e:
         return failed_response(e.message)
@@ -232,6 +243,7 @@ def get_cco_software_entry(name_or_id):
 @auth.login_required
 def create_install_job():
     try:
+        DBSession().close()
         if request.method == 'POST':
             if not can_install(g.api_user):
                 return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
@@ -246,6 +258,7 @@ def create_install_job():
 @auth.login_required
 def install_job_delete():
     try:
+        DBSession().close()
         if not can_delete_install(g.api_user):
             return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         return api_install.api_delete_install_job(request)
@@ -257,6 +270,7 @@ def install_job_delete():
 @auth.login_required
 def get_session_log(id):
     try:
+        DBSession().close()
         if not can_install(g.api_user):
             return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
         return api_install.api_get_session_log(id)
@@ -270,6 +284,7 @@ def get_session_log(id):
 @auth.login_required
 def api_custom_command_profiles():
     try:
+        DBSession().close()
         if request.method == 'POST':
             if not can_create(g.api_user):
                 return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
@@ -284,6 +299,7 @@ def api_custom_command_profiles():
 @auth.login_required
 def custom_command_profile_delete(profile_name):
     try:
+        DBSession().close()
         if not can_delete(g.api_user):
             return failed_response('Not Authorized', return_code=HTTP_NOT_AUTHORIZED)
 
