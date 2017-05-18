@@ -39,6 +39,7 @@ from database import STRING1, STRING2
 from database import CURRENT_SCHEMA_VERSION
 
 from constants import UNKNOWN
+from constants import InstallAction
 from constants import JobStatus
 from constants import UserPrivilege
 from constants import ProxyAgent
@@ -728,7 +729,10 @@ class InstallJob(Base):
     start_time = Column(DateTime)
     status = Column(String(20))
     status_message = Column(String(200))
-    status_time = Column(DateTime) 
+    status_time = Column(DateTime)
+    # The periodical boolean marks if this job runs periodically - monitor job for example
+    # If it is periodical, there would be values for time_interval, trial_number and max_trials in data field.
+    periodical = Column(Boolean, default=False)
     trace = Column(Text)
     session_log = Column(Text)
     data = Column(JSONEncodedDict, default={})
@@ -736,7 +740,7 @@ class InstallJob(Base):
     modified_time = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_by = Column(String(50))
     
-    host_id = Column(Integer, ForeignKey('host.id'))     
+    host_id = Column(Integer, ForeignKey('host.id'))
     user_id = Column(Integer, ForeignKey('user.id'))
     custom_command_profile_ids = Column(String(20))
 
@@ -758,6 +762,79 @@ class InstallJob(Base):
         if not self.data:
             self.data = {}
         self.data[key] = value
+
+    def update_and_check_number_of_trials(self):
+        """
+        For periodical jobs, update the trial number in data field and status time
+        :return: True if the number of trials is still within max trial number allowed
+                False if the number of trials reached or exceeded max trial number allowed
+        """
+        max_trials = self.load_data("max_trials")
+        trial_number = self.load_data("trial_number")
+        self.status_time = datetime.datetime.utcnow()
+        if max_trials is not None and trial_number is not None:
+            trial_number += 1
+            self.save_data("trial_number", trial_number)
+            return trial_number < max_trials
+        else:
+            logger.exception("Install job id = {}, job action = {} missing max_trials and/or trial_number.".format(
+                self.id, self.install_action))
+        return False
+
+    def create_monitor_job(self):
+        """
+        Create a monitor job for this job
+        :return: None if a monitor job is not available for the install action of this job,
+                an InstallJob object as the monitor job
+        """
+        new_monitor_job = InstallJob()
+        if self.install_action == InstallAction.INSTALL_COMMIT:
+            new_monitor_job.install_action = InstallAction.COMMIT_MONITOR
+        elif self.install_action == InstallAction.INSTALL_ADD:
+            new_monitor_job.install_action = InstallAction.ADD_MONITOR
+        elif self.install_action == InstallAction.INSTALL_ACTIVATE:
+            new_monitor_job.install_action = InstallAction.ACTIVATE_MONITOR
+        else:
+            return None
+
+        new_monitor_job.periodical = True
+
+        for attribute, value in vars(self).iteritems():
+            if attribute in {'server_id', 'server_directory', 'packages', 'session_log',
+                             'data', 'host_id', 'user_id', 'custom_command_profile_ids'}:
+                setattr(new_monitor_job, attribute, value)
+
+        new_monitor_job.dependency = self.id
+
+        new_monitor_job.save_data("time_interval", 30)
+        new_monitor_job.save_data("max_trials", 10)
+        new_monitor_job.save_data("trial_number", 0)
+
+        new_monitor_job.scheduled_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
+        new_monitor_job.set_status(JobStatus.SCHEDULED)
+
+        return new_monitor_job
+
+    def ready_for_execution(self):
+        """
+        If this is a regular non-periodical job, this function always returns True
+        If this is a periodical job, it's only ready for the next execution if
+        the time elapsed since last execution is greater than the time interval
+        for exeuting this job.
+        :return: True if this job is ready to be executed. False if not.
+        """
+        if self.periodical:
+            time_interval = self.load_data("time_interval")
+            if time_interval:
+
+                time_elapsed = datetime.datetime.utcnow() - self.status_time
+                if time_elapsed.total_seconds() < time_interval:
+                    return False
+            else:
+                logger.exception("Fail to schedule periodical job id = {}, job action = {} because it is missing the time_interval.".format(
+                    self.id, self.install_action))
+                return False
+        return True
 
 
 class InstallJobHistory(Base):

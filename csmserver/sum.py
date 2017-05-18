@@ -32,13 +32,14 @@ from models import InstallJob
 from models import InstallJobHistory
 from models import SystemOption
 from models import get_download_job_key_dict
+from models import get_db_session_logger
 
 from constants import JobStatus
 
 from multi_process import JobManager
 from filters import get_datetime_string
 
-from work_units.install_work_unit import InstallWorkUnit
+import work_units
 
 
 class SoftwareManager(JobManager):
@@ -77,24 +78,38 @@ class SoftwareManager(JobManager):
                 return
                 
             install_jobs = db_session.query(InstallJob).filter(
-                and_(InstallJob.scheduled_time <= datetime.datetime.utcnow()),
-                or_(InstallJob.status == JobStatus.SCHEDULED, InstallJob.status == JobStatus.IN_PROGRESS)).\
+                and_(InstallJob.scheduled_time <= datetime.datetime.utcnow(),
+                     or_(InstallJob.status == JobStatus.SCHEDULED, InstallJob.status == JobStatus.IN_PROGRESS))).\
                 order_by(InstallJob.scheduled_time.asc(), InstallJob.id.asc()).all()
 
             download_job_key_dict = get_download_job_key_dict()
 
             if len(install_jobs) > 0:
-                for install_job in install_jobs:
-                    # If there is pending download, don't submit the install job
-                    if self.is_pending_on_download(download_job_key_dict, install_job):
-                        continue
 
-                    # This install job has a dependency, check if the expected criteria is met
-                    if install_job.dependency is not None:
-                        if not self.get_install_job_dependency_completed(db_session, install_job):
+                for install_job in install_jobs:
+
+                    # only check dependency and pending download for non-periodically run regular jobs
+                    # skip the checks for periodical jobs such as monitor jobs
+                    if not install_job.periodical:
+
+                        # If there is pending download, don't submit the install job
+                        if self.is_pending_on_download(download_job_key_dict, install_job):
                             continue
 
-                    self.submit_job(InstallWorkUnit(install_job.host_id, install_job.id))
+                        # This install job has a dependency, check if the expected criteria is met
+                        if install_job.dependency is not None:
+                            if not self.get_install_job_dependency_completed(db_session, install_job):
+                                continue
+
+                    if install_job.ready_for_execution():
+
+                        install_work_unit = work_units.get_install_work_unit(db_session, install_job)
+                        if install_work_unit:
+                            self.submit_job(install_work_unit)
+                        else:
+                            logger = get_db_session_logger(db_session)
+                            logger.exception("The host for install job id {}, action {} is missing. Fail to schedule job.".format(
+                                str(install_job.id), install_job.install_action))
 
         except Exception:
             # print(traceback.format_exc())
@@ -107,11 +122,12 @@ class SoftwareManager(JobManager):
         return "{}{}{}{}".format(install_job.user_id, filename, install_job.server_id, install_job.server_directory)
 
     def is_pending_on_download(self, download_job_key_dict, install_job):
-        pending_downloads = install_job.pending_downloads.split(',')
-        for filename in pending_downloads:
-            download_job_key = self.get_download_job_key(install_job, filename)
-            if download_job_key in download_job_key_dict:
-                return True
+        if install_job.pending_downloads:
+            pending_downloads = install_job.pending_downloads.split(',')
+            for filename in pending_downloads:
+                download_job_key = self.get_download_job_key(install_job, filename)
+                if download_job_key in download_job_key_dict:
+                    return True
         return False
                 
 

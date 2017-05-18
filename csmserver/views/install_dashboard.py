@@ -138,7 +138,7 @@ def get_download_job_status(download_job_key_dict, install_job, dependency_statu
     num_failed_downloads = 0
     is_pending_download = False
 
-    pending_downloads = install_job.pending_downloads.split(',')
+    pending_downloads = install_job.pending_downloads.split(',') if install_job.pending_downloads else []
     for filename in pending_downloads:
         download_job_key = get_download_job_key(install_job.user_id, filename, install_job.server_id, install_job.server_directory)
         if download_job_key in download_job_key_dict:

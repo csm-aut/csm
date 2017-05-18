@@ -106,6 +106,7 @@ class PackageState:
 class JobStatus:
     SCHEDULED = 'scheduled'
     IN_PROGRESS = 'in-progress'
+    WAITING = 'waiting'
     FAILED = 'failed'
     COMPLETED = 'completed'
 
@@ -137,6 +138,9 @@ class InstallAction:
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
     FPD_UPGRADE = 'FPD-Upgrade'
+    COMMIT_MONITOR = 'Commit-Monitor'
+    ADD_MONITOR = 'Add-Monitor'
+    ACTIVATE_MONITOR = 'Activate-Monitor'
 
 
 class PackageType:
