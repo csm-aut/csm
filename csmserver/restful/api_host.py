@@ -52,7 +52,6 @@ from api_utils import get_total_pages
 from api_utils import validate_url_parameters
 from api_utils import failed_response
 from api_utils import check_none
-from api_utils import write_log
 from api_utils import convert_json_request_to_list
 from api_utils import validate_required_keys_in_dict
 from api_utils import convert_value_to_list
@@ -151,8 +150,6 @@ def api_create_hosts(request):
             else:
                 region = get_region(db_session, region_name)
                 if region is None:
-                    regions = get_region_list(db_session)
-                    write_log(json.dumps(data) + ' Exiting Regions: ' + ','.join([r.name for r in regions]))
                     raise ValueError('Region "{}" does not exist in the database.'.format(region_name))
 
                 region_id = region.id
