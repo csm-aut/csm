@@ -101,15 +101,13 @@ class SoftwareManager(JobManager):
                             if not self.get_install_job_dependency_completed(db_session, install_job):
                                 continue
 
-                    if install_job.ready_for_execution():
-
-                        install_work_unit = work_units.get_install_work_unit(db_session, install_job)
-                        if install_work_unit:
-                            self.submit_job(install_work_unit)
-                        else:
-                            logger = get_db_session_logger(db_session)
-                            logger.exception("The host for install job id {}, action {} is missing. Fail to schedule job.".format(
-                                str(install_job.id), install_job.install_action))
+                    install_work_unit = work_units.get_install_work_unit(db_session, install_job)
+                    if install_work_unit:
+                        self.submit_job(install_work_unit)
+                    else:
+                        logger = get_db_session_logger(db_session)
+                        logger.exception("The host for install job id {}, action {} is missing. Fail to schedule job.".format(
+                            str(install_job.id), install_job.install_action))
 
         except Exception:
             # print(traceback.format_exc())

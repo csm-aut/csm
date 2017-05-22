@@ -250,6 +250,14 @@ class InstallPendingMonitoringWorkUnit(InstallWorkUnit):
                 ))
             self.archive_install_job(db_session, logger, host, install_job, JobStatus.FAILED)
             return
+
+        time_interval = new_monitor_job.load_data("time_interval")
+        install_job.set_status_message(
+            "Waiting for first monitor attempt in {} seconds.".format(
+                time_interval if time_interval else 'unknown',
+            )
+        )
+
         db_session.add(new_monitor_job)
         db_session.commit()
 
@@ -263,8 +271,21 @@ class MonitorWorkUnit(InstallWorkUnit):
         print "monitor work unit install job completed"
         original_install_job = db_session.query(InstallJob).filter(InstallJob.id == monitor_job.dependency).first()
 
+        if original_install_job:
+            trial_number = monitor_job.load_data("trial_number")
+            max_trials = monitor_job.load_data("max_trials")
+
+            original_install_job.set_status_message(
+                "{}/{} monitor attempt. Result: Job completed.".format(
+                    trial_number if trial_number else 'unknown',
+                    max_trials if max_trials else 'unknown'
+                )
+            )
+
+
         self.archive_original_install_job_based_on_monitor_job(db_session, monitor_job, original_install_job,
                                                                JobStatus.COMPLETED, host, logger)
+        db_session.commit()
 
     def post_process_incomplete_install_jobs(self, db_session, monitor_job, host, logger, trace=None):
         print "monitor work unit install job failed"
@@ -272,19 +293,34 @@ class MonitorWorkUnit(InstallWorkUnit):
         original_install_job = db_session.query(InstallJob).filter(
             InstallJob.id == monitor_job.dependency).first()
 
+        trial_number = monitor_job.load_data("trial_number")
+        max_trials = monitor_job.load_data("max_trials")
+        time_interval = monitor_job.load_data("time_interval")
+
         # update the number of trials and status time for this install_job and
         # check if it's still within max number of trials allowed
         if monitor_job.update_and_check_number_of_trials():
 
-            time_interval = monitor_job.load_data("time_interval")
+            monitor_job.prepare_for_next_execution()
 
-            original_install_job.set_status_message("{} Last monitor result: Job not complete. Waiting for next monitoring in {} seconds.".format(
-                monitor_job.status_time, time_interval if time_interval else 'unknown'
-            ))
+            original_install_job.set_status_message(
+                "{}/{} monitor attempt. Result: Job not complete. Waiting for next monitor attempt in {} seconds.".format(
+                    trial_number if trial_number else 'unknown',
+                    max_trials if max_trials else 'unknown',
+                    time_interval if time_interval else 'unknown'
+                )
+            )
 
         # if this install_job reached its max number of trials or if the trial info is missing from the install job
         # we will archive the original job with status as FAILED, and delete this install_job
         else:
+            original_install_job.set_status_message(
+                "{}/{} monitor attempt. Result: Job not complete. Maximum monitor attempts reached.".format(
+                    trial_number if trial_number else 'unknown',
+                    max_trials if max_trials else 'unknown',
+                    time_interval if time_interval else 'unknown'
+                )
+            )
             self.archive_original_install_job_based_on_monitor_job(db_session, monitor_job, original_install_job,
                                                                    JobStatus.FAILED, host, logger, trace)
         db_session.commit()
