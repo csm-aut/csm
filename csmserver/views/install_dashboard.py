@@ -195,7 +195,7 @@ def get_install_job_json_dict(install_jobs):
                 row['server_directory'] = install_job.server_directory
                 row['user_id'] = install_job.user_id
 
-            if install_job.status == JobStatus.IN_PROGRESS:
+            if hasattr(install_job, "status_message") and install_job.status_message:
                 row['status'] = install_job.status_message
             else:
                 row['status'] = install_job.status

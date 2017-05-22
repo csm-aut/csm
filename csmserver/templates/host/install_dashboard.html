@@ -228,7 +228,7 @@
 
             ],
             "ajax": {
-                "url": "{{ url_for('datatable.api_get_scheduled_install_jobs') }}"
+                "url": "{{ url_for('datatable.api_get_scheduled_install_jobs', exclude_monitor_jobs=1) }}"
             }
         }).on('draw.dt', function(e, settings, json) {
             $('#badge-scheduled').html(install_scheduled_table.api().page.info().recordsTotal);
@@ -290,10 +290,72 @@
                 "data": 'created_by'
             }, ],
             "ajax": {
-                "url": "{{ url_for('datatable.api_get_in_progress_install_jobs') }}",
+                "url": "{{ url_for('datatable.api_get_in_progress_install_jobs', exclude_monitor_jobs=1) }}",
             }
         }).on('draw.dt', function(e, settings, json) {
             $('#badge-in-progress').html(install_in_progress_table.api().page.info().recordsTotal);
+        });
+
+        var install_waiting_table = $("#install-waiting-datatable").dataTable({
+            "serverSide": true,
+            "order": [
+                [3, "asc"]
+            ],
+            "columns": [
+                { "data": "hostname" },
+                { "data": "install_action" },
+                { "data": "scheduled_time" },
+                { "data": "start_time" },
+                { "data": "packages" },
+                { "data": "status" },
+                { "data": "session_log", "orderable": false },
+                { "data": "created_by" }
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'hostname',
+                "render": function(data, type, row) {
+                    return '<a href="/host_dashboard/hosts/' + data + '/">' + data + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'install_action',
+            }, {
+                "targets": 2,
+                "data": 'scheduled_time',
+                "render": function(data, type, row) {
+                    return getDateStringfromUTCString(data, use_utc_timezone);
+                }
+            }, {
+                "targets": 3,
+                "data": 'start_time',
+                "render": function(data, type, row) {
+                    return getDateStringfromUTCString(data, use_utc_timezone);
+                }
+            }, {
+                "targets": 4,
+                "data": 'packages',
+                "render": function(data, type, row) {
+                    return display_packages(data);
+                }
+            }, {
+                "targets": 5,
+                "data": 'status'
+            }, {
+                "targets": 6,
+                "data": 'session_log',
+                "render": function(data, type, row) {
+                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                }
+            }, {
+                "targets": 7,
+                "data": 'created_by'
+            } ],
+            "ajax": {
+                "url": "{{ url_for('datatable.api_get_waiting_install_jobs') }}"
+            }
+        }).on('draw.dt', function(e, settings, json) {
+            $('#badge-waiting').html(install_waiting_table.api().page.info().recordsTotal);
         });
 
         $("#install-failed-datatable").on("click", ".show-job-info", function() {
@@ -382,7 +444,7 @@
                 }
             }],
             "ajax": {
-                "url": "{{ url_for('datatable.api_get_failed_install_jobs') }}"
+                "url": "{{ url_for('datatable.api_get_failed_install_jobs', exclude_monitor_jobs=1) }}"
             }
         }).on('draw.dt', function(e, settings, json) {
             $('#badge-failed').html(install_failed_table.api().page.info().recordsTotal);
@@ -505,6 +567,10 @@
             install_in_progress_table.api().ajax.reload(null, false);
         }
 
+        function refresh_waiting_install_table() {
+            install_waiting_table.api().ajax.reload(null, false);
+        }
+
         function refresh_failed_install_table() {
             install_failed_table.api().ajax.reload(null, false);
         }
@@ -517,6 +583,7 @@
             get_install_dashboard_cookie();
             refresh_scheduled_install_table();
             refresh_in_progress_install_table();
+            refresh_waiting_install_table();
             refresh_failed_install_table();
             refresh_completed_install_table();
         }, 10000);
@@ -605,6 +672,7 @@
             <ul class="nav nav-tabs" id="install-dashboard-tab">
                 <li><a data-toggle="tab" href="#install-scheduled">Scheduled &nbsp;<span id="badge-scheduled" class="customized-badge-height badge alert-default">0</span></a></li>
                 <li><a data-toggle="tab" href="#install-in-progress">In Progress &nbsp;<span id="badge-in-progress" class="customized-badge-height badge alert-info">0</span></a></li>
+                <li><a data-toggle="tab" href="#install-waiting">Waiting &nbsp;<span id="badge-waiting" class="customized-badge-height badge alert-info">0</span></a></li>
                 <li><a data-toggle="tab" href="#install-failed">Failed &nbsp;<span id="badge-failed" class="customized-badge-height badge alert-danger">0</span></a></li>
                 <li><a data-toggle="tab" href="#install-completed">Completed &nbsp;<span id="badge-completed-total" class="customized-badge-height badge alert-success">0</span></a></li>
             </ul>
@@ -626,6 +694,22 @@
                 </div>
                 <div id="install-in-progress" class="tab-pane fade">
                     <table cellspacing="0" class="display table" id="install-in-progress-datatable">
+                        <thead>
+                            <tr>
+                                <th style="width:50px">Hostname</th>
+                                <th style="width:50px">Install Action</th>
+                                <th style="width:50px">Scheduled Time</th>
+                                <th style="width:50px">Start Time</th>
+                                <th style="width:150px">Packages</th>
+                                <th style="width:300px">Status</th>
+                                <th style="width:50px">Log</th>
+                                <th style="width:50px">Created By</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div id="install-waiting" class="tab-pane fade">
+                    <table cellspacing="0" class="display table" id="install-waiting-datatable">
                         <thead>
                             <tr>
                                 <th style="width:50px">Hostname</th>
