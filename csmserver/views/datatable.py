@@ -280,9 +280,10 @@ def get_managed_host_details(region_id):
     return jsonify(**response)
 
 
-@datatable.route('/api/get_scheduled_install_jobs/')
+@datatable.route('/api/get_scheduled_install_jobs/', defaults={'exclude_monitor_jobs': 0})
+@datatable.route('/api/get_scheduled_install_jobs/<int:exclude_monitor_jobs>')
 @login_required
-def api_get_scheduled_install_jobs():
+def api_get_scheduled_install_jobs(exclude_monitor_jobs=0):
     dt_params = DataTableParams(request)
     db_session = DBSession()
 
@@ -298,8 +299,12 @@ def api_get_scheduled_install_jobs():
     query = db_session.query(InstallJob)\
         .join(Host, Host.id == InstallJob.host_id)
 
-    total_count = query.filter(InstallJob.status == JobStatus.SCHEDULED).count()
-    filtered_count = query.filter(and_(InstallJob.status == JobStatus.SCHEDULED), or_(*clauses)).count()
+    main_clauses = [InstallJob.status == JobStatus.SCHEDULED]
+    if exclude_monitor_jobs:
+        main_clauses.append(InstallJob.periodical == False)
+
+    total_count = query.filter(and_(*main_clauses)).count()
+    filtered_count = query.filter(and_(*main_clauses), or_(*clauses)).count()
 
     columns = [getattr(Host.hostname, dt_params.sort_order)(),
                getattr(InstallJob.install_action, dt_params.sort_order)(),
@@ -310,7 +315,7 @@ def api_get_scheduled_install_jobs():
                '']
 
     install_jobs = query.order_by(columns[dt_params.column_order])\
-        .filter(and_(InstallJob.status == JobStatus.SCHEDULED), or_(*clauses))\
+        .filter(and_(*main_clauses), or_(*clauses))\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
 
     response = dict()
@@ -322,9 +327,10 @@ def api_get_scheduled_install_jobs():
     return jsonify(**response)
 
 
-@datatable.route('/api/get_in_progress_install_jobs/')
+@datatable.route('/api/get_in_progress_install_jobs/', defaults={'exclude_monitor_jobs': 0})
+@datatable.route('/api/get_in_progress_install_jobs/<int:exclude_monitor_jobs>')
 @login_required
-def api_get_in_progress_install_jobs():
+def api_get_in_progress_install_jobs(exclude_monitor_jobs=0):
     dt_params = DataTableParams(request)
     db_session = DBSession()
 
@@ -342,8 +348,12 @@ def api_get_in_progress_install_jobs():
     query = db_session.query(InstallJob)\
         .join(Host, Host.id == InstallJob.host_id)
 
-    total_count = query.filter(InstallJob.status == JobStatus.IN_PROGRESS).count()
-    filtered_count = query.filter(and_(InstallJob.status == JobStatus.IN_PROGRESS), or_(*clauses)).count()
+    main_clauses = [InstallJob.status == JobStatus.IN_PROGRESS]
+    if exclude_monitor_jobs:
+        main_clauses.append(InstallJob.periodical == False)
+
+    total_count = query.filter(and_(*main_clauses)).count()
+    filtered_count = query.filter(and_(*main_clauses), or_(*clauses)).count()
 
     columns = [getattr(Host.hostname, dt_params.sort_order)(),
                getattr(InstallJob.install_action, dt_params.sort_order)(),
@@ -355,7 +365,7 @@ def api_get_in_progress_install_jobs():
                getattr(InstallJob.created_by, dt_params.sort_order)()]
 
     install_jobs = query.order_by(columns[dt_params.column_order])\
-        .filter(and_(InstallJob.status == JobStatus.IN_PROGRESS), or_(*clauses))\
+        .filter(and_(*main_clauses), or_(*clauses))\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
 
     response = dict()
@@ -367,9 +377,55 @@ def api_get_in_progress_install_jobs():
     return jsonify(**response)
 
 
-@datatable.route('/api/get_failed_install_jobs/')
+@datatable.route('/api/get_waiting_install_jobs/')
 @login_required
-def api_get_failed_install_jobs():
+def api_get_waiting_install_jobs():
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(Host.hostname.like(criteria))
+        clauses.append(InstallJob.install_action.like(criteria))
+        clauses.append(InstallJob.scheduled_time.like(criteria))
+        clauses.append(InstallJob.start_time.like(criteria))
+        clauses.append(InstallJob.packages.like(criteria))
+        clauses.append(InstallJob.status.like(criteria))
+        clauses.append(InstallJob.created_by.like(criteria))
+
+    query = db_session.query(InstallJob)\
+        .join(Host, Host.id == InstallJob.host_id)
+
+    total_count = query.filter(InstallJob.status == JobStatus.WAITING).count()
+    filtered_count = query.filter(and_(InstallJob.status == JobStatus.WAITING, or_(*clauses))).count()
+
+    columns = [getattr(Host.hostname, dt_params.sort_order)(),
+               getattr(InstallJob.install_action, dt_params.sort_order)(),
+               getattr(InstallJob.scheduled_time, dt_params.sort_order)(),
+               getattr(InstallJob.start_time, dt_params.sort_order)(),
+               getattr(InstallJob.packages, dt_params.sort_order)(),
+               getattr(InstallJob.status, dt_params.sort_order)(),
+               '',
+               getattr(InstallJob.created_by, dt_params.sort_order)()]
+
+    install_jobs = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(InstallJob.status == JobStatus.WAITING, or_(*clauses)))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response.update(get_install_job_json_dict(install_jobs))
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/get_failed_install_jobs/', defaults={'exclude_monitor_jobs': 0})
+@datatable.route('/api/get_failed_install_jobs/<int:exclude_monitor_jobs>')
+@login_required
+def api_get_failed_install_jobs(exclude_monitor_jobs=0):
     dt_params = DataTableParams(request)
     db_session = DBSession()
 
@@ -387,8 +443,12 @@ def api_get_failed_install_jobs():
     query = db_session.query(InstallJob)\
         .join(Host, Host.id == InstallJob.host_id)
 
-    total_count = query.filter(InstallJob.status == JobStatus.FAILED).count()
-    filtered_count = query.filter(and_(InstallJob.status == JobStatus.FAILED), or_(*clauses)).count()
+    main_clauses = [InstallJob.status == JobStatus.FAILED]
+    if exclude_monitor_jobs:
+        main_clauses.append(InstallJob.periodical == False)
+
+    total_count = query.filter(and_(*main_clauses)).count()
+    filtered_count = query.filter(and_(*main_clauses), or_(*clauses)).count()
 
     columns = [getattr(Host.hostname, dt_params.sort_order)(),
                getattr(InstallJob.install_action, dt_params.sort_order)(),
@@ -400,7 +460,7 @@ def api_get_failed_install_jobs():
                getattr(InstallJob.created_by, dt_params.sort_order)()]
 
     install_jobs = query.order_by(columns[dt_params.column_order])\
-        .filter(and_(InstallJob.status == JobStatus.FAILED), or_(*clauses))\
+        .filter(and_(*main_clauses), or_(*clauses))\
         .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
 
     response = dict()
