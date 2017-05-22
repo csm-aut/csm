@@ -781,6 +781,17 @@ class InstallJob(Base):
                 self.id, self.install_action))
         return False
 
+    def prepare_for_next_execution(self):
+        """For periodical jobs"""
+        time_interval = self.load_data("time_interval")
+        if time_interval:
+            self.scheduled_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=time_interval)
+            self.set_status(JobStatus.SCHEDULED)
+        else:
+            logger.exception("Install job id = {}, job action = {} missing time_interval.".format(
+                self.id, self.install_action))
+        return
+
     def create_monitor_job(self):
         """
         Create a monitor job for this job
@@ -806,23 +817,21 @@ class InstallJob(Base):
 
         new_monitor_job.dependency = self.id
 
-        new_monitor_job.save_data("time_interval", 30)
+        new_monitor_job.save_data("time_interval", 40)
         new_monitor_job.save_data("max_trials", 10)
         new_monitor_job.save_data("trial_number", 0)
 
-        new_monitor_job.scheduled_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
-        new_monitor_job.set_status(JobStatus.SCHEDULED)
+        new_monitor_job.prepare_for_next_execution()
 
         return new_monitor_job
-
+    """
     def ready_for_execution(self):
-        """
+
         If this is a regular non-periodical job, this function always returns True
         If this is a periodical job, it's only ready for the next execution if
         the time elapsed since last execution is greater than the time interval
         for exeuting this job.
         :return: True if this job is ready to be executed. False if not.
-        """
         if self.periodical:
             time_interval = self.load_data("time_interval")
             if time_interval:
@@ -835,7 +844,7 @@ class InstallJob(Base):
                     self.id, self.install_action))
                 return False
         return True
-
+    """
 
 class InstallJobHistory(Base):
     __tablename__ = 'install_job_history'
