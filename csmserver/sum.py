@@ -39,7 +39,7 @@ from constants import JobStatus
 from multi_process import JobManager
 from filters import get_datetime_string
 
-import work_units
+from work_units import install_work_unit
 
 
 class SoftwareManager(JobManager):
@@ -101,9 +101,9 @@ class SoftwareManager(JobManager):
                             if not self.get_install_job_dependency_completed(db_session, install_job):
                                 continue
 
-                    install_work_unit = work_units.get_install_work_unit(db_session, install_job)
-                    if install_work_unit:
-                        self.submit_job(install_work_unit)
+                    install_job_work_unit = install_work_unit.get_work_unit(db_session, install_job)
+                    if install_job_work_unit:
+                        self.submit_job(install_job_work_unit)
                     else:
                         logger = get_db_session_logger(db_session)
                         logger.exception("The host for install job id {}, action {} is missing. Fail to schedule job.".format(

@@ -792,21 +792,16 @@ class InstallJob(Base):
                 self.id, self.install_action))
         return
 
-    def create_monitor_job(self):
+    def create_monitor_job(self, install_action_for_monitor_job, time_interval, max_trials):
         """
         Create a monitor job for this job
-        :return: None if a monitor job is not available for the install action of this job,
-                an InstallJob object as the monitor job
+        :param install_action_for_monitor_job: the intended install_action for the new monitor job
+        :param time_interval: the time interval in seconds before next execution of the monitor job
+        :param max_trials: max number of trials before we stop executing the monitor job and declare failure
+        :return: an InstallJob object as the monitor job
         """
         new_monitor_job = InstallJob()
-        if self.install_action == InstallAction.INSTALL_COMMIT:
-            new_monitor_job.install_action = InstallAction.COMMIT_MONITOR
-        elif self.install_action == InstallAction.INSTALL_ADD:
-            new_monitor_job.install_action = InstallAction.ADD_MONITOR
-        elif self.install_action == InstallAction.INSTALL_ACTIVATE:
-            new_monitor_job.install_action = InstallAction.ACTIVATE_MONITOR
-        else:
-            return None
+        new_monitor_job.install_action = install_action_for_monitor_job
 
         new_monitor_job.periodical = True
 
@@ -817,34 +812,14 @@ class InstallJob(Base):
 
         new_monitor_job.dependency = self.id
 
-        new_monitor_job.save_data("time_interval", 40)
-        new_monitor_job.save_data("max_trials", 10)
+        new_monitor_job.save_data("time_interval", time_interval)
+        new_monitor_job.save_data("max_trials", max_trials)
         new_monitor_job.save_data("trial_number", 0)
 
         new_monitor_job.prepare_for_next_execution()
 
         return new_monitor_job
-    """
-    def ready_for_execution(self):
 
-        If this is a regular non-periodical job, this function always returns True
-        If this is a periodical job, it's only ready for the next execution if
-        the time elapsed since last execution is greater than the time interval
-        for exeuting this job.
-        :return: True if this job is ready to be executed. False if not.
-        if self.periodical:
-            time_interval = self.load_data("time_interval")
-            if time_interval:
-
-                time_elapsed = datetime.datetime.utcnow() - self.status_time
-                if time_elapsed.total_seconds() < time_interval:
-                    return False
-            else:
-                logger.exception("Fail to schedule periodical job id = {}, job action = {} because it is missing the time_interval.".format(
-                    self.id, self.install_action))
-                return False
-        return True
-    """
 
 class InstallJobHistory(Base):
     __tablename__ = 'install_job_history'

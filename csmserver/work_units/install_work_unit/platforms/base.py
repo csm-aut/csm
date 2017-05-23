@@ -22,6 +22,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+import abc
+
+
 from handlers.loader import get_inventory_handler_class
 from handlers.loader import get_install_handler_class
 from handlers.doc_central import handle_doc_central_logging
@@ -54,7 +57,7 @@ import urllib
 import os
 
 
-class InstallWorkUnit(WorkUnit):
+class BaseInstallWorkUnit(WorkUnit):
     def __init__(self, host_id, job_id):
         WorkUnit.__init__(self)
 
@@ -99,13 +102,7 @@ class InstallWorkUnit(WorkUnit):
             if handler_class is None:
                 logger.error('Unable to get handler for %s, install job %s', host.software_platform, self.job_id)
 
-            install_job.start_time = datetime.datetime.utcnow()
-            install_job.set_status(JobStatus.IN_PROGRESS)
-            if not install_job.session_log:
-                install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
-
-            # Reset the job_info field especially for a re-submitted job.
-            install_job.save_data('job_info', [])
+            self.pre_process_install_job_before_execution(db_session, host, install_job)
 
             db_session.commit()
 
@@ -124,28 +121,37 @@ class InstallWorkUnit(WorkUnit):
                                 install_job.install_action == InstallAction.INSTALL_ADD:
                     install_job.save_data("from_release", ctx.host.software_version)
 
-                self.post_process_complete_install_jobs(db_session, install_job, host, logger)
+                self.post_process_complete_install_job(db_session, install_job, host, logger)
 
                 # Support Doc Central feature for SIT team - must be done after archive_install_job.
                 handle_doc_central_logging(ctx, logger)
             else:
-                self.post_process_incomplete_install_jobs(db_session, install_job, host, logger)
+                self.post_process_incomplete_install_job(db_session, install_job, host, logger)
 
         except Exception:
             try:
                 self.log_exception(logger, host)
-                self.post_process_incomplete_install_jobs(db_session, install_job, host, logger,
-                                                          trace=traceback.format_exc())
+                self.post_process_incomplete_install_job(db_session, install_job, host, logger,
+                                                         trace=traceback.format_exc())
             except Exception:
                 self.log_exception(logger, host)
         finally:
             db_session.close()
 
-    def post_process_complete_install_jobs(self, db_session, install_job, host, logger):
+    def pre_process_install_job_before_execution(self, db_session, host, install_job):
+        install_job.start_time = datetime.datetime.utcnow()
+        install_job.set_status(JobStatus.IN_PROGRESS)
+        if not install_job.session_log:
+            install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
+
+        # Reset the job_info field especially for a re-submitted job.
+        install_job.save_data('job_info', [])
+
+    def post_process_complete_install_job(self, db_session, install_job, host, logger):
         print "install work unit install job completed"
         self.archive_install_job(db_session, logger, host, install_job, JobStatus.COMPLETED)
 
-    def post_process_incomplete_install_jobs(self, db_session, install_job, host, logger, trace=None):
+    def post_process_incomplete_install_job(self, db_session, install_job, host, logger, trace=None):
         print "install work unit install job failed"
         self.archive_install_job(db_session, logger, host, install_job, JobStatus.FAILED, trace=trace)
 
@@ -234,15 +240,38 @@ class InstallWorkUnit(WorkUnit):
         return message
 
 
-class InstallPendingMonitoringWorkUnit(InstallWorkUnit):
-    """This class contains methods specific for install jobs that upon successful execution,
-    need csm to schedule monitor jobs to check the completion of the jobs."""
+class InstallPendingMonitoringWorkUnit(BaseInstallWorkUnit):
+    """
+    This is a base class for handling install jobs that upon successful execution,
+    need csm to schedule monitor jobs to check the completion of the jobs.
+    Child classes of this class should specify self.monitor_info
+    """
 
-    def post_process_complete_install_jobs(self, db_session, install_job, host, logger):
+    # install action mapped against a list with 3 items:
+    # 1. install action for the monitor_job
+    # 2. time interval before next execution of the monitor job
+    # 3. max number of trials before we stop running the monitor job and declare failure of install job
+    # For the base class, this dictionary is empty
+    monitor_info = {}
+
+    def __init__(self, host_id, job_id):
+        super(InstallPendingMonitoringWorkUnit, self).__init__(host_id, job_id)
+
+    @classmethod
+    def monitor_action_exists_for_install_action(cls, install_action):
+        return install_action in cls.monitor_info
+
+    def post_process_complete_install_job(self, db_session, install_job, host, logger):
         print "install pending monitor work unit install job completed"
         # submit new monitor install jobs
         install_job.set_status(JobStatus.WAITING)
-        new_monitor_job = install_job.create_monitor_job()
+        monitor_job_specifications = self.monitor_info.get(install_job.install_action)
+
+        new_monitor_job = None
+
+        if monitor_job_specifications and len(monitor_job_specifications) == 3:
+            new_monitor_job = install_job.create_monitor_job(*monitor_job_specifications)
+
         if not new_monitor_job:
             logger.exception(
                 "Fail to schedule a monitor job for install job id = {}, job action = {}. Archiving this install job as FAILED.".format(
@@ -253,7 +282,7 @@ class InstallPendingMonitoringWorkUnit(InstallWorkUnit):
 
         time_interval = new_monitor_job.load_data("time_interval")
         install_job.set_status_message(
-            "Waiting for first monitor attempt in {} seconds.".format(
+            "Waiting for the first monitor attempt in {} seconds.".format(
                 time_interval if time_interval else 'unknown',
             )
         )
@@ -262,36 +291,56 @@ class InstallPendingMonitoringWorkUnit(InstallWorkUnit):
         db_session.commit()
 
 
-class MonitorWorkUnit(InstallWorkUnit):
+class MonitorWorkUnit(BaseInstallWorkUnit):
     """This class contains methods specific for the monitoring install jobs
     that executes periodically until successful completion or reached maximum
     number of trials."""
 
-    def post_process_complete_install_jobs(self, db_session, monitor_job, host, logger):
-        print "monitor work unit install job completed"
-        original_install_job = db_session.query(InstallJob).filter(InstallJob.id == monitor_job.dependency).first()
+    def get_monitored_install_job(self, db_session, monitor_job):
+        if hasattr(self, "monitored_install_job"):
+            return self.monitored_install_job
+        self.monitored_install_job = db_session.query(InstallJob).filter(InstallJob.id == monitor_job.dependency).first()
+        return self.monitored_install_job
 
-        if original_install_job:
+    def pre_process_install_job_before_execution(self, db_session, host, monitor_job):
+        super(MonitorWorkUnit, self).pre_process_install_job_before_execution(db_session, host, monitor_job)
+
+        trial_number = monitor_job.load_data("trial_number")
+        max_trials = monitor_job.load_data("max_trials")
+
+        monitored_install_job = self.get_monitored_install_job(db_session, monitor_job)
+        monitored_install_job.set_status_message(
+            "Monitor attempt {}/{}".format(
+                trial_number if trial_number is not None else 'unknown',
+                max_trials if max_trials is not None else 'unknown'
+            )
+        )
+
+
+    def post_process_complete_install_job(self, db_session, monitor_job, host, logger):
+        print "monitor work unit install job completed"
+
+        monitored_install_job = self.get_monitored_install_job(db_session, monitor_job)
+        if monitored_install_job:
             trial_number = monitor_job.load_data("trial_number")
             max_trials = monitor_job.load_data("max_trials")
 
-            original_install_job.set_status_message(
-                "{}/{} monitor attempt. Result: Job completed.".format(
-                    trial_number if trial_number else 'unknown',
-                    max_trials if max_trials else 'unknown'
+            monitored_install_job.set_status_message(
+                "Result from monitor attempt {}/{}: Job completed. ".format(
+                    trial_number if trial_number is not None else 'unknown',
+                    max_trials if max_trials is not None else 'unknown'
                 )
             )
 
 
-        self.archive_original_install_job_based_on_monitor_job(db_session, monitor_job, original_install_job,
+        self.archive_monitored_install_job_based_on_monitor_job(db_session, monitor_job, monitored_install_job,
                                                                JobStatus.COMPLETED, host, logger)
         db_session.commit()
 
-    def post_process_incomplete_install_jobs(self, db_session, monitor_job, host, logger, trace=None):
+    def post_process_incomplete_install_job(self, db_session, monitor_job, host, logger, trace=None):
         print "monitor work unit install job failed"
 
-        original_install_job = db_session.query(InstallJob).filter(
-            InstallJob.id == monitor_job.dependency).first()
+        monitored_install_job = self.get_monitored_install_job(db_session, monitor_job)
 
         trial_number = monitor_job.load_data("trial_number")
         max_trials = monitor_job.load_data("max_trials")
@@ -303,32 +352,32 @@ class MonitorWorkUnit(InstallWorkUnit):
 
             monitor_job.prepare_for_next_execution()
 
-            original_install_job.set_status_message(
-                "{}/{} monitor attempt. Result: Job not complete. Waiting for next monitor attempt in {} seconds.".format(
-                    trial_number if trial_number else 'unknown',
-                    max_trials if max_trials else 'unknown',
-                    time_interval if time_interval else 'unknown'
+            monitored_install_job.set_status_message(
+                "Result from monitor attempt {}/{}: Job not complete. Waiting for the next monitor attempt in {} seconds.".format(
+                    trial_number if trial_number is not None else 'unknown',
+                    max_trials if max_trials is not None else 'unknown',
+                    time_interval if time_interval is not None else 'unknown'
                 )
             )
 
         # if this install_job reached its max number of trials or if the trial info is missing from the install job
         # we will archive the original job with status as FAILED, and delete this install_job
         else:
-            original_install_job.set_status_message(
-                "{}/{} monitor attempt. Result: Job not complete. Maximum monitor attempts reached.".format(
-                    trial_number if trial_number else 'unknown',
-                    max_trials if max_trials else 'unknown',
-                    time_interval if time_interval else 'unknown'
+            monitored_install_job.set_status_message(
+                "Result from monitor attempt {}/{}: Job not complete. Maximum monitor attempts reached.".format(
+                    trial_number if trial_number is not None else 'unknown',
+                    max_trials if max_trials is not None else 'unknown',
+                    time_interval if time_interval is not None else 'unknown'
                 )
             )
-            self.archive_original_install_job_based_on_monitor_job(db_session, monitor_job, original_install_job,
+            self.archive_monitored_install_job_based_on_monitor_job(db_session, monitor_job, monitored_install_job,
                                                                    JobStatus.FAILED, host, logger, trace)
         db_session.commit()
 
-    def archive_original_install_job_based_on_monitor_job(self, db_session, monitor_job, original_install_job,
+    def archive_monitored_install_job_based_on_monitor_job(self, db_session, monitor_job, monitored_install_job,
                                                           job_status, host, logger, trace=None):
-        if original_install_job:
-            self.archive_install_job(db_session, logger, host, original_install_job, job_status, trace=trace)
+        if monitored_install_job:
+            self.archive_install_job(db_session, logger, host, monitored_install_job, job_status, trace=trace)
         else:
             logger.exception(
                 "Fail to find the original install job id = {} for monitor job id = {}, job action = {}. Deleting monitor job.".format(
