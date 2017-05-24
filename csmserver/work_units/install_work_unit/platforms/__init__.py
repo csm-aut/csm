@@ -23,12 +23,13 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from base import BaseInstallWorkUnit, InstallPendingMonitoringWorkUnit, MonitorWorkUnit
+from constants import InstallJobType
 from IOS_XE import IOSXEInstallPendingMonitoringWorkUnit
 from IOS_XR import IOSXRInstallPendingMonitoringWorkUnit
 
 class BaseInstallWorkUnitFactory(object):
     def get_work_unit(self, install_job):
-        if install_job.periodical:
+        if install_job.job_type == InstallJobType.MONITOR:
             print "{} is a monitor job".format(install_job.install_action)
             return self.create_monitor_work_unit(install_job)
         else:

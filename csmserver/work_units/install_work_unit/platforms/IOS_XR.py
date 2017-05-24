@@ -28,8 +28,9 @@ from constants import JobStatus, InstallAction
 
 class IOSXRInstallPendingMonitoringWorkUnit(InstallPendingMonitoringWorkUnit):
 
-    # install action mapped against a list with 3 items:
-    # 1. install action for the monitor_job
+    # install action mapped against a list with 3 items that describe the monitor job
+    # that should be created upon the complete of this install action
+    # 1. install action for the monitor job
     # 2. time interval before next execution of the monitor job
-    # 3. max number of trials before we stop running the monitor job and declare failure of install job
+    # 3. max number of trials before we stop running the monitor job and declare failure of the install job
     monitor_info = {InstallAction.INSTALL_COMMIT: [InstallAction.COMMIT_MONITOR, 20, 10]}

@@ -39,7 +39,7 @@ from database import STRING1, STRING2
 from database import CURRENT_SCHEMA_VERSION
 
 from constants import UNKNOWN
-from constants import InstallAction
+from constants import InstallJobType
 from constants import JobStatus
 from constants import UserPrivilege
 from constants import ProxyAgent
@@ -720,6 +720,7 @@ class InstallJob(Base):
     
     id = Column(Integer, primary_key=True)
     install_action = Column(String(50))
+    job_type = Column(String(20), default=InstallJobType.REGULAR)
     dependency = Column(Integer)
     server_id = Column(Integer, ForeignKey('server.id'))
     server_directory = Column(String(300))
@@ -730,9 +731,6 @@ class InstallJob(Base):
     status = Column(String(20))
     status_message = Column(String(200))
     status_time = Column(DateTime)
-    # The periodical boolean marks if this job runs periodically - monitor job for example
-    # If it is periodical, there would be values for time_interval, trial_number and max_trials in data field.
-    periodical = Column(Boolean, default=False)
     trace = Column(Text)
     session_log = Column(Text)
     data = Column(JSONEncodedDict, default={})
@@ -765,26 +763,26 @@ class InstallJob(Base):
 
     def update_and_check_number_of_trials(self):
         """
-        For periodical jobs, update the trial number in data field and status time
-        :return: True if the number of trials is still within max trial number allowed
-                False if the number of trials reached or exceeded max trial number allowed
+        For monitor jobs, update the trial count in data field and status time
+        :return: True if the count of trials is still within max number of trials allowed
+                False if the count of trials reached or exceeded max number of trials allowed
         """
         max_trials = self.load_data("max_trials")
-        trial_number = self.load_data("trial_number")
+        trial_count = self.load_data("trial_count")
         self.status_time = datetime.datetime.utcnow()
-        if max_trials is not None and trial_number is not None:
-            trial_number += 1
-            self.save_data("trial_number", trial_number)
-            return trial_number < max_trials
+        if max_trials is not None and trial_count is not None:
+            trial_count += 1
+            self.save_data("trial_count", trial_count)
+            return trial_count < max_trials
         else:
-            logger.exception("Install job id = {}, job action = {} missing max_trials and/or trial_number.".format(
+            logger.exception("Install job id = {}, job action = {} missing max_trials and/or trial_count.".format(
                 self.id, self.install_action))
         return False
 
     def prepare_for_next_execution(self):
-        """For periodical jobs"""
+        """For monitor jobs"""
         time_interval = self.load_data("time_interval")
-        if time_interval:
+        if time_interval is not None:
             self.scheduled_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=time_interval)
             self.set_status(JobStatus.SCHEDULED)
         else:
@@ -803,7 +801,7 @@ class InstallJob(Base):
         new_monitor_job = InstallJob()
         new_monitor_job.install_action = install_action_for_monitor_job
 
-        new_monitor_job.periodical = True
+        new_monitor_job.job_type = InstallJobType.MONITOR
 
         for attribute, value in vars(self).iteritems():
             if attribute in {'server_id', 'server_directory', 'packages', 'session_log',
@@ -814,7 +812,7 @@ class InstallJob(Base):
 
         new_monitor_job.save_data("time_interval", time_interval)
         new_monitor_job.save_data("max_trials", max_trials)
-        new_monitor_job.save_data("trial_number", 0)
+        new_monitor_job.save_data("trial_count", 0)
 
         new_monitor_job.prepare_for_next_execution()
 

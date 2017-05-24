@@ -35,6 +35,7 @@ from models import get_download_job_key_dict
 from models import get_db_session_logger
 
 from constants import JobStatus
+from constants import InstallJobType
 
 from multi_process import JobManager
 from filters import get_datetime_string
@@ -88,9 +89,8 @@ class SoftwareManager(JobManager):
 
                 for install_job in install_jobs:
 
-                    # only check dependency and pending download for non-periodically run regular jobs
-                    # skip the checks for periodical jobs such as monitor jobs
-                    if not install_job.periodical:
+                    # Only check dependency and pending download for non-monitor jobs. Skip the checks for monitor jobs.
+                    if install_job.job_type != InstallJobType.MONITOR:
 
                         # If there is pending download, don't submit the install job
                         if self.is_pending_on_download(download_job_key_dict, install_job):

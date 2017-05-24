@@ -31,7 +31,7 @@ from models import DownloadJob
 from constants import JobStatus
 
 sql_statements = [
-    'alter table install_job add periodical BOOLEAN'
+    'alter table install_job add job_type VARCHAR(20)'
     ]
 
 
