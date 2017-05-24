@@ -143,7 +143,6 @@ class InstallAction:
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
     FPD_UPGRADE = 'FPD-Upgrade'
-    COMMIT_MONITOR = 'Commit-Monitor'
     ADD_MONITOR = 'Add-Monitor'
     ACTIVATE_MONITOR = 'Activate-Monitor'
 

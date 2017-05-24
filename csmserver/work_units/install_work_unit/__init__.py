@@ -24,18 +24,14 @@
 # =============================================================================
 from constants import PlatformFamily, InstallAction
 from models import Host
-from platforms import BaseInstallWorkUnitFactory, IOSXEInstallWorkUnitFactory, IOSXRInstallWorkUnitFactory
+from platforms import BaseInstallWorkUnitFactory, IOSXEInstallWorkUnitFactory
 
 IOSXEFactory = IOSXEInstallWorkUnitFactory()
 BaseFactory = BaseInstallWorkUnitFactory()
-IOSXRFactory = IOSXRInstallWorkUnitFactory()
 
 def get_work_unit(db_session, install_job):
     host = db_session.query(Host).filter(Host.id == install_job.host_id).first()
     if host.software_platform == PlatformFamily.ASR900 and host.os_type == 'XE':
         return IOSXEFactory.get_work_unit(install_job)
-
-    if host.software_platform == PlatformFamily.ASR9K:
-        return IOSXRFactory.get_work_unit(install_job)
 
     return BaseFactory.get_work_unit(install_job)
