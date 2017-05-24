@@ -103,6 +103,11 @@ class PackageState:
     ACTIVE_COMMITTED = 'active-committed'
 
 
+class InstallJobType:
+    REGULAR = 'regular'
+    MONITOR = 'monitor'
+
+
 class JobStatus:
     SCHEDULED = 'scheduled'
     IN_PROGRESS = 'in-progress'

@@ -60,6 +60,7 @@ from common import get_last_successful_inventory_elapsed_time
 
 from constants import UNKNOWN
 from constants import JobStatus
+from constants import InstallJobType
 
 from utils import is_empty
 
@@ -301,7 +302,7 @@ def api_get_scheduled_install_jobs(exclude_monitor_jobs=0):
 
     main_clauses = [InstallJob.status == JobStatus.SCHEDULED]
     if exclude_monitor_jobs:
-        main_clauses.append(InstallJob.periodical == False)
+        main_clauses.append(InstallJob.job_type != InstallJobType.MONITOR)
 
     total_count = query.filter(and_(*main_clauses)).count()
     filtered_count = query.filter(and_(*main_clauses), or_(*clauses)).count()
@@ -350,7 +351,7 @@ def api_get_in_progress_install_jobs(exclude_monitor_jobs=0):
 
     main_clauses = [InstallJob.status == JobStatus.IN_PROGRESS]
     if exclude_monitor_jobs:
-        main_clauses.append(InstallJob.periodical == False)
+        main_clauses.append(InstallJob.job_type != InstallJobType.MONITOR)
 
     total_count = query.filter(and_(*main_clauses)).count()
     filtered_count = query.filter(and_(*main_clauses), or_(*clauses)).count()
@@ -445,7 +446,7 @@ def api_get_failed_install_jobs(exclude_monitor_jobs=0):
 
     main_clauses = [InstallJob.status == JobStatus.FAILED]
     if exclude_monitor_jobs:
-        main_clauses.append(InstallJob.periodical == False)
+        main_clauses.append(InstallJob.job_type != InstallJobType.MONITOR)
 
     total_count = query.filter(and_(*main_clauses)).count()
     filtered_count = query.filter(and_(*main_clauses), or_(*clauses)).count()

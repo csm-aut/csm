@@ -247,15 +247,13 @@ class InstallPendingMonitoringWorkUnit(BaseInstallWorkUnit):
     Child classes of this class should specify self.monitor_info
     """
 
-    # install action mapped against a list with 3 items:
-    # 1. install action for the monitor_job
+    # install action mapped against a list with 3 items that describe the monitor job
+    # that should be created upon the complete of this install action
+    # 1. install action for the monitor job
     # 2. time interval before next execution of the monitor job
-    # 3. max number of trials before we stop running the monitor job and declare failure of install job
+    # 3. max number of trials before we stop running the monitor job and declare failure of the install job
     # For the base class, this dictionary is empty
     monitor_info = {}
-
-    def __init__(self, host_id, job_id):
-        super(InstallPendingMonitoringWorkUnit, self).__init__(host_id, job_id)
 
     @classmethod
     def monitor_action_exists_for_install_action(cls, install_action):
@@ -292,7 +290,7 @@ class InstallPendingMonitoringWorkUnit(BaseInstallWorkUnit):
 
 
 class MonitorWorkUnit(BaseInstallWorkUnit):
-    """This class contains methods specific for the monitoring install jobs
+    """This class contains methods specific for the monitor jobs
     that executes periodically until successful completion or reached maximum
     number of trials."""
 
@@ -305,36 +303,35 @@ class MonitorWorkUnit(BaseInstallWorkUnit):
     def pre_process_install_job_before_execution(self, db_session, host, monitor_job):
         super(MonitorWorkUnit, self).pre_process_install_job_before_execution(db_session, host, monitor_job)
 
-        trial_number = monitor_job.load_data("trial_number")
+        trial_count = monitor_job.load_data("trial_count")
         max_trials = monitor_job.load_data("max_trials")
 
         monitored_install_job = self.get_monitored_install_job(db_session, monitor_job)
         monitored_install_job.set_status_message(
             "Monitor attempt {}/{}".format(
-                trial_number if trial_number is not None else 'unknown',
+                trial_count if trial_count is not None else 'unknown',
                 max_trials if max_trials is not None else 'unknown'
             )
         )
-
 
     def post_process_complete_install_job(self, db_session, monitor_job, host, logger):
         print "monitor work unit install job completed"
 
         monitored_install_job = self.get_monitored_install_job(db_session, monitor_job)
         if monitored_install_job:
-            trial_number = monitor_job.load_data("trial_number")
+            trial_count = monitor_job.load_data("trial_count")
             max_trials = monitor_job.load_data("max_trials")
 
             monitored_install_job.set_status_message(
                 "Result from monitor attempt {}/{}: Job completed. ".format(
-                    trial_number if trial_number is not None else 'unknown',
+                    trial_count if trial_count is not None else 'unknown',
                     max_trials if max_trials is not None else 'unknown'
                 )
             )
 
 
         self.archive_monitored_install_job_based_on_monitor_job(db_session, monitor_job, monitored_install_job,
-                                                               JobStatus.COMPLETED, host, logger)
+                                                                JobStatus.COMPLETED, host, logger)
         db_session.commit()
 
     def post_process_incomplete_install_job(self, db_session, monitor_job, host, logger, trace=None):
@@ -342,7 +339,7 @@ class MonitorWorkUnit(BaseInstallWorkUnit):
 
         monitored_install_job = self.get_monitored_install_job(db_session, monitor_job)
 
-        trial_number = monitor_job.load_data("trial_number")
+        trial_count = monitor_job.load_data("trial_count")
         max_trials = monitor_job.load_data("max_trials")
         time_interval = monitor_job.load_data("time_interval")
 
@@ -354,7 +351,7 @@ class MonitorWorkUnit(BaseInstallWorkUnit):
 
             monitored_install_job.set_status_message(
                 "Result from monitor attempt {}/{}: Job not complete. Waiting for the next monitor attempt in {} seconds.".format(
-                    trial_number if trial_number is not None else 'unknown',
+                    trial_count if trial_count is not None else 'unknown',
                     max_trials if max_trials is not None else 'unknown',
                     time_interval if time_interval is not None else 'unknown'
                 )
@@ -365,7 +362,7 @@ class MonitorWorkUnit(BaseInstallWorkUnit):
         else:
             monitored_install_job.set_status_message(
                 "Result from monitor attempt {}/{}: Job not complete. Maximum monitor attempts reached.".format(
-                    trial_number if trial_number is not None else 'unknown',
+                    trial_count if trial_count is not None else 'unknown',
                     max_trials if max_trials is not None else 'unknown',
                     time_interval if time_interval is not None else 'unknown'
                 )
