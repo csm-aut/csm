@@ -25,7 +25,6 @@
 from base import BaseInstallWorkUnit, InstallPendingMonitoringWorkUnit, MonitorWorkUnit
 from constants import InstallJobType
 from IOS_XE import IOSXEInstallPendingMonitoringWorkUnit
-from IOS_XR import IOSXRInstallPendingMonitoringWorkUnit
 
 class BaseInstallWorkUnitFactory(object):
     def get_work_unit(self, install_job):
@@ -58,7 +57,3 @@ class BaseInstallWorkUnitFactory(object):
 class IOSXEInstallWorkUnitFactory(BaseInstallWorkUnitFactory):
     def get_monitor_handler_class(self):
         return IOSXEInstallPendingMonitoringWorkUnit
-
-class IOSXRInstallWorkUnitFactory(BaseInstallWorkUnitFactory):
-    def get_monitor_handler_class(self):
-        return IOSXRInstallPendingMonitoringWorkUnit
