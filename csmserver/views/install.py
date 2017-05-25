@@ -511,7 +511,7 @@ def api_get_supported_install_actions(hostname):
                                          InstallAction.INSTALL_COMMIT, InstallAction.ALL]})
         rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE, InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
                                          InstallAction.INSTALL_DEACTIVATE]})
-        # rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
+        rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
 
     return jsonify(**{'data': rows})
 
