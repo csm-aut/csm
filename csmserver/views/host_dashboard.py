@@ -53,6 +53,7 @@ from forms import HostScheduleInstallForm
 from constants import UNKNOWN
 from constants import JobStatus
 from constants import PackageState
+from constants import InstallJobType
 
 from flask.ext.login import login_required
 
@@ -179,9 +180,10 @@ def api_get_host_dashboard_packages(hostname, package_state):
     return jsonify(**{'data': rows})
 
 
-@host_dashboard.route('/api/hosts/<hostname>/scheduled_installs')
+@host_dashboard.route('/api/hosts/<hostname>/scheduled_installs', defaults={'exclude_monitor_jobs': 0})
+@host_dashboard.route('/api/hosts/<hostname>/scheduled_installs/<int:exclude_monitor_jobs>')
 @login_required
-def api_get_host_dashboard_scheduled_install(hostname):
+def api_get_host_dashboard_scheduled_install(hostname, exclude_monitor_jobs=0):
     """
     Returns scheduled installs for a host in JSON format.
     """
@@ -191,7 +193,11 @@ def api_get_host_dashboard_scheduled_install(hostname):
     rows = []
     if host is not None and len(host.install_job) > 0:
         for install_job in host.install_job:
-            row = {}
+
+            if exclude_monitor_jobs and install_job.job_type == InstallJobType.MONITOR:
+                continue
+
+            row = dict()
             row['hostname'] = host.hostname
             row['install_job_id'] = install_job.id
             row['install_action'] = install_job.install_action

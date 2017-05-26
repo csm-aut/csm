@@ -208,7 +208,7 @@
                 }
             }],
             "ajax": {
-                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_scheduled_install', hostname=host.hostname) }}",
+                "url": "{{ url_for('host_dashboard.api_get_host_dashboard_scheduled_install', hostname=host.hostname, exclude_monitor_jobs=1) }}",
             }
         });
 
