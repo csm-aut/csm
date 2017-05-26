@@ -26,6 +26,7 @@ from base import BaseInstallWorkUnit, InstallPendingMonitoringWorkUnit, MonitorW
 from constants import InstallJobType
 from IOS_XE import IOSXEInstallPendingMonitoringWorkUnit
 
+
 class BaseInstallWorkUnitFactory(object):
     def get_work_unit(self, install_job):
         if install_job.job_type == InstallJobType.MONITOR:

@@ -27,11 +27,26 @@ from constants import JobStatus, InstallAction
 
 
 class IOSXEInstallPendingMonitoringWorkUnit(InstallPendingMonitoringWorkUnit):
+    """
+    This class specifies which install actions for IOS XE devices need monitor jobs upon completion,
+    and schedules the appropriate monitor jobs.
 
-    # install action mapped against a list with 3 items that describe the monitor job
-    # that should be created upon the complete of this install action
-    # 1. install action for the monitor job
-    # 2. time interval before next execution of the monitor job
-    # 3. max number of trials before we stop running the monitor job and declare failure of the install job
-    monitor_info = {InstallAction.INSTALL_ADD: [InstallAction.ADD_MONITOR, 900, 10],
-                    InstallAction.INSTALL_ACTIVATE: [InstallAction.ACTIVATE_MONITOR, 1500, 3]}
+    The monitor_info object defines the specifications for the monitor jobs.
+
+    regarding monitor_info object:
+    It's a dictionary object. Keys are the install actions for which we need monitor jobs.
+    Each key is mapped against a list with 3 items that describe the monitor job
+    that need to be created upon the completion of this install action
+    1. install action for the monitor job
+    2. max number of trials before we stop running the monitor job and declare failure of the install job
+    3. a list of tuples that define the time intervals between executions of the monitor job, in the following format:
+        [(0, time interval in seconds between consecutive executions starting from trial count 0 until the next trial count in this list),
+         (trial count k, time interval in seconds between consecutive executions starting from this trial count k until the next trial count in this list),
+         ...
+         (trial count n, time interval in seconds between consecutive executions starting from this trial count n until the max number of trials is reached)
+        ]
+       example: [(0, 1800), (1, 300)] => from trial count 0 to 1, time interval is 30 minutes(1800 seconds),
+                                         from trial count 1 to max trial numbers allowed, time interval is 5 minutes(300 seconds) between each trial
+    """
+    monitor_info = {InstallAction.INSTALL_ADD: [InstallAction.ADD_MONITOR, 10, [(0, 900)]],
+                    InstallAction.INSTALL_ACTIVATE: [InstallAction.ACTIVATE_MONITOR, 5, [(0, 1800), (1, 300)]]}

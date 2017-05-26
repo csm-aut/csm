@@ -761,7 +761,7 @@ class InstallJob(Base):
             self.data = {}
         self.data[key] = value
 
-    def update_and_check_number_of_trials(self):
+    def update_and_check_trial_info(self):
         """
         For monitor jobs, update the trial count in data field and status time
         :return: True if the count of trials is still within max number of trials allowed
@@ -779,22 +779,57 @@ class InstallJob(Base):
                 self.id, self.install_action))
         return False
 
-    def prepare_for_next_execution(self):
-        """For monitor jobs"""
-        time_interval = self.load_data("time_interval")
-        if time_interval is not None:
-            self.scheduled_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=time_interval)
-            self.set_status(JobStatus.SCHEDULED)
-        else:
-            logger.exception("Install job id = {}, job action = {} missing time_interval.".format(
-                self.id, self.install_action))
+    def get_time_interval_before_next_execution(self):
+        """For monitor jobs, returns the waiting time in seconds before the next execution"""
+        time_interval_specs = self.load_data("time_interval_specs")
+
+        if time_interval_specs and len(time_interval_specs[0]) == 2:
+            return time_interval_specs[0][1]
+
+        logger.exception("Fail to retrieve correctly formatted time_interval_specs from job id = {}, job action = {}.".format(
+            self.id, self.install_action))
         return
 
-    def create_monitor_job(self, install_action_for_monitor_job, time_interval, max_trials):
+    def prepare_for_next_execution(self):
+        """
+        For monitor jobs, set scheduled time and status to prep for the next execution
+        Returns the time interval before the next execution
+        """
+        time_interval_specs = self.load_data("time_interval_specs")
+        current_trial_count = self.load_data("trial_count")
+        if time_interval_specs:
+
+            if len(time_interval_specs) > 1 and len(time_interval_specs[1]) == 2 and current_trial_count >= time_interval_specs[1][0]:
+                del time_interval_specs[0]
+                self.save_data("time_interval_specs", time_interval_specs)
+
+            if len(time_interval_specs[0]) == 2:
+                next_time_interval = time_interval_specs[0][1]
+
+                self.scheduled_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=next_time_interval)
+                self.set_status(JobStatus.SCHEDULED)
+
+                return next_time_interval
+
+        logger.exception("Fail to schedule the next execution of job id = {}, job action = {} because of failure to retrieve correctly formatted time_interval_specs from this job.".format(
+            self.id, self.install_action))
+        return None
+
+    def create_monitor_job(self, install_action_for_monitor_job, max_trials, time_interval_specs):
         """
         Create a monitor job for this job
         :param install_action_for_monitor_job: the intended install_action for the new monitor job
-        :param time_interval: the time interval in seconds before next execution of the monitor job
+        :param time_interval_specs: a list of tuples that specify the time intervals in seconds between
+                                    executions of the monitor job. In the format below:
+                [(0, time interval in seconds between consecutive executions starting from trial count 0 until the next trial count in this list),
+                 (trial count k, time interval in seconds between consecutive executions starting from this trial count k until the next trial count in this list),
+                 ...
+                 (trial count n, time interval in seconds between consecutive executions starting from this trial count n until the max number of trials is reached)
+                ]
+                example: [(0, 1800), (1, 300)] => from trial count 0 to 1, time interval is 30 minutes(1800 seconds),
+                                                  from trial count 1 to max trial numbers allowed, time interval is 5 minutes(300 seconds) between each trial
+
+
         :param max_trials: max number of trials before we stop executing the monitor job and declare failure
         :return: an InstallJob object as the monitor job
         """
@@ -805,14 +840,19 @@ class InstallJob(Base):
 
         for attribute, value in vars(self).iteritems():
             if attribute in {'server_id', 'server_directory', 'packages', 'session_log',
-                             'data', 'host_id', 'user_id', 'custom_command_profile_ids'}:
+                             'host_id', 'user_id', 'custom_command_profile_ids'}:
                 setattr(new_monitor_job, attribute, value)
+
+        # data field must be constructed
+        for key, value in self.data.iteritems():
+            new_monitor_job.save_data(key, value)
 
         new_monitor_job.dependency = self.id
 
-        new_monitor_job.save_data("time_interval", time_interval)
+        new_monitor_job.save_data("time_interval_specs", time_interval_specs)
         new_monitor_job.save_data("max_trials", max_trials)
         new_monitor_job.save_data("trial_count", 0)
+        new_monitor_job.save_data("terminate_monitoring", 0)
 
         new_monitor_job.prepare_for_next_execution()
 

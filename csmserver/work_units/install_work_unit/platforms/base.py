@@ -244,15 +244,27 @@ class InstallPendingMonitoringWorkUnit(BaseInstallWorkUnit):
     """
     This is a base class for handling install jobs that upon successful execution,
     need csm to schedule monitor jobs to check the completion of the jobs.
-    Child classes of this class should specify self.monitor_info
-    """
 
-    # install action mapped against a list with 3 items that describe the monitor job
-    # that should be created upon the complete of this install action
-    # 1. install action for the monitor job
-    # 2. time interval before next execution of the monitor job
-    # 3. max number of trials before we stop running the monitor job and declare failure of the install job
-    # For the base class, this dictionary is empty
+    Child classes of this class need to define its monitor_info. For the base class,
+    it is empty, so unless child classes specify it, no monitor jobs will be created by default.
+
+    The monitor_info object defines the specifications for the monitor jobs.
+
+    regarding the monitor_info object:
+    It's a dictionary. Keys are the install actions for which we need monitor jobs.
+    Each key is mapped against a list with 3 items that describe the monitor job
+    that need to be created upon the completion of this install action
+    1. install action for the monitor job
+    2. max number of trials before we stop running the monitor job and declare failure of the install job
+    3. a list of tuples that define the time intervals between executions of the monitor job, in the following format:
+        [(0, time interval in seconds between consecutive executions starting from trial count 0 until the next trial count in this list),
+         (trial count k, time interval in seconds between consecutive executions starting from this trial count k until the next trial count in this list),
+         ...
+         (trial count n, time interval in seconds between consecutive executions starting from this trial count n until the max number of trials is reached)
+        ]
+       example: [(0, 1800), (1, 300)] => from trial count 0 to 1, time interval is 30 minutes(1800 seconds),
+                                         from trial count 1 to max trial numbers allowed, time interval is 5 minutes(300 seconds) between each trial
+    """
     monitor_info = {}
 
     @classmethod
@@ -278,10 +290,10 @@ class InstallPendingMonitoringWorkUnit(BaseInstallWorkUnit):
             self.archive_install_job(db_session, logger, host, install_job, JobStatus.FAILED)
             return
 
-        time_interval = new_monitor_job.load_data("time_interval")
+        time_interval = new_monitor_job.get_time_interval_before_next_execution()
         install_job.set_status_message(
             "Waiting for the first monitor attempt in {} seconds.".format(
-                time_interval if time_interval else 'unknown',
+                time_interval if time_interval is not None else 'unknown',
             )
         )
 
@@ -290,9 +302,11 @@ class InstallPendingMonitoringWorkUnit(BaseInstallWorkUnit):
 
 
 class MonitorWorkUnit(BaseInstallWorkUnit):
-    """This class contains methods specific for the monitor jobs
+    """
+    This class contains methods specific for the monitor jobs
     that executes periodically until successful completion or reached maximum
-    number of trials."""
+    number of trials.
+    """
 
     def get_monitored_install_job(self, db_session, monitor_job):
         if hasattr(self, "monitored_install_job"):
@@ -341,13 +355,26 @@ class MonitorWorkUnit(BaseInstallWorkUnit):
 
         trial_count = monitor_job.load_data("trial_count")
         max_trials = monitor_job.load_data("max_trials")
-        time_interval = monitor_job.load_data("time_interval")
 
+        # if the monitor job has been marked(by plugin) explicitly to terminate future monitoring,
+        # it means that the monitor job detected that the original monitored install job has failed
+        # in its goal. We must then archive the monitored install job as failed job
+        #  and cease to schedule more monitor jobs for it.
+        if monitor_job.load_data("terminate_monitoring"):
+            monitored_install_job.set_status_message(
+                "Result from monitor attempt {}/{}: Install action {} failed. ".format(
+                    trial_count if trial_count is not None else 'unknown',
+                    max_trials if max_trials is not None else 'unknown',
+                    monitored_install_job.install_action
+                )
+            )
+            self.archive_monitored_install_job_based_on_monitor_job(db_session, monitor_job, monitored_install_job,
+                                                                    JobStatus.FAILED, host, logger, trace)
         # update the number of trials and status time for this install_job and
         # check if it's still within max number of trials allowed
-        if monitor_job.update_and_check_number_of_trials():
+        elif monitor_job.update_and_check_trial_info():
 
-            monitor_job.prepare_for_next_execution()
+            time_interval = monitor_job.prepare_for_next_execution()
 
             monitored_install_job.set_status_message(
                 "Result from monitor attempt {}/{}: Job not complete. Waiting for the next monitor attempt in {} seconds.".format(
@@ -360,6 +387,8 @@ class MonitorWorkUnit(BaseInstallWorkUnit):
         # if this install_job reached its max number of trials or if the trial info is missing from the install job
         # we will archive the original job with status as FAILED, and delete this install_job
         else:
+            time_interval = monitor_job.get_time_interval_before_next_execution()
+
             monitored_install_job.set_status_message(
                 "Result from monitor attempt {}/{}: Job not complete. Maximum monitor attempts reached.".format(
                     trial_count if trial_count is not None else 'unknown',
