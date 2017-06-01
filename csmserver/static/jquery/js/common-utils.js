@@ -390,6 +390,7 @@ function check_missing_files_on_server(validate_object) {
                     // Scheduled Install will not reach the message below as the above function will cause a form submission.
                     // This message is intended for the Platforms menu since there is no form submission (i.e. form == null).
                     if (validate_object.form == null) {
+                        if (validate_object.spinner != null) validate_object.spinner.hide();
                         bootbox.alert("Requested file(s) already on the selected server repository.  No download is needed.");
                     }
                 } else {
