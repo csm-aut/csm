@@ -186,8 +186,8 @@ class AdminConsoleForm(Form):
     can_schedule = HiddenField("Allow Users to Schedule Installations")
     can_install = HiddenField("Allow Scheduled Installations to Run")
     enable_email_notify = HiddenField("Enable Email Notification")
-    enable_inventory = HiddenField("Enable Software Inventory")
-    inventory_hour = SelectField('Hour to Perform Software Inventory', coerce=int,
+    enable_inventory = HiddenField("Enable Inventory Retrieval")
+    inventory_hour = SelectField('Hour to Perform Inventory Retrieval', coerce=int,
                                  choices=[(0, '12:00 AM'), (1, '01:00 AM'), (2, '02:00 AM'),
                                           (3, '03:00 AM'), (4, '04:00 AM'), (5, '05:00 AM'),
                                           (6, '06:00 AM'), (7, '07:00 AM'), (8, '08:00 AM'),
