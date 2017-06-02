@@ -163,7 +163,7 @@
                 $('#nav-inventory').css('margin-bottom', "40px");
             }
         }
-        show_or_hide_navbar_menu();
+        //show_or_hide_navbar_menu();
 
         $('#navbar-menus li').on('click', 'a', function() {
             if ($(this).attr('id') == 'inventory-menu') {
@@ -324,6 +324,8 @@
                     {{ help_menu() }}
                 </ul>
             </li>
+
+            <!--
             <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                     <div class="btn-group">
@@ -334,10 +336,12 @@
                         </button>
                     </div>
                 </a>
+
                 <ul class="dropdown-menu dropdown-menu-right" id="navbar-menus">
                     <li><a href='#' id='inventory-menu'><b id='checkmark-inventory-menu'>&#10003</b>&nbsp;&nbsp;Inventory Manager</a></li>
                 </ul>
             </li>
+            -->
 
             <li><a href="{{ url_for('authenticate.logout') }}" ><img title="Logout" src="{{ url_for('static', filename='logout.png') }}"></a></li>
 
