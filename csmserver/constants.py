@@ -93,7 +93,8 @@ class PlatformFamily:
     NCS5500 = 'NCS5500'
     NCS6K = 'NCS6K'
     N9K = 'N9K'
-    IOSXRv = 'IOS-XRv'
+    IOSXRv_9K = 'IOSXRv-9K'
+    IOSXRv_X64 = 'IOSXRv-X64'
 
 
 class PackageState:

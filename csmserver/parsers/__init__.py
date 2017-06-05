@@ -36,7 +36,8 @@ def get_parser_factory(software_platform, os_type):
     elif software_platform in [PlatformFamily.NCS1K,
                                PlatformFamily.NCS4K,
                                PlatformFamily.NCS5K,
-                               PlatformFamily.IOSXRv,
+                               PlatformFamily.IOSXRv_9K,
+                               PlatformFamily.IOSXRv_X64,
                                PlatformFamily.ASR9K_X64,
                                PlatformFamily.NCS6K,
                                PlatformFamily.NCS5500]:
