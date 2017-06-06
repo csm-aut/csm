@@ -332,7 +332,8 @@
 
             $('.check').each(function(index) {
                 if (this.checked) {
-                    software_packages += $(this).val() + '\n';
+                    // $(this).val() may contain ',' delimited package list especially in RPM situation.
+                    software_packages += $(this).val().replace(',', '\n') + '\n';
                 }
             });
 
@@ -518,7 +519,7 @@
 
 <style>
     .modal-dialog {
-        width: 700px;
+        width: 1000px;
     }
     th,
     td {

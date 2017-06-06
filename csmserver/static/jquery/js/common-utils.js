@@ -300,7 +300,7 @@ function display_package_reload_dialog(validate_object, reload_list) {
 function display_missing_prerequisite_dialog(validate_object, missing_prerequisite_list, missing_prerequisite_annotated_list) {
 
     bootbox.dialog({
-        message: missing_prerequisite_annotated_list,
+        message: '<p style="white-space: nowrap;overflow: hidden;width: 950px;">' + missing_prerequisite_annotated_list + '</p>',
         title: "Following pre-requisite(s) were not selected, but should be included.",
         buttons: {
             primary: {
@@ -435,7 +435,7 @@ function display_unable_to_download_dialog(validate_object, missing_file_list) {
 
 function display_downloadable_files_dialog(validate_object, missing_file_list, downloadable_file_list) {
     bootbox.dialog({
-        message: missing_file_list,
+        message: '<p style="white-space: nowrap;overflow: hidden;width: 950px;">' + missing_file_list + '</p>',
         title: "Following files are missing on the server repository.  Those that are identified as 'Downloadable' can be downloaded from CCO.  If there is an scheduled installation that depends on these files, " +
             "it will not proceed until the files are successfully downloaded and copied to the server repository.",
         buttons: {
