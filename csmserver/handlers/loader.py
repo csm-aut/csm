@@ -27,7 +27,7 @@ from utils import get_software_platform
 from utils import get_software_version
 from utils import create_log_directory
 
-from models import logger
+from models import get_db_session_logger
 from constants import UNKNOWN
 from constants import get_log_directory
 
@@ -54,6 +54,7 @@ def discover_platform_info(ctx):
         ctx.host.os_type = conn.os_type
         ctx.db_session.commit()
     except condoor.ConnectionError as e:
+        logger = get_db_session_logger(ctx.db_session)
         logger.error(str(e))
     finally:
         conn.disconnect()
