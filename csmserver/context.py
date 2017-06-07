@@ -220,6 +220,10 @@ class InstallContext(ConnectionContext):
     def custom_commands(self, value):
         self._custom_commands = value
 
+    @property
+    def plugin_execution_order(self):
+        return self.load_job_data("plugin_execution_order")
+
     def _generate_operation_id_key(self, tar_files):
         if isinstance(tar_files, collections.Iterable):
             return "_".join(sorted(tar_files)) + "_operation_id"

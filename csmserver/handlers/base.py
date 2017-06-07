@@ -44,7 +44,7 @@ from utils import get_software_version
 from filters import get_datetime_string
 
 from parsers import get_parser_factory
-from csmpe import CSMPluginManager
+from csmpe import get_csm_plugin_manager
 
 import os
 import re
@@ -193,7 +193,7 @@ class BaseConnectionHandler(BaseHandler):
 
 class BaseInventoryHandler(BaseHandler):
     def start(self, ctx):
-        pm = CSMPluginManager(ctx)
+        pm = get_csm_plugin_manager(ctx)
         try:
             pm.dispatch("run")
         except condoor.GeneralError as e:
@@ -204,7 +204,7 @@ class BaseInventoryHandler(BaseHandler):
 
 class BaseInstallHandler(BaseHandler):
     def start(self, ctx):
-        pm = CSMPluginManager(ctx)
+        pm = get_csm_plugin_manager(ctx)
         try:
             pm.dispatch("run")
         except condoor.GeneralError as e:
