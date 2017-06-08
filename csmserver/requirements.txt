@@ -17,4 +17,4 @@ pycrypto==2.6.1
 pysftp==0.2.8
 scp==0.10.2
 xlutils==1.7.1
-csmpe==1.0.1
+csmpe==1.0.2
