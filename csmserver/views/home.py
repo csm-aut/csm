@@ -32,6 +32,8 @@ from flask import abort
 from flask.ext.login import login_required
 from flask.ext.login import current_user
 
+from sqlalchemy import func
+
 from database import DBSession
 
 from common import get_host
@@ -80,7 +82,6 @@ from models import Host
 from models import Region
 from models import System
 
-from constants import UNKNOWN
 from constants import ServerType
 from constants import ConnectionType
 from constants import DefaultHostAuthenticationChoice
@@ -522,30 +523,19 @@ def get_host_platform_version(region_id):
     db_session = DBSession()
 
     if region_id == 0:
-        hosts = db_session.query(Host)
+        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
+            .group_by(Host.software_platform, Host.software_version)
     else:
-        hosts = db_session.query(Host).filter(Host.region_id == region_id)
-
-    host_dict = {}
-    if hosts is not None:
-        for host in hosts:
-            platform = UNKNOWN if host.software_platform is None else host.software_platform
-            software = UNKNOWN if host.software_version is None else host.software_version
-
-            key = '{}={}'.format(platform, software)
-            if key in host_dict:
-                host_dict[key] += 1
-            else:
-                host_dict[key] = 1
+        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
+            .group_by(Host.software_platform, Host.software_version) \
+            .filter(Host.region_id == region_id)
 
     rows = []
-    # key is a tuple ('4.2.3-asr9k', 1)
-    for key in host_dict.items():
-        row = {}
-        info_array = key[0].split('=')
-        row['platform'] = info_array[0]
-        row['software'] = info_array[1]
-        row['host_count'] = key[1]
+    for result_tuple in result_tuples:
+        row = dict()
+        row['platform'] = result_tuple[0]
+        row['software'] = result_tuple[1]
+        row['host_count'] = result_tuple[2]
         rows.append(row)
 
     return jsonify(**{'data': rows})
