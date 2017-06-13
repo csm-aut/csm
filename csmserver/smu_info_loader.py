@@ -304,8 +304,9 @@ class SMUInfoLoader(object):
             smu_info.package_names = self.getChildElementText(node, XML_TAG_PACKAGE_NAMES)
             smu_info.package_md5 = self.getChildElementText(node, XML_TAG_PACKAGE_MD5)
 
-            if is_empty(smu_info.package_names):
-                smu_info.package_names = smu_info.name + '.' + self.file_suffix
+            # For Release Software tar file, use the smu name.
+            if package_type == PackageType.SOFTWARE:
+                smu_info.package_names = smu_info.name
 
             smu_info.compressed_image_size = self.get_int_value(
                 self.getChildElementText(node, XML_TAG_COMPRESSED_IMAGE_SIZE))
