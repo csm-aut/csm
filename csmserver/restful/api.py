@@ -236,6 +236,16 @@ def get_cco_software_entry(name_or_id):
     except Exception as e:
         return failed_response(e.message)
 
+
+@restful_api.route('/v1/cco/get_optimized_software')
+@auth.login_required
+def get_cco_optimized_software():
+    try:
+        DBSession().close()
+        return api_cco.api_get_optimized_software(request)
+    except Exception as e:
+        return failed_response(e.message)
+
 # --------------------------------------------------------------------------------------------------------------
 
 

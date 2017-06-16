@@ -216,7 +216,7 @@ def get_optimized_list(package_to_optimize_list):
                 description = pre_requisite_smu_info.description if pre_requisite_smu_info is not None else ''
 
                 for package_name in pre_requisite_smu_info.package_names.split(','):
-                    result_list.append({'smu_entry': package_name,
+                    result_list.append({'software_package': package_name,
                                         'is': 'Pre-requisite', 'description': description})
 
             excluded_supersede_dict = get_dict_from_list(excluded_supersede_list)
@@ -224,24 +224,24 @@ def get_optimized_list(package_to_optimize_list):
             for smu_info in smu_info_list:
                 if smu_info.name not in excluded_supersede_dict:
                     for package_name in smu_info.package_names.split(','):
-                        result_list.append({'smu_entry': package_name,
+                        result_list.append({'software_package': package_name,
                                             'is': 'Superseded', 'description': smu_info.description})
                 else:
                     for package_name in smu_info.package_names.split(','):
-                        result_list.append({'smu_entry': package_name,
+                        result_list.append({'software_package': package_name,
                                             'is': 'SMU/SP', 'description': smu_info.description})
 
         if len(package_list) > 0:
             for package_name in package_list:
-                result_list.append({'smu_entry': package_name, 'is': 'Package', 'description': ''})
+                result_list.append({'software_package': package_name, 'is': 'Package', 'description': ''})
 
         if len(unrecognized_list) > 0:
             for package_name in unrecognized_list:
-                result_list.append({'smu_entry': package_name, 'is': 'Unrecognized', 'description': ''})
+                result_list.append({'software_package': package_name, 'is': 'Unrecognized', 'description': ''})
 
     else:
         for package_name in package_to_optimize_list:
-            result_list.append({'smu_entry': package_name, 'is': 'Unrecognized', 'description': ''})
+            result_list.append({'software_package': package_name, 'is': 'Unrecognized', 'description': ''})
 
     return result_list
 
