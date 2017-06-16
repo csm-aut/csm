@@ -86,6 +86,8 @@ KEY_CHASSIS = 'chassis'
 KEY_SOFTWARE_PLATFORM = 'software_platform'
 KEY_SOFTWARE_VERSION = 'software_version'
 KEY_OS_TYPE = 'os_type'
+KEY_CREATED_BY = 'created_by'
+KEY_CREATED_TIME = 'created_time'
 
 
 def api_create_hosts(request):
@@ -293,6 +295,8 @@ def api_get_hosts(request):
         row[KEY_OS_TYPE] = check_none(host.os_type)
         row[KEY_LOCATION] = check_none(host.location)
         row[KEY_SOFTWARE_PROFILE] = check_none(software_profile_dict.get(host.software_profile_id))
+        row[KEY_CREATED_BY] = host.created_by
+        row[KEY_CREATED_TIME] = host.created_time
 
         if connection_param:
             row[KEY_TS_OR_IP] = [] if is_empty(connection_param.host_or_ip) else connection_param.host_or_ip.split(',')

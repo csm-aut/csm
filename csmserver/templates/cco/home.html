@@ -333,7 +333,7 @@
             $('.check').each(function(index) {
                 if (this.checked) {
                     // $(this).val() may contain ',' delimited package list especially in RPM situation.
-                    software_packages += $(this).val().replace(',', '\n') + '\n';
+                    software_packages += $(this).val().replace(/,/g , "\n") + '\n';
                 }
             });
 
