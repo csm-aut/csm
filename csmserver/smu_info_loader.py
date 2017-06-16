@@ -42,13 +42,14 @@ ncs6k_sysadmin
 
 The releases are expected to be in this format x.x.x (e.g. 5.3.0)
 """
+from sqlalchemy import and_
+
 from xml.dom import minidom
 
 from database import DBSession
 
 from models import SMUMeta
 from models import SMUInfo
-from models import CCOCatalog
 from models import logger
 from models import SystemOption
 from models import PackageToSMU
@@ -179,7 +180,8 @@ class SMUInfoLoader(object):
     
     def get_smu_info_from_db(self, platform, release):
         # self.smu_meta is set to None if the requested platform and release are not in the database.
-        self.smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+        self.smu_meta = DBSession().query(SMUMeta).filter(and_(SMUMeta.platform == platform,
+                                                               SMUMeta.release == release)).first()
         if self.smu_meta:
             for smu_info in self.smu_meta.smu_info:
                 if smu_info.package_type == PackageType.SMU:
@@ -194,20 +196,20 @@ class SMUInfoLoader(object):
     def get_smu_info_from_cco(self, platform, release):
         save_to_db = True
         db_session = DBSession()
-        platform_release = platform + '_' + release
 
         try:
-            self.smu_meta = SMUMeta(platform_release=platform_release)
+            self.smu_meta = SMUMeta(platform=platform, release=release)
             # Load data from the SMU XML file
             self.load()
 
             # This can happen if the given platform and release is not valid.
             # The load() method calls get_smu_info_from_db and failed.
             if not self.is_valid:
-                logger.error('get_smu_info_from_cco() hit error, platform_release=' + platform_release)
+                logger.error('get_smu_info_from_cco() hit error platform={}, release={}'.format(platform, release))
                 return
 
-            db_smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform_release).first()
+            db_smu_meta = db_session.query(SMUMeta).filter(and_(SMUMeta.platform == platform,
+                                                                SMUMeta.release == release)).first()
             if db_smu_meta:
                 if db_smu_meta.created_time == self.smu_meta.created_time:
                     save_to_db = False
@@ -225,7 +227,7 @@ class SMUInfoLoader(object):
             db_session.commit()
 
         except Exception:
-            logger.exception('get_smu_info_from_cco() hit exception, platform_release=' + platform_release)
+            logger.exception('get_smu_info_from_cco() hit exception platform={}, release={}'.format(platform, release))
 
     def create_package_to_smu_xref(self, db_session):
         for smu_info in self.smu_meta.smu_info:
@@ -483,19 +485,20 @@ class SMUInfoLoader(object):
             return SMUInfoLoader.get_catalog_from_cco()
         else:
             catalog = {}
+
             # Retrieve from the database
-            db_catalog = db_session.query(CCOCatalog).all()
-            if len(db_catalog) > 0:
-                for entry in db_catalog:
+            catalog_entries = db_session.query(SMUMeta).all()
+            if len(catalog_entries) > 0:
+                for entry in catalog_entries:
                     if entry.platform in catalog:
                         release_list = catalog[entry.platform]
                     else:
                         release_list = []
                         catalog[entry.platform] = release_list
-                    
+
                     # Inserts release in reverse order (latest release first)
                     release_list.insert(0, entry.release)
-                    
+
             return OrderedDict(sorted(catalog.items()))           
 
     @classmethod
@@ -552,15 +555,8 @@ class SMUInfoLoader(object):
         if len(catalog) > 0:
             system_option = SystemOption.get(db_session)
             try:
-                # Remove all rows first
-                db_session.query(CCOCatalog).delete()
-            
-                for platform in catalog:
-                    releases = catalog[platform]
+                for platform, releases in catalog.iteritems():
                     for release in releases:
-                        cco_catalog = CCOCatalog(platform=platform,release=release)
-                        db_session.add(cco_catalog)
-
                         SMUInfoLoader(platform, release)
                 
                 system_option.cco_lookup_time = datetime.datetime.utcnow()
