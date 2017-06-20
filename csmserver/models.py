@@ -274,7 +274,7 @@ class Host(Base):
     family = Column(String(20), default=UNKNOWN)
     platform = Column(String(20), default=UNKNOWN)
     software_platform = Column(String(20), default=UNKNOWN)
-    software_version = Column(String(20), default=UNKNOWN)
+    software_version = Column(String(32), default=UNKNOWN)
     os_type = Column(String(20), default=UNKNOWN)
     location = Column(String(100))
     roles = Column(String(100))
