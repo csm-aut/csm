@@ -31,7 +31,9 @@ from models import DownloadJob
 from constants import JobStatus
 
 sql_statements = [
-    'alter table install_job add job_type VARCHAR(20)'
+    'alter table install_job add job_type VARCHAR(20)',
+    'drop table smu_info',
+    'drop table smu_meta'
     ]
 
 

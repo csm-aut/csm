@@ -23,8 +23,10 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask.ext.login import current_user
-from flask import g, send_file
-from sqlalchemy import or_, and_, not_
+from flask import send_file
+from sqlalchemy import or_
+from sqlalchemy import and_
+from sqlalchemy import not_
 
 from csm_exceptions.exceptions import ValueNotFound
 from csm_exceptions.exceptions import OperationNotAllowed
@@ -846,7 +848,7 @@ def create_download_jobs(db_session, platform, release, pending_downloads, serve
     """
     Pending downloads is an array of TAR files.
     """
-    smu_meta = db_session.query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+    smu_meta = db_session.query(SMUMeta).filter(and_(SMUMeta.platform == platform, SMUMeta.release == release)).first()
     if smu_meta is not None:
         for cco_filename in pending_downloads:
             # If the requested download_file is not in the download table, include it

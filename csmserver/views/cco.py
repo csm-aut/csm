@@ -34,6 +34,8 @@ from flask import send_file
 from flask.ext.login import login_required
 from flask.ext.login import current_user
 
+from sqlalchemy import and_
+
 from wtforms import Form
 from wtforms import StringField
 from wtforms import PasswordField
@@ -110,7 +112,7 @@ def home(platform, release):
 @cco.route('/api/get_cco_retrieval_elapsed_time/platform/<platform>/release/<release>')
 @login_required
 def api_get_cco_retrieval_elapsed_time(platform, release):
-    smu_meta = DBSession().query(SMUMeta).filter(SMUMeta.platform_release == platform + '_' + release).first()
+    smu_meta = DBSession().query(SMUMeta).filter(and_(SMUMeta.platform == platform, SMUMeta.release == release)).first()
 
     retrieval_elapsed_time = UNKNOWN
     if smu_meta is not None:

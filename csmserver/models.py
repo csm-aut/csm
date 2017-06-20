@@ -22,13 +22,20 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from sqlalchemy import Column, Table, Boolean
-from sqlalchemy import String, Integer, DateTime, Text
+from sqlalchemy import Column
+from sqlalchemy import Table
+from sqlalchemy import Boolean
+from sqlalchemy import String
+from sqlalchemy import Integer
+from sqlalchemy import DateTime
+from sqlalchemy import Text
 from sqlalchemy import and_
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import mutable
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import backref, relationship, synonym
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import synonym
 
 from utils import is_empty
 from salts import encode, decode
@@ -1040,17 +1047,10 @@ class DownloadJobHistory(Base):
         self.status_time = datetime.datetime.utcnow()
 
 
-class CCOCatalog(Base):
-    __tablename__ = 'cco_catalog'
-    
-    platform = Column(String(40), primary_key=True)
-    release = Column(String(40), primary_key=True)
-
-
 class SMUMeta(Base):
     __tablename__ = 'smu_meta'
-    # name is like asr9k_px_4.2.3
-    platform_release = Column(String(40), primary_key=True)
+    platform = Column(String(20), primary_key=True)
+    release = Column(String(20), primary_key=True)
     created_time = Column(String(30)) # Use string instead of timestamp
     smu_software_type_id = Column(String(20))
     sp_software_type_id = Column(String(20))
@@ -1092,7 +1092,11 @@ class SMUInfo(Base):
     prerequisite_to = Column(Text)
     package_names = Column(Text)
     package_md5 = Column(Text)
-    platform_release = Column(String(40), ForeignKey('smu_meta.platform_release'))
+
+    platform = Column(String(20))
+    release = Column(String(20))
+    __table_args__ = (ForeignKeyConstraint([platform, release],
+                                           [SMUMeta.platform, SMUMeta.release]), {})
 
     @property
     def cco_filename(self):
