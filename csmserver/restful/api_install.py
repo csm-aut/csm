@@ -433,7 +433,7 @@ def api_get_install_request(request):
             if install_action not in [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                                       InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
                                       InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_REMOVE,
-                                      InstallAction.INSTALL_DEACTIVATE]:
+                                      InstallAction.INSTALL_DEACTIVATE, InstallAction.FPD_UPGRADE]:
                 raise ValueError("'{}' is an invalid install action.".format(install_action))
 
             if table_to_query == InstallJob:
