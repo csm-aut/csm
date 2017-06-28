@@ -101,7 +101,8 @@ required_keys_dict = {InstallAction.PRE_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.POST_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.INSTALL_COMMIT: [KEY_HOSTNAME],
                       InstallAction.INSTALL_REMOVE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
-                      InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES]}
+                      InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
+                      InstallAction.FPD_UPGRADE: [KEY_HOSTNAME]}
 
 ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                            InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
@@ -110,7 +111,8 @@ ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
 # Supported install actions
 supported_install_actions = ordered_install_actions + [InstallAction.INSTALL_REMOVE,
                                                        InstallAction.INSTALL_DEACTIVATE,
-                                                       InstallAction.INSTALL_REMOVE_ALL_INACTIVE]
+                                                       InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+                                                       InstallAction.FPD_UPGRADE]
 
 
 def api_create_install_request(request):
@@ -430,10 +432,7 @@ def api_get_install_request(request):
                 raise ValueError("Host '{}' does not exist in the database.".format(hostname))
 
         if install_action:
-            if install_action not in [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                      InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
-                                      InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_REMOVE,
-                                      InstallAction.INSTALL_DEACTIVATE, InstallAction.FPD_UPGRADE]:
+            if install_action not in supported_install_actions:
                 raise ValueError("'{}' is an invalid install action.".format(install_action))
 
             if table_to_query == InstallJob:
