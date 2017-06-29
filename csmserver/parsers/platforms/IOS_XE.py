@@ -33,7 +33,7 @@ from base import BaseSoftwarePackageParser
 
 class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
 
-    def set_host_packages_from_cli(self, ctx):
+    def process_software_packages(self, ctx):
         host_packages = []
         committed_packages = {}
 

@@ -73,9 +73,7 @@ class BaseInstallWorkUnit(WorkUnit):
             logger.error('SoftwareManager: Unable to get handler for %s', ctx.host.software_platform)
 
         handler = handler_class()
-        if handler.get_inventory(ctx):
-            # Update the time stamp
-            ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
+        handler.get_inventory(ctx)
 
     def start(self, db_session, logger, process_name):
         ctx = None

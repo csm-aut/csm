@@ -33,8 +33,8 @@ class BaseSoftwarePackageParser(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def set_host_packages_from_cli(self, ctx, install_inactive_cli=None,
-                                   install_active_cli=None, install_committed_cli=None):
+    def process_software_packages(self, ctx, install_inactive_cli=None,
+                                  install_active_cli=None, install_committed_cli=None):
         """
         parse the software package info from CLI output and set it to the host context.
         """

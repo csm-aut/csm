@@ -31,7 +31,7 @@ from base import BaseSoftwarePackageParser, BaseInventoryParser
 
 class NXOSSoftwarePackageParser(BaseSoftwarePackageParser):
 
-    def set_host_packages_from_cli(self, ctx):
+    def process_software_packages(self, ctx):
         host_packages = []
 
         cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
