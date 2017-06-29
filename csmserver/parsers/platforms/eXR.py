@@ -32,7 +32,7 @@ from base import BaseSoftwarePackageParser
 
 class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
 
-    def set_host_packages_from_cli(self, ctx):
+    def process_software_packages(self, ctx):
         admin_inactive_packages = {}
         admin_active_packages = {}
         admin_committed_packages = {}
