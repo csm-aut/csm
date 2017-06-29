@@ -39,7 +39,7 @@ PREFIX = 'encrypted'
 ENCRYPT = {'key': 'csmserver', 'string1': STRING1, 'string2': STRING2}
 
 # Make sure the CURRENT_SCHEMA_VERSION is an integer
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 ENABLE_DEBUG = False
 
 
