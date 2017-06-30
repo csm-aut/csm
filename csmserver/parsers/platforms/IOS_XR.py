@@ -31,7 +31,7 @@ from base import BaseSoftwarePackageParser, BaseInventoryParser
 
 class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
 
-    def set_host_packages_from_cli(self, ctx):
+    def process_software_packages(self, ctx):
         inactive_packages = {}
         active_packages = {}
         committed_packages = {}
