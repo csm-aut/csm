@@ -1138,7 +1138,7 @@ class ConformanceReportEntry(Base):
     id = Column(Integer, primary_key=True)
     hostname = Column(String(50))
     software_platform = Column(String(20))
-    software_version = Column(String(20))
+    software_version = Column(String(40))
     host_packages = Column(Text)
     missing_packages = Column(Text)
     conformed = Column(String(3))

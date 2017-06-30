@@ -31,7 +31,8 @@ from models import DownloadJob
 from constants import JobStatus
 
 sql_statements = [
-    'alter table host modify software_version VARCHAR(40)'
+    'alter table host modify software_version VARCHAR(40)',
+    'alter table conformance_report_entry modify software_version VARCHAR(40)'
     ]
 
 
