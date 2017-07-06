@@ -169,8 +169,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                          created_by=current_user.username, install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
-            # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
-            # have Pre-Upgrade (predecessor) as the dependency.
+            # If the user selected Pre-Check and Install Add, Install Add (successor) will
+            # have Pre-Check (predecessor) as the dependency.
             dependency = 0
             for one_install_action in install_action:
                 new_install_job = create_or_update_install_job(db_session=db_session,
@@ -291,8 +291,8 @@ def batch_schedule_install():
                                                      created_by=current_user.username)
                     else:
                         # The dependency on each install action is already indicated in the implicit ordering
-                        # in the selector.  If the user selected Pre-Upgrade and Install Add, Install Add (successor)
-                        # will have Pre-Upgrade (predecessor) as the dependency.
+                        # in the selector.  If the user selected Pre-Check and Install Add, Install Add (successor)
+                        # will have Pre-Check (predecessor) as the dependency.
                         dependency = 0
                         for one_install_action in install_action:
                             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
@@ -501,13 +501,13 @@ def api_get_supported_install_actions(hostname):
     rows = []
 
     if host.family == PlatformFamily.ASR900:
-        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+        rows.append({'install_options': [InstallAction.PRE_CHECK, InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_CHECK,
                                          InstallAction.ALL]})
         rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE]})
     else:
-        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+        rows.append({'install_options': [InstallAction.PRE_CHECK, InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_CHECK,
                                          InstallAction.INSTALL_COMMIT, InstallAction.ALL]})
         rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE, InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
                                          InstallAction.INSTALL_DEACTIVATE]})

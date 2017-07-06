@@ -115,7 +115,7 @@ class BaseInstallWorkUnit(WorkUnit):
                     pass
 
                 # Support Doc Central feature for SIT team
-                if install_job.install_action == InstallAction.PRE_UPGRADE or \
+                if install_job.install_action == InstallAction.PRE_CHECK or \
                                 install_job.install_action == InstallAction.INSTALL_ADD:
                     install_job.save_data("from_release", ctx.host.software_version)
 

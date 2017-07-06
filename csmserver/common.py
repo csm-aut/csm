@@ -98,10 +98,10 @@ def fill_dependencies(choices):
      
     # The install action is listed in implicit ordering.  This ordering
     # is used to formulate the dependency.
-    choices.append((InstallAction.PRE_UPGRADE, InstallAction.PRE_UPGRADE))
+    choices.append((InstallAction.PRE_CHECK, InstallAction.PRE_CHECK))
     choices.append((InstallAction.INSTALL_ADD, InstallAction.INSTALL_ADD))
     choices.append((InstallAction.INSTALL_ACTIVATE, InstallAction.INSTALL_ACTIVATE)) 
-    choices.append((InstallAction.POST_UPGRADE, InstallAction.POST_UPGRADE))
+    choices.append((InstallAction.POST_CHECK, InstallAction.POST_CHECK))
     choices.append((InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_COMMIT)) 
 
 
@@ -811,7 +811,7 @@ def create_or_update_install_job(db_session, host_id, install_action, scheduled_
     install_job.created_by = created_by
     install_job.user_id = None if user is None else user.id
 
-    if install_action == InstallAction.PRE_UPGRADE or install_action == InstallAction.POST_UPGRADE or \
+    if install_action == InstallAction.PRE_CHECK or install_action == InstallAction.POST_CHECK or \
         install_action == InstallAction.MIGRATION_AUDIT or install_action == InstallAction.PRE_MIGRATE or \
             install_action == InstallAction.MIGRATE_SYSTEM or install_action == InstallAction.POST_MIGRATE:
         install_job.custom_command_profile_ids = ','.join(custom_command_profile_ids) if custom_command_profile_ids else None

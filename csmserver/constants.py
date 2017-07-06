@@ -127,11 +127,11 @@ class ServerType:
 
 class InstallAction:
     UNKNOWN = 'Unknown'
-    PRE_UPGRADE = 'Pre-Upgrade'
+    PRE_CHECK = 'Pre-Check'
     INSTALL_ADD = 'Add'
     INSTALL_PREPARE = 'Prepare'
     INSTALL_ACTIVATE = 'Activate'
-    POST_UPGRADE = 'Post-Upgrade'
+    POST_CHECK = 'Post-Check'
     INSTALL_COMMIT = 'Commit'
     ALL = 'ALL'
     INSTALL_REMOVE = 'Remove'

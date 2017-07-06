@@ -308,7 +308,7 @@ def get_doc_central_log_path(install_job):
     :return: The aggregated path
     """
     doc_central_log_file_path = ''
-    if install_job.install_action == InstallAction.POST_UPGRADE and not is_empty(install_job.load_data('doc_central_log_file_path')): 
+    if install_job.install_action == InstallAction.POST_CHECK and not is_empty(install_job.load_data('doc_central_log_file_path')):
         path = os.path.join(get_doc_central_directory(), install_job.load_data('doc_central_log_file_path'))
         if os.path.isfile(path):
             doc_central_log_file_path = path

@@ -82,16 +82,16 @@ class BaseHandler(object):
 
         if isinstance(ctx, InstallContext):
             try:
-                if ctx.requested_action == InstallAction.POST_UPGRADE:
-                    self.generate_post_upgrade_file_diff(ctx)
+                if ctx.requested_action == InstallAction.POST_CHECK:
+                    self.generate_post_check_file_diff(ctx)
                 elif ctx.requested_action == InstallAction.MIGRATE_SYSTEM or \
                      ctx.requested_action == InstallAction.POST_MIGRATE:
                     self.generate_post_migrate_file_diff(ctx)
             except Exception:
                 logger = get_db_session_logger(ctx.db_session)
 
-                if ctx.requested_action == InstallAction.POST_UPGRADE:
-                    msg = 'generate_post_upgrade_file_diff hit exception.'
+                if ctx.requested_action == InstallAction.POST_CHECK:
+                    msg = 'generate_post_check_file_diff hit exception.'
                 else:
                     msg = 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
@@ -125,8 +125,8 @@ class BaseHandler(object):
         # Update the status and last successful retrieval time stamp
         ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
 
-    def generate_post_upgrade_file_diff(self, ctx):
-        install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_UPGRADE)
+    def generate_post_check_file_diff(self, ctx):
+        install_job = get_last_completed_install_job_for_install_action(ctx.db_session, ctx.host.id, InstallAction.PRE_CHECK)
         if install_job is None:
             return
 

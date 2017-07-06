@@ -185,8 +185,8 @@ def home():
                            assign_software_profile_to_hosts_form=assign_software_profile_to_hosts_form,
                            view_host_software_profile_form=view_host_software_profile_form,
                            conformance_report_dialog_form=conformance_report_dialog_form,
-                           install_actions=[InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                            InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+                           install_actions=[InstallAction.PRE_CHECK, InstallAction.INSTALL_ADD,
+                                            InstallAction.INSTALL_ACTIVATE, InstallAction.POST_CHECK,
                                             InstallAction.INSTALL_COMMIT, InstallAction.ALL],
                            make_conform_dialog_form=make_conform_dialog_form,
                            batch_make_conform_dialog_form=batch_make_conform_dialog_form,
@@ -708,8 +708,8 @@ def api_batch_make_conform():
                     host = get_host(db_session, hostname)
 
                     # The dependency on each install action is already indicated in the implicit ordering in the selector.
-                    # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
-                    # have Pre-Upgrade (predecessor) as the dependency.
+                    # If the user selected Pre-Check and Install Add, Install Add (successor) will
+                    # have Pre-Check (predecessor) as the dependency.
                     dependency = 0
                     for install_action in install_actions:
                         new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
@@ -753,8 +753,8 @@ def api_make_conform():
 
     try:
         # The dependency on each install action is already indicated in the implicit ordering in the selector.
-        # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
-        # have Pre-Upgrade (predecessor) as the dependency.
+        # If the user selected Pre-Check and Install Add, Install Add (successor) will
+        # have Pre-Check (predecessor) as the dependency.
         dependency = 0
         for install_action in install_actions:
             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,

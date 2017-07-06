@@ -45,7 +45,7 @@ def handle_doc_central_logging(ctx, logger):
     config_option = get_config_value(config_path, 'Doc Central', 'doc_central_support_enabled')
     if config_option == "True":
         try:
-            if ctx.install_job.install_action == InstallAction.POST_UPGRADE:
+            if ctx.install_job.install_action == InstallAction.POST_CHECK:
                 aggregate_and_upload_log(ctx)
         except Exception:
             logger.exception('handle_doc_central_logging hit exception - hostname = %s, install job =  %s',
@@ -71,7 +71,7 @@ def aggregate_and_upload_log(ctx):
     with open(output_file, 'w') as outfile:
         for job_id in chain:
             install_job = ctx.db_session.query(InstallJobHistory).filter(InstallJobHistory.id == job_id).first()
-            if install_job.install_action == InstallAction.POST_UPGRADE:
+            if install_job.install_action == InstallAction.POST_CHECK:
                 install_job.save_data('doc_central_log_file_path', filename)
                 ctx.db_session.commit()
 

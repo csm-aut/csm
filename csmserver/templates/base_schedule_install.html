@@ -17,11 +17,11 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
     <label class="col-sm-4 control-label" id="label_install_action" for="install_action">Install Action</label>
     <div class=col-sm-6>
         <select class="form-control" id="install_action" multiple name="install_action" style="width: 100%">
-            <option value="Pre-Upgrade">Pre-Upgrade</option>
+            <option value="Pre-Check">Pre-Check</option>
             <option value="Add">Add</option>
             <option value="Prepare">Prepare</option>
             <option value="Activate">Activate</option>
-            <option value="Post-Upgrade">Post-Upgrade</option>
+            <option value="Post-Check">Post-Check</option>
             <option value="Commit">Commit</option>
             <option value="ALL">ALL</option>
             <option value="Remove">Remove</option>
@@ -141,11 +141,11 @@ $(function() {
     }
 
     // These constant values must match the CSM definitions
-    var PRE_UPGRADE = "Pre-Upgrade";
+    var PRE_CHECK = "Pre-Check";
     var INSTALL_ADD = "Add";
     var INSTALL_PREPARE = "Prepare";
     var INSTALL_ACTIVATE = "Activate";
-    var POST_UPGRADE = "Post-Upgrade";
+    var POST_CHECK = "Post-Check";
     var INSTALL_COMMIT = "Commit";
     var ALL = "ALL";
     var INSTALL_REMOVE = "Remove";
@@ -189,7 +189,7 @@ $(function() {
         install_actions = $(this).val();
 
         if (has_one_of_these(install_actions, [ALL])) {
-            $("#install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
+            $("#install_action").val([PRE_CHECK, INSTALL_ADD, INSTALL_ACTIVATE, POST_CHECK, INSTALL_COMMIT]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_REMOVE]) && install_actions.length > 1) {
             $("#install_action").val([INSTALL_REMOVE]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_REMOVE_ALL_INACTIVE]) && install_actions.length > 1) {
@@ -273,7 +273,7 @@ $(function() {
             $('#activate-widget-panel').show();
         }
 
-        if (has_one_of_these(install_actions, [PRE_UPGRADE, POST_UPGRADE])) {
+        if (has_one_of_these(install_actions, [PRE_CHECK, POST_CHECK])) {
 
             $('#custom-command-profile-panel').show();
         }
