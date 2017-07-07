@@ -233,7 +233,6 @@ def edit(mop_name):
         for idx in range(len(plugins)):
             for phase in phases:
                 for platform in platforms:
-                    print plugins[idx]
                     mops.append(Mop(name=mop_form.mop_name.data,
                                     plugin_name=plugins[idx],
                                     plugin_idx=idx,
