@@ -51,16 +51,17 @@ except Exception:
 
 
 def get_server_impl(server):
-    if server.server_type == ServerType.TFTP_SERVER:
-        return TFTPServer(server) 
-    elif server.server_type == ServerType.FTP_SERVER:
-        return FTPServer(server)
-    elif server.server_type == ServerType.SFTP_SERVER:
-        return SFTPServer(server)
-    elif server.server_type == ServerType.SCP_SERVER:
-        return SCPServer(server)
-    else:
-        return None
+    if server is not None:
+        if server.server_type == ServerType.TFTP_SERVER:
+            return TFTPServer(server)
+        elif server.server_type == ServerType.FTP_SERVER:
+            return FTPServer(server)
+        elif server.server_type == ServerType.SFTP_SERVER:
+            return SFTPServer(server)
+        elif server.server_type == ServerType.SCP_SERVER:
+            return SCPServer(server)
+
+    return None
 
 
 class ServerImpl(object):

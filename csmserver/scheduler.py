@@ -32,6 +32,7 @@ from models import InstallJobHistory
 from models import DownloadJobHistory
 from models import CreateTarJob
 from models import ConvertConfigJob
+from models import BackupJob
 
 from constants import get_log_directory
 from constants import JobStatus
@@ -101,6 +102,9 @@ class Scheduler(threading.Thread):
                         
             # Check if there is any housekeeping work to do
             self.perform_housekeeping_tasks(db_session, system_option)
+
+            # Backup the database
+            self.schedule_backup_database_job(db_session)
             
         except:
             logger.exception('scheduling() hit exception')
@@ -243,6 +247,15 @@ class Scheduler(threading.Thread):
         except:
             db_session.rollback()
             logger.exception('purge_config_job() hit exception')
+
+    def schedule_backup_database_job(self, db_session):
+        try:
+            backup_job = db_session.query(BackupJob).first()
+            backup_job.status = JobStatus.SCHEDULED
+            db_session.commit()
+        except:
+            db_session.rollback()
+            logger.exception('schedule_backup_database_job() hit exception')
 
 if __name__ == '__main__':
     pass
