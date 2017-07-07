@@ -722,6 +722,28 @@ class ModulePackageState(Base):
     package_id = Column(Integer, ForeignKey('package.id'))
 
 
+class Mop(Base):
+    __tablename__ = 'mop'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50))
+    plugin_name = Column(String(50))
+    plugin_idx = Column(Integer)
+    phase = Column(String(50))
+    software_platform = Column(String(20))
+    plugin_data = Column(JSONEncodedDict, default={})
+    created_by = Column(String(50))
+
+    def __init__(self, name, plugin_name, plugin_idx, phase, software_platform, created_by, plugin_data={}):
+        self.name = name
+        self.plugin_name = plugin_name
+        self.plugin_idx = plugin_idx
+        self.phase = phase
+        self.software_platform = software_platform
+        self.plugin_data = plugin_data
+        self.created_by = created_by
+
+
 class InstallJob(Base):
     __tablename__ = 'install_job'
     

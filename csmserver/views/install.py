@@ -55,6 +55,8 @@ from common import can_edit_install
 from common import get_host_active_packages
 from common import can_retrieve_software
 from common import get_last_successful_inventory_elapsed_time
+from common import get_mop_list
+from common import get_plugins_execution_order_string_with_mop_name
 
 from forms import ScheduleInstallForm
 from forms import HostScheduleInstallForm
@@ -141,6 +143,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     fill_dependency_from_host_install_jobs(form.dependency.choices, install_jobs,
                                            (-1 if install_job is None else install_job.id))
     fill_custom_command_profiles(db_session, form.custom_command_profile.choices)
+    fill_mops(db_session, host.software_platform, form.pre_upgrade_mop.choices, form.post_upgrade_mop.choices)
 
     if request.method == 'POST':
         if install_job is not None:
@@ -157,22 +160,45 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         pending_downloads = form.hidden_pending_downloads.data.split()
         custom_command_profile_ids = [str(i) for i in form.custom_command_profile.data]
 
+        pre_upgrade_mop_name = form.pre_upgrade_mop.data
+        post_upgrade_mop_name = form.post_upgrade_mop.data
+        pre_upgrade_plugin_execution_order = ""
+        post_upgrade_plugin_execution_order = ""
+
+        if pre_upgrade_mop_name:
+            pre_upgrade_plugin_execution_order = get_plugins_execution_order_string_with_mop_name(db_session, pre_upgrade_mop_name).split(",")
+
+        if post_upgrade_mop_name:
+            post_upgrade_plugin_execution_order = get_plugins_execution_order_string_with_mop_name(db_session, post_upgrade_mop_name).split(",")
+
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
         if len(install_action) == 1:
             dependency = int(form.dependency.data)
+
+            install_job_data = form_install_job_data(install_action[0],
+                                                     pre_upgrade_mop_name,
+                                                     pre_upgrade_plugin_execution_order,
+                                                     post_upgrade_mop_name,
+                                                     post_upgrade_plugin_execution_order)
+
             create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                          scheduled_time=scheduled_time, software_packages=software_packages,
                                          server_id=server_id, server_directory=server_directory,
                                          pending_downloads=pending_downloads,
                                          custom_command_profile_ids=custom_command_profile_ids, dependency=dependency,
-                                         created_by=current_user.username, install_job=install_job)
+                                         created_by=current_user.username, install_job_data=install_job_data,
+                                         install_job=install_job)
         else:
             # The dependency on each install action is already indicated in the implicit ordering in the selector.
             # If the user selected Pre-Upgrade and Install Add, Install Add (successor) will
             # have Pre-Upgrade (predecessor) as the dependency.
             dependency = 0
             for one_install_action in install_action:
+                install_job_data = form_install_job_data(one_install_action, pre_upgrade_mop_name,
+                                                         pre_upgrade_plugin_execution_order,
+                                                         post_upgrade_mop_name,
+                                                         post_upgrade_plugin_execution_order)
                 new_install_job = create_or_update_install_job(db_session=db_session,
                                                                host_id=host.id,
                                                                install_action=one_install_action,
@@ -182,7 +208,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                                                                pending_downloads=pending_downloads,
                                                                custom_command_profile_ids=custom_command_profile_ids,
                                                                dependency=dependency, created_by=current_user.username,
-                                                               install_job=install_job)
+                                                               install_job_data=install_job_data, install_job=install_job)
                 dependency = new_install_job.id
 
         return redirect(url_for(return_url, hostname=hostname))
@@ -215,6 +241,8 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                 form.software_packages.data = '\n'.join(install_job.packages.split(','))
 
             form.dependency.data = str(install_job.dependency)
+            form.pre_upgrade_mop.data = install_job.load_data("pre_upgrade_mop")
+            form.post_upgrade_mop.data = install_job.load_data("post_upgrade_mop")
 
             if install_job.scheduled_time is not None:
                 form.scheduled_time_UTC.data = get_datetime_string(install_job.scheduled_time)
@@ -226,6 +254,32 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     return render_template('host/schedule_install.html', form=form, system_option=SystemOption.get(db_session),
                            host=host, server_time=datetime.datetime.utcnow(), install_job=install_job,
                            return_url=return_url)
+
+
+def form_install_job_data(install_action, pre_upgrade_mop_name, pre_upgrade_plugin_execution_order,
+                          post_upgrade_mop_name, post_upgrade_plugin_execution_order):
+    install_job_data = {}
+    if install_action == InstallAction.PRE_UPGRADE and pre_upgrade_plugin_execution_order:
+        install_job_data = {"plugin_execution_order": pre_upgrade_plugin_execution_order,
+                            "pre_upgrade_mop": pre_upgrade_mop_name}
+    elif install_action == InstallAction.POST_UPGRADE and post_upgrade_plugin_execution_order:
+        install_job_data = {"plugin_execution_order": post_upgrade_plugin_execution_order,
+                            "post_upgrade_mop": post_upgrade_mop_name}
+
+    return install_job_data
+
+
+def fill_mops(db_session, platform, pre_upgrade_mop_choices, post_upgrade_mop_choices):
+    del pre_upgrade_mop_choices[:]
+    pre_upgrade_mop_choices.append(('', 'None'))
+    del post_upgrade_mop_choices[:]
+    post_upgrade_mop_choices.append(('', 'None'))
+    mops = get_mop_list(db_session, platform=platform)
+    for mop in mops:
+        if InstallAction.PRE_UPGRADE in mop['phase']:
+            pre_upgrade_mop_choices.append((mop['mop_name'], mop['mop_name']))
+        if InstallAction.POST_UPGRADE in mop['phase']:
+            post_upgrade_mop_choices.append((mop['mop_name'], mop['mop_name']))
 
 
 @install.route('/batch_schedule_install/', methods=['GET', 'POST'])

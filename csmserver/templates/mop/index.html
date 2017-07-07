@@ -1,0 +1,110 @@
+{% extends 'base_software.html' %}
+{% from 'host/common.html' import edit_field %}
+
+{% block head %}
+
+<script src="/static/jquery/js/conformance_report_dialog.js"></script>
+<script src="/static/jquery/js/select_hosts_by_platform.js"></script>
+<script src="/static/jquery/js/select_server_repo.js"></script>
+
+<script>
+    $(function() {
+        var mop_table = $("#mop-table").dataTable({
+            "pageLength": 50,
+            "order": [
+                [0, "asc"]
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'mop_name',
+                "render": function(data, type, row) {
+                    //return data;
+                    return '<a href="/mop/' + data + '/edit">' + data + '</a>';
+                }
+            }, {
+                "targets": 1,
+                "data": 'phase',
+                "render": function(data, type, row) {
+                    return data.join("<br>");
+                }
+            }, {
+                "targets": 2,
+                "data": 'platform',
+                "render": function(data, type, row) {
+                    return data.join("<br>");
+                }
+            }, {
+                "targets": 3,
+                "data": 'created_by'
+            }, {
+                "targets": 4,
+                "data": 'mop_name',
+                "render": function(data, type, row) {
+                    return '<a class="data-delete-link" href="javascript://"  \
+                data-delete-mop-name="' + data + '" \
+                data-delete-url="/mop/api/delete/' + data + '">Delete</a>';
+                }
+            }],
+            "ajax": {
+                "url": "{{ url_for('mop.api_get_mops') }}"
+            }
+        });
+                // Use delegate pattern for event
+        $("#mop-table").on("click", ".data-delete-link", function() {
+            var delete_url = $(this).attr('data-delete-url');
+            var mop_name = $(this).attr('data-delete-mop-name');
+
+            bootbox.confirm("You are about to delete MOP \'" + mop_name + "\'.  OK to proceed?", function(result) {
+                if (result) {
+                    $.ajax({
+                        url: delete_url,
+                        type: 'DELETE',
+                        success: function(result) {
+                            if (result.status == 'OK') {
+                                mop_table.api().ajax.reload();
+                            } else {
+                                bootbox.alert(result.status);
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
+{% endblock head %}
+
+
+{% block main %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-sm-12">
+            <ul class="nav nav-tabs" id="mop-tab">
+                <li><a data-toggle="tab" href="#mop">MOP</a></li>
+                <li class="dropdown">
+                    <a data-toggle="dropdown" class="dropdown-toggle" href="#">Create <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a data-toggle="main-tab" href="{{ url_for('mop.create') }}">MOP</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="tab-content" style="margin-top:10px;">
+                <div id="mop" class="tab-pane fade in active">
+                    <table class="display table" id="mop-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phase</th>
+                                <th>Platform</th>
+                                <th>Created By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

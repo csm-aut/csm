@@ -59,6 +59,7 @@ from models import get_download_job_key_dict
 from models import InventoryJob
 from models import HostContext
 from models import ConnectionParam
+from models import Mop
 
 from database import DBSession
 
@@ -406,6 +407,57 @@ def get_user_list(db_session):
 
 def get_install_job_by_id(db_session, job_id):
     return db_session.query(InstallJob).filter(InstallJob.id == job_id).first()
+
+
+def get_plugins_execution_order_string_with_mop_name(db_session, mop_name):
+    plugin_query = db_session.query(Mop.plugin_name).filter(Mop.name == mop_name).group_by(Mop.plugin_idx)
+    plugins = [result[0] for result in plugin_query]
+    return ','.join(plugins)
+
+
+def get_mop_list(db_session, platform=None, phase=None):
+
+    clauses = []
+    if platform:
+        clauses.append(Mop.software_platform == platform)
+    if phase:
+        clauses.append(Mop.phase == phase)
+    if clauses:
+        mops_iter = db_session.query(Mop).filter(and_(*clauses)).order_by(Mop.name.asc())
+    else:
+        mops_iter = db_session.query(Mop).order_by(Mop.name.asc())
+
+    return get_mop_details(mops_iter)
+
+
+def get_mop_details(mops_iter):
+
+    def compare_mop_phase(x, y):
+        if x.lower().startswith("pre") and y.lower().startswith("post"):
+            return -1
+        elif x.lower().startswith("post") and y.lower().startswith("pre"):
+            return 1
+        else:
+            return -1 if x < y else 1
+
+    rows = []
+    for mop in mops_iter:
+        if rows and rows[-1]['mop_name'] == mop.name:
+            rows[-1]['phase'].add(mop.phase)
+            rows[-1]['platform'].add(mop.software_platform)
+        else:
+            if rows:
+                rows[-1]['phase'] = sorted(rows[-1]['phase'], cmp=compare_mop_phase)
+                rows[-1]['platform'] = sorted(rows[-1]['platform'])
+            new_row = {'mop_name': mop.name,
+                       'phase': {mop.phase},
+                       'platform': {mop.software_platform},
+                       'created_by': mop.created_by}
+            rows.append(new_row)
+    if rows:
+        rows[-1]['phase'] = sorted(rows[-1]['phase'], cmp=compare_mop_phase)
+        rows[-1]['platform'] = sorted(rows[-1]['platform'])
+    return rows
 
 
 def get_smtp_server(db_session):

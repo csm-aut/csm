@@ -75,6 +75,7 @@ from views.host_dashboard import host_dashboard
 from views.install_dashboard import install_dashboard
 from views.download_dashboard import download_dashboard
 from views.admin_console import admin_console
+from views.mop import mop
 
 import logging
 import filters
@@ -100,6 +101,7 @@ app.register_blueprint(host_dashboard)
 app.register_blueprint(install_dashboard)
 app.register_blueprint(download_dashboard)
 app.register_blueprint(admin_console)
+app.register_blueprint(mop)
 
 # Hook up the filters
 filters.init(app)
