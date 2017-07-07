@@ -32,7 +32,7 @@ import logging
 
 class IOSSoftwarePackageParser(BaseSoftwarePackageParser):
 
-    def set_host_packages_from_cli(self, ctx):
+    def process_software_packages(self, ctx):
         host_packages = []
         committed_packages = {}
 

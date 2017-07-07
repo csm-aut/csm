@@ -95,32 +95,34 @@ KEY_INSTALL_JOB_LIST = 'install_job_list'
 acceptable_keys = [KEY_HOSTNAME, KEY_INSTALL_ACTION, KEY_SCHEDULED_TIME, KEY_UTC_OFFSET, KEY_CUSTOM_COMMAND_PROFILE,
                    KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES]
 
-required_keys_dict = {InstallAction.PRE_UPGRADE: [KEY_HOSTNAME],
+required_keys_dict = {InstallAction.PRE_CHECK: [KEY_HOSTNAME],
                       InstallAction.INSTALL_ADD: [KEY_HOSTNAME, KEY_SERVER_REPOSITORY, KEY_SOFTWARE_PACKAGES],
                       InstallAction.INSTALL_ACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
-                      InstallAction.POST_UPGRADE: [KEY_HOSTNAME],
+                      InstallAction.POST_CHECK: [KEY_HOSTNAME],
                       InstallAction.INSTALL_COMMIT: [KEY_HOSTNAME],
                       InstallAction.INSTALL_REMOVE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
-                      InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES]}
+                      InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
+                      InstallAction.FPD_UPGRADE: [KEY_HOSTNAME]}
 
-ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                           InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+ordered_install_actions = [InstallAction.PRE_CHECK, InstallAction.INSTALL_ADD,
+                           InstallAction.INSTALL_ACTIVATE, InstallAction.POST_CHECK,
                            InstallAction.INSTALL_COMMIT]
 
 # Supported install actions
 supported_install_actions = ordered_install_actions + [InstallAction.INSTALL_REMOVE,
                                                        InstallAction.INSTALL_DEACTIVATE,
-                                                       InstallAction.INSTALL_REMOVE_ALL_INACTIVE]
+                                                       InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+                                                       InstallAction.FPD_UPGRADE]
 
 
 def api_create_install_request(request):
     """
-    Install Action: Pre-Upgrade, Post-Upgrade, and Commit
+    Install Action: Pre-Check, Post-Check, and Commit
 
         POST: http://localhost:5000/api/v1/install
         BODY:
             [ {'hostname': 'My Host',
-               'install_action': 'Post-Upgrade',
+               'install_action': 'Post-Check',
                'scheduled_time': '05-02-2016 08:00 AM',
                'command_profile': 'Edge Devices',
                'dependency': 'Add'} ]
@@ -132,7 +134,7 @@ def api_create_install_request(request):
                'scheduled_time': '05-02-2016 08:00 AM',
                'server_repository': 'My FTP Server',
                'software_packages': ['asr9k-px-5.3.3.CSCuz05961.pie, asr9k-px-5.3.3.CSCux89921.pie],
-               'dependency': 'Pre-Upgrade'} ]
+               'dependency': 'Pre-Check'} ]
 
     Install Action: Activate, Remove, Deactivate
         BODY:
@@ -430,10 +432,7 @@ def api_get_install_request(request):
                 raise ValueError("Host '{}' does not exist in the database.".format(hostname))
 
         if install_action:
-            if install_action not in [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                      InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
-                                      InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_REMOVE,
-                                      InstallAction.INSTALL_DEACTIVATE]:
+            if install_action not in supported_install_actions:
                 raise ValueError("'{}' is an invalid install action.".format(install_action))
 
             if table_to_query == InstallJob:

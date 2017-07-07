@@ -22,14 +22,19 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from sqlalchemy import or_
 from database import DBSession
 from models import logger
-from models import EmailJob, CreateTarJob, ConvertConfigJob
+from models import EmailJob
+from models import CreateTarJob
+from models import ConvertConfigJob
+from models import BackupJob
 
 from multi_process import JobManager
 from work_units.email_work_unit import EmailWorkUnit
 from work_units.create_tar_work_unit import CreateTarWorkUnit
 from work_units.convert_config_work_unit import ConvertConfigWorkUnit
+from work_units.backup_work_unit import BackupWorkUnit
 
 from constants import JobStatus
 
@@ -44,13 +49,16 @@ class GenericJobManager(JobManager):
         self.handle_email_jobs(db_session)
         self.handle_create_tar_jobs(db_session)
         self.handle_convert_config_jobs(db_session)
+        self.handle_backup_job(db_session)
 
         db_session.close()
 
     def handle_email_jobs(self, db_session):
         try:
-            # Submit email notification jobs if any
-            email_jobs = db_session.query(EmailJob).filter(EmailJob.status == None).all()
+            # Include in-progress job in case CSM Server was restarted while the job was in-progress.
+            email_jobs = db_session.query(EmailJob).filter(
+                or_(EmailJob.status == JobStatus.SCHEDULED, EmailJob.status == JobStatus.IN_PROGRESS)).all()
+
             if email_jobs:
                 for email_job in email_jobs:
                     self.submit_job(EmailWorkUnit(email_job.id))
@@ -59,21 +67,37 @@ class GenericJobManager(JobManager):
 
     def handle_create_tar_jobs(self, db_session):
         try:
-            create_tar_jobs = db_session.query(CreateTarJob).filter().all()
+            # Include in-progress job in case CSM Server was restarted while the job was in-progress.
+            create_tar_jobs = db_session.query(CreateTarJob).filter(
+                or_(CreateTarJob.status == JobStatus.SCHEDULED, CreateTarJob.status == JobStatus.IN_PROGRESS)).all()
+
             if create_tar_jobs:
                 for create_tar_job in create_tar_jobs:
-                    if create_tar_job.status != JobStatus.COMPLETED and create_tar_job.status != JobStatus.FAILED:
-                        self.submit_job(CreateTarWorkUnit(create_tar_job.id))
+                    self.submit_job(CreateTarWorkUnit(create_tar_job.id))
         except Exception:
             logger.exception('Unable to dispatch create tar job')
 
     def handle_convert_config_jobs(self, db_session):
         try:
-            convert_config_jobs = db_session.query(ConvertConfigJob).filter().all()
+            # Include in-progress job in case CSM Server was restarted while the job was in-progress.
+            convert_config_jobs = db_session.query(ConvertConfigJob).filter(
+                or_(ConvertConfigJob.status == JobStatus.SCHEDULED, ConvertConfigJob.status == JobStatus.IN_PROGRESS)
+            ).all()
+
             if convert_config_jobs:
                 for convert_config_job in convert_config_jobs:
-                    if convert_config_job.status != JobStatus.COMPLETED and \
-                       convert_config_job.status != JobStatus.FAILED:
-                        self.submit_job(ConvertConfigWorkUnit(convert_config_job.id))
+                    self.submit_job(ConvertConfigWorkUnit(convert_config_job.id))
         except Exception:
             logger.exception('Unable to dispatch convert config job')
+
+    def handle_backup_job(self, db_session):
+        try:
+            # Include in-progress job in case CSM Server was restarted while the job was in-progress.
+            # There should only be one system wide backup job.
+            backup_job = db_session.query(BackupJob).filter(
+                or_(BackupJob.status == JobStatus.SCHEDULED, BackupJob.status == JobStatus.IN_PROGRESS)).first()
+
+            if backup_job:
+                self.submit_job(BackupWorkUnit(backup_job.id))
+        except Exception:
+            logger.exception('Unable to dispatch backup job')

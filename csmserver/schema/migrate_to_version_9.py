@@ -31,8 +31,13 @@ from models import DownloadJob
 from constants import JobStatus
 
 sql_statements = [
-    'alter table host modify software_version VARCHAR(40)',
-    'alter table conformance_report_entry modify software_version VARCHAR(40)'
+    'alter table install_job add job_type VARCHAR(20)',
+    'drop table smu_info',
+    'drop table smu_meta',
+    'update install_job set install_action="Pre-Check" where install_action="Pre-Upgrade";',
+    'update install_job set install_action="Post-Check" where install_action="Post-Upgrade";',
+    'update install_job_history set install_action="Pre-Check" where install_action="Pre-Upgrade";',
+    'update install_job_history set install_action="Post-Check" where install_action="Post-Upgrade";'
     ]
 
 

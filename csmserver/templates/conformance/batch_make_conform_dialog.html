@@ -26,10 +26,10 @@
         });
 
         // These constant values must match the CSM definitions
-        var PRE_UPGRADE = "Pre-Upgrade";
+        var PRE_CHECK = "Pre-Check";
         var INSTALL_ADD = "Add";
         var INSTALL_ACTIVATE = "Activate";
-        var POST_UPGRADE = "Post-Upgrade";
+        var POST_CHECK = "Post-Check";
         var INSTALL_COMMIT = "Commit";
         var ALL = "ALL";
 
@@ -109,7 +109,7 @@
             var install_actions = $(this).val();
 
             if (has_one_of_these(install_actions, [ALL])) {
-                $("#batch_install_action").val([PRE_UPGRADE, INSTALL_ADD, INSTALL_ACTIVATE, POST_UPGRADE, INSTALL_COMMIT]).trigger('change');
+                $("#batch_install_action").val([PRE_CHECK, INSTALL_ADD, INSTALL_ACTIVATE, POST_CHECK, INSTALL_COMMIT]).trigger('change');
             }
 
             if (has_one_of_these(install_actions, [INSTALL_ADD, ALL])) {
@@ -118,7 +118,7 @@
                 $('#batch-server-repository-panel').hide();
             }
 
-            if (has_one_of_these(install_actions, [PRE_UPGRADE, POST_UPGRADE, ALL])) {
+            if (has_one_of_these(install_actions, [PRE_CHECK, POST_CHECK, ALL])) {
                 $('#batch-custom-command-profile-panel').show();
             } else {
                 $('#batch-custom-command-profile-panel').hide();

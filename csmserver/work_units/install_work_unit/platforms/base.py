@@ -73,9 +73,7 @@ class BaseInstallWorkUnit(WorkUnit):
             logger.error('SoftwareManager: Unable to get handler for %s', ctx.host.software_platform)
 
         handler = handler_class()
-        if handler.get_inventory(ctx):
-            # Update the time stamp
-            ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)
+        handler.get_inventory(ctx)
 
     def start(self, db_session, logger, process_name):
         ctx = None
@@ -117,7 +115,7 @@ class BaseInstallWorkUnit(WorkUnit):
                     pass
 
                 # Support Doc Central feature for SIT team
-                if install_job.install_action == InstallAction.PRE_UPGRADE or \
+                if install_job.install_action == InstallAction.PRE_CHECK or \
                                 install_job.install_action == InstallAction.INSTALL_ADD:
                     install_job.save_data("from_release", ctx.host.software_version)
 

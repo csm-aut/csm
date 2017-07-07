@@ -40,14 +40,17 @@ NAME_CSM_DATA = 'csm_data'
 NAME_REPOSITORY = 'repository'
 NAME_LOGS = 'logs'
 NAME_TEMP = 'temp'
+NAME_BACKUP = 'backup'
 NAME_MIGRATION = 'migration'
+NAME_DOC_CENTRAL = 'doc_central'
 
 DIRECTORY_CSM_DATA = '../../' + NAME_CSM_DATA + '/'
 DIRECTORY_LOG = DIRECTORY_CSM_DATA + NAME_LOGS + '/'
 DIRECTORY_REPOSITORY = DIRECTORY_CSM_DATA + NAME_REPOSITORY + '/'
 DIRECTORY_TEMP = DIRECTORY_CSM_DATA + NAME_TEMP + '/'
 DIRECTORY_MIGRATION = DIRECTORY_CSM_DATA + NAME_MIGRATION + '/'
-DIRECTORY_DOC_CENTRAL = DIRECTORY_CSM_DATA + 'doc_central/'
+DIRECTORY_BACKUP = DIRECTORY_CSM_DATA + NAME_BACKUP + '/'
+DIRECTORY_DOC_CENTRAL = DIRECTORY_CSM_DATA + NAME_DOC_CENTRAL + '/'
 
 
 def get_csm_data_directory():
@@ -61,6 +64,9 @@ def get_log_directory():
 def get_repository_directory():
     return DIRECTORY_REPOSITORY
 
+
+def get_backup_directory():
+    return DIRECTORY_BACKUP
 
 def get_temp_directory():
     return DIRECTORY_TEMP
@@ -127,11 +133,11 @@ class ServerType:
 
 class InstallAction:
     UNKNOWN = 'Unknown'
-    PRE_UPGRADE = 'Pre-Upgrade'
+    PRE_CHECK = 'Pre-Check'
     INSTALL_ADD = 'Add'
     INSTALL_PREPARE = 'Prepare'
     INSTALL_ACTIVATE = 'Activate'
-    POST_UPGRADE = 'Post-Upgrade'
+    POST_CHECK = 'Post-Check'
     INSTALL_COMMIT = 'Commit'
     ALL = 'ALL'
     INSTALL_REMOVE = 'Remove'
