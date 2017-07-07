@@ -658,7 +658,7 @@ class InventoryJob(Base):
     __tablename__ = 'inventory_job'
     
     id = Column(Integer, primary_key=True)
-    status = Column(String(20))
+    status = Column(String(20), default=JobStatus.SCHEDULED)
     status_message = Column(String(200))
     status_time = Column(DateTime) 
     last_successful_time = Column(DateTime)
@@ -735,7 +735,7 @@ class InstallJob(Base):
     pending_downloads = Column(Text)
     scheduled_time = Column(DateTime)
     start_time = Column(DateTime)
-    status = Column(String(20))
+    status = Column(String(20), default=JobStatus.SCHEDULED)
     status_message = Column(String(200))
     status_time = Column(DateTime)
     trace = Column(Text)
@@ -1004,7 +1004,7 @@ class DownloadJob(Base):
     software_type_id = Column(String(20))
     server_id = Column(Integer)
     server_directory = Column(String(300))
-    status = Column(String(20))
+    status = Column(String(20), default=JobStatus.SCHEDULED)
     status_message = Column(String(200))
     status_time = Column(DateTime) 
     trace = Column(Text)
@@ -1108,6 +1108,29 @@ class SMUInfo(Base):
     @cco_filename.setter
     def cco_filename(self, value):
         self._cco_filename = value
+
+
+class BackupJob(Base):
+    __tablename__ = 'backup_job'
+
+    id = Column(Integer, primary_key=True)
+    server_id = Column(Integer, default=-1)
+    server_directory = Column(String(300))
+    status = Column(String(20), default=JobStatus.SCHEDULED)
+    status_message = Column(String(200))
+    status_time = Column(DateTime)
+    last_successful_time = Column(DateTime)
+
+    def set_status(self, status):
+        self.status = status
+        self.status_time = datetime.datetime.utcnow()
+        if self.status == JobStatus.COMPLETED:
+            self.last_successful_time = self.status_time
+            self.status_message = None
+
+    def set_status_message(self, status_message):
+        self.status_message = status_message
+        self.status_time = datetime.datetime.utcnow()
 
 
 class PackageToSMU(Base):
@@ -1258,7 +1281,7 @@ class EmailJob(Base):
     message = Column(Text)
     attachment_file_paths = Column(String(300))
     scheduled_time = Column(DateTime, default=datetime.datetime.utcnow)
-    status = Column(String(200))
+    status = Column(String(200), default=JobStatus.SCHEDULED)
     status_time = Column(DateTime)
     created_by = Column(String(50))
 
@@ -1277,7 +1300,7 @@ class CreateTarJob(Base):
     contents = Column(Text)
     additional_packages = Column(Text)
     new_tar_name = Column(String(50))
-    status = Column(String(200))
+    status = Column(String(200), default=JobStatus.SCHEDULED)
     status_time = Column(DateTime)
     created_by = Column(String(50))
 
@@ -1291,7 +1314,7 @@ class ConvertConfigJob(Base):
 
     id = Column(Integer, primary_key=True)
     file_path = Column(String(200))
-    status = Column(String(200))
+    status = Column(String(200), default=JobStatus.SCHEDULED)
     status_time = Column(DateTime)
 
     def set_status(self, status):
@@ -1430,10 +1453,18 @@ def init_sys_time():
         db_session.commit()
 
 
+def init_backup_job():
+    db_session = DBSession()
+    if db_session.query(BackupJob).count() == 0:
+        db_session.add(BackupJob())
+        db_session.commit()
+
+
 def initialize():
     init_user()      
     init_system_option()
     init_sys_time()
+    init_backup_job()
 
 
 init_system_version()
