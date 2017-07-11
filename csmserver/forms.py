@@ -80,8 +80,8 @@ class HostScheduleInstallForm(ServerDialogForm):
     custom_command_profile = SelectMultipleField('Custom Command Profile', coerce=int, choices=[('', '')])
     # Use str coercion as Batch Schedule Install displays the action Install Action.
     dependency = SelectField('Dependency', coerce=str, choices=[(-1, 'None')])
-    pre_upgrade_mop = SelectField('Pre-Upgrade MOP', coerce=str, choices=[('', 'None')])
-    post_upgrade_mop = SelectField('Post-Upgrade MOP', coerce=str, choices=[('', 'None')])
+    pre_check_mop = SelectField('Pre-Check MOP', coerce=str, choices=[('', 'None')])
+    post_check_mop = SelectField('Post-Check MOP', coerce=str, choices=[('', 'None')])
 
     install_history_dialog_host = SelectField('Host', coerce=str, choices=[('', '')])
     

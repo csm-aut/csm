@@ -43,11 +43,11 @@
                 if (has_one_of_these(selected, ["ALL"])) {
                     selector.val(all_valid_options).trigger('change');
                 }
-                get_available_plugins()
+                get_available_plugins(false)
             });
         }
 
-        function get_available_plugins() {
+        function get_available_plugins(first_load_on_edit) {
             $.ajax({
                 url: "/mop/get_available_plugin_list",
                 dataType: 'json',
@@ -57,51 +57,60 @@
                     platforms: $('#platform').val()
                 },
                 success: function(data) {
-                    $('#plugins').empty();
-                    var $available_plugins = $("<div>", {id: "available-plugins", "class": "col-sm-6 dragula-container"});
-                    var $container_separator = $("<div>", {"class": "col-sm-1 dragula-container-separator"});
-                    var $selected_plugins = $("<div>", {id: "selected-plugins", "class": "col-sm-6 dragula-container"});
+                    $("#available-plugins").empty();
+
+                    var $available_plugins_container = $("#available-plugins");
+
+                    var $selected_plugins_container = $("#selected-plugins");
+
                     for (var i = 0; i < data.plugins.length; i++) {
-                        $available_plugins.append("<div>" + data.plugins[i] +"</div>");
+                        $available_plugins_container.append("<div>" + data.plugins[i] + "</div>");
                     }
-                    var removed_plugins = [];
-                    if ($("#hidden_plugins").val()) {
+
+                    $('#selected-plugins > div').map(function() {
+                        if (data.plugins.indexOf($(this).html()) < 0) {
+                            $(this).remove()
+                        }
+                    });
+
+                    if (first_load_on_edit && $("#hidden_plugins").val()) {
+                        var removed_plugins = [];
+
                         var selected_plugins = $("#hidden_plugins").val().split(",");
+
                         for (var i = 0; i < selected_plugins.length; i++) {
                             if (data.plugins.indexOf(selected_plugins[i]) < 0) {
                                 removed_plugins.push(selected_plugins[i])
                             } else {
-                                $selected_plugins.append("<div>" + selected_plugins[i] +"</div>");
+                                $selected_plugins_container.append("<div>" + selected_plugins[i] +"</div>");
                             }
                         }
-                    }
-                    $('#plugins').append($available_plugins);
-                    $('#plugins').append($container_separator);
-                    $('#plugins').append($selected_plugins);
-                    dragula([$available_plugins[0], $container_separator[0], $selected_plugins[0]], {
-                      copy: function (el, source) {
-                        return source === $available_plugins[0]
-                      },
-                      accepts: function (el, target) {
-                        return target !== $available_plugins[0]
-                      }
-                    });
 
-                    dragula([$selected_plugins[0]], {
-                      removeOnSpill: true
-                    });
-
-                    if (removed_plugins.length > 0) {
-                        var message = "The following plugins previously defined in this MOP are no longer found:<br><ul><li>";
-                        message += removed_plugins.join("</li><li>");
-                        message += "</li></ul>They will be removed from this MOP after saving.";
-                        bootbox.alert(message);
+                        if (removed_plugins.length > 0) {
+                            var message = "The following plugins previously defined in this MOP are no longer found:<br><ul><li>";
+                            message += removed_plugins.join("</li><li>");
+                            message += "</li></ul>They will be removed from this MOP after saving.";
+                            bootbox.alert(message);
+                        }
                     }
 
                 }
             });
         }
-        get_available_plugins();
+
+        dragula([$("#available-plugins")[0], $("#container-separator")[0], $("#selected-plugins")[0]], {
+          copy: function (el, source) {
+            return source === $("#available-plugins")[0]
+          },
+          accepts: function (el, target) {
+            return target !== $("#available-plugins")[0]
+          }
+        });
+
+        dragula([$("#selected-plugins")[0]], {
+          removeOnSpill: true
+        });
+        get_available_plugins(true);
 
 
         $('#form').submit(function() {
@@ -190,17 +199,9 @@
                     </div>
                   </div>
                   <div id="plugins" class="row">
-                    <!--div id="available-plugins" class="col-sm-6 container">
-                      <div>Install Commit Plugin</div>
-                    <div>Node Status Plugin</div>
-                    <div>Disk Space Check Plugin</div>
-                    <div>Filesystem Check Plugin</div>
-                    <div>Configuration Plugin</div>
-
-                    </div>
-
-                    <div class="col-sm-1 container-separator"></div>
-                    <div id="selected-plugins" class="col-sm-6 container"></div-->
+                    <div id="available-plugins" class="col-sm-6 dragula-container"></div>
+                    <div id="container-separator" class="col-sm-1 container-separator"></div>
+                    <div id="selected-plugins" class="col-sm-6 dragula-container"></div>
                   </div>
                 </div>
                 <input id="hidden_plugins" name="{{ form.hidden_plugins.name }}" value="{{ form.hidden_plugins.data }}" type="hidden">

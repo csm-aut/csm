@@ -69,19 +69,20 @@ def get_available_plugin_list():
     if not can_install(current_user):
         abort(401)
     phases = request.form.getlist('phases[]')
-    platforms = request.form.getlist('platforms[]')
+    software_platforms = request.form.getlist('platforms[]')
 
-    if not platforms:
+    if not software_platforms:
         plugins = get_all_available_plugins(phases=phases)
     else:
-        plugins = set()
-        for software_platform in platforms:
-            platform, os_type = translate_software_platform_to_platform_os(software_platform)
-            if not plugins:
-                plugins = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
+        platform, os_type = translate_software_platform_to_platform_os(software_platforms[0])
+        plugins = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
+
+        for i in range(1, len(software_platforms)):
+            platform, os_type = translate_software_platform_to_platform_os(software_platforms[i])
+            if plugins:
+                plugins.intersection_update(get_all_available_plugins(platform=platform, phases=phases, os_type=os_type))
             else:
-                plugins = set.intersection(plugins,
-                                           get_all_available_plugins(platform=platform, phases=phases, os_type=os_type))
+                break
 
     return jsonify(plugins=sorted(plugins))
 
@@ -92,7 +93,7 @@ def get_all_available_plugins(platform=None, phases=None, os_type=None):
     # if phases is not specified, get available plugins for all valid mop phases
     plugins = set()
     for phase in get_phases():
-        plugins = set.union(set(get_available_plugins(platform=platform, phase=phase, os=os_type)))
+        plugins.update(set(get_available_plugins(platform=platform, phase=phase, os=os_type)))
     return plugins
 
 
@@ -255,7 +256,7 @@ def init_mop_form(mop_form):
 
 
 def get_phases():
-    return [InstallAction.PRE_UPGRADE, InstallAction.POST_UPGRADE]
+    return [InstallAction.PRE_CHECK, InstallAction.POST_CHECK]
 
 
 def get_phase_choices():
