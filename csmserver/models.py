@@ -520,7 +520,7 @@ class HostInventory(BaseInventoryModel):
     name = Column(String(100))
     description = Column(String(200))
     serial_number = Column(String(50), index=True)
-    hardware_revision = Column(String(30))
+    hardware_revision = Column(String(10))
     # type = Column(String(50))
     """
     children = relationship("HostInventory",
@@ -604,7 +604,7 @@ class Inventory(BaseInventoryModel):
     name = Column(String(100))
     model_name = Column(String(50))
     description = Column(String(200))
-    hardware_revision = Column(String(30))
+    hardware_revision = Column(String(10))
 
     notes = Column(Text)
     changed_time = Column(DateTime, default=datetime.datetime.utcnow)
