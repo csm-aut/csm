@@ -195,10 +195,12 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             # have Pre-Check (predecessor) as the dependency.
             dependency = 0
             for one_install_action in install_action:
-                install_job_data = form_install_job_data(one_install_action, pre_check_mop_name,
+                install_job_data = form_install_job_data(one_install_action,
+                                                         pre_check_mop_name,
                                                          pre_check_plugin_execution_order,
                                                          post_check_mop_name,
                                                          post_check_plugin_execution_order)
+
                 new_install_job = create_or_update_install_job(db_session=db_session,
                                                                host_id=host.id,
                                                                install_action=one_install_action,
@@ -326,6 +328,19 @@ def batch_schedule_install():
                     server_directory = form.hidden_server_directory.data
                     pending_downloads = form.hidden_pending_downloads.data.split()
 
+                    pre_check_mop_name = form.pre_check_mop.data
+                    post_check_mop_name = form.post_check_mop.data
+                    pre_check_plugin_execution_order = ""
+                    post_check_plugin_execution_order = ""
+
+                    if pre_check_mop_name:
+                        pre_check_plugin_execution_order = \
+                            get_plugins_execution_order_string_with_mop_name(db_session, pre_check_mop_name).split(",")
+
+                    if post_check_mop_name:
+                        post_check_plugin_execution_order = \
+                            get_plugins_execution_order_string_with_mop_name(db_session, post_check_mop_name).split(",")
+
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
                     if len(install_action) == 1:
@@ -336,19 +351,33 @@ def batch_schedule_install():
                             if prerequisite_install_job is not None:
                                 dependency = prerequisite_install_job.id
 
+                        install_job_data = form_install_job_data(install_action[0],
+                                                                 pre_check_mop_name,
+                                                                 pre_check_plugin_execution_order,
+                                                                 post_check_mop_name,
+                                                                 post_check_plugin_execution_order)
+
                         create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                      install_action=install_action[0],
                                                      custom_command_profile_ids=custom_command_profile_ids,
                                                      scheduled_time=scheduled_time, software_packages=software_packages,
                                                      server_id=server_id, server_directory=server_directory,
                                                      pending_downloads=pending_downloads, dependency=dependency,
-                                                     created_by=current_user.username)
+                                                     created_by=current_user.username,
+                                                     install_job_data=install_job_data)
                     else:
                         # The dependency on each install action is already indicated in the implicit ordering
                         # in the selector.  If the user selected Pre-Check and Install Add, Install Add (successor)
                         # will have Pre-Check (predecessor) as the dependency.
                         dependency = 0
                         for one_install_action in install_action:
+
+                            install_job_data = form_install_job_data(one_install_action,
+                                                                     pre_check_mop_name,
+                                                                     pre_check_plugin_execution_order,
+                                                                     post_check_mop_name,
+                                                                     post_check_plugin_execution_order)
+
                             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                                            install_action=one_install_action,
                                                                            scheduled_time=scheduled_time,
@@ -358,7 +387,8 @@ def batch_schedule_install():
                                                                            server_directory=server_directory,
                                                                            pending_downloads=pending_downloads,
                                                                            dependency=dependency,
-                                                                           created_by=current_user.username)
+                                                                           created_by=current_user.username,
+                                                                           install_job_data=install_job_data)
                             dependency = new_install_job.id
 
         return redirect(url_for(return_url))

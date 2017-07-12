@@ -60,6 +60,11 @@ $('.wizard-card').bootstrapWizard({
     }
 });
 
+
+$('#retrieve-hosts-by-platform').on('click', function(e) {
+    populate_mop_options($("#platform").val());
+});
+
 $('#on-finish-submit').click(function(e) {
     if (!validate(install_actions)) {
         return false;
@@ -132,6 +137,39 @@ function populate_region_server() {
         },
         error: function(xhr, status, errorThrown) {
             bootbox.alert("Unable to retrieve server list. Error=" + errorThrown);
+        }
+    });
+}
+
+function populate_mop_options(software_platform) {
+    $.ajax({
+        url: "/mop/api/get_mops/platform/" + software_platform,
+        dataType: 'json',
+        success: function(data) {
+            var $pre_check_mops = $("#pre_check_mop")
+            var $post_check_mops = $("#post_check_mop")
+            var selected_pre_check_mop = $pre_check_mops.val();
+            var selected_post_check_mop = $post_check_mops.val();
+            $pre_check_mops.find('option').remove();
+            $post_check_mops.find('option').remove();
+            $pre_check_mops.append('<option value="">None</option>')
+            $post_check_mops.append('<option value="">None</option>')
+
+            for(var i = 0; i < data.data.length; i++){
+                if ($.inArray("Pre-Check", data.data[i].phase) > -1) {
+                    $pre_check_mops.append('<option value="' + data.data[i].mop_name + '">' + data.data[i].mop_name+ '</option>')
+                }
+                if ($.inArray("Post-Check", data.data[i].phase) > -1) {
+                    $post_check_mops.append('<option value="' + data.data[i].mop_name + '">' + data.data[i].mop_name+ '</option>')
+                }
+            }
+
+            $pre_check_mops.val(selected_pre_check_mop);
+            $post_check_mops.val(selected_post_check_mop);
+
+        },
+        error: function(xhr, status, errorThrown) {
+            bootbox.alert("Unable to retrieve mops. Error=" + errorThrown);
         }
     });
 }
