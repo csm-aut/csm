@@ -34,10 +34,12 @@ sql_statements = [
     'alter table install_job add job_type VARCHAR(20)',
     'drop table smu_info',
     'drop table smu_meta',
-    'update install_job set install_action="Pre-Check" where install_action="Pre-Upgrade";',
-    'update install_job set install_action="Post-Check" where install_action="Post-Upgrade";',
-    'update install_job_history set install_action="Pre-Check" where install_action="Pre-Upgrade";',
-    'update install_job_history set install_action="Post-Check" where install_action="Post-Upgrade";'
+    'update install_job set install_action="Pre-Check" where install_action="Pre-Upgrade"',
+    'update install_job set install_action="Post-Check" where install_action="Post-Upgrade"',
+    'update install_job_history set install_action="Pre-Check" where install_action="Pre-Upgrade"',
+    'update install_job_history set install_action="Post-Check" where install_action="Post-Upgrade"',
+    'alter table inventory modify hardware_revision VARCHAR(30)',
+    'alter table host_inventory modify hardware_revision VARCHAR(30)'
     ]
 
 
