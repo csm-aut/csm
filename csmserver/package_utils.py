@@ -49,21 +49,29 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
             continue
 
         if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
-            pos = host_package.find('-px')
-            if pos == -1:
-                continue
+            """
+            External Names:                            Internal Names (i.e. host_package):
+            asr9k-mcast-px.pie-6.1.1                   asr9k-mcast-px-6.2.2
+            hfr-mcast-px.pie-6.1.1                     asr9k-mcast-px-6.2.2
+            hfr-asr9000v-nV-px.pie-6.1.1               hfr-asr9000v-nV-px-6.2.2
 
-            package_name = host_package[0:pos]
-            if match_internal_name:
-                # asr9k-mgbl-px-5.3.3, hfr-mgbl-px-5.3.3
-                target_list.append('{}-px-{}'.format(package_name, target_version))
-            else:
-                # Handles exceptional case
-                if 'asr9k-9000v-nV-px' in host_package:
-                    target_list.append('asr9k-asr9000v-nV-px.pie-{}'.format(target_version))
+            These two packages cause CSM headache because of different formatting compared to other packages.
+            asr9k-services-infra-px.pie-6.1.1          asr9k-services-infra-6.2.2
+            asr9k-asr9000v-nV-px.pie-6.1.1             asr9k-9000v-nV-px-6.2.2
+            """
+            pos = host_package.rfind('-')
+            if pos != -1:
+                if match_internal_name:
+                    target_list.append('{}-{}'.format(host_package[0:pos], target_version))
                 else:
-                    # asr9k-mgbl-px.pie-5.3.3, hfr-mgbl-px.pie-5.3.3
-                    target_list.append('{}-px.pie-{}'.format(package_name, target_version))
+                    # Handles exceptional cases
+                    if 'asr9k-9000v-nV-px' in host_package:
+                        target_list.append('asr9k-asr9000v-nV-px.pie-{}'.format(target_version))
+                    elif 'asr9k-services-infra' in host_package:
+                        target_list.append('asr9k-services-infra-px.pie-{}'.format(target_version))
+                    else:
+                        # asr9k-mgbl-px.pie-5.3.3, hfr-mgbl-px.pie-5.3.3
+                        target_list.append('{}.pie-{}'.format(host_package[0:pos], target_version))
 
         elif software_platform in [PlatformFamily.NCS6K, PlatformFamily.NCS4K]:
             match = re.search('-\d+\.\d+\.\d+', host_package)
