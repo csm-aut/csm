@@ -1,0 +1,278 @@
+
+{% from 'host/common.html' import edit_field %}
+
+<script>
+
+$(function() {
+    var SATELLITE_TRANSFER = "{{ satellite_install_action.transfer }}";
+    var SATELLITE_ACTIVATE = "{{ satellite_install_action.activate }}";
+    var hostname = "{{ host.hostname }}";
+
+    $("#satellite_install_action").select2({});
+
+    var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True'
+    if (use_utc_timezone) {
+        $('#label_satellite_scheduled_time').text('Scheduled Time (UTC)');
+    } else {
+        $('#label_satellite_scheduled_time').text('Scheduled Time');
+    }
+
+    var datetimepicker = $(".form_datetime").datetimepicker({
+        format: "mm/dd/yyyy HH:ii P",
+        //format: "yyyy-mm-dd hh:ii:ss",
+        showMeridian: true,
+        autoclose: true,
+        todayBtn: true,
+        pickerPosition: "bottom-left",
+        todayHighlight: true
+    });
+
+    $('#manage-satellite-software-dialog-wizard').bootstrapWizard({
+        'tabClass': 'nav nav-pills',
+        'nextSelector': '.btn-next',
+        'previousSelector': '.btn-previous',
+
+        onInit : function(tab, navigation, index){
+            //check number of tabs and fill the entire row
+            var $total = navigation.find('li').length;
+            $width = 100/$total;
+            $display_width = $(document).width();
+
+            if($display_width < 600 && $total > 3){
+                $width = 50;
+            }
+            navigation.find('li').css('width',$width + '%');
+        },
+        onNext: function(tab, navigation, index){
+            if (index == 1){
+                if (get_selected_satellites().length == 0) {
+                    bootbox.alert("No satellite was selected.");
+                    return false;
+                }
+            }
+        },
+        onTabClick : function(tab, navigation, index){
+            // Disable the possibility to click on tabs
+            return false;
+        },
+        onTabShow: function(tab, navigation, index) {
+            var $total = navigation.find('li').length;
+            var $current = index+1;
+
+            var wizard = navigation.closest('.wizard-card');
+
+            // If it's the last tab then hide the last button and show the finish instead
+            if($current >= $total) {
+                $(wizard).find('.btn-next').hide();
+                $(wizard).find('.btn-finish').show();
+            } else {
+                $(wizard).find('.btn-next').show();
+                $(wizard).find('.btn-finish').hide();
+            }
+        }
+    });
+
+    dialog_satellite_table = $("#dialog-satellite-datatable").dataTable({
+        "order": [
+            [1, "asc"]
+        ],
+        /*
+        "scrollY": "250px",
+        "paging": false,
+        */
+        "columnDefs": [{
+            "sortable": false,
+            "targets": 0,
+            "data": 'satellite_id',
+            "render": function(data, type, row) {
+                return '<center><input type="checkbox" value="' + data + '" class="check"></center>';
+            }
+        }, {
+            "targets": 1,
+            "data": 'satellite_id'
+        }, {
+            "targets": 2,
+            "data": 'type'
+        }, {
+            "targets": 3,
+            "data" : 'ip_address'
+        }, {
+            "targets": 4,
+            "data": 'serial_number'
+        }, {
+            "targets": 5,
+            "data": 'fabric_links'
+        }, ],
+        "ajax": {
+            "url": "{{ url_for('host_dashboard.api_get_upgradeable_satellites', hostname=host.hostname) }}",
+        }
+    });
+
+
+    // server_time is always in UTC format.
+    var current_time = "{{ server_time | datetime_string }}";
+    if (!use_utc_timezone) {
+        current_time = convertToLocaleString(current_time);
+    }
+
+    $('#satellite-scheduled-time-UTC').val(function(index, value) {
+        if (value == 'None' || value.length == 0) {
+            $('#satellite-scheduled-time').val(current_time);
+        } else {
+            if (use_utc_timezone) {
+                $('#satellite-scheduled-time').val(value);
+            } else {
+                $('#satellite-scheduled-time').val(convertToLocaleString(value));
+            }
+        }
+    });
+
+    function get_selected_satellites() {
+        var selected = [];
+        $('.check').each(function(index) {
+            if (this.checked) {
+                selected.push($(this).val());
+            }
+        });
+        return selected;
+    };
+
+    // Called when the Schedule (i.e. submit) button is clicked but before the
+    // form actually being submitted.  Returning false will stop the submission.
+    $('#on-manage-satellite-software-submit').click(function(e) {
+        var install_actions = $('#satellite_install_action').val();
+        if (install_actions == null) {
+            bootbox.alert("Install Action has not been specified.");
+            return false;
+        }
+
+        if (use_utc_timezone) {
+            $('#satellite-scheduled-time-UTC').val($('#satellite-scheduled-time').val());
+        } else {
+            $('#satellite-scheduled-time-UTC').val(convertToUTCString($('#satellite-scheduled-time').val()));
+        }
+
+        $.ajax({
+            url: "{{ url_for('install.api_create_satellite_install_jobs') }}",
+            type: "POST",
+            data: {
+                hostname: hostname,
+                install_actions: install_actions,
+                scheduled_time_UTC: $('#satellite-scheduled-time-UTC').val(),
+                selected_satellites: get_selected_satellites()
+            },
+            success: function(data) {
+                if (data.status != 'OK') {
+                    bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
+                }
+            }
+        });
+    });
+
+    $('#satellite-check-all').click(function() {
+        toggle_check_all(dialog_satellite_table, this);
+    });
+
+    function toggle_check_all(data_table, this_instance) {
+        var filtered_rows = data_table.$('tr', {
+            "filter": "applied"
+        });
+
+        for (var i = 0; i < filtered_rows.length; i++) {
+            $(filtered_rows[i]).find('.check').prop('checked', this_instance.checked);
+        }
+    }
+
+});
+
+function display_manage_satellite_software_dialog() {
+    // Go to the first page especially when the dialog is re-used.
+    $('a[href="#dialog_select_satellites"]').tab('show');
+
+    $('#manage-satellite-software-dialog').modal({
+        show: true,
+        backdrop: 'static'
+    });
+}
+
+</script>
+
+<div id="manage-satellite-software-dialog" class="modal" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <button type="button" class="close" data-dismiss="modal">x</button>
+                <!-- <div class="wizard-container"> -->
+                <div class="card wizard-card csm-blue" id="manage-satellite-software-dialog-wizard">
+                    <form class="form-horizontal" method="post">
+                        <div class="wizard-header">
+                            <h3>
+                                Manage Satellite Software <br>
+                            </h3>
+                        </div>
+                        <ul>
+                            <li><a href="#dialog_select_satellites" data-toggle="tab">SELECT SATELLITES</a></li>
+                            <li><a href="#dialog_select_actions" data-toggle="tab">SELECT ACTIONS</a></li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane" id="dialog_select_satellites">
+                                <table class="display table" id="dialog-satellite-datatable">
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                <center><input type='checkbox' id='satellite-check-all'></center>
+                                            </th>
+                                            <th>Satellite ID</th>
+                                            <th>Type</th>
+                                            <th>IP Address</th>
+                                            <th>Serial Number</th>
+                                            <th>Fabric Links</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                 </table>
+                            </div>
+                            <div class="tab-pane" id="dialog_select_actions">
+
+                                <div class="row">
+                                    <div class="form-group ">
+                                        <label class="col-sm-4 control-label">Install Action</label>
+                                        <div class=col-sm-6>
+                                            <select class="form-control" id="satellite_install_action" multiple style="width: 100%">
+                                                <option value="{{ satellite_install_action.transfer }}">{{ satellite_install_action.transfer}}</option>
+                                                <option value="{{ satellite_install_action.activate }}">{{ satellite_install_action.activate }}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group ">
+                                        <label class="col-sm-4 control-label" id="label_satellite_scheduled_time">{{ manage_satellite_software_form.satellite_scheduled_time.label() }}</label>
+                                        <div class="col-sm-6">
+                                            <div  class="input-group date form_datetime">
+                                                <input id="satellite-scheduled-time" name="{{ manage_satellite_software_form.satellite_scheduled_time.name }}" class="form-control" size="16" type="text" readonly>
+                                                <input id="satellite-scheduled-time-UTC" name="{{ manage_satellite_software_form.satellite_scheduled_time_UTC.name }}" value="{{ manage_satellite_software_form.satellite_scheduled_time_UTC.data }}" class="form-control" type="hidden">
+                                                <span class="input-group-addon DodgerBlue"><span class="glyphicon glyphicon-calendar"></span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="wizard-footer">
+                            <div class="pull-right">
+                                <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                                <input id='on-manage-satellite-software-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
+                            </div>
+                            <div class="pull-left">
+                                <input type='button' class='btn btn-previous btn-fill btn-default btn-wd btn-sm' name='previous' value='Previous' />
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                    </form>
+                </div>
+                <!-- wizard container -->
+            </div>
+        </div>
+    </div>
+</div>

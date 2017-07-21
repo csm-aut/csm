@@ -605,3 +605,30 @@ def api_get_host_packages_by_states(hostname):
             rows.append({'package': package.name if package.location is None else package.location + ':' + package.name})
 
     return jsonify(**{'data': rows})
+
+
+@install.route('/api/create_satellite_install_jobs', methods=['POST'])
+@login_required
+def api_create_satellite_install_jobs():
+    if not can_edit_install(current_user):
+        abort(401)
+
+    db_session = DBSession()
+    hostname = request.form['hostname']
+
+    host = get_host(db_session, hostname)
+    if host is None:
+        return jsonify({'status': 'Failed - Unable to locate host {}'.format(hostname)})
+
+    install_actions = request.form.getlist('install_actions[]')
+    scheduled_time_UTC = request.form['scheduled_time_UTC']
+    selected_satellites = request.form.getlist('selected_satellites[]')
+
+    for install_action in install_actions:
+        create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action,
+                                     scheduled_time=scheduled_time_UTC,
+                                     install_job_data={'selected_satellites': selected_satellites},
+                                     created_by=current_user.username)
+
+    return jsonify({'status': 'OK'})
+

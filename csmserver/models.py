@@ -320,6 +320,11 @@ class Host(Base):
                                backref="host",
                                cascade="all, delete-orphan")
     
+    satellites = relationship("Satellite",
+                              order_by="Satellite.id",
+                              backref="host",
+                              cascade="all, delete-orphan")
+
     install_job_history = relationship("InstallJobHistory",
                                        order_by="desc(InstallJobHistory.created_time)",
                                        backref="host",
@@ -1005,6 +1010,25 @@ class SMUInfo(Base):
     @cco_filename.setter
     def cco_filename(self, value):
         self._cco_filename = value
+
+
+class Satellite(Base):
+    __tablename__ = 'satellite'
+
+    id = Column(Integer, primary_key=True)
+    satellite_id = Column(Integer)
+    device_name = Column(String(50))
+    type = Column(String(20))
+    state = Column(String(20))
+    install_state = Column(String(20))
+    ip_address = Column(String(20))
+    serial_number = Column(String(50))
+    mac_address = Column(String(20))
+    remote_version = Column(String(50))
+    remote_version_details = Column(Text)
+    fabric_links = Column(String(100))
+
+    host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
 
 class PackageToSMU(Base):

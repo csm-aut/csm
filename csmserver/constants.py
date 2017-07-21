@@ -138,6 +138,8 @@ class InstallAction:
     POST_MIGRATE = 'Post-Migrate'
     ALL_FOR_MIGRATE = 'ALL (for Migration)'
     FPD_UPGRADE = 'FPD-Upgrade'
+    SATELLITE_TRANSFER = 'Satellite-Transfer'
+    SATELLITE_ACTIVATE = 'Satellite-Activate'
 
 
 class PackageType:

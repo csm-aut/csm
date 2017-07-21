@@ -30,6 +30,12 @@ from flask import render_template
 
 from flask.ext.login import current_user
 
+from wtforms import Form
+from wtforms import StringField
+from wtforms import HiddenField
+from wtforms import SelectMultipleField
+from wtforms.validators import required
+
 from sqlalchemy import and_
 
 from database import DBSession
@@ -44,6 +50,7 @@ from common import get_last_successful_inventory_elapsed_time
 from models import logger
 from models import Package
 from models import SystemOption
+from models import Satellite
 from models import InstallJob
 from models import InstallJobHistory
 from models import InventoryJobHistory
@@ -53,12 +60,14 @@ from forms import HostScheduleInstallForm
 from constants import UNKNOWN
 from constants import JobStatus
 from constants import PackageState
+from constants import InstallAction
 
 from flask.ext.login import login_required
 
 from filters import time_difference_UTC
 
 import collections
+import datetime
 
 host_dashboard = Blueprint('host_dashboard', __name__, url_prefix='/host_dashboard')
 
@@ -74,12 +83,21 @@ def home(hostname):
 
     return render_template('host/host_dashboard.html', host=host,
                            form=get_host_schedule_install_form(request),
+                           manage_satellite_software_form=ManageSatelliteSoftwareDialogForm(request.form),
+                           satellite_install_action=get_satellite_install_action_dict(),
                            system_option=SystemOption.get(db_session),
+                           server_time=datetime.datetime.utcnow(),
                            package_states=[PackageState.ACTIVE_COMMITTED,
                                            PackageState.ACTIVE,
                                            PackageState.INACTIVE_COMMITTED,
                                            PackageState.INACTIVE])
 
+
+def get_satellite_install_action_dict():
+    return {
+        'transfer': InstallAction.SATELLITE_TRANSFER,
+        'activate': InstallAction.SATELLITE_ACTIVATE
+    }
 
 def get_host_schedule_install_form(request):
     return HostScheduleInstallForm(request.form)
@@ -321,3 +339,44 @@ def api_is_host_valid(hostname):
 
     return jsonify({'status': 'Failed'})
 
+
+@host_dashboard.route('/api/hosts/<hostname>/get_upgradeable_satellites')
+@login_required
+def api_get_upgradeable_satellites(hostname):
+    rows = []
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if host is not None:
+        satellites = db_session.query(Satellite).filter(Satellite.host_id == host.id)
+        for satellite in satellites:
+            row = dict()
+            row['satellite_id'] = satellite.satellite_id
+            row['type'] = satellite.type
+            row['ip_address'] = satellite.ip_address
+            row['mac_address'] = satellite.mac_address
+            row['serial_number'] = satellite.serial_number
+            row['remote_version'] = satellite.remote_version
+            row['fabric_links'] = satellite.fabric_links
+            rows.append(row)
+
+    return jsonify(**{'data': rows})
+
+
+@host_dashboard.route('/api/hosts/<hostname>/get_satellite_count')
+@login_required
+def api_get_satellite_count(hostname):
+    db_session = DBSession()
+
+    satellite_count = 0
+    host = get_host(db_session, hostname)
+    if host is not None:
+        satellite_count = db_session.query(Satellite).filter(Satellite.host_id == host.id).count()
+
+    return jsonify(**{'data': {'satellite_count': satellite_count}})
+
+
+class ManageSatelliteSoftwareDialogForm(Form):
+    satellite_install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
+    satellite_scheduled_time = StringField('Scheduled Time', [required()])
+    satellite_scheduled_time_UTC = HiddenField('Scheduled Time')
