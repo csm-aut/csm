@@ -99,6 +99,7 @@ def home():
         system_option.download_threads = admin_console_form.num_download_threads.data
         system_option.can_schedule = admin_console_form.can_schedule.data
         system_option.can_install = admin_console_form.can_install.data
+        system_option.check_host_software_profile = admin_console_form.check_host_software_profile.data
         system_option.enable_email_notify = admin_console_form.enable_email_notify.data
         system_option.enable_inventory = admin_console_form.enable_inventory.data
 
@@ -136,6 +137,7 @@ def home():
         admin_console_form.num_download_threads.data = system_option.download_threads
         admin_console_form.can_schedule.data = system_option.can_schedule
         admin_console_form.can_install.data = system_option.can_install
+        admin_console_form.check_host_software_profile.data = system_option.check_host_software_profile
         admin_console_form.enable_email_notify.data = system_option.enable_email_notify
         admin_console_form.enable_ldap_auth.data = system_option.enable_ldap_auth
         admin_console_form.ldap_server_url.data = system_option.ldap_server_url
@@ -185,6 +187,7 @@ class AdminConsoleForm(Form):
     num_download_threads = IntegerField('Number of Software Download Processes', [validators.NumberRange(min=2, max=50)])
     can_schedule = HiddenField("Allow Users to Schedule Installations")
     can_install = HiddenField("Allow Scheduled Installations to Run")
+    check_host_software_profile = HiddenField("Check Host Software Profile")
     enable_email_notify = HiddenField("Enable Email Notification")
     enable_inventory = HiddenField("Enable Inventory Retrieval")
     inventory_hour = SelectField('Hour to Perform Inventory Retrieval', coerce=int,

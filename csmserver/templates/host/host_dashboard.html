@@ -1,5 +1,4 @@
 {% extends 'base_software.html' %}
-
 {% from 'host/common.html' import trace_icon %}
 
 {% block head %}
@@ -351,6 +350,55 @@
         });
 
 
+        var satellite_table = $("#satellite-datatable").dataTable({
+            "serverSide": true,
+            "order": [
+                [0, "asc"]
+            ],
+            "columns": [
+                { "data": "satellite_id" },
+                { "data": "type" },
+                { "data": "state" },
+                { "data": "install_state" },
+                { "data": "ip_address" },
+                { "data": "mac_address" },
+                { "data": "serial_number" },
+                { "data": "remote_version" },
+                { "data": "fabric_links" }
+            ],
+            "columnDefs": [{
+                "targets": 0,
+                "data": 'satellite_id'
+            }, {
+                "targets": 1,
+                "data": 'type'
+            }, {
+                "targets": 2,
+                "data": 'state'
+            }, {
+                "targets": 3,
+                "data": 'install_state'
+            }, {
+                "targets": 4,
+                "data": 'ip_address'
+            }, {
+                "targets": 5,
+                "data": 'mac_address'
+            }, {
+                "targets": 6,
+                "data": 'serial_number'
+            }, {
+                "targets": 7,
+                "data": 'remote_version'
+            }, {
+                "targets": 8,
+                "data": 'fabric_links'
+            }, ],
+            "ajax": {
+                "url": "{{ url_for('datatable.api_get_satellites', hostname=host.hostname) }}",
+            }
+        });
+
         $(".install-delete-all").on("click", function() {
             var delete_url = $(this).attr('install-delete-url');
             var status = $(this).attr('status');
@@ -548,12 +596,29 @@
             inventory_job_history_table.api().ajax.reload(null, false);
         }
 
+        show_hide_satellite_tab();
+
+        function show_hide_satellite_tab() {
+            $.ajax({
+                url: "{{ url_for('host_dashboard.api_get_satellite_count', hostname=host.hostname) }}",
+                success: function(response) {
+                    if (response.data.satellite_count > 0) {
+                        $('.nav-tabs a[href="#satellites"]').show();
+                    } else {
+                        $('.nav-tabs a[href="#satellites"]').hide();
+                    }
+                }
+            });
+
+        }
+
         setInterval(function() {
             get_host_dashboard_cookie();
             refresh_packages_tables();
             refresh_scheduled_install_table();
             refresh_install_job_history_table();
             refresh_inventory_job_history_table();
+            show_hide_satellite_tab();
         }, 10000);
 
         function display_alert(can_schedule) {
@@ -570,6 +635,10 @@
                     '</div>');
             }
         }
+
+        $("#manage-satellite-software").on("click", function() {
+            display_manage_satellite_software_dialog();
+        });
 
     });
 </script>
@@ -598,6 +667,7 @@
 {% block main %}
 
 {% include 'share/job_info_dialog.html' %}
+{% include 'host/manage_satellite.html' %}
 
 <!-- Main -->
 <div class="container">
@@ -718,6 +788,7 @@
                 <li><a data-toggle="tab" href="#installation-history">Installation History</a></li>
                 <li><a data-toggle="tab" href="#retrieval-history">Retrieval History</a></li>
                 <li><a data-toggle="tab" href="#inventory">Inventory</a></li>
+                <li><a data-toggle="tab" href="#satellites">Satellites</a></li>
             </ul>
             <div class="tab-content">
                 <div id="installation-history" class="tab-pane fade in active">
@@ -768,6 +839,28 @@
                                 </tr>
                             </thead>
                         </table>
+                    </div>
+                </div>
+                <div id="satellites" class="tab-pane fade">
+                    <div class="container col-sm-12" style="margin-top: 10px">
+                        <button id="manage-satellite-software" class="btn btn-primary pull-right">Manage Software</button>
+                    </div>
+                    <div class="container col-sm-12" style="margin-top: 10px">
+                         <table cellspacing="0" class="display table" id="satellite-datatable">
+                            <thead>
+                                <tr>
+                                    <th>Satellite ID</th>
+                                    <th>Type</th>
+                                    <th>State</th>
+                                    <th>Install State</th>
+                                    <th>IP Address</th>
+                                    <th>MAC Address</th>
+                                    <th>Serial Number</th>
+                                    <th>Remote Version</th>
+                                    <th>Fabric Links</th>
+                                </tr>
+                            </thead>
+                         </table>
                     </div>
                 </div>
             </div>

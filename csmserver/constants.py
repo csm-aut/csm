@@ -152,6 +152,8 @@ class InstallAction:
     FPD_UPGRADE = 'FPD-Upgrade'
     ADD_MONITOR = 'Add-Monitor'
     ACTIVATE_MONITOR = 'Activate-Monitor'
+    SATELLITE_TRANSFER = 'Satellite-Transfer'
+    SATELLITE_ACTIVATE = 'Satellite-Activate'
 
 
 class PackageType:

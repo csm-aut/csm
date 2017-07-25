@@ -328,6 +328,11 @@ class Host(Base):
                                backref="host",
                                cascade="all, delete-orphan")
     
+    satellites = relationship("Satellite",
+                              order_by="Satellite.id",
+                              backref="host",
+                              cascade="all, delete-orphan")
+
     install_job_history = relationship("InstallJobHistory",
                                        order_by="desc(InstallJobHistory.created_time)",
                                        backref="host",
@@ -362,7 +367,6 @@ class Host(Base):
 
         db_session.delete(self)
         db_session.commit()
-
 
     def get_json(self):
         result = {}
@@ -1154,6 +1158,23 @@ class BackupJob(Base):
         self.status_message = status_message
         self.status_time = datetime.datetime.utcnow()
 
+class Satellite(Base):
+    __tablename__ = 'satellite'
+
+    id = Column(Integer, primary_key=True)
+    satellite_id = Column(Integer)
+    device_name = Column(String(50))
+    type = Column(String(20))
+    state = Column(String(20))
+    install_state = Column(String(20))
+    ip_address = Column(String(20))
+    serial_number = Column(String(50))
+    mac_address = Column(String(20))
+    remote_version = Column(String(50))
+    remote_version_details = Column(Text)
+    fabric_links = Column(String(100))
+
+    host_id = Column(Integer, ForeignKey('host.id'), index=True)
 
 class PackageToSMU(Base):
     __tablename__ = 'package_to_smu'
@@ -1183,6 +1204,7 @@ class SystemOption(Base):
     download_threads = Column(Integer, default=5)
     can_schedule = Column(Boolean, default=True)
     can_install = Column(Boolean, default=True)
+    check_host_software_profile = Column(Boolean, default=False)
     enable_email_notify = Column(Boolean, default=False)
     enable_inventory = Column(Boolean, default=True)
     inventory_hour = Column(Integer, default=0)
