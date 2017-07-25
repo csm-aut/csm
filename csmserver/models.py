@@ -360,7 +360,6 @@ class Host(Base):
         db_session.delete(self)
         db_session.commit()
 
-
     def get_json(self):
         result = {}
         result['hostname'] = self.hostname
@@ -1059,6 +1058,7 @@ class SystemOption(Base):
     download_threads = Column(Integer, default=5)
     can_schedule = Column(Boolean, default=True)
     can_install = Column(Boolean, default=True)
+    check_host_software_profile = Column(Boolean, default=False)
     enable_email_notify = Column(Boolean, default=False)
     enable_inventory = Column(Boolean, default=True)
     inventory_hour = Column(Integer, default=0)

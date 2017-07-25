@@ -14,8 +14,8 @@ populate_supported_install_actions("{{ host.hostname }}");
 // Display the selected install action (in Edit mode)
 $("#install_action").val("{{ form.install_action.data }}").trigger("change");
 
-$('#form').submit(function() {
-    on_final_submit(this, "{{ host.hostname }}");
+$('#form').submit(function(e) {
+    on_final_submit(e, this, "{{ host.hostname }}");
 
     // prevent the form from closing 
     return false;

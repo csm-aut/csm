@@ -54,6 +54,7 @@ from common import fill_regions
 from common import can_edit_install
 from common import get_host_active_packages
 from common import can_retrieve_software
+from common import get_software_profile_by_id
 from common import get_last_successful_inventory_elapsed_time
 
 from forms import ScheduleInstallForm
@@ -81,6 +82,7 @@ from smu_info_loader import SMUInfoLoader
 
 from package_utils import strip_smu_file_extension
 from package_utils import get_target_software_package_list
+from package_utils import get_matchable_package_dict
 
 import datetime
 
@@ -605,6 +607,33 @@ def api_get_host_packages_by_states(hostname):
             rows.append({'package': package.name if package.location is None else package.location + ':' + package.name})
 
     return jsonify(**{'data': rows})
+
+
+@install.route('/api/check_host_software_profile', methods=['POST'])
+@login_required
+def api_check_host_software_profile():
+    db_session = DBSession()
+
+    hostname = request.form['hostname']
+    software_packages = request.form.getlist('software_packages[]')
+
+    rows = []
+    host = get_host(db_session, hostname)
+    if host is not None and len(software_packages) > 0:
+        software_profile_id = host.software_profile_id
+        software_profile = get_software_profile_by_id(db_session, software_profile_id)
+        if software_profile is not None:
+            software_profile_package_dict = get_matchable_package_dict(software_profile.packages.split(','))
+            requested_software_package_dict = get_matchable_package_dict(software_packages)
+
+            for software_package, software_package_to_match in requested_software_package_dict.items():
+                if software_package_to_match not in software_profile_package_dict.values():
+                    rows.append({'package': software_package})
+
+    if len(rows) > 0:
+        return jsonify({'status': rows})
+
+    return jsonify({'status': 'OK'})
 
 
 @install.route('/api/create_satellite_install_jobs', methods=['POST'])

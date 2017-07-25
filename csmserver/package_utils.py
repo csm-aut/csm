@@ -145,6 +145,45 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
     return target_list
 
 
+def get_matchable_package_dict(software_packages):
+    """
+    Given a list of software packages, return the portion of the package name that can be used for internal packaging
+    name matching.  This is because the package's external name is different from the package's internal name.
+
+    External Name: ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm
+    Internal Name: ncs5k-mgbl-3.0.0.0-r611
+
+    External Name: asr9k-mgbl-px.pie-6.1.1
+    Internal Name: asr9k-mgbl-px-6.1.1
+
+    External Name: asr9k-px-5.3.4.CSCvd78405.pie
+    Internal Name: asr9k-px-5.3.4.CSCvd78405-1.0.0
+
+    Unfortunately, some of the software packages have different external name and internal name (after activation)
+    External Name: asr9k-asr9000v-nV-px.pie-6.1.2
+    Internal Name: asr9k-9000v-nV-px-6.1.2
+
+    External Name: asr9k-services-infra-px.pie-5.3.4
+    Internal Name: asr9k-services-infra.pie-5.3.4
+
+    Returns a dictionary with key = software_profile_package, value = refined package_name_to_match
+    """
+    result_dict = dict()
+
+    for software_package in software_packages:
+        # FIXME: Need platform specific logic
+        package_name_to_match = strip_smu_file_extension(software_package).replace('.x86_64', '')
+
+        if 'asr9000v' in package_name_to_match:
+            package_name_to_match = package_name_to_match.replace('asr9000v', '9000v')
+        elif 'services-infra-px' in package_name_to_match:
+            package_name_to_match = package_name_to_match.replace('-px', '')
+
+        result_dict[software_package] = package_name_to_match
+
+    return result_dict
+
+
 def is_file_acceptable_for_install_add(filename):
     """
     ASR9K, CRS: .pie, .tar

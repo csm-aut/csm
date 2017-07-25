@@ -65,7 +65,7 @@ $('#on-finish-submit').click(function(e) {
         return false;
     }
 
-    on_final_submit($('#form'), null);
+    on_final_submit(e, $('#form'), null);
 
     // prevent the form from closing 
     return false;
