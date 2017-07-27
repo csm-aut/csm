@@ -628,7 +628,7 @@ def api_check_host_software_profile():
 
             for software_package, software_package_to_match in requested_software_package_dict.items():
                 if software_package_to_match not in software_profile_package_dict.values():
-                    rows.append({'package': software_package})
+                    rows.append({'hostname': hostname, 'package': software_package})
 
     if len(rows) > 0:
         return jsonify({'status': rows})

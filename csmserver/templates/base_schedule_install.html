@@ -432,7 +432,7 @@ $(function() {
                     if (data.status == 'OK') {
                         create_install_jobs(current_form, hostname);
                     } else {
-                        bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
+                        display_check_host_software_profile_dialog(data.status);
                     }
                 }
             });
@@ -732,6 +732,8 @@ $(function() {
 {{ cisco_software_dialog(system_option.enable_cco_lookup, form.cisco_dialog_server, form.cisco_dialog_server_directory) }}
 {{ server_software_dialog(form.server_dialog_server, form.server_dialog_server_directory, form.server_dialog_target_software) }}
 {{ host_software_dialog(form.host_software_dialog_host, form.host_software_dialog_last_successful_inventory_elapsed_time, form.host_software_dialog_target_software) }}
+
+{% include 'share/check_host_software_profile_dialog.html' %}
 
 {% block main_schedule_install %} {% endblock %}
 
