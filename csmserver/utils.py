@@ -403,6 +403,8 @@ def create_temp_user_directory(username):
 def get_software_platform(family, os_type):
     if family == PlatformFamily.ASR9K and os_type == 'eXR':
         return PlatformFamily.ASR9K_X64
+    if family == PlatformFamily.ASR900:
+        return PlatformFamily.ASR900_IOS if os_type == 'IOS' else PlatformFamily.ASR900_XE
     else:
         return family
 

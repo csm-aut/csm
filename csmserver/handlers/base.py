@@ -48,8 +48,6 @@ from parsers import get_parser_factory
 from csmpe import get_csm_plugin_manager
 
 import os
-import re
-import shutil
 import condoor
 import logging
 
@@ -96,7 +94,6 @@ class BaseHandler(object):
                     msg = 'generate_post_migrate_file_diff hit exception.'
                 logger.exception(msg)
 
-
     def update_device_info(self, ctx):
         device_info_dict = ctx.load_data('device_info')
         if device_info_dict is not None:
@@ -114,7 +111,7 @@ class BaseHandler(object):
             ctx.host.UDIs = [udi]
 
     def get_inventory(self, ctx):
-        parser_factory = get_parser_factory(ctx.host.software_platform, ctx.host.os_type)
+        parser_factory = get_parser_factory(get_software_platform(ctx.host.software_platform, ctx.host.os_type))
 
         software_package_parser = parser_factory.create_software_package_parser()
         software_package_parser.process_software_packages(ctx)

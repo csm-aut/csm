@@ -38,6 +38,8 @@ sql_statements = [
     'update install_job set install_action="Post-Check" where install_action="Post-Upgrade"',
     'update install_job_history set install_action="Pre-Check" where install_action="Pre-Upgrade"',
     'update install_job_history set install_action="Post-Check" where install_action="Post-Upgrade"',
+    'update host set software_platform="ASR900-IOS" where family="ASR900" and os_type="IOS"',
+    'update host set software_platform="ASR900-XE" where family="ASR900" and os_type="XE"',
     'alter table inventory modify hardware_revision VARCHAR(30)',
     'alter table host_inventory modify hardware_revision VARCHAR(30)'
     ]
