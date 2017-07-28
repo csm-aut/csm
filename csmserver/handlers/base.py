@@ -117,10 +117,16 @@ class BaseHandler(object):
         parser_factory = get_parser_factory(ctx.host.software_platform, ctx.host.os_type)
 
         software_package_parser = parser_factory.create_software_package_parser()
-        software_package_parser.process_software_packages(ctx)
+        if software_package_parser:
+            software_package_parser.process_software_packages(ctx)
 
         inventory_parser = parser_factory.create_inventory_parser()
-        inventory_parser.process_inventory(ctx)
+        if inventory_parser:
+            inventory_parser.process_inventory(ctx)
+
+        satellite_parser = parser_factory.create_satellite_parser()
+        if satellite_parser:
+            satellite_parser.process_satellites(ctx)
 
         # Update the status and last successful retrieval time stamp
         ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)

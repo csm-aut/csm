@@ -25,8 +25,12 @@
 import re
 
 from models import Package
+from models import Satellite
+
 from constants import PackageState
-from base import BaseSoftwarePackageParser, BaseInventoryParser
+
+from base import BaseSoftwarePackageParser
+from base import BaseInventoryParser
 
 
 class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
@@ -112,3 +116,39 @@ class ASR9KInventoryParser(BaseInventoryParser):
         """
         return [m.groupdict() for m in self.REGEX_BASIC_PATTERN.finditer(output)
                 if 'Generic Fan' not in m.group('description')]
+
+
+class IOSXRSatelliteParser():
+
+    def process_satellites(self, ctx):
+        satellites = list()
+
+        satellites.append(Satellite(
+            satellite_id=201,
+            device_name='device',
+            type='ncs500',
+            state='Connected',
+            install_state='Stable',
+            ip_address='101.102.103.1',
+            serial_number='FOC1946R0BK',
+            mac_address='4055.3958.137c',
+            remote_version='Compatible (latest version)',
+            remote_version_details='ROMMON: 128.0 (Latest),FPGA: 1.13 (Latest)',
+            fabric_links='TenGigE0/5/0/13'
+        ))
+
+        satellites.append(Satellite(
+            satellite_id=202,
+            device_name='device',
+            type='ncs500',
+            state='Connected',
+            install_state='Stable',
+            ip_address='101.102.103.1',
+            serial_number='FOC1946R0BK',
+            mac_address='4055.3958.137c',
+            remote_version='Compatible (latest version)',
+            remote_version_details='ROMMON: 128.0 (Latest),FPGA: 1.13 (Latest)',
+            fabric_links='TenGigE0/5/0/13'
+        ))
+
+        ctx.host.satellites = satellites

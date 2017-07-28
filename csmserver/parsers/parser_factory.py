@@ -28,8 +28,11 @@ from platforms.base import BaseInventoryParser
 from platforms.eXR import EXRSoftwarePackageParser
 from platforms.IOS_XE import IOSXESoftwarePackageParser
 from platforms.IOS import IOSSoftwarePackageParser
-from platforms.IOS_XR import IOSXRSoftwarePackageParser, ASR9KInventoryParser
-from platforms.NX_OS import NXOSSoftwarePackageParser, NXOSInventoryParser
+from platforms.IOS_XR import IOSXRSoftwarePackageParser
+from platforms.IOS_XR import IOSXRSatelliteParser
+from platforms.IOS_XR import ASR9KInventoryParser
+from platforms.NX_OS import NXOSSoftwarePackageParser
+from platforms.NX_OS import NXOSInventoryParser
 
 
 class ParserFactory(object):
@@ -49,6 +52,9 @@ class ParserFactory(object):
         :return: parser object
         """
         return BaseInventoryParser()
+
+    def create_satellite_parser(self):
+        return None
 
 
 class EXRParserFactory(ParserFactory):
@@ -73,6 +79,9 @@ class IOSXRParserFactory(ParserFactory):
 
     def create_software_package_parser(self):
         return IOSXRSoftwarePackageParser()
+
+    def create_satellite_parser(self):
+        return IOSXRSatelliteParser()
 
 
 class ASR9KParserFactory(IOSXRParserFactory):

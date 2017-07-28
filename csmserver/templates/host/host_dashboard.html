@@ -596,6 +596,10 @@
             inventory_job_history_table.api().ajax.reload(null, false);
         }
 
+        function refresh_satellite_table() {
+            satellite_table.api().ajax.reload(null, false);
+        }
+
         show_hide_satellite_tab();
 
         function show_hide_satellite_tab() {
@@ -604,6 +608,7 @@
                 success: function(response) {
                     if (response.data.satellite_count > 0) {
                         $('.nav-tabs a[href="#satellites"]').show();
+                        refresh_satellite_table();
                     } else {
                         $('.nav-tabs a[href="#satellites"]').hide();
                     }
