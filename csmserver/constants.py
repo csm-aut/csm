@@ -86,6 +86,7 @@ class PlatformFamily:
     ASR9K = 'ASR9K'
     ASR9K_X64 = 'ASR9K-X64'
     ASR900 = 'ASR900'
+    C12K = 'C12K'
     CRS = 'CRS'
     NCS1K = 'NCS1K'
     NCS4K = 'NCS4K'
