@@ -48,7 +48,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
         if '.CSC' in host_package or '.sp' in host_package or 'sysadmin' in host_package:
             continue
 
-        if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
+        if software_platform in [PlatformFamily.ASR9K, PlatformFamily.XR12K, PlatformFamily.CRS]:
             """
             External Names:                            Internal Names (i.e. host_package):
             asr9k-mcast-px.pie-6.1.1                   asr9k-mcast-px-6.2.2

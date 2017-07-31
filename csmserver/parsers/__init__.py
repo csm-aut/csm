@@ -31,7 +31,7 @@ from parser_factory import IOSXRParserFactory, ASR9KParserFactory, \
 def get_parser_factory(software_platform, os_type):
     if software_platform == PlatformFamily.ASR9K:
         return ASR9KParserFactory()
-    elif software_platform == PlatformFamily.C12K:
+    elif software_platform == PlatformFamily.XR12K:
         return IOSXRParserFactory()
     elif software_platform == PlatformFamily.CRS:
         return IOSXRParserFactory()
