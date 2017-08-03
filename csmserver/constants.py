@@ -96,6 +96,7 @@ class PlatformFamily:
     N9K = 'N9K'
     IOSXRv_9K = 'IOSXRv-9K'
     IOSXRv_X64 = 'IOSXRv-X64'
+    ASR1K = 'ASR1K'
 
 
 class PackageState:

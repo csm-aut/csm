@@ -51,6 +51,8 @@ def get_parser_factory(software_platform, os_type):
             return IOSXEParserFactory()
         else:
             raise UnknownSoftwarePlatform('%s' % software_platform)
+    elif software_platform == PlatformFamily.ASR1K:
+        return IOSXEParserFactory()
     elif software_platform == PlatformFamily.N9K:
         return NXOSParserFactory()
     else:

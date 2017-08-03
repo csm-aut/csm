@@ -137,7 +137,9 @@ class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
             line = line.strip()
             if len(line) == 0: continue
 
-            m = re.search(r'.*(packages.conf).*on: (.*)', line) or re.search(r'.*(asr9.*pkg).*on: (.*)', line)
+            m = re.search(r'.*(packages.conf).*on: (.*)', line) or \
+                re.search(r'.*(asr9.*pkg).*on: (.*)', line) or \
+                re.search(r'.*(asr1.*pkg).*on: (.*)', line)
             if m:
                 module = m.group(2)
                 trunk = m.group(1)
