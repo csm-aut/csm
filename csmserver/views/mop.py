@@ -40,7 +40,8 @@ from common import can_delete
 from common import can_install
 from common import get_return_url
 from common import get_mop_list
-from common import get_plugins_execution_order_string_with_mop_name
+from common import get_mop_specs_with_mop_name
+from common import get_existing_software_platform
 
 from csmpe import get_available_plugins
 
@@ -63,19 +64,22 @@ def home():
     return render_template('mop/index.html')
 
 
-@mop.route('/get_available_plugin_list', methods=['POST'])
+@mop.route('/get_available_plugins_and_required_data', methods=['POST'])
 @login_required
-def get_available_plugin_list():
+def get_available_plugins_and_required_data():
     if not can_install(current_user):
         abort(401)
     phases = request.form.getlist('phases[]')
     software_platforms = request.form.getlist('platforms[]')
 
     if not software_platforms:
-        plugins = get_all_available_plugins(phases=phases)
+        plugin_to_data = get_all_available_plugins(phases=phases)
+        plugins = set(plugin_to_data.keys())
     else:
         platform, os_type = translate_software_platform_to_platform_os(software_platforms[0])
-        plugins = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
+        plugin_to_data = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
+
+        plugins = set(plugin_to_data.keys())
 
         for i in range(1, len(software_platforms)):
             platform, os_type = translate_software_platform_to_platform_os(software_platforms[i])
@@ -84,17 +88,19 @@ def get_available_plugin_list():
             else:
                 break
 
-    return jsonify(plugins=sorted(plugins))
+    plugin_list = sorted(plugins)
+
+    return jsonify(plugins=plugin_list, plugin_data=[plugin_to_data[plugin] for plugin in plugin_list])
 
 
 def get_all_available_plugins(platform=None, phases=None, os_type=None):
     if phases:
-        return set(get_available_plugins(platform=platform, phase=phases, os=os_type))
+        return get_available_plugins(platform=platform, phase=phases, os=os_type)
     # if phases is not specified, get available plugins for all valid mop phases
-    plugins = set()
+    plugin_to_data = dict()
     for phase in get_phases():
-        plugins.update(set(get_available_plugins(platform=platform, phase=phase, os=os_type)))
-    return plugins
+        plugin_to_data.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
+    return plugin_to_data
 
 
 def translate_software_platform_to_platform_os(software_platform):
@@ -147,9 +153,10 @@ def api_delete_mop(mop_name):
         return jsonify({'status': e.message})
 
 
-@mop.route('/create/', methods=['GET', 'POST'])
+@mop.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
+    print "create mop"
     if not can_install(current_user):
         abort(401)
     db_session = DBSession()
@@ -158,44 +165,27 @@ def create():
     return_url = get_return_url(request, 'mop.home')
 
     if request.method == 'GET':
-        init_mop_form(mop_form)
+        init_mop_form(mop_form, db_session)
         return render_template('mop/edit.html', system_option=SystemOption.get(db_session), current_user=current_user,
-                               form=mop_form, duplicate_error=False)
+                               form=mop_form, mop_specs=[], duplicate_error=False)
 
     if request.method == 'POST':
-
+        print "POST"
         mop = db_session.query(Mop).filter(Mop.name == mop_form.mop_name.data).first()
 
         if mop is not None:
             return render_template('mop/edit.html',
                                    form=mop_form,
+                                   mop_specs=[],
                                    system_option=SystemOption.get(db_session),
                                    duplicate_error=True)
-
-        plugins = mop_form.hidden_plugins.data.split(',')
-        phases = mop_form.phase.data
-        platforms = mop_form.platform.data
-        mops = []
-        for idx in range(len(plugins)):
-            for phase in phases:
-                for platform in platforms:
-                    mops.append(Mop(name=mop_form.mop_name.data,
-                                    plugin_name=plugins[idx],
-                                    plugin_idx=idx,
-                                    phase=phase,
-                                    software_platform=platform,
-                                    created_by=current_user.username,
-                                    plugin_data={}))
-
-        db_session.add_all(mops)
-        db_session.commit()
-        db_session.close()
-        return redirect(url_for(return_url))
+        return create_new_mop(db_session, request.get_json(), return_url)
 
 
 @mop.route('/<mop_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(mop_name):
+    print "edit " + mop_name
     if not can_install(current_user):
         abort(401)
 
@@ -214,45 +204,55 @@ def edit(mop_name):
     return_url = get_return_url(request, 'mop.home')
 
     if request.method == 'GET':
-        init_mop_form(mop_form)
+        init_mop_form(mop_form, db_session)
         mop_form.mop_name.data = mop_name
         mop_form.phase.data = phases
         mop_form.platform.data = platforms
-        mop_form.hidden_plugins.data = get_plugins_execution_order_string_with_mop_name(db_session, mop_name)
 
         return render_template('mop/edit.html', system_option=SystemOption.get(db_session), current_user=current_user,
-                               form=mop_form,
+                               form=mop_form, mop_specs=get_mop_specs_with_mop_name(db_session, mop_name),
                                duplicate_error=False)
 
     if request.method == 'POST':
+        print "POST"
         mops_query.delete()
         db_session.commit()
-        plugins = mop_form.hidden_plugins.data.split(',')
-        phases = mop_form.phase.data
-        platforms = mop_form.platform.data
+        return create_new_mop(db_session, request.get_json(), return_url)
+
+
+def create_new_mop(db_session, mop_details, return_url):
+
+    try:
+        name = mop_details["name"]
+        phases = mop_details["phases"]
+        platforms = mop_details["platforms"]
+        specs = mop_details["specs"]
+
         mops = []
-        for idx in range(len(plugins)):
+        for idx in range(len(specs)):
             for phase in phases:
                 for platform in platforms:
-                    mops.append(Mop(name=mop_form.mop_name.data,
-                                    plugin_name=plugins[idx],
+                    mops.append(Mop(name=name,
+                                    plugin_name=specs[idx]["plugin"],
                                     plugin_idx=idx,
                                     phase=phase,
                                     software_platform=platform,
                                     created_by=current_user.username,
-                                    plugin_data={}))
+                                    plugin_data=specs[idx]["data"]))
+    except KeyError as e:
+        logger.exception('create new mop hit exception: '.format(e))
+        return jsonify(redirect_url=url_for(return_url))
 
-        db_session.add_all(mops)
-        db_session.commit()
-        db_session.close()
-        return redirect(url_for(return_url))
+    db_session.add_all(mops)
+    db_session.commit()
+    db_session.close()
+    return jsonify(redirect_url=url_for(return_url))
 
 
-def init_mop_form(mop_form):
+def init_mop_form(mop_form, db_session):
     del mop_form.phase.choices[:]
     mop_form.phase.choices = get_phase_choices()
-    mop_form.platform.choices = get_software_platform_choices()
-    mop_form.hidden_plugins.data = ''
+    mop_form.platform.choices = get_software_platform_choices(db_session)
 
 
 def get_phases():
@@ -266,8 +266,9 @@ def get_phase_choices():
     return phases_choices
 
 
-def get_software_platform_choices():
-    platforms = [(value, value) for key, value in vars(PlatformFamily).iteritems() if not key.startswith('_')]
+def get_software_platform_choices(db_session):
+    #platforms = [(value, value) for key, value in vars(PlatformFamily).iteritems() if not key.startswith('_')]
+    platforms = [(platform[0], platform[0]) for platform in get_existing_software_platform(db_session)]
     platforms.append(("ALL", "ALL"))
     return platforms
 
@@ -276,4 +277,3 @@ class MopForm(Form):
     mop_name = StringField('MOP Name', [required(), Length(max=30)])
     phase = SelectMultipleField('Phase', coerce=str, choices=[('', '')])
     platform = SelectMultipleField('Platform', coerce=str, choices=[('', '')])
-    hidden_plugins = HiddenField('')

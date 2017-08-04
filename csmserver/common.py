@@ -409,10 +409,12 @@ def get_install_job_by_id(db_session, job_id):
     return db_session.query(InstallJob).filter(InstallJob.id == job_id).first()
 
 
-def get_plugins_execution_order_string_with_mop_name(db_session, mop_name):
-    plugin_query = db_session.query(Mop.plugin_name).filter(Mop.name == mop_name).group_by(Mop.plugin_idx)
-    plugins = [result[0] for result in plugin_query]
-    return ','.join(plugins)
+def get_mop_specs_with_mop_name(db_session, mop_name):
+    plugin_query = db_session.query(Mop.plugin_name, Mop.plugin_data).filter(Mop.name == mop_name).group_by(Mop.plugin_idx)
+    mop_specs = []
+    for plugin_name, plugin_data in plugin_query:
+        mop_specs.append({"plugin": plugin_name, "data": plugin_data})
+    return mop_specs
 
 
 def get_mop_list(db_session, platform=None, phase=None):
@@ -458,6 +460,10 @@ def get_mop_details(mops_iter):
         rows[-1]['phase'] = sorted(rows[-1]['phase'], cmp=compare_mop_phase)
         rows[-1]['platform'] = sorted(rows[-1]['platform'])
     return rows
+
+
+def get_existing_software_platform(db_session):
+    return db_session.query(Host.software_platform).filter(Host.software_platform != "Unknown").distinct().all()
 
 
 def get_smtp_server(db_session):

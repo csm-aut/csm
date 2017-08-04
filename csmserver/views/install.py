@@ -56,7 +56,7 @@ from common import get_host_active_packages
 from common import can_retrieve_software
 from common import get_last_successful_inventory_elapsed_time
 from common import get_mop_list
-from common import get_plugins_execution_order_string_with_mop_name
+from common import get_mop_specs_with_mop_name
 
 from forms import ScheduleInstallForm
 from forms import HostScheduleInstallForm
@@ -162,14 +162,14 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
         pre_check_mop_name = form.pre_check_mop.data
         post_check_mop_name = form.post_check_mop.data
-        pre_check_plugin_execution_order = ""
-        post_check_plugin_execution_order = ""
+        pre_check_mop_specs = []
+        post_check_mop_specs = []
 
         if pre_check_mop_name:
-            pre_check_plugin_execution_order = get_plugins_execution_order_string_with_mop_name(db_session, pre_check_mop_name).split(",")
+            pre_check_mop_specs = get_mop_specs_with_mop_name(db_session, pre_check_mop_name)
 
         if post_check_mop_name:
-            post_check_plugin_execution_order = get_plugins_execution_order_string_with_mop_name(db_session, post_check_mop_name).split(",")
+            post_check_mop_specs = get_mop_specs_with_mop_name(db_session, post_check_mop_name)
 
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
@@ -178,9 +178,9 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
 
             install_job_data = form_install_job_data(install_action[0],
                                                      pre_check_mop_name,
-                                                     pre_check_plugin_execution_order,
+                                                     pre_check_mop_specs,
                                                      post_check_mop_name,
-                                                     post_check_plugin_execution_order)
+                                                     post_check_mop_specs)
 
             create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action[0],
                                          scheduled_time=scheduled_time, software_packages=software_packages,
@@ -197,9 +197,9 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
             for one_install_action in install_action:
                 install_job_data = form_install_job_data(one_install_action,
                                                          pre_check_mop_name,
-                                                         pre_check_plugin_execution_order,
+                                                         pre_check_mop_specs,
                                                          post_check_mop_name,
-                                                         post_check_plugin_execution_order)
+                                                         post_check_mop_specs)
 
                 new_install_job = create_or_update_install_job(db_session=db_session,
                                                                host_id=host.id,
@@ -258,14 +258,14 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                            return_url=return_url)
 
 
-def form_install_job_data(install_action, pre_check_mop_name, pre_check_plugin_execution_order,
-                          post_check_mop_name, post_check_plugin_execution_order):
+def form_install_job_data(install_action, pre_check_mop_name, pre_check_mop_specs,
+                          post_check_mop_name, post_check_mop_specs):
     install_job_data = {}
-    if install_action == InstallAction.PRE_CHECK and pre_check_plugin_execution_order:
-        install_job_data = {"plugin_execution_order": pre_check_plugin_execution_order,
+    if install_action == InstallAction.PRE_CHECK and pre_check_mop_specs:
+        install_job_data = {"mop_specs": pre_check_mop_specs,
                             "pre_check_mop": pre_check_mop_name}
-    elif install_action == InstallAction.POST_CHECK and post_check_plugin_execution_order:
-        install_job_data = {"plugin_execution_order": post_check_plugin_execution_order,
+    elif install_action == InstallAction.POST_CHECK and post_check_mop_specs:
+        install_job_data = {"mop_specs": post_check_mop_specs,
                             "post_check_mop": post_check_mop_name}
 
     return install_job_data
@@ -330,16 +330,16 @@ def batch_schedule_install():
 
                     pre_check_mop_name = form.pre_check_mop.data
                     post_check_mop_name = form.post_check_mop.data
-                    pre_check_plugin_execution_order = ""
-                    post_check_plugin_execution_order = ""
+                    pre_check_mop_specs = []
+                    post_check_mop_specs = []
 
                     if pre_check_mop_name:
-                        pre_check_plugin_execution_order = \
-                            get_plugins_execution_order_string_with_mop_name(db_session, pre_check_mop_name).split(",")
+                        pre_check_mop_specs = \
+                            get_mop_specs_with_mop_name(db_session, pre_check_mop_name).split(",")
 
                     if post_check_mop_name:
-                        post_check_plugin_execution_order = \
-                            get_plugins_execution_order_string_with_mop_name(db_session, post_check_mop_name).split(",")
+                        post_check_mop_specs = \
+                            get_mop_specs_with_mop_name(db_session, post_check_mop_name).split(",")
 
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
@@ -353,9 +353,9 @@ def batch_schedule_install():
 
                         install_job_data = form_install_job_data(install_action[0],
                                                                  pre_check_mop_name,
-                                                                 pre_check_plugin_execution_order,
+                                                                 pre_check_mop_specs,
                                                                  post_check_mop_name,
-                                                                 post_check_plugin_execution_order)
+                                                                 post_check_mop_specs)
 
                         create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                      install_action=install_action[0],
@@ -374,9 +374,9 @@ def batch_schedule_install():
 
                             install_job_data = form_install_job_data(one_install_action,
                                                                      pre_check_mop_name,
-                                                                     pre_check_plugin_execution_order,
+                                                                     pre_check_mop_specs,
                                                                      post_check_mop_name,
-                                                                     post_check_plugin_execution_order)
+                                                                     post_check_mop_specs)
 
                             new_install_job = create_or_update_install_job(db_session=db_session, host_id=host.id,
                                                                            install_action=one_install_action,

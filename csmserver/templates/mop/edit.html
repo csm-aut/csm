@@ -17,6 +17,58 @@
         var spinner = $('#spinner');
         spinner.hide();
 
+        $('#plugin-details').hide();
+
+        var plugin_to_user_input = {};
+        var plugin_uid = 0;
+        var last_selected_plugin_uid = 0;
+
+        var plugin_to_required_data = {};
+
+        var original_mop_name = "";
+
+        if ($('#mop_name').val()) {
+            original_mop_name = $('#mop_name').val();
+        }
+
+        $('#selected-plugins').on('click', "div a", function(){
+            if ($(this).attr('class') == "need-data") {
+                last_selected_plugin_uid = $(this).attr('name').split('_')[1];
+                var plugin_data_html = generate_plugin_detail_template(last_selected_plugin_uid, $(this).html(), plugin_to_user_input, plugin_to_required_data);
+                if (plugin_data_html) {
+                    $('#plugin-data').html(plugin_data_html);
+                    $('#plugin-details').modal({show: true, backdrop: 'static'});
+                }
+            }
+
+        });
+
+        $('body').on('click', '#save-plugin-data', function(){
+
+            var keys = [];
+            var values = [];
+            $('#plugin-details label[id^="label_"]').each(function(){
+                keys.push($(this).html().toLowerCase().replace(" ", "_"));
+            });
+
+            $('#plugin-details input[id^="field_"]').each(function(){
+                values.push($(this).val());
+            });
+            if (keys.length != values.length) {
+                bootbox.alert("Error saving supplied data.");
+                return false;
+            }
+            plugin_to_user_input[last_selected_plugin_uid] = {};
+            var i;
+            for (i=0;i<keys.length;i++){
+                plugin_to_user_input[last_selected_plugin_uid][keys[i]] = values[i];
+            }
+            $('#plugin-details').modal('hide');
+            console.log(plugin_to_user_input[last_selected_plugin_uid]);
+            console.log(JSON.stringify(plugin_to_user_input[last_selected_plugin_uid]));
+        });
+
+
 
         $("#phase").select2();
         $("#platform").select2();
@@ -49,7 +101,7 @@
 
         function get_available_plugins(first_load_on_edit) {
             $.ajax({
-                url: "/mop/get_available_plugin_list",
+                url: "/mop/get_available_plugins_and_required_data",
                 dataType: 'json',
                 type: "POST",
                 data: {
@@ -58,31 +110,38 @@
                 },
                 success: function(data) {
                     $("#available-plugins").empty();
+                    plugin_to_required_data = {};
 
                     var $available_plugins_container = $("#available-plugins");
 
                     var $selected_plugins_container = $("#selected-plugins");
 
                     for (var i = 0; i < data.plugins.length; i++) {
-                        $available_plugins_container.append("<div>" + data.plugins[i] + "</div>");
+                        if (data.plugin_data[i].length > 0) {
+                            $available_plugins_container.append("<div><a name='" + get_next_plugin_uid() + "' class='need-data'>" + data.plugins[i] + "</a></div>");
+                            plugin_to_required_data[data.plugins[i]] = data.plugin_data[i]
+                        } else {
+                            $available_plugins_container.append("<div><a name='" + get_next_plugin_uid() + "' class='no-data'>" + data.plugins[i] + "</a></div>");
+                        }
+
                     }
 
                     $('#selected-plugins > div').map(function() {
-                        if (data.plugins.indexOf($(this).html()) < 0) {
-                            $(this).remove()
+                        if (data.plugins.indexOf($(this).find('a').html()) < 0) {
+                            $(this).remove();
+                            delete plugin_to_user_input[parseInt($(this).find('a').attr('name').split("_")[1])]
                         }
                     });
+                    var mop_specs = {{ mop_specs|tojson|safe }};
 
-                    if (first_load_on_edit && $("#hidden_plugins").val()) {
+                    if (first_load_on_edit && mop_specs) {
                         var removed_plugins = [];
 
-                        var selected_plugins = $("#hidden_plugins").val().split(",");
-
-                        for (var i = 0; i < selected_plugins.length; i++) {
-                            if (data.plugins.indexOf(selected_plugins[i]) < 0) {
-                                removed_plugins.push(selected_plugins[i])
+                        for (var i = 0; i < mop_specs.length; i++) {
+                            if (data.plugins.indexOf(mop_specs[i]["plugin"]) < 0) {
+                                removed_plugins.push(mop_specs[i]["plugin"])
                             } else {
-                                $selected_plugins_container.append("<div>" + selected_plugins[i] +"</div>");
+                                select_plugin(mop_specs[i]["plugin"], mop_specs[i]["data"]);
                             }
                         }
 
@@ -98,7 +157,7 @@
             });
         }
 
-        dragula([$("#available-plugins")[0], $("#container-separator")[0], $("#selected-plugins")[0]], {
+        var available_plugins_dragula = dragula([$("#available-plugins")[0], $("#container-separator")[0], $("#selected-plugins")[0]], {
           copy: function (el, source) {
             return source === $("#available-plugins")[0]
           },
@@ -107,13 +166,92 @@
           }
         });
 
-        dragula([$("#selected-plugins")[0]], {
+        var selected_plugins_dragula = dragula([$("#selected-plugins")[0]], {
           removeOnSpill: true
         });
         get_available_plugins(true);
 
 
-        $('#form').submit(function() {
+        selected_plugins_dragula.on('remove', function(el, target, source, sibling){
+            console.log($(el).find('a').attr('name'));
+            console.log(target);
+            console.log(source);
+            console.log(sibling);
+            delete plugin_to_user_input[parseInt($(el).find('a').attr('name').split("_")[1])];
+
+        });
+
+
+        available_plugins_dragula.on('drop', function(el, target, source, sibling){
+            console.log(el);
+            // For the selected plugin from the available plugins,
+            // update its name so that next time when the same plugin
+            // is dragged and dropped, the selected plugin
+            // will have a new name as its unique identifier.
+            if ($(source).attr("id") == "available-plugins") {
+                $(source).find("[name='" + $(el).find('a').attr('name') + "']").attr("name", get_next_plugin_uid());
+            }
+            console.log(target);
+            console.log(source);
+            console.log(sibling);
+        });
+
+        function get_next_plugin_uid(){
+            var next_uid = "plugin_" + plugin_uid;
+            plugin_uid += 1;
+            return next_uid;
+        }
+
+        function select_plugin(plugin_name, plugin_data) {
+            var name = $("#available-plugins div a:contains(" + plugin_name + ")").attr("name");
+            if (plugin_to_required_data[plugin_name]) {
+                $("#selected-plugins").append("<div><a name='" + name + "' class='need-data'>" + plugin_name + "</a></div>");
+            } else {
+                $("#selected-plugins").append("<div><a name='" + name + "' class='no-data'>" + plugin_name + "</a></div>");
+            }
+
+            $("#available-plugins").find("[name='" + name + "']").attr("name", get_next_plugin_uid());
+
+            plugin_to_user_input[parseInt(name.split("_")[1])] = {};
+            for (var attribute in plugin_data) {
+                plugin_to_user_input[parseInt(name.split("_")[1])][attribute] = plugin_data[attribute];
+            }
+        }
+
+        $('#save-mop').on('click', function () {
+            $('#form').submit();
+        });
+
+        function submit_form_data(specs) {
+            if (original_mop_name) {
+                var url = "/mop/" + original_mop_name + "/edit"
+            } else {
+                var url = "/mop/create"
+            }
+
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                contentType: "application/json; charset=utf-8",
+                type: "POST",
+                data: JSON.stringify({
+                    name: $('#mop_name').val(),
+                    phases: $('#phase').val(),
+                    platforms: $('#platform').val(),
+                    specs: specs
+                }),
+                success: function(data) {
+                    if (data.redirect_url) {
+                        // data.redirect contains the string URL to redirect to
+                        window.location.href = data.redirect_url;
+                    }
+
+                }
+            });
+        }
+
+
+        $('#form').submit(function(e) {
             var mop_name = $('#mop_name').val();
 
             var acceptable_string = get_acceptable_string(mop_name);
@@ -140,15 +278,42 @@
                 bootbox.alert("Please specify the platform(s) that this mop can apply to.");
                 return false;
             }
-            var plugins = [];
-            $('#selected-plugins > div').map(function() {
-                plugins.push($(this).html());
+
+            var plugins_specs = [];
+            $('#selected-plugins > div a').map(function() {
+                var specs = {};
+                specs["plugin"] = $(this).html();
+                specs["data"] = {};
+                var required_attributes = plugin_to_required_data[$(this).html()];
+                var user_input_data = plugin_to_user_input[parseInt($(this).attr("name").split("_")[1])];
+
+                if (required_attributes && required_attributes.length > 0 ) {
+                    if (user_input_data === undefined || Object.keys(user_input_data).length < required_attributes.length) {
+                        bootbox.alert("Please click on selected plugin '" + specs["plugin"] + "' to specify required input.");
+                        return false;
+                    }
+                    var i;
+                    for(i=0;i<required_attributes.length;i++) {
+                        if (user_input_data && user_input_data[required_attributes[i]] !== undefined) {
+                            specs["data"][required_attributes[i]] = user_input_data[required_attributes[i]]
+                        } else {
+                            bootbox.alert("Please specify '" + required_attributes[i] + "' for plugin " + specs["plugin"] + ".");
+                            return false;
+                        }
+
+                    }
+                }
+                plugins_specs.push(specs);
             });
-            if (plugins.length < 1) {
+
+            if (plugins_specs.length < 1) {
                 bootbox.alert("Please select plugins for this mop.");
                 return false;
             }
-            $('#hidden_plugins').val(plugins.join());
+
+            submit_form_data(plugins_specs);
+
+            e.preventDefault(e);
 
         });
 
@@ -166,30 +331,46 @@
     td {
         white-space: nowrap;
     }
+    #selected-plugins > div .need-data {
+        cursor: pointer;
+        cursor: hand;
+    }
+    #selected-plugins > div .no-data {
+        text-decoration: none;
+        cursor: -webkit-grab;
+    }
+    #available-plugins > div a {
+        cursor: -webkit-grab;
+        text-decoration: none;
+    }
+
 </style>
   
 {% endblock %}
 
 {% block main %}
 
-<link href="/static/dragula-3.7.2/css/dragula.min.css" rel="stylesheet" />
-<script src="/static/dragula-3.7.2/js/dragula.min.js" type="text/javascript"></script>
 <link href="/static/jquery/css/mop.css" rel="stylesheet" />
 
+<link href="/static/dragula-3.7.2/css/dragula.min.css" rel="stylesheet" />
+<script src="/static/dragula-3.7.2/js/dragula.min.js" type="text/javascript"></script>
+
+<script src="/static/jquery/js/generate_mop_plugin_detail.js" type="text/javascript"></script>
+
 <div class="row">
-    <div class="well col-sm-offset-2 col-sm-8">
+    <div class="well col-sm-offset-1 col-sm-10">
         <form id="form" method=post class="form-horizontal">
             <legend>{% if isEdit %}Edit MOP{% else %}Create MOP{% endif %}</legend>
             
             {{ alert_duplicate(form.mop_name.data, duplicate_error) }}
-            {{ edit_field(form.mop_name, class="form-control", field_width="col-sm-7", label_field_width="col-sm-3") }}
-            {{ edit_field(form.phase, class="form-control", field_width="col-sm-7", label_field_width="col-sm-3") }}
-            {{ edit_field(form.platform, class="form-control", field_width="col-sm-7", label_field_width="col-sm-3") }}
+            {{ edit_field(form.mop_name, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
+            {{ edit_field(form.phase, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
+            {{ edit_field(form.platform, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
 
 
             <div class="form-group ">
-                <label class="col-sm-3 control-label" id="label_platform" for="platform">Plugins</label>
-                 <div class="col-sm-7">
+                <label class="col-sm-2 control-label" id="label_platform" for="platform">Plugins</label>
+                <div class="col-sm-8">
                 <div class="row">
                     <div class="col-sm-6">
                       <label class="control-label">Available</label>
@@ -204,7 +385,25 @@
                     <div id="selected-plugins" class="col-sm-6 dragula-container"></div>
                   </div>
                 </div>
-                <input id="hidden_plugins" name="{{ form.hidden_plugins.name }}" value="{{ form.hidden_plugins.data }}" type="hidden">
+
+                <div id="plugin-details" class="modal" role="dialog">
+                    <div class="modal-dialog" style="width:950px;">
+                        <form class="form-horizontal">
+                            <div class="modal-content">
+                                <div class="modal-header" style="border-bottom: none;">
+                                    <button type="button" class="close" data-dismiss="modal">x</button>
+                                </div>
+                                <div id="plugin-data" class="modal-body" style="overflow:auto;height:auto">
+
+
+
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+
 
                 <!--div class="wrapper col-sm-6">
                     <span class="unselected-title">Available Plugins</span>
@@ -223,7 +422,7 @@
 
             <div class="form-actions">
                 <div class="btn col-sm-offset-5">
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button id="save-mop" type="submit" class="btn btn-primary">Save</button>
                     <button type="button" onClick="location.href='{{ url_for('mop.home') }}'" class="btn btn-default">Cancel</button>
                     <img id="spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                 </div>

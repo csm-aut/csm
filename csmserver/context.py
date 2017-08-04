@@ -221,8 +221,8 @@ class InstallContext(ConnectionContext):
         self._custom_commands = value
 
     @property
-    def plugin_execution_order(self):
-        return self.load_job_data("plugin_execution_order")
+    def mop_specs(self):
+        return self.load_job_data("mop_specs")
 
     def _generate_operation_id_key(self, tar_files):
         if isinstance(tar_files, collections.Iterable):
