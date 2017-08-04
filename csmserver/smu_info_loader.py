@@ -34,12 +34,6 @@ http://www.cisco.com/web/Cisco_IOS_XR_Software/SMUMetaFile/catalog.dat
 Individual XML file can be retrieved using URL similar to the one below
 http://www.cisco.com/web/Cisco_IOS_XR_Software/SMUMetaFile/asr9k_px_5.3.0.xml
 
-Current defined software platforms are
-asr9k_px
-crs_px
-ncs6k
-ncs6k_sysadmin
-
 The releases are expected to be in this format x.x.x (e.g. 5.3.0)
 """
 from xml.dom import minidom
@@ -112,6 +106,7 @@ XML_TAG_TAR = 'tar'
 # Any additions to this list will require modifying
 # get_cco_supported_platform() and get_cco_supported_release()
 CCO_PLATFORM_ASR9K = 'asr9k_px'
+CCO_PLATFORM_XR12K = 'xr12k'
 CCO_PLATFORM_ASR9K_X64 = 'asr9k_x64'
 CCO_PLATFORM_XRV9K = 'xrv9k'
 CCO_PLATFORM_CRS = 'crs_px'
@@ -634,6 +629,7 @@ class SMUInfoLoader(object):
             package_list = [package_name]
 
         for package_name in package_list:
+
             platform = UNKNOWN
             release = UNKNOWN
 
@@ -649,14 +645,18 @@ class SMUInfoLoader(object):
             # ASR9K-x64-iosxr-px-6.2.2.tar
             # asr9k-mini-x64-migrate_to_eXR.tar-6.2.2
             # The argument to this function should probably use the SMU name which has standard format
-            elif any(s in package_name for s in ['ASR9K', 'asr9k']) and \
-                 any(s in package_name for s in ['x64', '64']):
+            elif any(s in package_name for s in ['ASR9K', 'asr9k']) and any(s in package_name for s in ['x64', '64']):
 
                 # External Name: asr9k-mgbl-x64-3.0.0.0-r612.x86_64.rpm, asr9k-mini-x64-6.2.1.iso
                 # Internal Name: asr9k-mgbl-x64-3.0.0.0-r612, asr9k-mini-x64-6.3.1
                 platform = CCO_PLATFORM_ASR9K_X64
                 if "mini" not in package_name:
                     release = SMUInfoLoader.get_release_from_rxxx(package_name)
+
+            elif 'c12k' in package_name:
+
+                # External Name: c12k-4.1.1.CSCva21637.pie
+                platform = CCO_PLATFORM_XR12K
 
             elif any(s in package_name for s in ['asr9k-sysadmin', 'asr9k-xr']):
 
@@ -742,6 +742,7 @@ class SMUInfoLoader(object):
                     platform = CCO_PLATFORM_NCS6K
 
             if release == UNKNOWN and platform in [CCO_PLATFORM_ASR9K,
+                                                   CCO_PLATFORM_XR12K,
                                                    CCO_PLATFORM_ASR9K_X64,
                                                    CCO_PLATFORM_ASR9K_X64_SYSADMIN,
                                                    CCO_PLATFORM_XRV9K,
