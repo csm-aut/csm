@@ -138,6 +138,10 @@ class ConnectionContext(Context):
 
         return urls
 
+    @property
+    def mop_specs(self):
+        return None
+
 
 class InventoryContext(ConnectionContext):
     def __init__(self, db_session, host, inventory_job):

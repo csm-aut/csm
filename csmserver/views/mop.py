@@ -42,6 +42,7 @@ from common import get_return_url
 from common import get_mop_list
 from common import get_mop_specs_with_mop_name
 from common import get_existing_software_platform
+from common import get_region_by_id
 
 from csmpe import get_available_plugins
 
@@ -50,6 +51,7 @@ from database import DBSession
 from models import logger
 from models import Mop
 from models import SystemOption
+from models import ConnectionParam
 
 
 mop = Blueprint('mop', __name__, url_prefix='/mop')
@@ -73,13 +75,10 @@ def get_available_plugins_and_required_data():
     software_platforms = request.form.getlist('platforms[]')
 
     if not software_platforms:
-        plugin_to_data = get_all_available_plugins(phases=phases)
-        plugins = set(plugin_to_data.keys())
+        plugins = get_all_available_plugins(phases=phases)
     else:
         platform, os_type = translate_software_platform_to_platform_os(software_platforms[0])
-        plugin_to_data = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
-
-        plugins = set(plugin_to_data.keys())
+        plugins = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
 
         for i in range(1, len(software_platforms)):
             platform, os_type = translate_software_platform_to_platform_os(software_platforms[i])
@@ -89,18 +88,19 @@ def get_available_plugins_and_required_data():
                 break
 
     plugin_list = sorted(plugins)
+    print str(plugin_list)
 
-    return jsonify(plugins=plugin_list, plugin_data=[plugin_to_data[plugin] for plugin in plugin_list])
+    return jsonify(plugins=plugin_list)
 
 
 def get_all_available_plugins(platform=None, phases=None, os_type=None):
     if phases:
         return get_available_plugins(platform=platform, phase=phases, os=os_type)
     # if phases is not specified, get available plugins for all valid mop phases
-    plugin_to_data = dict()
+    plugins = set()
     for phase in get_phases():
-        plugin_to_data.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
-    return plugin_to_data
+        plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
+    return plugins
 
 
 def translate_software_platform_to_platform_os(software_platform):
@@ -167,7 +167,8 @@ def create():
     if request.method == 'GET':
         init_mop_form(mop_form, db_session)
         return render_template('mop/edit.html', system_option=SystemOption.get(db_session), current_user=current_user,
-                               form=mop_form, mop_specs=[], duplicate_error=False)
+                               form=mop_form, mop_specs=[], plugin_data=csmpe_plugins_to_data_requirement,
+                               duplicate_error=False)
 
     if request.method == 'POST':
         print "POST"
@@ -211,6 +212,7 @@ def edit(mop_name):
 
         return render_template('mop/edit.html', system_option=SystemOption.get(db_session), current_user=current_user,
                                form=mop_form, mop_specs=get_mop_specs_with_mop_name(db_session, mop_name),
+                               plugin_data=csmpe_plugins_to_data_requirement,
                                duplicate_error=False)
 
     if request.method == 'POST':
@@ -271,6 +273,40 @@ def get_software_platform_choices(db_session):
     platforms = [(platform[0], platform[0]) for platform in get_existing_software_platform(db_session)]
     platforms.append(("ALL", "ALL"))
     return platforms
+
+
+csmpe_plugins_to_data_requirement = {
+    "Script Executor": {"need_data": True, "attributes_with_env_var": ["full_command"]},
+    "Custom Configuration": {"need_data": True},
+    'Custom Commands Capture': {"need_data": True},
+    'Config Capture': {"need_data": False},
+    'Config Filesystem Check': {"need_data": False},
+    'Core Error Check': {"need_data": False},
+    'Check Failed Startup Config': {"need_data": False},
+    'Filesystem Check': {"need_data": False},
+    'ISIS Neighbor Check': {"need_data": False},
+    'Node Redundancy Check': {"need_data": False},
+    'Node Status Check': {"need_data": False}
+}
+
+
+def substitute_env_vars(db_session, host, expression):
+    if expression is None:
+        return None
+    expression = expression.replace("@hostname", host.hostname)
+    expression = expression.replace("@host_chassis", host.platform)
+    expression = expression.replace("@host_platform", host.software_platform)
+    expression = expression.replace("@host_software_version", host.software_version)
+
+    if "@host_ip" in expression or "@host_port_number" in expression or "@host_connection_type" in expression:
+        connection_param = db_session.query(ConnectionParam).filter(ConnectionParam.host_id == host.id).first()
+        expression = expression.replace("@host_ip", connection_param.host_or_ip)
+        expression = expression.replace("@host_port_number", connection_param.port_number)
+        expression = expression.replace("@host_connection_type", connection_param.connection_type)
+
+    if "@host_region" in expression:
+        expression = expression.replace("@host_region", get_region_by_id(host.region_id)[0])
+    return expression
 
 
 class MopForm(Form):

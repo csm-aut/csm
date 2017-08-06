@@ -23,7 +23,21 @@
         var plugin_uid = 0;
         var last_selected_plugin_uid = 0;
 
-        var plugin_to_required_data = {};
+        var csmpe_plugins_to_data_requirement = {{ plugin_data|tojson|safe }};
+            /*
+            {
+            "Script Executor": true,
+            "Custom Configuration": true,
+            'Custom Commands Capture': true,
+            'Config Capture': false,
+            'Config Filesystem Check': false,
+            'Core Error Check': false,
+            'Check Failed Startup Config': false,
+            'Filesystem Check': false,
+            'ISIS Neighbor Check': false,
+            'Node Redundancy Check': false,
+            'Node Status Check': false
+        };*/
 
         var original_mop_name = "";
 
@@ -31,10 +45,10 @@
             original_mop_name = $('#mop_name').val();
         }
 
-        $('#selected-plugins').on('click', "div a", function(){
+        $('#selected-plugins').on('click', "div a", function () {
             if ($(this).attr('class') == "need-data") {
                 last_selected_plugin_uid = $(this).attr('name').split('_')[1];
-                var plugin_data_html = generate_plugin_detail_template(last_selected_plugin_uid, $(this).html(), plugin_to_user_input, plugin_to_required_data);
+                var plugin_data_html = generate_plugin_detail_template(last_selected_plugin_uid, $(this).html(), plugin_to_user_input);
                 if (plugin_data_html) {
                     $('#plugin-data').html(plugin_data_html);
                     $('#plugin-details').modal({show: true, backdrop: 'static'});
@@ -43,16 +57,24 @@
 
         });
 
-        $('body').on('click', '#save-plugin-data', function(){
+        $('body').on('click', '#save-plugin-data', function () {
 
             var keys = [];
             var values = [];
-            $('#plugin-details label[id^="label_"]').each(function(){
+            $('#plugin-details label[id^="label_"]').each(function () {
                 keys.push($(this).html().toLowerCase().replace(" ", "_"));
             });
 
-            $('#plugin-details input[id^="field_"]').each(function(){
-                values.push($(this).val());
+            var last_id = null;
+            $('#plugin-details [id^="field_"]').each(function () {
+                if ($(this).attr("id") == last_id) {
+                    if ($(this).is(':checked')) {
+                        values[values.length - 1] = $(this).val();
+                    }
+                } else {
+                    values.push($(this).val());
+                }
+                last_id = $(this).attr("id");
             });
             if (keys.length != values.length) {
                 bootbox.alert("Error saving supplied data.");
@@ -60,14 +82,13 @@
             }
             plugin_to_user_input[last_selected_plugin_uid] = {};
             var i;
-            for (i=0;i<keys.length;i++){
+            for (i = 0; i < keys.length; i++) {
                 plugin_to_user_input[last_selected_plugin_uid][keys[i]] = values[i];
             }
             $('#plugin-details').modal('hide');
             console.log(plugin_to_user_input[last_selected_plugin_uid]);
             console.log(JSON.stringify(plugin_to_user_input[last_selected_plugin_uid]));
         });
-
 
 
         $("#phase").select2();
@@ -77,8 +98,8 @@
         var all_platforms = get_all_valid_options_from_selector("platform");
 
         function get_all_valid_options_from_selector(selector_id) {
-            var options = $("#"+ selector_id + " option");
-            return $.map(options ,function(option) {
+            var options = $("#" + selector_id + " option");
+            return $.map(options, function (option) {
                 if (option.value != "ALL") {
                     return option.value;
                 }
@@ -108,25 +129,21 @@
                     phases: $('#phase').val(),
                     platforms: $('#platform').val()
                 },
-                success: function(data) {
+                success: function (data) {
                     $("#available-plugins").empty();
-                    plugin_to_required_data = {};
 
                     var $available_plugins_container = $("#available-plugins");
 
-                    var $selected_plugins_container = $("#selected-plugins");
-
                     for (var i = 0; i < data.plugins.length; i++) {
-                        if (data.plugin_data[i].length > 0) {
-                            $available_plugins_container.append("<div><a name='" + get_next_plugin_uid() + "' class='need-data'>" + data.plugins[i] + "</a></div>");
-                            plugin_to_required_data[data.plugins[i]] = data.plugin_data[i]
-                        } else {
+                        if (csmpe_plugins_to_data_requirement[data.plugins[i]] && csmpe_plugins_to_data_requirement[data.plugins[i]]["need_data"] == false) {
                             $available_plugins_container.append("<div><a name='" + get_next_plugin_uid() + "' class='no-data'>" + data.plugins[i] + "</a></div>");
+                        } else {
+                            $available_plugins_container.append("<div><a name='" + get_next_plugin_uid() + "' class='need-data'>" + data.plugins[i] + "</a></div>");
                         }
 
                     }
 
-                    $('#selected-plugins > div').map(function() {
+                    $('#selected-plugins > div').map(function () {
                         if (data.plugins.indexOf($(this).find('a').html()) < 0) {
                             $(this).remove();
                             delete plugin_to_user_input[parseInt($(this).find('a').attr('name').split("_")[1])]
@@ -158,21 +175,21 @@
         }
 
         var available_plugins_dragula = dragula([$("#available-plugins")[0], $("#container-separator")[0], $("#selected-plugins")[0]], {
-          copy: function (el, source) {
-            return source === $("#available-plugins")[0]
-          },
-          accepts: function (el, target) {
-            return target !== $("#available-plugins")[0]
-          }
+            copy: function (el, source) {
+                return source === $("#available-plugins")[0]
+            },
+            accepts: function (el, target) {
+                return target !== $("#available-plugins")[0]
+            }
         });
 
         var selected_plugins_dragula = dragula([$("#selected-plugins")[0]], {
-          removeOnSpill: true
+            removeOnSpill: true
         });
         get_available_plugins(true);
 
 
-        selected_plugins_dragula.on('remove', function(el, target, source, sibling){
+        selected_plugins_dragula.on('remove', function (el, target, source, sibling) {
             console.log($(el).find('a').attr('name'));
             console.log(target);
             console.log(source);
@@ -182,7 +199,7 @@
         });
 
 
-        available_plugins_dragula.on('drop', function(el, target, source, sibling){
+        available_plugins_dragula.on('drop', function (el, target, source, sibling) {
             console.log(el);
             // For the selected plugin from the available plugins,
             // update its name so that next time when the same plugin
@@ -196,7 +213,7 @@
             console.log(sibling);
         });
 
-        function get_next_plugin_uid(){
+        function get_next_plugin_uid() {
             var next_uid = "plugin_" + plugin_uid;
             plugin_uid += 1;
             return next_uid;
@@ -204,10 +221,10 @@
 
         function select_plugin(plugin_name, plugin_data) {
             var name = $("#available-plugins div a:contains(" + plugin_name + ")").attr("name");
-            if (plugin_to_required_data[plugin_name]) {
-                $("#selected-plugins").append("<div><a name='" + name + "' class='need-data'>" + plugin_name + "</a></div>");
-            } else {
+            if (csmpe_plugins_to_data_requirement[plugin_name] && csmpe_plugins_to_data_requirement[plugin_name]["need_data"] == false) {
                 $("#selected-plugins").append("<div><a name='" + name + "' class='no-data'>" + plugin_name + "</a></div>");
+            } else {
+                $("#selected-plugins").append("<div><a name='" + name + "' class='need-data'>" + plugin_name + "</a></div>");
             }
 
             $("#available-plugins").find("[name='" + name + "']").attr("name", get_next_plugin_uid());
@@ -240,7 +257,7 @@
                     platforms: $('#platform').val(),
                     specs: specs
                 }),
-                success: function(data) {
+                success: function (data) {
                     if (data.redirect_url) {
                         // data.redirect contains the string URL to redirect to
                         window.location.href = data.redirect_url;
@@ -251,7 +268,7 @@
         }
 
 
-        $('#form').submit(function(e) {
+        $('#form').submit(function (e) {
             var mop_name = $('#mop_name').val();
 
             var acceptable_string = get_acceptable_string(mop_name);
@@ -263,7 +280,7 @@
 
             if (acceptable_string != mop_name) {
                 var message = get_acceptable_string_message('MOP name', mop_name, acceptable_string);
-                bootbox.confirm(message, function(result) {
+                bootbox.confirm(message, function (result) {
                     if (result) {
                         $('#mop_name').val(acceptable_string);
                     }
@@ -280,27 +297,19 @@
             }
 
             var plugins_specs = [];
-            $('#selected-plugins > div a').map(function() {
+            $('#selected-plugins > div a').map(function () {
                 var specs = {};
                 specs["plugin"] = $(this).html();
                 specs["data"] = {};
-                var required_attributes = plugin_to_required_data[$(this).html()];
                 var user_input_data = plugin_to_user_input[parseInt($(this).attr("name").split("_")[1])];
 
-                if (required_attributes && required_attributes.length > 0 ) {
-                    if (user_input_data === undefined || Object.keys(user_input_data).length < required_attributes.length) {
+                if (csmpe_plugins_to_data_requirement[specs["plugin"]] && csmpe_plugins_to_data_requirement[specs["plugin"]]["need_data"] == true) {
+                    if (user_input_data === undefined) {
                         bootbox.alert("Please click on selected plugin '" + specs["plugin"] + "' to specify required input.");
                         return false;
                     }
-                    var i;
-                    for(i=0;i<required_attributes.length;i++) {
-                        if (user_input_data && user_input_data[required_attributes[i]] !== undefined) {
-                            specs["data"][required_attributes[i]] = user_input_data[required_attributes[i]]
-                        } else {
-                            bootbox.alert("Please specify '" + required_attributes[i] + "' for plugin " + specs["plugin"] + ".");
-                            return false;
-                        }
-
+                    for (var attribute in user_input_data) {
+                        specs["data"][attribute] = user_input_data[attribute]
                     }
                 }
                 plugins_specs.push(specs);
@@ -315,6 +324,10 @@
 
             e.preventDefault(e);
 
+        });
+
+        $(document).on('keydown.autocomplete', '.allow-host-variables', function() {
+            set_autocomplete_for_host_variables($(this));
         });
 
     });
@@ -366,7 +379,6 @@
             {{ edit_field(form.mop_name, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
             {{ edit_field(form.phase, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
             {{ edit_field(form.platform, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
-
 
             <div class="form-group ">
                 <label class="col-sm-2 control-label" id="label_platform" for="platform">Plugins</label>

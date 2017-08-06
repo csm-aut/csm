@@ -58,6 +58,9 @@ from common import get_last_successful_inventory_elapsed_time
 from common import get_mop_list
 from common import get_mop_specs_with_mop_name
 
+from mop import csmpe_plugins_to_data_requirement
+from mop import substitute_env_vars
+
 from forms import ScheduleInstallForm
 from forms import HostScheduleInstallForm
 
@@ -160,16 +163,7 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
         pending_downloads = form.hidden_pending_downloads.data.split()
         custom_command_profile_ids = [str(i) for i in form.custom_command_profile.data]
 
-        pre_check_mop_name = form.pre_check_mop.data
-        post_check_mop_name = form.post_check_mop.data
-        pre_check_mop_specs = []
-        post_check_mop_specs = []
-
-        if pre_check_mop_name:
-            pre_check_mop_specs = get_mop_specs_with_mop_name(db_session, pre_check_mop_name)
-
-        if post_check_mop_name:
-            post_check_mop_specs = get_mop_specs_with_mop_name(db_session, post_check_mop_name)
+        pre_check_mop_name, pre_check_mop_specs, post_check_mop_name, post_check_mop_specs = get_mop_data(db_session, host, form)
 
         # install_action is a list object which may contain multiple install actions.
         # If only one install_action, accept the selected dependency if any
@@ -258,6 +252,22 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
                            return_url=return_url)
 
 
+def get_mop_data(db_session, host, form):
+    pre_check_mop_name = form.pre_check_mop.data
+    post_check_mop_name = form.post_check_mop.data
+    pre_check_mop_specs = []
+    post_check_mop_specs = []
+
+    if pre_check_mop_name:
+        pre_check_mop_specs = get_mop_specs_with_mop_name(db_session, pre_check_mop_name)
+        process_mop_specs(db_session, host, pre_check_mop_specs)
+
+    if post_check_mop_name:
+        post_check_mop_specs = get_mop_specs_with_mop_name(db_session, post_check_mop_name)
+        process_mop_specs(db_session, host, post_check_mop_specs)
+    return pre_check_mop_name, pre_check_mop_specs, post_check_mop_name, post_check_mop_specs
+
+
 def form_install_job_data(install_action, pre_check_mop_name, pre_check_mop_specs,
                           post_check_mop_name, post_check_mop_specs):
     install_job_data = {}
@@ -269,6 +279,23 @@ def form_install_job_data(install_action, pre_check_mop_name, pre_check_mop_spec
                             "post_check_mop": post_check_mop_name}
 
     return install_job_data
+
+
+def process_mop_specs(db_session, host, mop_specs):
+    for detail in mop_specs:
+        if detail["plugin"] in csmpe_plugins_to_data_requirement:
+            if csmpe_plugins_to_data_requirement[detail["plugin"]]["need_data"] and \
+                "attributes_with_env_var" in csmpe_plugins_to_data_requirement[detail["plugin"]]:
+                for attribute in csmpe_plugins_to_data_requirement[detail["plugin"]]["attributes_with_env_var"]:
+                    value = substitute_env_vars(db_session, host, detail["data"].get(attribute))
+                    if value is not None:
+                        detail["data"][attribute] = value
+        else:
+            for attribute, val in detail["data"]:
+                value = substitute_env_vars(db_session, host, val)
+                if value is not None:
+                    detail["data"][attribute] = value
+    return
 
 
 def fill_mops(db_session, platform, pre_check_mop_choices, post_check_mop_choices):
@@ -328,18 +355,8 @@ def batch_schedule_install():
                     server_directory = form.hidden_server_directory.data
                     pending_downloads = form.hidden_pending_downloads.data.split()
 
-                    pre_check_mop_name = form.pre_check_mop.data
-                    post_check_mop_name = form.post_check_mop.data
-                    pre_check_mop_specs = []
-                    post_check_mop_specs = []
-
-                    if pre_check_mop_name:
-                        pre_check_mop_specs = \
-                            get_mop_specs_with_mop_name(db_session, pre_check_mop_name).split(",")
-
-                    if post_check_mop_name:
-                        post_check_mop_specs = \
-                            get_mop_specs_with_mop_name(db_session, post_check_mop_name).split(",")
+                    pre_check_mop_name, pre_check_mop_specs, post_check_mop_name, post_check_mop_specs = get_mop_data(
+                        db_session, host, form)
 
                     # If only one install_action, accept the selected dependency if any
                     dependency = 0
