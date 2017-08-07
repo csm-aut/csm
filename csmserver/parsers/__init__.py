@@ -28,7 +28,7 @@ from parser_factory import IOSXRParserFactory, ASR9KParserFactory, \
     EXRParserFactory, IOSXEParserFactory, IOSParserFactory, NXOSParserFactory
 
 
-def get_parser_factory(software_platform, os_type):
+def get_parser_factory(software_platform):
     if software_platform == PlatformFamily.ASR9K:
         return ASR9KParserFactory()
     elif software_platform == PlatformFamily.CRS:
@@ -42,13 +42,10 @@ def get_parser_factory(software_platform, os_type):
                                PlatformFamily.NCS6K,
                                PlatformFamily.NCS5500]:
         return EXRParserFactory()
-    elif software_platform == PlatformFamily.ASR900:
-        if os_type == 'IOS':
+    elif software_platform == PlatformFamily.ASR900_IOS:
             return IOSParserFactory()
-        elif os_type == 'XE':
+    elif software_platform == PlatformFamily.ASR900_XE:
             return IOSXEParserFactory()
-        else:
-            raise UnknownSoftwarePlatform('%s' % software_platform)
     elif software_platform == PlatformFamily.N9K:
         return NXOSParserFactory()
     else:

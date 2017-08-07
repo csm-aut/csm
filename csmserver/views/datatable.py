@@ -46,6 +46,7 @@ from models import Region
 from models import JumpHost
 from models import ConnectionParam
 from models import logger
+from models import Satellite
 from models import InstallJob
 from models import InstallJobHistory
 from models import DownloadJob
@@ -767,6 +768,72 @@ def api_get_inventory(hostname):
         row['description'] = inventory.description
         row['serial_number'] = inventory.serial_number
         row['vid'] = inventory.hardware_revision
+        rows.append(row)
+
+    response = dict()
+    response['draw'] = dt_params.draw
+    response['recordsTotal'] = total_count
+    response['recordsFiltered'] = filtered_count
+    response['data'] = rows
+
+    return jsonify(**response)
+
+
+@datatable.route('/api/hosts/<hostname>/satellites')
+@login_required
+def api_get_satellites(hostname):
+    rows = []
+    dt_params = DataTableParams(request)
+    db_session = DBSession()
+
+    host = get_host(db_session, hostname)
+    if not host:
+        abort(404)
+
+    clauses = []
+    if len(dt_params.search_value):
+        criteria = '%' + dt_params.search_value + '%'
+        clauses.append(Satellite.satellite_id.like(criteria))
+        clauses.append(Satellite.type.like(criteria))
+        clauses.append(Satellite.state.like(criteria))
+        clauses.append(Satellite.install_state.like(criteria))
+        clauses.append(Satellite.ip_address.like(criteria))
+        clauses.append(Satellite.mac_address.like(criteria))
+        clauses.append(Satellite.serial_number.like(criteria))
+        clauses.append(Satellite.remote_version.like(criteria))
+        clauses.append(Satellite.fabric_links.like(criteria))
+
+    query = db_session.query(Satellite)\
+        .filter(Satellite.host_id == host.id)
+
+    total_count = query.filter(Satellite.host_id == host.id).count()
+    filtered_count = query.filter(and_(Satellite.host_id == host.id), or_(*clauses)).count()
+
+    columns = [getattr(Satellite.satellite_id, dt_params.sort_order)(),
+               getattr(Satellite.type, dt_params.sort_order)(),
+               getattr(Satellite.state, dt_params.sort_order)(),
+               getattr(Satellite.install_state, dt_params.sort_order)(),
+               getattr(Satellite.ip_address, dt_params.sort_order)(),
+               getattr(Satellite.mac_address, dt_params.sort_order)(),
+               getattr(Satellite.serial_number, dt_params.sort_order)(),
+               getattr(Satellite.remote_version, dt_params.sort_order)(),
+               getattr(Satellite.fabric_links, dt_params.sort_order)()]
+
+    satellites = query.order_by(columns[dt_params.column_order])\
+        .filter(and_(Satellite.host_id == host.id), or_(*clauses))\
+        .slice(dt_params.start_length, dt_params.start_length + dt_params.display_length).all()
+
+    for satellite in satellites:
+        row = dict()
+        row['satellite_id'] = satellite.satellite_id
+        row['type'] = satellite.type
+        row['state'] = satellite.state
+        row['install_state'] = satellite.install_state
+        row['ip_address'] = satellite.ip_address
+        row['mac_address'] = satellite.mac_address
+        row['serial_number'] = satellite.serial_number
+        row['remote_version'] = satellite.remote_version
+        row['fabric_links'] = satellite.fabric_links
         rows.append(row)
 
     response = dict()

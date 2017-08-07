@@ -49,21 +49,29 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
             continue
 
         if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
-            pos = host_package.find('-px')
-            if pos == -1:
-                continue
+            """
+            External Names:                            Internal Names (i.e. host_package):
+            asr9k-mcast-px.pie-6.1.1                   asr9k-mcast-px-6.2.2
+            hfr-mcast-px.pie-6.1.1                     asr9k-mcast-px-6.2.2
+            hfr-asr9000v-nV-px.pie-6.1.1               hfr-asr9000v-nV-px-6.2.2
 
-            package_name = host_package[0:pos]
-            if match_internal_name:
-                # asr9k-mgbl-px-5.3.3, hfr-mgbl-px-5.3.3
-                target_list.append('{}-px-{}'.format(package_name, target_version))
-            else:
-                # Handles exceptional case
-                if 'asr9k-9000v-nV-px' in host_package:
-                    target_list.append('asr9k-asr9000v-nV-px.pie-{}'.format(target_version))
+            These two packages cause CSM headache because of different formatting compared to other packages.
+            asr9k-services-infra-px.pie-6.1.1          asr9k-services-infra-6.2.2
+            asr9k-asr9000v-nV-px.pie-6.1.1             asr9k-9000v-nV-px-6.2.2
+            """
+            pos = host_package.rfind('-')
+            if pos != -1:
+                if match_internal_name:
+                    target_list.append('{}-{}'.format(host_package[0:pos], target_version))
                 else:
-                    # asr9k-mgbl-px.pie-5.3.3, hfr-mgbl-px.pie-5.3.3
-                    target_list.append('{}-px.pie-{}'.format(package_name, target_version))
+                    # Handles exceptional cases
+                    if 'asr9k-9000v-nV-px' in host_package:
+                        target_list.append('asr9k-asr9000v-nV-px.pie-{}'.format(target_version))
+                    elif 'asr9k-services-infra' in host_package:
+                        target_list.append('asr9k-services-infra-px.pie-{}'.format(target_version))
+                    else:
+                        # asr9k-mgbl-px.pie-5.3.3, hfr-mgbl-px.pie-5.3.3
+                        target_list.append('{}.pie-{}'.format(host_package[0:pos], target_version))
 
         elif software_platform in [PlatformFamily.NCS6K, PlatformFamily.NCS4K]:
             match = re.search('-\d+\.\d+\.\d+', host_package)
@@ -135,6 +143,45 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                                                             'x86_64.rpm'))
 
     return target_list
+
+
+def get_matchable_package_dict(software_packages):
+    """
+    Given a list of software packages, return the portion of the package name that can be used for internal packaging
+    name matching.  This is because the package's external name is different from the package's internal name.
+
+    External Name: ncs5k-mgbl-3.0.0.0-r611.x86_64.rpm
+    Internal Name: ncs5k-mgbl-3.0.0.0-r611
+
+    External Name: asr9k-mgbl-px.pie-6.1.1
+    Internal Name: asr9k-mgbl-px-6.1.1
+
+    External Name: asr9k-px-5.3.4.CSCvd78405.pie
+    Internal Name: asr9k-px-5.3.4.CSCvd78405-1.0.0
+
+    Unfortunately, some of the software packages have different external name and internal name (after activation)
+    External Name: asr9k-asr9000v-nV-px.pie-6.1.2
+    Internal Name: asr9k-9000v-nV-px-6.1.2
+
+    External Name: asr9k-services-infra-px.pie-5.3.4
+    Internal Name: asr9k-services-infra.pie-5.3.4
+
+    Returns a dictionary with key = software_profile_package, value = refined package_name_to_match
+    """
+    result_dict = dict()
+
+    for software_package in software_packages:
+        # FIXME: Need platform specific logic
+        package_name_to_match = strip_smu_file_extension(software_package).replace('.x86_64', '')
+
+        if 'asr9000v' in package_name_to_match:
+            package_name_to_match = package_name_to_match.replace('asr9000v', '9000v')
+        elif 'services-infra-px' in package_name_to_match:
+            package_name_to_match = package_name_to_match.replace('-px', '')
+
+        result_dict[software_package] = package_name_to_match
+
+    return result_dict
 
 
 def is_file_acceptable_for_install_add(filename):

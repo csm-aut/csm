@@ -92,6 +92,8 @@ class PlatformFamily:
     ASR9K = 'ASR9K'
     ASR9K_X64 = 'ASR9K-X64'
     ASR900 = 'ASR900'
+    ASR900_XE = 'ASR900-XE'
+    ASR900_IOS = 'ASR900-IOS'
     CRS = 'CRS'
     NCS1K = 'NCS1K'
     NCS4K = 'NCS4K'
@@ -152,6 +154,8 @@ class InstallAction:
     FPD_UPGRADE = 'FPD-Upgrade'
     ADD_MONITOR = 'Add-Monitor'
     ACTIVATE_MONITOR = 'Activate-Monitor'
+    SATELLITE_TRANSFER = 'Satellite-Transfer'
+    SATELLITE_ACTIVATE = 'Satellite-Activate'
 
 
 class PackageType:

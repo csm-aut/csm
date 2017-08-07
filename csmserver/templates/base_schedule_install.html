@@ -28,6 +28,8 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
             <option value="Remove All Inactive">Remove All Inactive</option>
             <option value="Deactivate">Deactivate</option>
             <option value="FPD-Upgrade">FPD-Upgrade</option>
+            <option value="Satellite-Transfer">Satellite-Transfer</option>
+            <option value="Satellite-Activate">Satellite-Activate</option>
         </select>
     </div>
 </div>
@@ -139,7 +141,7 @@ var host_software_platform = null;
 var host_software_version = null;
 
 $(function() {
-
+    var check_host_software_profile = "{{ system_option.check_host_software_profile }}" == 'True'
     var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True'
     if (use_utc_timezone) {
         $('#label_scheduled_time').text('Scheduled Time (UTC)');
@@ -431,8 +433,31 @@ $(function() {
     }
 
     // Called by the $('#form').submit() function.
-    function on_final_submit(current_form, hostname) {
+    function on_final_submit(e, current_form, hostname) {
+        if (check_host_software_profile &&
+            has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE])) {
 
+            $.ajax({
+                url: "{{ url_for('install.api_check_host_software_profile') }}",
+                type: "POST",
+                data: {
+                    hostname: hostname,
+                    software_packages: convert_lines_to_list($('#software_packages').val())
+                },
+                success: function(data) {
+                    if (data.status == 'OK') {
+                        create_install_jobs(current_form, hostname);
+                    } else {
+                        bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
+                    }
+                }
+            });
+        } else {
+            create_install_jobs(current_form, hostname);
+        }
+    }
+
+    function create_install_jobs(current_form, hostname) {
         var validate_object = {
             form: current_form,
             hostname: hostname,

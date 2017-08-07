@@ -82,6 +82,7 @@ from utils import create_directory
 from utils import make_file_writable
 
 from package_utils import strip_smu_file_extension
+from package_utils import get_matchable_package_dict
 
 import os
 import json
@@ -416,7 +417,7 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
         user_id=current_user.id,
         created_by=current_user.username)
 
-    software_profile_package_dict = fixup_software_profile_packages(software_profile_packages)
+    software_profile_package_dict = get_matchable_package_dict(software_profile_packages)
 
     for hostname in hostnames:
         host = get_host(db_session, hostname)
@@ -520,33 +521,6 @@ def get_missing_packages(host_packages, software_profile_package_dict):
             missing_packages.append(software_profile_package)
 
     return missing_packages
-
-
-def fixup_software_profile_packages(software_profile_packages):
-    """
-    Unfortunately, some of the software packages have different external name and internal name (after activation)
-    External Name: asr9k-asr9000v-nV-px.pie-6.1.2
-    Internal Name: asr9k-9000v-nV-px-6.1.2
-
-    External Name: asr9k-services-infra-px.pie-5.3.4
-    Internal Name: asr9k-services-infra.pie-5.3.4
-
-    Returns dictionary with key = software_profile_package, value = package_name_to_match
-    """
-    result_dict = dict()
-
-    for software_profile_package in software_profile_packages:
-        # FIXME: Need platform specific logic
-        package_name_to_match = strip_smu_file_extension(software_profile_package).replace('.x86_64', '')
-
-        if 'asr9000v' in package_name_to_match:
-            package_name_to_match = package_name_to_match.replace('asr9000v', '9000v')
-        elif 'services-infra-px' in package_name_to_match:
-            package_name_to_match = package_name_to_match.replace('-px', '')
-
-        result_dict[software_profile_package] = package_name_to_match
-
-    return result_dict
 
 
 @conformance.route('/api/export_conformance_report/report/<int:id>')

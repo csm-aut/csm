@@ -59,6 +59,13 @@
                 $('#can-install-no-button'))
         );
 
+        $('#check_host_software_profile').val(
+            render_switch(
+                $('#check_host_software_profile'),
+                $('#check-host-software-profile-yes-button'),
+                $('#check-host-software-profile-no-button'))
+        );
+
         $('#enable_inventory').val(
             render_switch(
                 $('#enable_inventory'),
@@ -161,6 +168,7 @@
         $('form').submit(function() {
             $('#can_schedule').val($("#can-schedule-yes-or-no .active").data("value"));
             $('#can_install').val($("#can-install-yes-or-no .active").data("value"));
+            $('#check_host_software_profile').val($("#check-host-software-profile-yes-or-no .active").data("value"));
             $('#enable_email_notify').val($("#enable-email-notify-yes-or-no .active").data("value"));
             $('#enable_inventory').val($("#enable-inventory-yes-or-no .active").data("value"));
             $('#enable_ldap_auth').val($("#enable-ldap-auth-yes-or-no .active").data("value"));
@@ -251,23 +259,36 @@
                                         </div>
                                         <div class="panel-body">
                                             {% set extra_field =
-                                            '
-                                            <div class="btn-group btn-toggle" id="can-schedule-yes-or-no">
-                                                <button type="button" id="can-schedule-yes-button" class="btn" data-value=1>Yes</button>
-                                                <button type="button" id="can-schedule-no-button" class="btn" data-value=0>No</button>
-                                            </div>
-                                            '
+                                                '
+                                                <div class="btn-group btn-toggle" id="can-schedule-yes-or-no">
+                                                    <button type="button" id="can-schedule-yes-button" class="btn" data-value=1>Yes</button>
+                                                    <button type="button" id="can-schedule-no-button" class="btn" data-value=0>No</button>
+                                                </div>
+                                                '
                                             %}
                                             {{ edit_field(admin_console_form.can_schedule, label_field_width="col-sm-8", class="form-control", extra_field=extra_field) }}
+
                                             {% set extra_field =
-                                            '
-                                            <div class="btn-group btn-toggle" id="can-install-yes-or-no">
-                                                <button type="button" id="can-install-yes-button" class="btn" data-value=1>Yes</button>
-                                                <button type="button" id="can-install-no-button" class="btn" data-value=0>No</button>
-                                            </div>
-                                            '
+                                                '
+                                                <div class="btn-group btn-toggle" id="can-install-yes-or-no">
+                                                    <button type="button" id="can-install-yes-button" class="btn" data-value=1>Yes</button>
+                                                    <button type="button" id="can-install-no-button" class="btn" data-value=0>No</button>
+                                                </div>
+                                                '
                                             %}
                                             {{ edit_field(admin_console_form.can_install, label_field_width="col-sm-8", class="form-control", extra_field=extra_field) }}
+
+                                            <hr>
+
+                                            {% set extra_field =
+                                                '
+                                                <div class="btn-group btn-toggle" id="check-host-software-profile-yes-or-no">
+                                                    <button type="button" id="check-host-software-profile-yes-button" class="btn" data-value=1>Yes</button>
+                                                    <button type="button" id="check-host-software-profile-no-button" class="btn" data-value=0>No</button>
+                                                </div>
+                                                '
+                                            %}
+                                            {{ edit_field(admin_console_form.check_host_software_profile, label_field_width="col-sm-8", class="form-control", extra_field=extra_field) }}
                                         </div>
                                     </div>
                                     <div class="panel panel-default">
