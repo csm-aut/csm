@@ -1201,11 +1201,15 @@ class CreateTarJob(Base):
     status = Column(String(200))
     status_time = Column(DateTime)
     created_by = Column(String(50))
+    status_message = Column(String(200))
 
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
 
+    def set_status_message(self, status_message):
+        self.status_message = status_message
+        self.status_time = datetime.datetime.utcnow()
 
 class ConvertConfigJob(Base):
     __tablename__ = 'convert_config_job'

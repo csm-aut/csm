@@ -31,7 +31,8 @@ from models import DownloadJob
 from constants import JobStatus
 
 sql_statements = [
-    'alter table system_option add check_host_software_profile BOOLEAN default 0'
+    'alter table system_option add check_host_software_profile BOOLEAN default 0',
+    'alter table create_tar_job add status_message VARCHAR(200)
     ]
 
 

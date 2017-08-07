@@ -53,14 +53,14 @@ class CreateTarWorkUnit(WorkUnit):
 
             try:
                 if not os.path.exists(temp_path):
-                    self.create_tar_job.set_status('Creating temporary directories.')
+                    self.create_tar_job.set_status_message('Creating temporary directories.')
                     self.db_session.commit()
                     os.makedirs(temp_path, 0777)
                     os.makedirs(new_tar_path, 0777)
 
                 # Untar source tars into the temp/timestamp directory
                 if source_tars:
-                    self.create_tar_job.set_status('Extracting from source tar files.')
+                    self.create_tar_job.set_status_message('Extracting from source tar files.')
                     self.db_session.commit()
                     for source in source_tars.split(','):
                         with tarfile.open(os.path.join(repo_dir, source)) as tar:
@@ -69,7 +69,7 @@ class CreateTarWorkUnit(WorkUnit):
                 # Copy the selected contents from the temp/timestamp directory
                 # to the new tar directory
                 if contents:
-                    self.create_tar_job.set_status('Copying selected tar contents.')
+                    self.create_tar_job.set_status_message('Copying selected tar contents.')
                     self.db_session.commit()
                     for f in contents.strip().split(','):
                         _, filename = os.path.split(f)
@@ -77,12 +77,12 @@ class CreateTarWorkUnit(WorkUnit):
 
                 # Copy the selected additional packages from the repository to the new tar directory
                 if additional_packages:
-                    self.create_tar_job.set_status('Copying selected additional files.')
+                    self.create_tar_job.set_status_message('Copying selected additional files.')
                     self.db_session.commit()
                     for pkg in additional_packages.split(','):
                         shutil.copy2(os.path.join(repo_dir, pkg), new_tar_path)
 
-                self.create_tar_job.set_status('Tarring new file.')
+                self.create_tar_job.set_status_message('Tarring new file.')
                 self.db_session.commit()
                 tarname = os.path.join(temp_path, new_tar_name)
                 shutil.make_archive(tarname, format='tar', root_dir=new_tar_path)
@@ -90,7 +90,7 @@ class CreateTarWorkUnit(WorkUnit):
 
                 server = self.db_session.query(Server).filter(Server.id == server_id).first()
                 if server is not None:
-                    self.create_tar_job.set_status('Uploading to external repository.')
+                    self.create_tar_job.set_status_message('Uploading to external repository.')
                     self.db_session.commit()
 
                     server_impl = get_server_impl(server)
@@ -110,10 +110,12 @@ class CreateTarWorkUnit(WorkUnit):
 
                 shutil.rmtree(temp_path, onerror=self.handleRemoveReadonly)
                 self.create_tar_job.set_status(JobStatus.COMPLETED)
+                self.create_tar_job.set_status_message(JobStatus.COMPLETED)
                 self.db_session.commit()
 
             except Exception:
                 self.create_tar_job.set_status(JobStatus.FAILED)
+                self.create_tar_job.set_status_message(JobStatus.FAILED)
                 self.db_session.commit()
                 logger.exception('Exception while creating %s requested by %s - job id = %s',
                                   new_tar_name, created_by, self.job_id)
