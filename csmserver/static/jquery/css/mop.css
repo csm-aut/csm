@@ -1,3 +1,31 @@
+.modal-dialog {
+    width: 850px;
+}
+a:link, a:visited {
+    text-decoration:none;
+}
+th,
+td {
+    white-space: nowrap;
+}
+#selected-plugins > div .need-data {
+    cursor: pointer;
+    cursor: hand;
+}
+#selected-plugins > div .no-data:hover {
+    text-decoration: none;
+    cursor: -webkit-grab;
+    color: #428bca;
+}
+#available-plugins > div {
+    cursor: -webkit-grab;
+    text-decoration: none;
+}
+
+#available-plugins > div a:hover {
+    color: #428bca;
+    text-decoration: none;
+}
 
 .wrapper {
     display: table;

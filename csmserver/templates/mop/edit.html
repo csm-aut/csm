@@ -135,11 +135,25 @@
                     var $available_plugins_container = $("#available-plugins");
 
                     for (var i = 0; i < data.plugins.length; i++) {
+                        var html = "<div>";
+                        var info_data_toggle = "description_" + data.plugins[i].split(" ").join("_");
+
                         if (csmpe_plugins_to_data_requirement[data.plugins[i]] && csmpe_plugins_to_data_requirement[data.plugins[i]]["need_data"] == false) {
-                            $available_plugins_container.append("<div><a name='" + get_next_plugin_uid() + "' class='no-data'>" + data.plugins[i] + "</a></div>");
+                            html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='no-data'>" + data.plugins[i] + "</a>";
                         } else {
-                            $available_plugins_container.append("<div><a name='" + get_next_plugin_uid() + "' class='need-data'>" + data.plugins[i] + "</a></div>");
+                            html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='need-data'>" + data.plugins[i] + "</a>";
                         }
+                        //html += "&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript://'><span class='glyphicon glyphicon-info-sign' style='color:dodgerblue' aria-hidden='true' data-toggle='" + info_data_toggle + "'></span></a></div>";
+                        $available_plugins_container.append(html);
+
+                        $('[data-toggle=' + info_data_toggle + ']').popover({
+                            trigger : 'hover',
+                            placement : 'right',
+                            html : false,
+                            content : function() {
+                                return "lalalala"
+                            }
+                        });
 
                     }
 
@@ -332,32 +346,6 @@
 
     });
 </script>
-  
-<style>
-    .modal-dialog {    
-        width: 850px;
-    }
-    a:link, a:visited {
-        text-decoration:none;
-    }
-    th,
-    td {
-        white-space: nowrap;
-    }
-    #selected-plugins > div .need-data {
-        cursor: pointer;
-        cursor: hand;
-    }
-    #selected-plugins > div .no-data {
-        text-decoration: none;
-        cursor: -webkit-grab;
-    }
-    #available-plugins > div a {
-        cursor: -webkit-grab;
-        text-decoration: none;
-    }
-
-</style>
   
 {% endblock %}
 
