@@ -23,21 +23,7 @@
         var plugin_uid = 0;
         var last_selected_plugin_uid = 0;
 
-        var csmpe_plugins_to_data_requirement = {{ plugin_data|tojson|safe }};
-            /*
-            {
-            "Script Executor": true,
-            "Custom Configuration": true,
-            'Custom Commands Capture': true,
-            'Config Capture': false,
-            'Config Filesystem Check': false,
-            'Core Error Check': false,
-            'Check Failed Startup Config': false,
-            'Filesystem Check': false,
-            'ISIS Neighbor Check': false,
-            'Node Redundancy Check': false,
-            'Node Status Check': false
-        };*/
+        var plugin_specs = {};
 
         var original_mop_name = "";
 
@@ -86,8 +72,7 @@
                 plugin_to_user_input[last_selected_plugin_uid][keys[i]] = values[i];
             }
             $('#plugin-details').modal('hide');
-            console.log(plugin_to_user_input[last_selected_plugin_uid]);
-            console.log(JSON.stringify(plugin_to_user_input[last_selected_plugin_uid]));
+
         });
 
 
@@ -120,6 +105,7 @@
             });
         }
 
+
         function get_available_plugins(first_load_on_edit) {
             $.ajax({
                 url: "/mop/get_available_plugins_and_required_data",
@@ -134,14 +120,16 @@
 
                     var $available_plugins_container = $("#available-plugins");
 
-                    for (var i = 0; i < data.plugins.length; i++) {
-                        var html = "<div>";
-                        var info_data_toggle = "description_" + data.plugins[i].split(" ").join("_");
+                    plugin_specs = data.plugin_specs;
 
-                        if (csmpe_plugins_to_data_requirement[data.plugins[i]] && csmpe_plugins_to_data_requirement[data.plugins[i]]["need_data"] == false) {
-                            html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='no-data'>" + data.plugins[i] + "</a>";
+                    for (var plugin_name in plugin_specs) {
+                        var html = "<div>";
+                        var info_data_toggle = "description_" + plugin_name.split(" ").join("_");
+
+                        if (Object.keys(plugin_specs[plugin_name]["data_specs"]).length > 0) {
+                            html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='need-data'>" + plugin_name + "</a>";
                         } else {
-                            html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='need-data'>" + data.plugins[i] + "</a>";
+                            html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='no-data'>" + plugin_name + "</a>";
                         }
                         //html += "&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript://'><span class='glyphicon glyphicon-info-sign' style='color:dodgerblue' aria-hidden='true' data-toggle='" + info_data_toggle + "'></span></a></div>";
                         $available_plugins_container.append(html);
@@ -151,14 +139,14 @@
                             placement : 'right',
                             html : false,
                             content : function() {
-                                return "lalalala"
+                                return plugin_specs[$(this).html()]["description"]
                             }
                         });
 
                     }
 
                     $('#selected-plugins > div').map(function () {
-                        if (data.plugins.indexOf($(this).find('a').html()) < 0) {
+                        if (!($(this).find('a').html() in plugin_specs)) {
                             $(this).remove();
                             delete plugin_to_user_input[parseInt($(this).find('a').attr('name').split("_")[1])]
                         }
@@ -169,10 +157,10 @@
                         var removed_plugins = [];
 
                         for (var i = 0; i < mop_specs.length; i++) {
-                            if (data.plugins.indexOf(mop_specs[i]["plugin"]) < 0) {
-                                removed_plugins.push(mop_specs[i]["plugin"])
-                            } else {
+                            if (mop_specs[i]["plugin"] in plugin_specs) {
                                 select_plugin(mop_specs[i]["plugin"], mop_specs[i]["data"]);
+                            } else {
+                                removed_plugins.push(mop_specs[i]["plugin"]);
                             }
                         }
 
@@ -204,17 +192,16 @@
 
 
         selected_plugins_dragula.on('remove', function (el, target, source, sibling) {
-            console.log($(el).find('a').attr('name'));
-            console.log(target);
-            console.log(source);
-            console.log(sibling);
+            //console.log($(el).find('a').attr('name'));
+            //console.log(target);
+            //console.log(source);
+            //console.log(sibling);
             delete plugin_to_user_input[parseInt($(el).find('a').attr('name').split("_")[1])];
 
         });
 
 
         available_plugins_dragula.on('drop', function (el, target, source, sibling) {
-            console.log(el);
             // For the selected plugin from the available plugins,
             // update its name so that next time when the same plugin
             // is dragged and dropped, the selected plugin
@@ -222,9 +209,11 @@
             if ($(source).attr("id") == "available-plugins") {
                 $(source).find("[name='" + $(el).find('a').attr('name') + "']").attr("name", get_next_plugin_uid());
             }
-            console.log(target);
-            console.log(source);
-            console.log(sibling);
+            $(el).removeAttr('data-toggle');
+            $('.popover').remove();
+            //console.log(target);
+            //console.log(source);
+            //console.log(sibling);
         });
 
         function get_next_plugin_uid() {
@@ -235,10 +224,11 @@
 
         function select_plugin(plugin_name, plugin_data) {
             var name = $("#available-plugins div a:contains(" + plugin_name + ")").attr("name");
-            if (csmpe_plugins_to_data_requirement[plugin_name] && csmpe_plugins_to_data_requirement[plugin_name]["need_data"] == false) {
-                $("#selected-plugins").append("<div><a name='" + name + "' class='no-data'>" + plugin_name + "</a></div>");
-            } else {
+
+            if (Object.keys(plugin_specs[plugin_name]["data_specs"]).length > 0) {
                 $("#selected-plugins").append("<div><a name='" + name + "' class='need-data'>" + plugin_name + "</a></div>");
+            } else {
+                $("#selected-plugins").append("<div><a name='" + name + "' class='no-data'>" + plugin_name + "</a></div>");
             }
 
             $("#available-plugins").find("[name='" + name + "']").attr("name", get_next_plugin_uid());
@@ -317,7 +307,7 @@
                 specs["data"] = {};
                 var user_input_data = plugin_to_user_input[parseInt($(this).attr("name").split("_")[1])];
 
-                if (csmpe_plugins_to_data_requirement[specs["plugin"]] && csmpe_plugins_to_data_requirement[specs["plugin"]]["need_data"] == true) {
+                if (Object.keys(plugin_specs[specs["plugin"]]["data_specs"]).length > 0) {
                     if (user_input_data === undefined) {
                         bootbox.alert("Please click on selected plugin '" + specs["plugin"] + "' to specify required input.");
                         return false;

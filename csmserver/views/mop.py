@@ -29,7 +29,6 @@ from flask import request, redirect, url_for
 
 from wtforms import Form
 from wtforms import StringField
-from wtforms import HiddenField
 from wtforms import SelectMultipleField
 from wtforms.validators import Length, required
 
@@ -75,29 +74,33 @@ def get_available_plugins_and_required_data():
     software_platforms = request.form.getlist('platforms[]')
 
     if not software_platforms:
-        plugins = get_all_available_plugins(phases=phases)
+        plugin_specs = get_all_available_plugins(phases=phases)
+        plugins = plugin_specs.keys()
     else:
         platform, os_type = translate_software_platform_to_platform_os(software_platforms[0])
-        plugins = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
+        plugin_specs = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
+        plugins = plugin_specs.keys()
 
         for i in range(1, len(software_platforms)):
             platform, os_type = translate_software_platform_to_platform_os(software_platforms[i])
+            plugin_set = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type).keys()
             if plugins:
-                plugins.intersection_update(get_all_available_plugins(platform=platform, phases=phases, os_type=os_type))
+                plugins.intersection_update(plugin_set)
             else:
                 break
 
-    plugin_list = sorted(plugins)
-    print str(plugin_list)
+    available_plugin_specs = {}
+    for plugin in plugins:
+        available_plugin_specs[plugin] = plugin_specs[plugin]
 
-    return jsonify(plugins=plugin_list)
+    return jsonify(plugin_specs=available_plugin_specs)
 
 
 def get_all_available_plugins(platform=None, phases=None, os_type=None):
     if phases:
         return get_available_plugins(platform=platform, phase=phases, os=os_type)
     # if phases is not specified, get available plugins for all valid mop phases
-    plugins = set()
+    plugins = dict()
     for phase in get_phases():
         plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
     return plugins
@@ -156,7 +159,6 @@ def api_delete_mop(mop_name):
 @mop.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
-    print "create mop"
     if not can_install(current_user):
         abort(401)
     db_session = DBSession()
@@ -167,11 +169,10 @@ def create():
     if request.method == 'GET':
         init_mop_form(mop_form, db_session)
         return render_template('mop/edit.html', system_option=SystemOption.get(db_session), current_user=current_user,
-                               form=mop_form, mop_specs=[], plugin_data=csmpe_plugins_to_data_requirement,
+                               form=mop_form, mop_specs=[],
                                duplicate_error=False)
 
     if request.method == 'POST':
-        print "POST"
         mop = db_session.query(Mop).filter(Mop.name == mop_form.mop_name.data).first()
 
         if mop is not None:
@@ -186,7 +187,6 @@ def create():
 @mop.route('/<mop_name>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(mop_name):
-    print "edit " + mop_name
     if not can_install(current_user):
         abort(401)
 
@@ -212,11 +212,9 @@ def edit(mop_name):
 
         return render_template('mop/edit.html', system_option=SystemOption.get(db_session), current_user=current_user,
                                form=mop_form, mop_specs=get_mop_specs_with_mop_name(db_session, mop_name),
-                               plugin_data=csmpe_plugins_to_data_requirement,
                                duplicate_error=False)
 
     if request.method == 'POST':
-        print "POST"
         mops_query.delete()
         db_session.commit()
         return create_new_mop(db_session, request.get_json(), return_url)
@@ -274,7 +272,7 @@ def get_software_platform_choices(db_session):
     platforms.append(("ALL", "ALL"))
     return platforms
 
-
+"""
 csmpe_plugins_to_data_requirement = {
     "Script Executor": {"need_data": True, "attributes_with_env_var": ["full_command"]},
     "Custom Configuration": {"need_data": True},
@@ -288,7 +286,7 @@ csmpe_plugins_to_data_requirement = {
     'Node Redundancy Check': {"need_data": False},
     'Node Status Check': {"need_data": False}
 }
-
+"""
 
 def substitute_env_vars(db_session, host, expression):
     if expression is None:

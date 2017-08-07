@@ -58,7 +58,8 @@ from common import get_last_successful_inventory_elapsed_time
 from common import get_mop_list
 from common import get_mop_specs_with_mop_name
 
-from mop import csmpe_plugins_to_data_requirement
+from mop import translate_software_platform_to_platform_os
+from mop import get_all_available_plugins
 from mop import substitute_env_vars
 
 from forms import ScheduleInstallForm
@@ -258,13 +259,17 @@ def get_mop_data(db_session, host, form):
     pre_check_mop_specs = []
     post_check_mop_specs = []
 
+    platform, os_type = translate_software_platform_to_platform_os(host.software_platform)
+
+    plugin_specs = get_all_available_plugins(platform=platform, phases=[InstallAction.PRE_CHECK, InstallAction.POST_CHECK], os_type=os_type)
+
     if pre_check_mop_name:
         pre_check_mop_specs = get_mop_specs_with_mop_name(db_session, pre_check_mop_name)
-        process_mop_specs(db_session, host, pre_check_mop_specs)
+        process_mop_specs(db_session, host, pre_check_mop_specs, plugin_specs)
 
     if post_check_mop_name:
         post_check_mop_specs = get_mop_specs_with_mop_name(db_session, post_check_mop_name)
-        process_mop_specs(db_session, host, post_check_mop_specs)
+        process_mop_specs(db_session, host, post_check_mop_specs, plugin_specs)
     return pre_check_mop_name, pre_check_mop_specs, post_check_mop_name, post_check_mop_specs
 
 
@@ -281,15 +286,16 @@ def form_install_job_data(install_action, pre_check_mop_name, pre_check_mop_spec
     return install_job_data
 
 
-def process_mop_specs(db_session, host, mop_specs):
+def process_mop_specs(db_session, host, mop_specs, plugin_specs):
     for detail in mop_specs:
-        if detail["plugin"] in csmpe_plugins_to_data_requirement:
-            if csmpe_plugins_to_data_requirement[detail["plugin"]]["need_data"] and \
-                "attributes_with_env_var" in csmpe_plugins_to_data_requirement[detail["plugin"]]:
-                for attribute in csmpe_plugins_to_data_requirement[detail["plugin"]]["attributes_with_env_var"]:
-                    value = substitute_env_vars(db_session, host, detail["data"].get(attribute))
-                    if value is not None:
-                        detail["data"][attribute] = value
+        if detail["plugin"] in plugin_specs:
+            data_specs = plugin_specs[detail["plugin"]]["data_specs"]
+            if data_specs:
+                for attribute in data_specs:
+                    if data_specs[attribute].get("enable_env_var_input"):
+                        value = substitute_env_vars(db_session, host, detail["data"].get(attribute))
+                        if value is not None:
+                            detail["data"][attribute] = value
         else:
             for attribute, val in detail["data"]:
                 value = substitute_env_vars(db_session, host, val)
