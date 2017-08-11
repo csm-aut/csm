@@ -1,22 +1,19 @@
 
-function generate_plugin_detail_template(plugin_uid, plugin_name, plugin_to_user_input){
+function generate_plugin_detail_template(plugin_data_specs, plugin_name, plugin_uid, plugin_to_user_input){
 
     var $plugin_detail_modal = $('#plugin-details-modal');
     $plugin_detail_modal.empty();
     var html = "";
     console.log(plugin_to_user_input[plugin_uid]);
-    if (plugin_name == "Script Executor") {
-        html += create_html_for_script_executor_plugin(plugin_to_user_input[plugin_uid])
-    } else if (plugin_name == "Custom Configuration") {
-        html += create_html_for_custom_configuration_plugin(plugin_to_user_input[plugin_uid])
-    }
+
+
+    html += create_html_for_plugin(plugin_name, plugin_data_specs, plugin_to_user_input[plugin_uid]);
 
     html += '<div class="btn pull-right">' +
             '<button id="save-plugin-data" type="button" class="btn btn-primary">Save</button>' +
             '</div>';
     return html;
 
-    //return create_html_for_plugin_data_input(plugin_to_user_input[plugin_uid]);
 
 }
 
@@ -37,6 +34,7 @@ function generate_input_field(label_name, label_width, field_value, field_width,
     return html;
 }
 
+
 function generate_textarea_field(label_name, label_width, num_rows, num_cols, field_width, content) {
     var field_id = label_name.split(' ').join('_');
     var html = '<div class="form-group">' +
@@ -47,6 +45,7 @@ function generate_textarea_field(label_name, label_width, num_rows, num_cols, fi
                '</div>';
     return html;
 }
+
 
 function generate_radio_button_field(label_name, label_width, field_width, options, selected_value) {
     var field_id = label_name.split(' ').join('_');
@@ -67,41 +66,47 @@ function generate_radio_button_field(label_name, label_width, field_width, optio
 }
 
 
-function create_html_for_plugin_data_input(selected_plugin_data) {
-    var html = create_html_for_plugin_data_fields(selected_plugin_data);
-    html += '<div class="btn pull-right">' +
-            '<button id="save-plugin-data" type="button" class="btn btn-primary">Save</button>' +
-            '</div>';
-    return html;
-}
-
-
-function create_html_for_script_executor_plugin(selected_plugin_data) {
-    var attribute_name="full_command",label_width="col-sm-2", field_width="col-sm-10";
-
-    var value = get_value(selected_plugin_data, attribute_name, "");
-    return generate_input_field(convert_attribute_name_to_field_label(attribute_name), label_width, value, field_width, true)
-}
-
-function create_html_for_custom_configuration_plugin(selected_plugin_data) {
-    var attribute_name="configlet", value = "", label_width="col-sm-2", field_width="col-sm-10";
-
+function create_html_for_plugin(plugin_name, plugin_data_specs, selected_plugin_data) {
+    var label_width="col-sm-2", field_width="col-sm-10";
     var html = "";
-    if (selected_plugin_data) {
-        value = selected_plugin_data[attribute_name]
+    for (var i=0;i<plugin_data_specs.length;i++) {
+        var data_specs = plugin_data_specs[i];
+        var attribute_name = data_specs["attribute"];
+        if (!attribute_name) {
+            bootbox.alert("Error: Missing 'attribute' definition for plugin " + plugin_name);
+            return false;
+        }
+        var default_value = "";
+        if (data_specs["default_value"]) {
+            default_value = data_specs["default_value"]
+        }
+        var value = get_value(selected_plugin_data, attribute_name, default_value);
+
+        if (data_specs["ui_component"] == "textarea") {
+            html += generate_textarea_field(convert_attribute_name_to_field_label(attribute_name), label_width, 20, 90, field_width, value);
+        } else if (data_specs["ui_component"] == "text") {
+            var allow_host_variables = false;
+            if (data_specs["enable_env_var_input"] == true) {
+                allow_host_variables = true;
+            }
+            html += generate_input_field(convert_attribute_name_to_field_label(attribute_name), label_width, value, field_width, allow_host_variables);
+        } else if (data_specs["ui_component"] == "radio") {
+            var options = data_specs["options"];
+            if (!options || options.length < 1) {
+                bootbox.alert("Error: Missing 'options' definition for attribute " + attribute_name + " in plugin " + plugin_name);
+                return false;
+            }
+            html += generate_radio_button_field(convert_attribute_name_to_field_label(attribute_name), label_width, field_width, options, value);
+        } else {
+            bootbox.alert("Error: Unsupported ui_component " + data_specs["ui_component"] + " for attribute " + attribute_name + " in plugin " + plugin_name);
+            return false;
+        }
+
+
     }
-    html += generate_textarea_field(convert_attribute_name_to_field_label(attribute_name), label_width, 20, 90, field_width, value);
-
-    attribute_name="plane";
-    value = get_value(selected_plugin_data, attribute_name, "sdr");
-    var options=["admin", "sdr"];
-    html += generate_radio_button_field(convert_attribute_name_to_field_label(attribute_name), label_width, field_width, options, value);
-
-    attribute_name="description";
-    value = get_value(selected_plugin_data, attribute_name, "");
-    html += generate_input_field(convert_attribute_name_to_field_label(attribute_name), label_width, value, field_width, false);
     return html;
 }
+
 
 function get_value(selected_plugin_data, attribute_name, default_value) {
     if (selected_plugin_data) {
@@ -110,31 +115,6 @@ function get_value(selected_plugin_data, attribute_name, default_value) {
     return default_value
 }
 
-/*
-function create_html_for_plugin_data_fields(required_data_fields, selected_plugin_data){
-
-    var label_width="col-sm-2", field_width="col-sm-10", enable_environment_vars = true;
-    var html = "";
-    var j;
-    for(j=0;j<required_data_fields.length;j++){
-        var field_label = convert_attribute_name_to_field_label(required_data_fields[j]);
-        var field_value = get_input_value_for_field(field_label, selected_plugin_data);
-
-        html += generate_input_field(field_label, label_width, field_value, field_width, enable_environment_vars);
-
-    }
-    return html;
-}
-*/
-function get_input_value_for_field(label, selected_plugin_data) {
-    if (selected_plugin_data) {
-        var key = label.toLowerCase().replace(" ", "_");
-        if (selected_plugin_data[key]) {
-            return selected_plugin_data[key];
-        }
-    }
-    return "";
-}
 
 function convert_attribute_name_to_field_label(attribute_name){
     var words = attribute_name.split("_");
@@ -162,12 +142,17 @@ var host_variables = [
     {'label': "@host_region"},
 
 ];
+
+
 function split( val ) {
   return val.split( / \s*/ );
 }
+
+
 function extractLast( term ) {
   return split( term ).pop();
 }
+
 
 function set_autocomplete_for_host_variables(selector) {
 

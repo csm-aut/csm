@@ -38,6 +38,7 @@ from constants import PackageType
 from constants import PackageState
 from constants import JobStatus
 from constants import get_user_privilege_list
+from constants import PlatformFamily
 
 from models import Server
 from models import Host
@@ -460,6 +461,24 @@ def get_mop_details(mops_iter):
         rows[-1]['phase'] = sorted(rows[-1]['phase'], cmp=compare_mop_phase)
         rows[-1]['platform'] = sorted(rows[-1]['platform'])
     return rows
+
+
+def translate_software_platform_to_platform_os(software_platform):
+    if software_platform in {PlatformFamily.ASR9K, PlatformFamily.CRS}:
+        return software_platform, "XR"
+    elif software_platform == PlatformFamily.ASR9K_X64:
+        return PlatformFamily.ASR9K, "eXR"
+    elif software_platform in {PlatformFamily.IOSXRv_9K, PlatformFamily.IOSXRv_X64}:
+        return software_platform
+    elif software_platform == PlatformFamily.ASR900:
+        return PlatformFamily.ASR900, None # IOS or XE
+    elif software_platform == PlatformFamily.CRS:
+        return PlatformFamily.CRS, "XR"
+    elif software_platform in {PlatformFamily.NCS1K, PlatformFamily.NCS4K,
+                               PlatformFamily.NCS5K, PlatformFamily.NCS5500, PlatformFamily.NCS6K}:
+        return software_platform, "eXR"
+    else:
+        return software_platform, None
 
 
 def get_existing_software_platform(db_session):

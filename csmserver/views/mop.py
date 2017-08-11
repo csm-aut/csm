@@ -33,7 +33,6 @@ from wtforms import SelectMultipleField
 from wtforms.validators import Length, required
 
 from constants import InstallAction
-from constants import PlatformFamily
 
 from common import can_delete
 from common import can_install
@@ -42,6 +41,7 @@ from common import get_mop_list
 from common import get_mop_specs_with_mop_name
 from common import get_existing_software_platform
 from common import get_region_by_id
+from common import translate_software_platform_to_platform_os
 
 from csmpe import get_available_plugins
 
@@ -79,7 +79,7 @@ def get_available_plugins_and_required_data():
     else:
         platform, os_type = translate_software_platform_to_platform_os(software_platforms[0])
         plugin_specs = get_all_available_plugins(platform=platform, phases=phases, os_type=os_type)
-        plugins = plugin_specs.keys()
+        plugins = set(plugin_specs.keys())
 
         for i in range(1, len(software_platforms)):
             platform, os_type = translate_software_platform_to_platform_os(software_platforms[i])
@@ -93,6 +93,7 @@ def get_available_plugins_and_required_data():
     for plugin in plugins:
         available_plugin_specs[plugin] = plugin_specs[plugin]
 
+    print str(available_plugin_specs)
     return jsonify(plugin_specs=available_plugin_specs)
 
 
@@ -104,24 +105,6 @@ def get_all_available_plugins(platform=None, phases=None, os_type=None):
     for phase in get_phases():
         plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
     return plugins
-
-
-def translate_software_platform_to_platform_os(software_platform):
-    if software_platform in [PlatformFamily.ASR9K, PlatformFamily.CRS]:
-        return software_platform, "XR"
-    elif software_platform == PlatformFamily.ASR9K_X64:
-        return PlatformFamily.ASR9K, "eXR"
-    elif software_platform == PlatformFamily.IOSXRv_X64:
-        return "IOS-XRv", "eXR"
-    elif software_platform == PlatformFamily.ASR900:
-        return PlatformFamily.ASR900, None # IOS or XE
-    elif software_platform == PlatformFamily.CRS:
-        return PlatformFamily.CRS, "XR"
-    elif software_platform in [PlatformFamily.NCS1K, PlatformFamily.NCS4K,
-                               PlatformFamily.NCS5K, PlatformFamily.NCS5500, PlatformFamily.NCS6K]:
-        return software_platform, "eXR"
-    else:
-        return software_platform, None
 
 
 @mop.route('/api/get_mops', defaults={'platform': None, 'phase': None})
@@ -272,21 +255,6 @@ def get_software_platform_choices(db_session):
     platforms.append(("ALL", "ALL"))
     return platforms
 
-"""
-csmpe_plugins_to_data_requirement = {
-    "Script Executor": {"need_data": True, "attributes_with_env_var": ["full_command"]},
-    "Custom Configuration": {"need_data": True},
-    'Custom Commands Capture': {"need_data": True},
-    'Config Capture': {"need_data": False},
-    'Config Filesystem Check': {"need_data": False},
-    'Core Error Check': {"need_data": False},
-    'Check Failed Startup Config': {"need_data": False},
-    'Filesystem Check': {"need_data": False},
-    'ISIS Neighbor Check': {"need_data": False},
-    'Node Redundancy Check': {"need_data": False},
-    'Node Status Check': {"need_data": False}
-}
-"""
 
 def substitute_env_vars(db_session, host, expression):
     if expression is None:
@@ -303,7 +271,7 @@ def substitute_env_vars(db_session, host, expression):
         expression = expression.replace("@host_connection_type", connection_param.connection_type)
 
     if "@host_region" in expression:
-        expression = expression.replace("@host_region", get_region_by_id(host.region_id)[0])
+        expression = expression.replace("@host_region", get_region_by_id(db_session, host.region_id)[0])
     return expression
 
 

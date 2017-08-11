@@ -34,7 +34,7 @@
         $('#selected-plugins').on('click', "div a", function () {
             if ($(this).attr('class') == "need-data") {
                 last_selected_plugin_uid = $(this).attr('name').split('_')[1];
-                var plugin_data_html = generate_plugin_detail_template(last_selected_plugin_uid, $(this).html(), plugin_to_user_input);
+                var plugin_data_html = generate_plugin_detail_template(plugin_specs[$(this).html()]["data_specs"], $(this).html(), last_selected_plugin_uid, plugin_to_user_input);
                 if (plugin_data_html) {
                     $('#plugin-data').html(plugin_data_html);
                     $('#plugin-details').modal({show: true, backdrop: 'static'});
@@ -126,7 +126,7 @@
                         var html = "<div>";
                         var info_data_toggle = "description_" + plugin_name.split(" ").join("_");
 
-                        if (Object.keys(plugin_specs[plugin_name]["data_specs"]).length > 0) {
+                        if (plugin_specs[plugin_name]["data_specs"].length > 0) {
                             html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='need-data'>" + plugin_name + "</a>";
                         } else {
                             html += "<a href='javascript://' data-toggle='" + info_data_toggle + "'name='" + get_next_plugin_uid() + "' class='no-data'>" + plugin_name + "</a>";
@@ -225,7 +225,7 @@
         function select_plugin(plugin_name, plugin_data) {
             var name = $("#available-plugins div a:contains(" + plugin_name + ")").attr("name");
 
-            if (Object.keys(plugin_specs[plugin_name]["data_specs"]).length > 0) {
+            if (plugin_specs[plugin_name]["data_specs"].length > 0) {
                 $("#selected-plugins").append("<div><a name='" + name + "' class='need-data'>" + plugin_name + "</a></div>");
             } else {
                 $("#selected-plugins").append("<div><a name='" + name + "' class='no-data'>" + plugin_name + "</a></div>");
@@ -301,23 +301,36 @@
             }
 
             var plugins_specs = [];
-            $('#selected-plugins > div a').map(function () {
+
+            var plugin_input_data = $('#selected-plugins > div a').map(function () {
                 var specs = {};
                 specs["plugin"] = $(this).html();
                 specs["data"] = {};
                 var user_input_data = plugin_to_user_input[parseInt($(this).attr("name").split("_")[1])];
-
-                if (Object.keys(plugin_specs[specs["plugin"]]["data_specs"]).length > 0) {
+                if (plugin_specs[specs["plugin"]]["data_specs"].length > 0) {
                     if (user_input_data === undefined) {
-                        bootbox.alert("Please click on selected plugin '" + specs["plugin"] + "' to specify required input.");
-                        return false;
+                        return specs["plugin"];
                     }
                     for (var attribute in user_input_data) {
-                        specs["data"][attribute] = user_input_data[attribute]
+                        specs["data"][attribute] = user_input_data[attribute];
                     }
                 }
                 plugins_specs.push(specs);
+                return null;
             });
+
+
+            var plugin_missing_input_data = "";
+            for(var i=0;i<plugin_input_data.length;i++) {
+                if (plugin_input_data[i]) {
+                    plugin_missing_input_data += "<li>" + plugin_input_data[i] + "</li>"
+                }
+            }
+            if (plugin_missing_input_data) {
+                var message = "Please click on the following selected plugins to specify input:<br><ul>" + plugin_missing_input_data + "</ul>";
+                bootbox.alert(message);
+                return false;
+            }
 
             if (plugins_specs.length < 1) {
                 bootbox.alert("Please select plugins for this mop.");
