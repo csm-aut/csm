@@ -25,6 +25,7 @@
 from flask.ext.login import current_user
 from flask import g, send_file
 from sqlalchemy import or_, and_, not_
+from sqlalchemy import func
 
 from csm_exceptions.exceptions import ValueNotFound
 from csm_exceptions.exceptions import OperationNotAllowed
@@ -926,3 +927,15 @@ def get_download_job_key(user_id, filename, server_id, server_directory):
 
 def get_conformance_report_by_id(db_session, id):
     return db_session.query(ConformanceReport).filter(ConformanceReport.id == id).first()
+
+
+def get_host_platform_and_version_summary_tuples(db_session, region_id=0):
+    if region_id == 0:
+        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
+            .group_by(Host.software_platform, Host.software_version)
+    else:
+        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
+            .group_by(Host.software_platform, Host.software_version) \
+            .filter(Host.region_id == region_id)
+
+    return result_tuples

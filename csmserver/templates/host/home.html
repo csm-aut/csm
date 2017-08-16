@@ -73,16 +73,16 @@
             "sDom": 'ft',
             "columnDefs": [{
                 "targets": 0,
-                "data": 'platform',
+                "data": 'software_platform',
             }, {
                 "targets": 1,
-                "data": 'software',
+                "data": 'software_version',
             }, {
                 "targets": 2,
-                "data": 'host_count',
+                "data": 'count',
             }],
             "ajax": {
-                "url": "/home/api/get_host_platform_version/region/" + get_region_from_cookie()
+                "url": "/home/api/get_host_platform_and_version_summary/region/" + get_region_from_cookie()
             },
         });
 
@@ -194,7 +194,7 @@
         });
 
         function refresh_host_platform_table() {
-             host_platform_table.api().ajax.url("/home/api/get_host_platform_version/region/" + get_region_from_cookie()).load(null, false);
+             host_platform_table.api().ajax.url("/home/api/get_host_platform_and_version_summary/region/" + get_region_from_cookie()).load(null, false);
         }
 
         function refresh_region_name() {

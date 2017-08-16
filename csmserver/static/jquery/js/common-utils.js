@@ -71,14 +71,20 @@ function beautify_platform(platform) {
  * Converts comma delimited string to HTML line break delimited.
  */
 function comma2br(s) {
-    return s.replace(/,/g, "<br>")
+    if (s != null) {
+        return s.replace(/,/g, "<br>")
+    }
+    return s;
 }
 
 /**
  * Converts comma delimited string to line break ('\n') delimited.
  */
 function comma2newline(s) {
-    return s.replace(/,/g, "\n")
+    if (s != null) {
+        return s.replace(/,/g, "\n")
+    }
+    return s;
 }
 
 /**
