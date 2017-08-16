@@ -62,6 +62,7 @@ from common import get_region_by_id
 from common import can_check_reachability
 from common import get_jump_host_by_id
 from common import fill_software_profiles
+from common import get_host_platform_and_version_summary_tuples
 
 from utils import is_empty
 from utils import get_return_url
@@ -517,25 +518,19 @@ def region_delete(region_name):
         return jsonify({'status': 'Failed'})
 
 
-@home.route('/api/get_host_platform_version/region/<int:region_id>')
+@home.route('/api/get_host_platform_and_version_summary/region/<int:region_id>')
 @login_required
-def get_host_platform_version(region_id):
+def get_host_platform_and_version_summary(region_id):
     db_session = DBSession()
 
-    if region_id == 0:
-        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
-            .group_by(Host.software_platform, Host.software_version)
-    else:
-        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
-            .group_by(Host.software_platform, Host.software_version) \
-            .filter(Host.region_id == region_id)
+    result_tuples = get_host_platform_and_version_summary_tuples(db_session, region_id)
 
     rows = []
     for result_tuple in result_tuples:
         row = dict()
-        row['platform'] = result_tuple[0]
-        row['software'] = result_tuple[1]
-        row['host_count'] = result_tuple[2]
+        row['software_platform'] = result_tuple[0]
+        row['software_version'] = result_tuple[1]
+        row['count'] = result_tuple[2]
         rows.append(row)
 
     return jsonify(**{'data': rows})

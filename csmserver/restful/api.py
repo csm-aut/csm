@@ -47,6 +47,7 @@ import api_region
 import api_jump_host
 import api_server_repository
 import api_custom_command_profile
+import api_executive_dashboard
 
 restful_api = Blueprint('restful', __name__, url_prefix='/api')
 auth = HTTPBasicAuth()
@@ -308,3 +309,23 @@ def custom_command_profile_delete(profile_name):
         return failed_response(e.message)
 
 # --------------------------------------------------------------------------------------------------------------
+
+
+@restful_api.route('/v1/executive_dashboard/get_user_summary')
+@auth.login_required
+def api_get_user_summary():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_user_summary(request)
+    except Exception as e:
+        return failed_response(e.message)
+
+
+@restful_api.route('/v1/executive_dashboard/get_host_platform_and_version_summary')
+@auth.login_required
+def get_host_platform_and_version_summary():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_host_platform_and_version_summary(request)
+    except Exception as e:
+        return failed_response(e.message)
