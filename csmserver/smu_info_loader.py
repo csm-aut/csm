@@ -741,6 +741,9 @@ class SMUInfoLoader(object):
                     # Internal Name: ncs6k-mgbl-5.2.4
                     platform = CCO_PLATFORM_NCS6K
 
+                    # Starting 6.3.1, NCS6K uses eXR package format.
+                    release = SMUInfoLoader.get_release_from_rxxx(package_name)
+
             if release == UNKNOWN and platform in [CCO_PLATFORM_ASR9K,
                                                    CCO_PLATFORM_XR12K,
                                                    CCO_PLATFORM_ASR9K_X64,

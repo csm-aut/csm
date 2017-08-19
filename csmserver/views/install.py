@@ -556,10 +556,10 @@ def get_software_package_upgrade_list(hostname, target_release):
     if host is None:
         abort(404)
 
-    match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
+    return_internal_name = True if request.args.get('return_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname)
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
-                                                       target_release, match_internal_name)
+                                                       target_release, return_internal_name)
     for package in target_packages:
         rows.append({'package': package})
 
