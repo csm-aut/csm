@@ -117,8 +117,11 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                     # ncs4k-mgbl.pkg-6.0.2
                     target_list.append('{}.pkg-{}'.format(package_name, target_version))
 
-        elif software_platform in [PlatformFamily.ASR9K_X64, PlatformFamily.NCS1K,
-                                   PlatformFamily.NCS5K, PlatformFamily.NCS5500] or \
+        elif software_platform in [PlatformFamily.ASR9K_X64,
+                                   PlatformFamily.NCS1K,
+                                   PlatformFamily.NCS1001,
+                                   PlatformFamily.NCS5K,
+                                   PlatformFamily.NCS5500] or \
                 (software_platform == PlatformFamily.NCS6K and numeric_target_version >= 631):
             """
             NCS6K: 6.3.1 and Later:
@@ -149,6 +152,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
             if return_internal_name:
                 if "-xr" in host_package:
                     if software_platform in [PlatformFamily.NCS1K,
+                                             PlatformFamily.NCS1001,
                                              PlatformFamily.NCS5K,
                                              PlatformFamily.NCS5500,
                                              PlatformFamily.NCS6K]:
@@ -164,6 +168,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
             else:
                 if '-xr-' in host_package:
                     if software_platform in [PlatformFamily.NCS1K,
+                                             PlatformFamily.NCS1001,
                                              PlatformFamily.NCS5K,
                                              PlatformFamily.NCS5500]:
                         # ncs5k-mini-x.iso-6.1.3
