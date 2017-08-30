@@ -46,13 +46,13 @@ class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
         committed_packages = {}
         host_packages = []
 
-        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
-        cli_show_install_active = ctx.load_data('cli_show_install_active')
-        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
+        cli_show_install_inactive = ctx.load_job_data('cli_show_install_inactive')
+        cli_show_install_active = ctx.load_job_data('cli_show_install_active')
+        cli_show_install_committed = ctx.load_job_data('cli_show_install_committed')
 
-        cli_admin_show_install_inactive = ctx.load_data('cli_admin_show_install_inactive')
-        cli_admin_show_install_active = ctx.load_data('cli_admin_show_install_active')
-        cli_admin_show_install_committed = ctx.load_data('cli_admin_show_install_committed')
+        cli_admin_show_install_inactive = ctx.load_job_data('cli_admin_show_install_inactive')
+        cli_admin_show_install_active = ctx.load_job_data('cli_admin_show_install_active')
+        cli_admin_show_install_committed = ctx.load_job_data('cli_admin_show_install_committed')
 
         # Handles Inactive Packages
         if isinstance(cli_admin_show_install_inactive, list):

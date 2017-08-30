@@ -152,6 +152,12 @@ class InventoryContext(ConnectionContext):
     def requested_action(self):
         return 'Get-Inventory'
 
+    def load_job_data(self, key):
+        return self.inventory_job.data.get(key)
+
+    def save_job_data(self, key, value):
+        self.inventory_job.data[key] = value
+
     def post_status(self, message):
         if self.db_session is not None and self.inventory_job is not None:
             try:

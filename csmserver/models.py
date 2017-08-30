@@ -659,6 +659,7 @@ class InventoryJob(Base):
     status_time = Column(DateTime) 
     last_successful_time = Column(DateTime)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     
     host_id = Column(Integer, ForeignKey('host.id'), unique=True)
     host = relationship('Host', foreign_keys='InventoryJob.host_id')
@@ -683,6 +684,7 @@ class InventoryJobHistory(Base):
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
                             
     host_id = Column(Integer, ForeignKey('host.id'))

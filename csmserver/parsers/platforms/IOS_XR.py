@@ -41,9 +41,9 @@ class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
         committed_packages = {}
         host_packages = []
 
-        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
-        cli_show_install_active = ctx.load_data('cli_show_install_active')
-        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
+        cli_show_install_inactive = ctx.load_job_data('cli_show_install_inactive')
+        cli_show_install_active = ctx.load_job_data('cli_show_install_active')
+        cli_show_install_committed = ctx.load_job_data('cli_show_install_committed')
 
         if isinstance(cli_show_install_inactive, list):
             inactive_packages = self.parseContents(cli_show_install_inactive[0], PackageState.INACTIVE)
@@ -124,7 +124,7 @@ class IOSXRSatelliteParser():
         satellites = list()
 
         # print "in process_satellites"
-        cli_show_nv_satellite = ctx.load_data('cli_show_nv_satellite')
+        cli_show_nv_satellite = ctx.load_job_data('cli_show_nv_satellite')
 
         # check if none, do nothing
         if not cli_show_nv_satellite or 'No satellites are configured' in cli_show_nv_satellite[0]:

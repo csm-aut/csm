@@ -132,7 +132,7 @@ $(function() {
 
     function get_selected_satellites() {
         var selected = [];
-        $('.check').each(function(index) {
+        dialog_satellite_table.$('input:checked').each(function(index) {
             if (this.checked) {
                 selected.push($(this).val());
             }

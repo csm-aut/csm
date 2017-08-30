@@ -69,6 +69,7 @@ from constants import InstallAction
 
 from utils import is_empty
 from utils import get_return_url
+from utils import convert_integer_list_to_ranges
 
 from filters import get_datetime_string
 
@@ -656,7 +657,7 @@ def api_create_satellite_install_jobs():
     for install_action in install_actions:
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action,
                                      scheduled_time=scheduled_time_UTC,
-                                     install_job_data={'selected_satellites': selected_satellites},
+                                     install_job_data={'selected_satellite_ids': convert_integer_list_to_ranges(selected_satellites)},
                                      created_by=current_user.username)
 
     return jsonify({'status': 'OK'})
