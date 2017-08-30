@@ -153,10 +153,10 @@ class InventoryContext(ConnectionContext):
         return 'Get-Inventory'
 
     def load_job_data(self, key):
-        return self.inventory_job.data.get(key)
+        return self.inventory_job.load_data(key)
 
     def save_job_data(self, key, value):
-        self.inventory_job.data[key] = value
+        self.inventory_job.save_data(key, value)
 
     def post_status(self, message):
         if self.db_session is not None and self.inventory_job is not None:
@@ -185,10 +185,7 @@ class InstallContext(ConnectionContext):
     def save_job_info(self, value):
         key = 'job_info'
 
-        if not self.install_job.data:
-            self.install_job.data = {}
-
-        job_info = self.install_job.data.get(key)
+        job_info = self.install_job.load_data(key)
         if not job_info:
             job_info = []
 
@@ -197,10 +194,10 @@ class InstallContext(ConnectionContext):
         self.save_job_data(key, job_info)
 
     def load_job_data(self, key):
-        return self.install_job.data.get(key)
+        return self.install_job.load_data(key)
 
     def save_job_data(self, key, value):
-        self.install_job.data[key] = value
+        self.install_job.save_data(key, value)
 
     @property
     def software_packages(self):

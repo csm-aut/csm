@@ -679,7 +679,7 @@ class InventoryJob(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
@@ -708,7 +708,7 @@ class InventoryJobHistory(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
@@ -780,7 +780,7 @@ class InstallJob(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
@@ -816,7 +816,7 @@ class InstallJobHistory(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
