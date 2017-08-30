@@ -663,7 +663,10 @@ class InventoryJob(Base):
     
     host_id = Column(Integer, ForeignKey('host.id'), unique=True)
     host = relationship('Host', foreign_keys='InventoryJob.host_id')
-    
+
+    def __init__(self):
+        self.data = {}
+
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -674,6 +677,14 @@ class InventoryJob(Base):
     def set_status_message(self, status_message):
         self.status_message = status_message
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        return {} if not self.data else self.data.get(key)
+
+    def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
+        self.data[key] = value
 
 
 class InventoryJobHistory(Base):
@@ -688,10 +699,21 @@ class InventoryJobHistory(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
                             
     host_id = Column(Integer, ForeignKey('host.id'))
-    
+
+    def __init__(self):
+        self.data = {}
+
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        return {} if not self.data else self.data.get(key)
+
+    def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
+        self.data[key] = value
 
 
 class Package(Base):
