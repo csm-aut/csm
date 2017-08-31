@@ -151,9 +151,10 @@ platform_re_list = [
     # Internal Name: ncs1k-sysadmin-6.3.1, ncs1k-xr-6.3.1
     {'re': re.compile('ncs1k-sysadmin|ncs1k-xr'), 'platform': CCO_PLATFORM_NCS1K_SYSADMIN},
 
+    # Release Software: NCS1K-iosxr-k9-6.2.2.tar
     # External Name: ncs1k-mgbl.pkg-6.1.3
     # Internal Name: ncs1k-k9sec-3.1.0.0-r631, ncs1k-os-support-3.0.0.2-r631.CSCve05411
-    {'re': re.compile('ncs1k'), 'platform': CCO_PLATFORM_NCS1K},
+    {'re': re.compile('ncs1k|NCS1K'), 'platform': CCO_PLATFORM_NCS1K},
 
     # Internal Name: ncs1001-sysadmin-6.2.1, ncs1001-xr-6.2.1
     {'re': re.compile('ncs1001-sysadmin|ncs1001-xr'), 'platform': CCO_PLATFORM_NCS1001_SYSADMIN},
@@ -167,36 +168,40 @@ platform_re_list = [
 
     # External Name: ncs4k-mgbl.pkg-6.1.2
     # Internal Name: ncs4k-mgbl-6.1.2
-    {'re': re.compile('ncs4k'), 'platform': CCO_PLATFORM_NCS4K},
+    {'re': re.compile('ncs4k|NCS4K'), 'platform': CCO_PLATFORM_NCS4K},
 
     # Internal Name: ncs5k-sysadmin-6.1.2, ncs5k-xr-6.1.2
     {'re': re.compile('ncs5k-sysadmin|ncs5k-xr'), 'platform': CCO_PLATFORM_NCS5K_SYSADMIN},
 
+    # Release Software: NCS5000-iosxr-k9-6.1.2.tar
     # External Name: ncs5k-mgbl-3.0.0.0-r612.x86_64.rpm, ncs5k-6.0.1.CSCva07993.rpm
     # Internal Name: ncs5k-mgbl-3.0.0.0-r612
-    {'re': re.compile('ncs5k'), 'platform': CCO_PLATFORM_NCS5K},
+    {'re': re.compile('ncs5k|NCS5000'), 'platform': CCO_PLATFORM_NCS5K},
 
     # Internal Name: ncs5500-sysadmin-6.1.2, ncs5500-xr-6.1.2
     {'re': re.compile('ncs5500-sysadmin|ncs5500-xr'), 'platform': CCO_PLATFORM_NCS5500_SYSADMIN},
 
+    # Release Software: NCS5500-iosxr-k9-6.2.2.tar
     # External Name: ncs5500-mgbl-3.0.0.0-r612.x86_64.rpm
     # Internal Name: ncs5500-mgbl-3.0.0.0-r612
-    {'re': re.compile('ncs5500'), 'platform': CCO_PLATFORM_NCS5500},
+    {'re': re.compile('ncs5500|NCS5500'), 'platform': CCO_PLATFORM_NCS5500},
 
     # External Name: ncs6k-sysadmin.iso-5.2.4
     # Internal Name: ncs6k-sysadmin-5.2.4, ncs6k-xr-5.2.4
     {'re': re.compile('ncs6k-sysadmin|ncs6k-xr'), 'platform': CCO_PLATFORM_NCS6K_SYSADMIN},
 
+    # Release Software: NCS6000-iosxr-k9-6.2.2.tar
     # External Name: ncs6k-mgbl.pkg-5.2.4
     # Internal Name: ncs6k-mgbl-5.2.4
-    {'re': re.compile('ncs6k'), 'platform': CCO_PLATFORM_NCS6K},
+    {'re': re.compile('ncs6k|NCS6000'), 'platform': CCO_PLATFORM_NCS6K},
 
     # Internal Name: xrv9k-sysadmin-6.1.1, xrv9k-xr-6.1.1
     {'re': re.compile('xrv9k-sysadmin|xvr9k-xr'), 'platform': CCO_PLATFORM_XRV9K_SYSADMIN},
 
+    # Release Software: 
     # External Name: xrv9k-k9sec-3.0.0.1-r611.CSCvd41122.x86_64.rpm, xrv9k-mini-x-6.1.2.iso
     # Internal Name: ?, xrv9k-mini-x-6.1.2
-    {'re': re.compile('xrv9k'), 'platform': CCO_PLATFORM_XRV9K}
+    {'re': re.compile('xrv9k|XRV9K'), 'platform': CCO_PLATFORM_XRV9K}
 ]
 
 
