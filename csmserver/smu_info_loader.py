@@ -130,8 +130,9 @@ CCO_PLATFORM_ASR9K_X64_SYSADMIN = 'asr9k_x64_sysadmin'
 platform_re_list = [
     # Some of the inconsistencies (like iosxr-os) CSM needs to deal with
     # External Name: iosxr-os-asr9k-64-5.0.0.1-r613.CSCvc01618.x86_64.rpm
+    #                asr9k-iosxr-infra-64-2.0.0.1-r622.CSCvf08023.x86_64.rpm
     # Release Software: ASR9K-x64-iosxr-px-6.2.2.tar, asr9k-mini-x64-migrate_to_eXR.tar-6.2.2
-    {'re': re.compile('ASR9K-x64|asr9k-64|asr9k.*x64'), 'platform': CCO_PLATFORM_ASR9K_X64},
+    {'re': re.compile('ASR9K-x64|asr9k.*-64|asr9k.*x64'), 'platform': CCO_PLATFORM_ASR9K_X64},
 
     # Internal Name: asr9k-sysadmin-6.2.1, asr9k-xr-6.2.1
     {'re': re.compile('asr9k-sysadmin|asr9k-xr'), 'platform': CCO_PLATFORM_ASR9K_X64_SYSADMIN},
@@ -198,10 +199,10 @@ platform_re_list = [
     # Internal Name: xrv9k-sysadmin-6.1.1, xrv9k-xr-6.1.1
     {'re': re.compile('xrv9k-sysadmin|xvr9k-xr'), 'platform': CCO_PLATFORM_XRV9K_SYSADMIN},
 
-    # Release Software: 
+    # Release Software: fullk9-R-XRV9000-622-RR.tar
     # External Name: xrv9k-k9sec-3.0.0.1-r611.CSCvd41122.x86_64.rpm, xrv9k-mini-x-6.1.2.iso
     # Internal Name: ?, xrv9k-mini-x-6.1.2
-    {'re': re.compile('xrv9k|XRV9K'), 'platform': CCO_PLATFORM_XRV9K}
+    {'re': re.compile('xrv9k|XRV9000'), 'platform': CCO_PLATFORM_XRV9K}
 ]
 
 
@@ -300,6 +301,7 @@ class SMUInfoLoader(object):
             db_session.commit()
 
         except Exception:
+            db_session.rollback()
             logger.exception('get_smu_info_from_cco() hit exception, platform_release=' + platform_release)
 
     def create_package_to_smu_xref(self, db_session):
@@ -689,14 +691,22 @@ class SMUInfoLoader(object):
 
     @classmethod
     def get_cco_release_from_package(cls, package_name):
-        """ Return the release as x.x.x given a package_name with release informaton in '-rxxx' format """
+        """ Return the release as x.x.x given a package_name with release informaton in
+            -rxxx, x.x.x, -xxx-
+        """
         matches = re.findall("-r(\d{3})", package_name)
         if matches:
             return ".".join(matches[0])
-        else:
-            matches = re.findall("\d+\.\d+\.\d+", package_name)
-            if matches:
-                return matches[0]
+
+        matches = re.findall("\d+\.\d+\.\d+", package_name)
+        if matches:
+            return matches[0]
+
+        # Final resort - This is getting ridiculous.
+        # fullk9-R-XRV9000-622-RR.tar
+        matches = re.findall("-(\d{3})-", package_name)
+        if matches:
+            return ".".join(matches[0])
 
         return UNKNOWN
 
@@ -723,7 +733,6 @@ class SMUInfoLoader(object):
                     break
 
             release = SMUInfoLoader.get_cco_release_from_package(package_name)
-
             if platform != UNKNOWN and release != UNKNOWN:
                 return platform, release
 
