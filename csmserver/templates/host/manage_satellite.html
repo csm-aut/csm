@@ -101,7 +101,10 @@ $(function() {
             "data": 'serial_number'
         }, {
             "targets": 5,
-            "data": 'fabric_links'
+            "data": 'fabric_links',
+            "render": function(data, type, row) {
+                return comma2br(data);
+            }
         }, ],
         "ajax": {
             "url": "{{ url_for('host_dashboard.api_get_upgradeable_satellites', hostname=host.hostname) }}",
@@ -129,7 +132,7 @@ $(function() {
 
     function get_selected_satellites() {
         var selected = [];
-        $('.check').each(function(index) {
+        dialog_satellite_table.$('input:checked').each(function(index) {
             if (this.checked) {
                 selected.push($(this).val());
             }
@@ -226,7 +229,7 @@ function display_manage_satellite_software_dialog() {
                                             <th>Type</th>
                                             <th>IP Address</th>
                                             <th>Serial Number</th>
-                                            <th>Fabric Links</th>
+                                            <th>Satellite<br>Fabric Links</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>

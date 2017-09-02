@@ -89,6 +89,7 @@ class PlatformFamily:
     XR12K = 'XR12K'
     CRS = 'CRS'
     NCS1K = 'NCS1K'
+    NCS1001 = 'NCS1001'
     NCS4K = 'NCS4K'
     NCS5K = 'NCS5K'
     NCS5500 = 'NCS5500'

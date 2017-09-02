@@ -69,6 +69,7 @@ from constants import InstallAction
 
 from utils import is_empty
 from utils import get_return_url
+from utils import convert_integer_list_to_ranges
 
 from filters import get_datetime_string
 
@@ -556,10 +557,10 @@ def get_software_package_upgrade_list(hostname, target_release):
     if host is None:
         abort(404)
 
-    match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
+    return_internal_name = True if request.args.get('return_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname)
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
-                                                       target_release, match_internal_name)
+                                                       target_release, return_internal_name)
     for package in target_packages:
         rows.append({'package': package})
 
@@ -656,7 +657,7 @@ def api_create_satellite_install_jobs():
     for install_action in install_actions:
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action,
                                      scheduled_time=scheduled_time_UTC,
-                                     install_job_data={'selected_satellites': selected_satellites},
+                                     install_job_data={'selected_satellite_ids': convert_integer_list_to_ranges(selected_satellites)},
                                      created_by=current_user.username)
 
     return jsonify({'status': 'OK'})

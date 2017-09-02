@@ -80,9 +80,10 @@ class BaseInventoryParser(object):
 
         Not for tree structured inventory storage.
         """
-        if not ctx.load_data('cli_show_inventory'):
+        if not ctx.load_job_data('cli_show_inventory'):
             return
-        inventory_output = ctx.load_data('cli_show_inventory')[0]
+
+        inventory_output = ctx.load_job_data('cli_show_inventory')[0]
 
         inventory_data = self.parse_inventory_output(inventory_output)
 

@@ -37,8 +37,8 @@ class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
         host_packages = []
         committed_packages = {}
 
-        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
-        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
+        cli_show_install_inactive = ctx.load_job_data('cli_show_install_inactive')
+        cli_show_install_committed = ctx.load_job_data('cli_show_install_committed')
 
         if isinstance(cli_show_install_committed, list):
             # Should have only one committed package

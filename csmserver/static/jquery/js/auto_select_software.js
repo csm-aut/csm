@@ -5,7 +5,7 @@
  * <script src="/static/duallistbox/dist/dual-list-box.js"></script>
  */
 
-function auto_select_software(hostname, selector, target_release, match_internal_name) {     
+function auto_select_software(hostname, selector, target_release, return_internal_name) {
     if (target_release.length == 0) {
         bootbox.alert('Target software release has not been specified.');
         return;
@@ -16,7 +16,7 @@ function auto_select_software(hostname, selector, target_release, match_internal
     $.ajax({
         url: "/install/api/get_software_package_upgrade_list/hosts/" + hostname + "/release/" + target_release,
         dataType: 'json',
-        data: { match_internal_name: match_internal_name} ,
+        data: { return_internal_name: return_internal_name} ,
         success: function(data) {
             $.each(data, function(index, element) {
                 for (i = 0; i < element.length; i++) {

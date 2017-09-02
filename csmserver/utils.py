@@ -27,6 +27,7 @@ from os.path import isfile, join
 from diff_match_patch import diff_match_patch
 from urlparse import urlparse
 from constants import PlatformFamily
+from itertools import count, groupby
 
 import re
 import sys
@@ -457,6 +458,32 @@ def get_config_value(config_file, section, key):
 def replace_multiple(text, dictionary):
     return reduce(lambda a, kv: a.replace(*kv), dictionary.iteritems(), text)
 
+
+def is_integer(value):
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False
+
+
+def convert_integer_list_to_ranges(a_list):
+    """
+    integer_list: [0, 1, 2, 3] returns "0-3"
+                  [0, 1, 2, 4, 8] returns "0-2,4,8"
+    elements in a_list must be an integer, else it will be ignored.
+    """
+    integer_list = [int(s) for s in a_list if is_integer(s)]
+    G = (list(x) for _, x in groupby(integer_list, lambda x, c=count(): next(c)-x))
+
+    return ",".join("-".join(map(str, (g[0], g[-1])[:len(g)])) for g in G)
+
 if __name__ == '__main__':
     print(get_acceptable_string('john SMITH~!@#$%^&*()_+().smith'))
+
+    L = [1, 5, 6, 9, 10, 11, 13, 15, 16, 17, 100, 102, 200, 201, 203, 205]
+    print convert_integer_list_to_ranges(L)
+
+    #L = [u'100', u'101', u'103', u'104', u'106', u'107', 'ALE', 119, 120, 122]
+    #print convert_integer_list_to_ranges(L)
 

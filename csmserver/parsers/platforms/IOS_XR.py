@@ -41,9 +41,9 @@ class IOSXRSoftwarePackageParser(BaseSoftwarePackageParser):
         committed_packages = {}
         host_packages = []
 
-        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
-        cli_show_install_active = ctx.load_data('cli_show_install_active')
-        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
+        cli_show_install_inactive = ctx.load_job_data('cli_show_install_inactive')
+        cli_show_install_active = ctx.load_job_data('cli_show_install_active')
+        cli_show_install_committed = ctx.load_job_data('cli_show_install_committed')
 
         if isinstance(cli_show_install_inactive, list):
             inactive_packages = self.parseContents(cli_show_install_inactive[0], PackageState.INACTIVE)
@@ -123,32 +123,196 @@ class IOSXRSatelliteParser():
     def process_satellites(self, ctx):
         satellites = list()
 
-        satellites.append(Satellite(
-            satellite_id=201,
-            device_name='device',
-            type='ncs500',
-            state='Connected',
-            install_state='Stable',
-            ip_address='101.102.103.1',
-            serial_number='FOC1946R0BK',
-            mac_address='4055.3958.137c',
-            remote_version='Compatible (latest version)',
-            remote_version_details='ROMMON: 128.0 (Latest),FPGA: 1.13 (Latest)',
-            fabric_links='TenGigE0/5/0/13'
-        ))
+        # print "in process_satellites"
+        cli_show_nv_satellite = ctx.load_job_data('cli_show_nv_satellite')
+
+        # check if none, do nothing
+        if not cli_show_nv_satellite or 'No satellites are configured' in cli_show_nv_satellite[0]:
+            print("No satellites are configured")
+            return
+
+        '''
+        RP/0/RP0/CPU0:AGN_PE_11_9k#show nv satellite status satellite 101
+        Satellite 101
+        -------------
+          Status: Connected (Stable)
+          Redundancy: Standby (Group: 100)
+          Type: asr9000v
+          Displayed device name: Sat101
+          MAC address: 4055.3958.137c
+          IPv4 address: 10.0.101.1 (auto, VRF: **nVSatellite)
+          Serial Number: CAT1551B2HR
+          Remote version: Compatible (latest version)
+            ROMMON: 128.0 (Latest)
+            FPGA: 1.13 (Latest)
+            IOS: 622.101 (Latest)
+          Received candidate fabric ports:
+            nVFabric-GigE0/0/42-43 (permanent)
+            nVFabric-TenGigE0/0/44-47 (permanent)
+          Configured satellite fabric links:
+            Bundle-Ether101
+            ---------------
+              Status: Satellite Ready
+              Remote ports: GigabitEthernet0/0/0-4,24-28
+              Discovered satellite fabric links:
+                TenGigE0/3/0/0: Satellite Ready; No conflict
+                TenGigE0/12/0/0/0: Satellite Ready; No conflict
+
 
         satellites.append(Satellite(
-            satellite_id=202,
-            device_name='device',
-            type='ncs500',
+            satellite_id='101',
+            device_name='Sat101',
+            type='asr9000v',
             state='Connected',
             install_state='Stable',
-            ip_address='101.102.103.1',
-            serial_number='FOC1946R0BK',
+            ip_address='10.0.101.1',
+            serial_number='CAT1551B2HR',
             mac_address='4055.3958.137c',
             remote_version='Compatible (latest version)',
-            remote_version_details='ROMMON: 128.0 (Latest),FPGA: 1.13 (Latest)',
-            fabric_links='TenGigE0/5/0/13'
+            remote_version_details='ROMMON: 128.0 (Latest),FPGA: 1.13 (Latest),IOS: 622.101 (Latest)',
+            fabric_links='Bundle-Ether101'
+        ))
+        '''
+
+        Satellite_id = ''
+        Device_name = ''
+        Type = ''
+        State = ''
+        Install_state = ''
+        Mac_address = ''
+        Ip_address = ''
+        Serial_number = ''
+        Remote_version = ''
+        Remote_version_details_list = []
+        Fabric_links_list = []
+
+        remote_version_flag = False
+        fabric_links_flag = False
+        print_flag = False
+
+        lines = cli_show_nv_satellite[0].split('\n')
+        lines = [x for x in lines if x]
+
+        for line in lines:
+            if line[0:9] == 'Satellite':
+                if print_flag:
+                    Remote_version_details = ','.join(Remote_version_details_list)
+                    Fabric_links = ','.join(Fabric_links_list)
+                    # print Fabric_links
+
+                    satellites.append(Satellite(
+                        satellite_id=Satellite_id,
+                        device_name=Device_name,
+                        type=Type,
+                        state=State,
+                        install_state=Install_state,
+                        ip_address=Ip_address,
+                        serial_number=Serial_number,
+                        mac_address=Mac_address,
+                        remote_version=Remote_version,
+                        remote_version_details=Remote_version_details,
+                        fabric_links=Fabric_links
+                    ))
+
+                # initialize satellite parameters
+                Satellite_id = line[9:].strip()
+                Device_name = ''
+                Type = ''
+                State = ''
+                Install_state = ''
+                Mac_address = ''
+                Ip_address = ''
+                Serial_number = ''
+                Remote_version = ''
+                Remote_version_details_list = []
+                Fabric_links_list = []
+
+                remote_version_flag = False
+                fabric_links_flag = False
+                print_flag = True
+                continue
+
+            if line[0:8] == '--------':
+                continue
+
+            if line[0:9] == '  Status:':
+                status = line[10:].strip()
+                if 'Connected' in status:
+                    m = re.search('Connected \((.*)\)', status)
+                    if m:
+                        State = 'Connected'
+                        Install_state = m.group(1)
+                    else:
+                        State = status
+                else:
+                    State = status
+                continue
+
+            if line[0:7] == '  Type:':
+                Type = line[7:].strip()
+                continue
+
+            if line[0:24] == '  Displayed device name:':
+                Device_name = line[24:].strip()
+                continue
+
+            if line[0:14] == '  MAC address:':
+                Mac_address = line[14:].strip()
+                continue
+
+            if line[0:15] == '  IPv4 address:':
+                subline = line[15:].strip()
+                m = re.search('\d+\.\d+\.\d+\.\d+', subline)
+                if m:
+                    Ip_address = m.group(0)
+                continue
+
+            if line[0:16] == '  Serial Number:':
+                Serial_number = line[16:].strip()
+                continue
+
+            if line[0:17] == '  Remote version:':
+                Remote_version = line[17:].strip()
+                remote_version_flag = True
+                continue
+
+            if remote_version_flag:
+                if 'Received candidate fabric ports:' in line:
+                    remote_version_flag = False
+                elif 'Configured satellite fabric links:' in line:
+                    remote_version_flag = False
+                else:
+                    subline = line.strip()
+                    Remote_version_details_list.append(subline)
+                    continue
+
+            if 'Configured satellite fabric links:' in line:
+                remote_version_flag = False
+                fabric_links_flag = True
+                continue
+
+            if fabric_links_flag:
+                if line[4] != ' ' and line[4] != '-':
+                    subline = line.strip()
+                    Fabric_links_list.append(subline)
+                    continue
+
+        Remote_version_details = ','.join(Remote_version_details_list)
+        Fabric_links = ','.join(Fabric_links_list)
+        # print Fabric_links
+
+        satellites.append(Satellite(
+            satellite_id=Satellite_id,
+            device_name=Device_name,
+            type=Type,
+            state=State,
+            install_state=Install_state,
+            ip_address=Ip_address,
+            serial_number=Serial_number,
+            mac_address=Mac_address,
+            remote_version=Remote_version,
+            remote_version_details=Remote_version_details,
+            fabric_links=Fabric_links
         ))
 
         ctx.host.satellites = satellites

@@ -389,10 +389,16 @@
                 "data": 'serial_number'
             }, {
                 "targets": 7,
-                "data": 'remote_version'
+                "data": 'remote_version',
+                "render": function(data, type, row) {
+                    return comma2br(data) + '<br>' + '<span style="color: Gray;">' + comma2br(row['remote_version_details']) + '</span>';
+                }
             }, {
                 "targets": 8,
-                "data": 'fabric_links'
+                "data": 'fabric_links',
+                "render": function(data, type, row) {
+                    return comma2br(data);
+                }
             }, ],
             "ajax": {
                 "url": "{{ url_for('datatable.api_get_satellites', hostname=host.hostname) }}",
@@ -862,7 +868,7 @@
                                     <th>MAC Address</th>
                                     <th>Serial Number</th>
                                     <th>Remote Version</th>
-                                    <th>Fabric Links</th>
+                                    <th>Satellite<br>Fabric Links</th>
                                 </tr>
                             </thead>
                          </table>
