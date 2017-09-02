@@ -590,14 +590,13 @@ def get_dependencies():
     dependency = request.args.get('dependency', '', type=str)
 
     dependency_list = []
+    non_console_host_list = []
     disqualified_count = 0
     for hostname in hostnames:
         host = get_host(db_session, hostname)
 
         if host and host.connection_param[0] and (not host.connection_param[0].port_number):
-            disqualified_count += 1
-            dependency_list.append('-2')
-            continue
+            non_console_host_list.append(hostname)
 
         if dependency:
             # Firstly, check if dependency action is scheduled or in progress, if so, add dependency
@@ -620,7 +619,8 @@ def get_dependencies():
                     dependency_list.append('-2')
         else:
             dependency_list.append('-1')
-    return jsonify(**{'data': [{'dependency_list': dependency_list, 'disqualified_count':  disqualified_count}]})
+    return jsonify(**{'data': [{'dependency_list': dependency_list, 'disqualified_count':  disqualified_count,
+                                'non_console_host_list': non_console_host_list}]})
 
 
 def download_latest_config_migration_tool():

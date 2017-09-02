@@ -332,7 +332,11 @@
                 var install_actions = $('#install_action').val();
 
                 if ($('#hidden_edit').val() == 'False') {
-                    get_qualified_hosts_and_submit_form(install_actions);
+                    if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
+                        $('#form').submit();
+                    } else {
+                        get_qualified_hosts_and_submit_form(install_actions);
+                    }
                 } else {
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                         submit_form_on_successfully_download_config_conversion_tool();
@@ -396,7 +400,7 @@
                 }
 
                 var dependency = '';
-                if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) || has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                     dependency = '';
                 } else {
                     if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
@@ -412,125 +416,150 @@
                     dataType: 'json',
                     data: {hosts : $('#hidden_hosts').val(), dependency : dependency},
                     success: function (response) {
+                        var dependency_list = response.data[0].dependency_list;
+                        var disqualified_count = response.data[0].disqualified_count;
+                        var non_console_host_list = response.data[0].non_console_host_list;
 
-                            $.each(response, function (index, element) {
+                        var hostnames = host_selector.get_selected_items();
 
-                                var hostnames = host_selector.get_selected_items();
+                        var html = '';
 
-                                if (element[0].disqualified_count > 0) {
+                        var non_console_warning_html = '';
 
-                                    var qualified_hosts = "";
-                                    var new_dependency_list = "";
-                                    if (dependency == '') {
-                                         var html = '<p>In order to schedule migration actions, console connection ' +
-                                                    'must be provided for each host instead of management IP.</p>';
-                                         if (element[0].disqualified_count == hostnames.length) {
-                                             html += 'None of the selected hosts meet this requirement.'
-                                         } else {
-                                             html += 'These hosts below failed this requirement.'
-                                         }
-                                    } else {
-                                        var html = '<p>Requirements:</p>' +
-                                               '<p>1. Console connection must be provided for each host instead ' +
-                                               'of management IP.</p><p>2. Dependency for selected migration action ' +
-                                               'must be met. ';
+                        if (non_console_host_list.length > 0) {
+                            non_console_warning_html += '<p>The recommended way for migration is through console connection. ' +
+                                    'For the selected host(s) with no console ports provided, there will be no logging for the system migration/reload process.</p>' +
+                                    '<h4>Host(s) with non-console connection</h4>' +
+                                    '<div style="overflow: auto;height: 200px;width: 100%;">' +
+                                    '<table class="table table-striped"><tbody>';
+                            $.map(non_console_host_list, function (hostname) {
+                                non_console_warning_html += '<tr><td>' + hostname + '</td></tr>';
+                            });
 
-                                        if (dependency == PRE_MIGRATE) {
-                                            html += 'In this case, to schedule Migrate for a host, '
-                                        } else if (dependency == MIGRATE_SYSTEM) {
-                                            html += 'In this case, to schedule Post-Migrate for a host, '
-                                        }
-                                        html += dependency + " must either be scheduled" +
-                                                ' or already completed successfully for the host.</p>';
-                                        if (element[0].disqualified_count == hostnames.length) {
-                                            html += 'None of the selected hosts meet both of the above requirements.'
-                                        } else {
-                                            html += 'These hosts below failed at least one of the above requirements.'
-                                        }
-                                    }
+                            non_console_warning_html += '</tbody></table></div>';
+                        }
 
+                        if (disqualified_count > 0) {
 
-                                    html += '<h4>Dis-qualified Hosts</h4>' +
-                                           '<div style="overflow: auto;height: 200px;width: 100%;">' +
-                                           '<table class="table table-striped"><tbody>';
+                            var qualified_hosts = "";
+                            var new_dependency_list = "";
 
-                                    for (var i = 0, len = hostnames.length; i < len; ++i) {
-                                        if (element[0].dependency_list[i] != null) {
-                                            if (element[0].dependency_list[i] == '-2') {
-                                                html += '<tr><td>' + hostnames[i] + '</td></tr>';
-                                            } else if (element[0].disqualified_count < hostnames.length) {
-                                                qualified_hosts += hostnames[i] + ',';
-                                                new_dependency_list += element[0].dependency_list[i] + ',';
-                                            }
-                                        }
+                            html += '<p>';
+                            if (dependency == PRE_MIGRATE) {
+                                html += 'To schedule Migrate for a host, '
+                            } else if (dependency == MIGRATE_SYSTEM) {
+                                html += 'To schedule Post-Migrate for a host, '
+                            }
+                            html += dependency + " must either be scheduled" +
+                                    ' or already completed successfully for the host.</p>';
+                            if (disqualified_count == hostnames.length) {
+                                html += 'None of the selected hosts meet this requirement.'
+                            } else {
+                                html += 'The host(s) below failed to meet this requirement.'
+                            }
+                            html += '</p>';
 
+                            html += '<h4>Dis-qualified Hosts</h4>' +
+                                   '<div style="overflow: auto;height: 200px;width: 100%;">' +
+                                   '<table class="table table-striped"><tbody>';
 
-                                    }
-                                    html += '</tbody></table></div>';
-
-                                    if (element[0].disqualified_count == hostnames.length) {
-                                        if (dependency == '') {
-                                            html += '<br>Please make sure to provide console connection for all hosts';
-                                        } else {
-                                            html += '<br><p>Please make sure to:</p><p>1. Provide console connection ' +
-                                                'for all hosts</p><p>2. Schedule ' + dependency + ' for all selected ' +
-                                                'hosts.</p>';
-                                        }
-                                        bootbox.alert({
-                                            message: html,
-                                            title: "No selected hosts qualify for scheduling"
-                                        });
-                                    } else {
-                                        qualified_hosts = qualified_hosts.slice(0, -1);
-                                        new_dependency_list = new_dependency_list.slice(0, -1);
-
-                                        html += '<br>You can choose to schedule for the qualified hosts only, or click cancel.';
-                                        bootbox.dialog({
-                                            message: html,
-                                            title: String(element[0].disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
-                                            onEscape: function() {},
-                                            show: true,
-                                            backdrop: true,
-                                            closeButton: true,
-                                            animate: true,
-                                            className: "my-modal",
-                                            callback: function(){ /* your callback code */ },
-                                            buttons: {
-                                                success: {
-                                                  label: "Only schedule for qualified hosts",
-                                                  className: "btn-primary",
-                                                  callback: function() {
-                                                      $('#hidden_hosts').val(qualified_hosts);
-                                                      $('#hidden_dependency').val(new_dependency_list);
-                                                      if (need_to_download_config_conversion_tool) {
-                                                          submit_form_on_successfully_download_config_conversion_tool();
-                                                      } else {
-                                                          submit_spinner.hide();
-                                                          $('#form').submit();
-                                                      }
-                                                  }
-
-                                                },
-                                                "Cancel": {
-                                                  className: "btn-default",
-                                                  callback: function() {}
-
-                                                }
-                                            }
-                                        });
-                                    }
-                                 submit_spinner.hide();
-
+                            for (var i = 0, len = hostnames.length; i < len; ++i) {
+                                if (dependency_list[i] == '-2') {
+                                    html += '<tr><td>' + hostnames[i] + '</td></tr>';
                                 } else {
-                                    $('#hidden_dependency').val(element[0].dependency_list.join());
-                                    if (need_to_download_config_conversion_tool) {
-                                        submit_form_on_successfully_download_config_conversion_tool();
-                                    } else {
-                                        submit_spinner.hide();
-                                        $('#form').submit();
+                                    qualified_hosts += hostnames[i] + ',';
+                                    new_dependency_list += dependency_list[i] + ',';
+                                }
+                            }
+                            html += '</tbody></table></div>';
+
+                            if (disqualified_count == hostnames.length) {
+
+                                html += '<br><p>Please make sure to schedule ' + dependency + ' for all selected hosts.</p>';
+                                bootbox.alert({
+                                    message: html,
+                                    title: "No selected hosts qualify for scheduling"
+                                });
+                            } else {
+                                qualified_hosts = qualified_hosts.slice(0, -1);
+                                new_dependency_list = new_dependency_list.slice(0, -1);
+
+                                html += '<br><p>You can choose to schedule for the qualified hosts only, or click cancel.</p>';
+
+                                html += non_console_warning_html;
+
+                                bootbox.dialog({
+                                    message: html,
+                                    title: String(disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
+                                    onEscape: function() {},
+                                    show: true,
+                                    backdrop: true,
+                                    closeButton: true,
+                                    animate: true,
+                                    className: "check-dependency-modal",
+                                    callback: function(){ /* your callback code */ },
+                                    buttons: {
+                                        success: {
+                                          label: "Only schedule for qualified hosts",
+                                          className: "btn-primary",
+                                          callback: function() {
+                                              $('#hidden_hosts').val(qualified_hosts);
+                                              $('#hidden_dependency').val(new_dependency_list);
+                                              if (need_to_download_config_conversion_tool) {
+                                                  submit_form_on_successfully_download_config_conversion_tool();
+                                              } else {
+                                                  submit_spinner.hide();
+                                                  $('#form').submit();
+                                              }
+                                          }
+
+                                        },
+                                        "Cancel": {
+                                          className: "btn-default",
+                                          callback: function() {}
+
+                                        }
+                                    }
+                                });
+                            }
+                         submit_spinner.hide();
+
+                        } else {
+
+                            bootbox.dialog({
+                                message: non_console_warning_html,
+                                title: "Warning: " + String(disqualified_count) + " out of " + String(hostnames.length) + " selected host(s) do not have console connection",
+                                onEscape: function() {},
+                                show: true,
+                                backdrop: true,
+                                closeButton: true,
+                                animate: true,
+                                className: "no-console-warning-modal",
+                                callback: function(){ /* your callback code */ },
+                                buttons: {
+                                    success: {
+                                      label: "Continue to schedule",
+                                      className: "btn-primary",
+                                      callback: function() {
+                                          $('#hidden_dependency').val(dependency_list.join());
+                                          if (need_to_download_config_conversion_tool) {
+                                              submit_form_on_successfully_download_config_conversion_tool();
+                                          } else {
+                                              submit_spinner.hide();
+                                              $('#form').submit();
+                                          }
+                                      }
+
+                                    },
+                                    "Cancel": {
+                                      className: "btn-default",
+                                      callback: function() {}
+
                                     }
                                 }
-                            });
+                                });
+
+                        }
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
                         bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
