@@ -340,9 +340,9 @@ def api_is_host_valid(hostname):
     return jsonify({'status': 'Failed'})
 
 
-@host_dashboard.route('/api/hosts/<hostname>/get_upgradeable_satellites')
+@host_dashboard.route('/api/hosts/<hostname>/satellites')
 @login_required
-def api_get_upgradeable_satellites(hostname):
+def api_get_host_satellites(hostname):
     rows = []
     db_session = DBSession()
 
@@ -357,6 +357,7 @@ def api_get_upgradeable_satellites(hostname):
             row['mac_address'] = satellite.mac_address
             row['serial_number'] = satellite.serial_number
             row['remote_version'] = satellite.remote_version
+            row['remote_version_details'] = satellite.remote_version_details
             row['fabric_links'] = satellite.fabric_links
             rows.append(row)
 
