@@ -35,6 +35,7 @@ sql_statements = [
     'alter table create_tar_job add status_message VARCHAR(200)',
     'alter table inventory_job add data TEXT',
     'alter table inventory_job_history add data TEXT',
+    'alter table install_job modify status_message TEXT'
     ]
 
 
