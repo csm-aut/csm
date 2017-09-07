@@ -343,7 +343,7 @@ def migration():
         if hostnames is not None:
             print(str(schedule_form.data))
             print(str(hostnames))
-            dependency_list = schedule_form.hidden_dependency.data.split(',')
+            dependency_list = schedule_form.hidden_dependency.data.split(',') if schedule_form.hidden_dependency.data else []
             index = 0
             for hostname in hostnames:
 
@@ -369,7 +369,7 @@ def migration():
                         install_job_data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
 
                     # If the dependency is a previous job id, it's non-negative int string.
-                    if int(dependency_list[index]) >= 0:
+                    if index < len(dependency_list) and int(dependency_list[index]) >= 0:
                         dependency = dependency_list[index]
 
                     # In this case, the dependency is '-1', which means no dependency for the first install action
