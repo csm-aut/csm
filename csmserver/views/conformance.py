@@ -80,8 +80,8 @@ from utils import is_empty
 from utils import create_temp_user_directory
 from utils import create_directory
 from utils import make_file_writable
+from utils import get_search_results
 
-from package_utils import strip_smu_file_extension
 from package_utils import get_matchable_package_dict
 
 import os
@@ -453,8 +453,8 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
                 software_version=UNKNOWN if host.software_version is None else host.software_version,
                 conformed=HostConformanceStatus.CONFORM if conformed else HostConformanceStatus.NON_CONFORM,
                 comments=comments,
-                host_packages=','.join(sorted(get_match_result(host_packages,
-                                                               software_profile_package_dict.values()))),
+                host_packages=','.join(sorted(get_match_results(software_profile_package_dict.values(),
+                                                                host_packages))),
                 missing_packages=','.join(sorted(missing_packages)))
         else:
             # Flag host not found condition
@@ -492,19 +492,15 @@ def purge_old_conformance_reports(db_session):
             logger.exception('purge_old_conformance_reports() hit exception')
 
 
-def get_match_result(host_packages, software_profile_packages):
-    match_result = []
+def get_match_results(pattern_list, string_list):
+    match_results = []
 
-    for host_package in host_packages:
-        for software_profile_package in software_profile_packages:
-            matched = False
-            if re.search(software_profile_package, host_package) is not None:
-                matched = True
-                break
+    search_results = get_search_results(pattern_list, string_list)
+    for search_result in search_results:
+        match_results.append(search_result['string'] + ' (matched)' if search_result['matched'] else
+                             search_result['string'])
 
-        match_result.append(host_package + ' (matched)' if matched else host_package)
-
-    return match_result
+    return match_results
 
 
 def get_missing_packages(host_packages, software_profile_package_dict):
@@ -521,6 +517,29 @@ def get_missing_packages(host_packages, software_profile_package_dict):
             missing_packages.append(software_profile_package)
 
     return missing_packages
+
+
+def match_against_host_software_profile(db_session, hostname, software_packages):
+    """
+    Given a software package list, return an array of dictionaries indicating if the
+    software package matches any software package defined in the host software profile package list.
+    """
+    results = []
+    system_option = SystemOption.get(db_session)
+
+    if system_option.check_host_software_profile:
+        host = get_host(db_session, hostname)
+        if host is not None and len(software_packages) > 0:
+            software_profile = get_software_profile_by_id(db_session, host.software_profile_id)
+            if software_profile is not None:
+                software_profile_package_dict = get_matchable_package_dict(software_profile.packages.split(','))
+                software_package_dict = get_matchable_package_dict(software_packages)
+
+                for software_package, pattern in software_package_dict.items():
+                    matched = True if pattern in software_profile_package_dict.values() else False
+                    results.append({'software_package': software_package, 'matched': matched})
+
+    return results
 
 
 @conformance.route('/api/export_conformance_report/report/<int:id>')

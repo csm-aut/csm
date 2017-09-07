@@ -762,9 +762,6 @@ class InstallJob(Base):
     user_id = Column(Integer, ForeignKey('user.id'))
     custom_command_profile_ids = Column(String(20))
 
-    def __init__(self):
-        self.data = {}
-
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -801,9 +798,6 @@ class InstallJobHistory(Base):
     created_by = Column(String(50))
                             
     host_id = Column(Integer, ForeignKey('host.id'))
-
-    def __init__(self):
-        self.data = {}
     
     def set_status(self, status):
         self.status = status        

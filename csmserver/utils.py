@@ -455,6 +455,26 @@ def get_config_value(config_file, section, key):
             return None
 
 
+def get_search_results(pattern_list, string_list):
+    """
+    Given a pattern_list and string_list, return an array of dictionary which
+    indicates whether the string in the list is matchable.
+    {'string': xxxxx, 'matched': True}
+    """
+    match_results = []
+
+    for string in string_list:
+        matched = False
+        for pattern in pattern_list:
+            if re.search(pattern, string) is not None:
+                matched = True
+                break
+
+        match_results.append({'string': string, 'matched': matched})
+
+    return match_results
+
+
 def replace_multiple(text, dictionary):
     return reduce(lambda a, kv: a.replace(*kv), dictionary.iteritems(), text)
 

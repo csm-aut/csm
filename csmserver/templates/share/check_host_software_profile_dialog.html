@@ -24,7 +24,7 @@ function display_check_host_software_profile_dialog(info) {
     check_host_software_profile_datatable.api().clear();
 
     for (var i = 0; i < info.length; i++) {
-        check_host_software_profile_datatable.api().row.add([info[i].hostname, info[i].package]);
+        check_host_software_profile_datatable.api().row.add([info[i].hostname, info[i].software_package]);
     }
 
     check_host_software_profile_datatable.api().draw();
@@ -41,7 +41,7 @@ function display_check_host_software_profile_dialog(info) {
                     <h4>
                         <center><img src="/static/error.png">&nbsp;Unable to schedule an installation job.<br>
                             Following requested software packages are not defined in the host software profile.<br>
-                            Remove the host or the software packages before proceeding.
+                            Remove the software packages or exclude the host(s) before proceeding.
                         </center>
                     </h4>
                 </div>

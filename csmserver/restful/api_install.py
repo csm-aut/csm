@@ -66,6 +66,8 @@ from common import download_session_logs
 from common import get_custom_command_profile_by_id
 from common import get_custom_command_profile_name_to_id_dict
 
+from views.conformance import match_against_host_software_profile
+
 from datetime import datetime, timedelta
 
 import re
@@ -191,6 +193,20 @@ def api_create_install_request(request):
 
             if KEY_SOFTWARE_PACKAGES in data.keys() and is_empty(data[KEY_SOFTWARE_PACKAGES]):
                 raise ValueError("Software packages when specified cannot be empty.")
+
+            # Check if host software profile policing is enabled.
+            software_packages = data[KEY_SOFTWARE_PACKAGES]
+            if not is_empty(software_packages) and install_action == InstallAction.INSTALL_ADD:
+                error_message = []
+                match_results = match_against_host_software_profile(db_session, hostname, software_packages)
+
+                for match_result in match_results:
+                    if not match_result['matched']:
+                        error_message.append(match_result['software_package'])
+
+                if len(error_message):
+                    raise ValueError('Following software packages are not defined in the host software profile: ' +
+                                     ','.join(error_message))
 
             # Check time fields and validate their values
             if KEY_SCHEDULED_TIME not in data.keys():
