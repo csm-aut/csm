@@ -48,7 +48,7 @@
             var keys = [];
             var values = [];
             $('#plugin-details label[id^="label_"]').each(function () {
-                keys.push($(this).html().toLowerCase().replace(" ", "_"));
+                keys.push($(this).html().toLowerCase().replace(/\s/g, "_"));
             });
 
             var last_id = null;
