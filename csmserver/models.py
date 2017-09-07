@@ -664,9 +664,6 @@ class InventoryJob(Base):
     host_id = Column(Integer, ForeignKey('host.id'), unique=True)
     host = relationship('Host', foreign_keys='InventoryJob.host_id')
 
-    def __init__(self):
-        self.data = {}
-
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -699,9 +696,6 @@ class InventoryJobHistory(Base):
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
                             
     host_id = Column(Integer, ForeignKey('host.id'))
-
-    def __init__(self):
-        self.data = {}
 
     def set_status(self, status):
         self.status = status
