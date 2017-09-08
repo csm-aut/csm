@@ -613,16 +613,18 @@ def api_get_host_packages_by_states(hostname):
 @install.route('/api/check_host_software_profile', methods=['POST'])
 @login_required
 def api_check_host_software_profile():
-    hostname = request.form['hostname']
+    # hostnames can be a comma delimited host list.  FIXME: Should it be a list instead?
+    hostnames = request.form['hostname']
     software_packages = request.form.getlist('software_packages[]')
 
     rows = []
     db_session = DBSession()
 
-    match_results = match_against_host_software_profile(db_session, hostname, software_packages)
-    for match_result in match_results:
-        if not match_result['matched']:
-            rows.append({'hostname': hostname, 'software_package': match_result['software_package']})
+    for hostname in hostnames.split(','):
+        match_results = match_against_host_software_profile(db_session, hostname, software_packages)
+        for match_result in match_results:
+            if not match_result['matched']:
+                rows.append({'hostname': hostname, 'software_package': match_result['software_package']})
 
     if len(rows) > 0:
         return jsonify({'status': rows})
