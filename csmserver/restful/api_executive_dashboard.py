@@ -39,6 +39,7 @@ KEY_SOFTWARE_PLATFORM = 'software_platform'
 KEY_SOFTWARE_VERSION = 'software_version'
 KEY_COUNT = 'count'
 
+
 def api_get_user_summary(request):
     """
     GET:
@@ -65,7 +66,7 @@ def api_get_user_summary(request):
 def api_get_host_platform_and_version_summary(request):
     """
     GET:
-    http://localhost:5000/api/v1/executive_summary/get_user_summary
+    http://localhost:5000/api/v1/executive_summary/api_get_host_platform_and_version_summary
     """
     db_session = DBSession()
     result_tuples = get_host_platform_and_version_summary_tuples(db_session)

@@ -54,7 +54,6 @@ from common import fill_regions
 from common import can_edit_install
 from common import get_host_active_packages
 from common import can_retrieve_software
-from common import get_software_profile_by_id
 from common import get_last_successful_inventory_elapsed_time
 
 from forms import ScheduleInstallForm
@@ -83,7 +82,8 @@ from smu_info_loader import SMUInfoLoader
 
 from package_utils import strip_smu_file_extension
 from package_utils import get_target_software_package_list
-from package_utils import get_matchable_package_dict
+
+from views.conformance import match_against_host_software_profile
 
 import datetime
 
@@ -613,23 +613,18 @@ def api_get_host_packages_by_states(hostname):
 @install.route('/api/check_host_software_profile', methods=['POST'])
 @login_required
 def api_check_host_software_profile():
-    db_session = DBSession()
-
-    hostname = request.form['hostname']
+    # hostnames can be a comma delimited host list.  FIXME: Should it be a list instead?
+    hostnames = request.form['hostname']
     software_packages = request.form.getlist('software_packages[]')
 
     rows = []
-    host = get_host(db_session, hostname)
-    if host is not None and len(software_packages) > 0:
-        software_profile_id = host.software_profile_id
-        software_profile = get_software_profile_by_id(db_session, software_profile_id)
-        if software_profile is not None:
-            software_profile_package_dict = get_matchable_package_dict(software_profile.packages.split(','))
-            requested_software_package_dict = get_matchable_package_dict(software_packages)
+    db_session = DBSession()
 
-            for software_package, software_package_to_match in requested_software_package_dict.items():
-                if software_package_to_match not in software_profile_package_dict.values():
-                    rows.append({'hostname': hostname, 'package': software_package})
+    for hostname in hostnames.split(','):
+        match_results = match_against_host_software_profile(db_session, hostname, software_packages)
+        for match_result in match_results:
+            if not match_result['matched']:
+                rows.append({'hostname': hostname, 'software_package': match_result['software_package']})
 
     if len(rows) > 0:
         return jsonify({'status': rows})

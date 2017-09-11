@@ -418,27 +418,7 @@ $(function() {
 
     // Called by the $('#form').submit() function.
     function on_final_submit(e, current_form, hostname) {
-        if (check_host_software_profile &&
-            has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE])) {
-
-            $.ajax({
-                url: "{{ url_for('install.api_check_host_software_profile') }}",
-                type: "POST",
-                data: {
-                    hostname: hostname,
-                    software_packages: convert_lines_to_list($('#software_packages').val())
-                },
-                success: function(data) {
-                    if (data.status == 'OK') {
-                        create_install_jobs(current_form, hostname);
-                    } else {
-                        display_check_host_software_profile_dialog(data.status);
-                    }
-                }
-            });
-        } else {
-            create_install_jobs(current_form, hostname);
-        }
+        create_install_jobs(current_form, hostname);
     }
 
     function create_install_jobs(current_form, hostname) {

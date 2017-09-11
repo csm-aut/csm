@@ -220,16 +220,8 @@ function check_missing_prerequisite(validate_object) {
             });
 
             if (missing_prerequisite_list.length == 0) {
-                if (validate_object.check_missing_file_on_server) {
-                    // Check the reload packages only if install actions has 'Activate' in it.
-                    if (has_one_of_these(validate_object.install_actions, ['Activate'])) {
-                        check_need_reload(validate_object);
-                    } else {
-                        check_missing_files_on_server(validate_object);
-                    }
-                } else {
-                    validate_object.callback(validate_object);
-                }
+                match_against_host_software_profile(validate_object);
+                if (validate_object.spinner != null ) validate_object.spinner.hide();
             } else {
                 display_missing_prerequisite_dialog(validate_object, missing_prerequisite_list, missing_prerequisite_annotated_list);
             }
@@ -317,31 +309,15 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
                     validate_object.software_packages =
                         trim_lines(validate_object.software_packages + '\n' + missing_prerequisite_list.replace(/<br>/g, "\n"))
 
-                    if (validate_object.check_missing_file_on_server) {
-                        // Check the reload packages only if install actions has 'Activate' in it.
-                        if (has_one_of_these(validate_object.install_actions, ['Activate'])) {
-                            check_need_reload(validate_object);
-                        } else {
-                            check_missing_files_on_server(validate_object);
-                        }
-                    } else {
-                        validate_object.callback(validate_object);
-                    }
+                    match_against_host_software_profile(validate_object);
+                    if (validate_object.spinner != null ) validate_object.spinner.hide();
                 }
             },
             success: {
                 label: "Ignore",
                 className: "btn-success",
                 callback: function() {
-                    if (validate_object.check_missing_file_on_server) {
-                        if (has_one_of_these(validate_object.install_actions, ['Activate'])) {
-                            check_need_reload(validate_object);
-                        } else {
-                            check_missing_files_on_server(validate_object);
-                        }
-                    } else {
-                        validate_object.callback(validate_object);
-                    }
+                    match_against_host_software_profile(validate_object);
                     if (validate_object.spinner != null ) validate_object.spinner.hide();
                 }
             },
@@ -355,6 +331,38 @@ function display_missing_prerequisite_dialog(validate_object, missing_prerequisi
         }
     });
 
+}
+
+function match_against_host_software_profile(validate_object) {
+    $.ajax({
+        url: "/install/api/check_host_software_profile",
+        type: "POST",
+        data: {
+            hostname: validate_object.hostname,
+            //software_packages: convert_lines_to_list($('#software_packages').val())
+            //package_list: trim_lines(validate_object.software_packages)
+            software_packages: convert_lines_to_list(validate_object.software_packages)
+        },
+        success: function(data) {
+            if (data.status == 'OK') {
+                if (validate_object.check_missing_file_on_server) {
+                    // Check the reload packages only if install actions has 'Activate' in it.
+                    if (has_one_of_these(validate_object.install_actions, ['Activate'])) {
+                        check_need_reload(validate_object);
+                    } else {
+                        check_missing_files_on_server(validate_object);
+                    }
+                } else {
+                    validate_object.callback(validate_object);
+                }
+            } else {
+                display_check_host_software_profile_dialog(data.status);
+            }
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown) {
+            if (validate_object.spinner != null ) validate_object.spinner.hide();
+        }
+    });
 }
 
 function check_missing_files_on_server(validate_object) {
