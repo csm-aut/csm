@@ -115,6 +115,17 @@
 
                                         </div>
                                         <div class="wizard-footer">
+                                          <div class="row">
+                                          </div>
+                                            <div class="pull-left">
+                                                <input type='button' class='btn btn-default btn-previous'
+                                                       name='previous' value='Previous'/>
+                                                <!--input type='button' class='btn btn-default btn-cancel' name='cancel'
+                                                       value='Cancel' data-dismiss="modal"-->
+                                            </div>
+                                            <span class="submit-spinner">
+                                                <center><img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center>
+                                            </span>
                                             <div class="pull-right">
 
                                                 <input type='button' id="on-continue" class='btn btn-primary btn-next'
@@ -133,15 +144,7 @@
                                                     <!--input type='submit' form="form" id="on-submit" class='btn btn-finish btn-fill btn-warning btn-wd btn-md' name='finish' value='Schedule' data-dismiss="modal" / -->
                                                 </div>
                                             </div>
-                                            <div class="pull-left">
-                                                <input type='button' class='btn btn-default btn-previous'
-                                                       name='previous' value='Previous'/>
-                                                <!--input type='button' class='btn btn-default btn-cancel' name='cancel'
-                                                       value='Cancel' data-dismiss="modal"-->
-                                            </div>
-                                            <span class="submit-spinner">
-                                                <center><img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}"></center>
-                                            </span>
+
 
                                             <div class="clearfix"></div>
                                         </div>

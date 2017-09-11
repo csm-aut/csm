@@ -1,8 +1,22 @@
-<div id="override">
-    <h4 class="info-text-left">By default, migration requires that all RSP, RP, FC, FAN, PEM and MPA on device are supported in ASR9K-64 and are in operational states.
-      Do you wish to skip the hardware audit for FAN and PEM?
-      <a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_right"></span></a>
-      </h4>
+<div id="override" class="row">
+    <div class="pull-left">
+        <h4 class="info-text-left" style="margin-left: 20px;">Skip the hardware audit for fans and power modules?
+        <a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_right"></span></a>
+        </h4>
+    </div>
+    <div class="pull-right" style="height: 20px;">
+        <h4 class="info-text-left" style="margin-right: 20px;">
+
+        <input type="radio" id="override_hw_req" name="override_hw_req"
+               class="toggle" value="1"
+               style="margin-right: 10px"><label for="override_hw_req" class="info-text-left">Yes</label>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <input type="radio" id="override_hw_req" name="override_hw_req"
+               class="toggle" value="0" checked
+               style="margin-right: 10px"><label for="override_hw_req" class="info-text-left">No</label>
+
+        </h4>
+    </div>
 
     <div id="popover_hw_req" style="display: none">
         <div style="overflow: auto;height: 400px;width: 800px;">
@@ -122,18 +136,4 @@
 
     </div>
 
-    <h4 class="info-text-left">
-    <div style="float: right;">
-        <input type="radio" id="override_hw_req" name="override_hw_req"
-               class="toggle" value="1"
-               style="margin-right: 10px"><label for="override_hw_req" class="info-text-left">Yes</label>
-        &nbsp;&nbsp;&nbsp;&nbsp;
-        <input type="radio" id="override_hw_req" name="override_hw_req"
-               class="toggle" value="0" checked
-               style="margin-right: 10px"><label for="override_hw_req" class="info-text-left">No</label>
-    </div>
-      </h4>
-  <br>
-
 </div>
-<br>

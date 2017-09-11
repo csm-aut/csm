@@ -50,9 +50,20 @@
 </span>
 <legend></legend>
 
-<h4 class="info-text-left">Select a custom ASR9K-X64 config file to be loaded after migration:
-  &nbsp;&nbsp;<a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_config_filename"></span></a>
-</h4>
+<div class="row">
+    <div class="pull-left">
+        <h4 class="info-text-left" style="margin-left: 20px;">Select a custom ASR9K-X64 config file to be loaded after migration:
+  &nbsp;&nbsp;      <a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_config_filename"></span></a>
+        </h4>
+    </div>
+    <div class="pull-right" style="height: 20px;">
+       <select class="form-control" id="config_filename" style="width: 95%;margin-top: 5px;" placeholder="Optional">
+        <option value="" disabled selected style="display: none;">Optional</option>
+        <option value=""></option>
+      </select>
+    </div>
+</div>
+
 <div id="popover_config" style="display: none">
   <pre>Note:
 If no file is provided here, CSM Server will migrate the existing admin and IOS-XR config
@@ -64,11 +75,4 @@ Alternatively, you can supply an IOS-XR config for the ASR9K-X64 image. Once the
 image boots, during Migrate, the device will load this customized IOS-XR config file. Then,
 during Post-Migrate, CSM Server will attempt to load the migrated admin config.</pre>
 </div>
-<div align="center">
-  <select class="form-control" id="config_filename" style="width: 50%" placeholder="Optional">
-    <option value="" disabled selected style="display: none;">Optional</option>
-    <option value=""></option>
-  </select>
-</div>
-<br>
 <legend></legend>
