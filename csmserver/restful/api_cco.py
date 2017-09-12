@@ -33,6 +33,8 @@ from api_constants import HTTP_NOT_FOUND
 
 from smu_info_loader import SMUInfoLoader
 
+from smu_utils import get_optimized_list
+
 from utils import is_empty
 
 import datetime
@@ -132,3 +134,20 @@ def get_smu_info(smu_info):
     row['composite_DDTS'] = [] if is_empty(smu_info.composite_DDTS) else smu_info.composite_DDTS.split(',')
 
     return row
+
+
+def api_get_optimized_software(request):
+    """
+    http://localhost:5000/api/v1/cco/get_optimized_list?software_packages=
+        ncs5500-os-support-4.0.0.6-r613.CSCve17920.x86_64.rpm,ncs5500-dpa-3.0.0.22-r613.CSCve29118.x86_64.rpm
+    """
+    validate_url_parameters(request, ['software_packages'])
+
+    rows = []
+    result_list = get_optimized_list(request.args.get('software_packages').split(','))
+
+    for result in result_list:
+        if result['is'] not in ['Superseded']:
+            rows.append(result)
+
+    return jsonify(**{RESPONSE_ENVELOPE: {'software_list': rows}})
