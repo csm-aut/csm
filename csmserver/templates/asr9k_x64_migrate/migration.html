@@ -428,8 +428,10 @@
 
                         if (non_console_host_list.length > 0) {
                             non_console_warning_html += '<p>The recommended way for migration is through console connection. ' +
-                                    'For the selected host(s) with no console ports provided, there will be no logging for the system migration/reload process.</p>' +
-                                    '<h4>Host(s) with non-console connection</h4>' +
+                                    'For the selected host(s) with management interface connection, ' +
+                                    'there will be no session log available after they reload and before ASR9K-X64 completes booting. ' +
+                                    'In case of failure during the reload process, console connection will be necessary for troubleshooting.</p>' +
+                                    '<h4>Host(s) with management interface connection</h4>' +
                                     '<div style="overflow: auto;height: 200px;width: 100%;">' +
                                     '<table class="table table-striped"><tbody>';
                             $.map(non_console_host_list, function (hostname) {
