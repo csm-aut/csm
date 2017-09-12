@@ -95,18 +95,24 @@ $(function() {
             "data": 'type'
         }, {
             "targets": 3,
-            "data" : 'ip_address'
+            "data": 'state'
         }, {
             "targets": 4,
-            "data": 'serial_number'
+            "data": 'install_state'
         }, {
             "targets": 5,
+            "data" : 'ip_address'
+        }, {
+            "targets": 6,
+            "data": 'serial_number'
+        }, {
+            "targets": 7,
             "data": 'remote_version',
             "render": function(data, type, row) {
                 return comma2br(data) + '<br>' + '<span style="color: Gray;">' + comma2br(row['remote_version_details']) + '</span>';
             }
         }, {
-            "targets": 6,
+            "targets": 8,
             "data": 'fabric_links',
             "render": function(data, type, row) {
                 return comma2br(data);
@@ -210,6 +216,12 @@ function display_manage_satellite_software_dialog() {
 
 </script>
 
+<style>
+    .modal-dialog {
+        width: 1100px;
+    }
+</style>
+
 <div id="manage-satellite-software-dialog" class="modal" role="dialog">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -229,6 +241,10 @@ function display_manage_satellite_software_dialog() {
                         </ul>
                         <div class="tab-content">
                             <div class="tab-pane" id="dialog_select_satellites">
+                                <h4 class="info-text">
+                                    Only satellites that are eligible for upgrade are listed
+                                </h4>
+
                                 <table class="display table" id="dialog-satellite-datatable">
                                     <thead>
                                         <tr>
@@ -237,6 +253,8 @@ function display_manage_satellite_software_dialog() {
                                             </th>
                                             <th>Satellite ID</th>
                                             <th>Type</th>
+                                            <th>State</th>
+                                            <th>Install State</th>
                                             <th>IP Address</th>
                                             <th>Serial Number</th>
                                             <th>Remote Version</th>
