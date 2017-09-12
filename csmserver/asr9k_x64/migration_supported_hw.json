@@ -99,7 +99,8 @@
     ],
     "MPA": [
       "A9K-MPA-20X10GE",
-      "A9K-MPA-4X10GE"
+      "A9K-MPA-4X10GE",
+      "A9K-MPA-20X1GE"
     ]
   }
 }
