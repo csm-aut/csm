@@ -87,6 +87,8 @@ KEY_DEPENDENCY = 'dependency'
 KEY_SERVER_REPOSITORY = 'server_repository'
 KEY_SERVER_DIRECTORY = 'server_directory'
 KEY_CUSTOM_COMMAND_PROFILE = 'command_profile'
+KEY_FPD_LOCATION = 'fpd_location'
+KEY_FPD_TYPE = 'fpd_type'
 
 KEY_UTC_SCHEDULED_TIME = 'utc_scheduled_time'
 KEY_TRACE = 'trace'
@@ -95,7 +97,8 @@ KEY_DELETED_DEPENDENCIES = 'deleted_dependencies'
 KEY_INSTALL_JOB_LIST = 'install_job_list'
 
 acceptable_keys = [KEY_HOSTNAME, KEY_INSTALL_ACTION, KEY_SCHEDULED_TIME, KEY_UTC_OFFSET, KEY_CUSTOM_COMMAND_PROFILE,
-                   KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES]
+                   KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES,
+                   KEY_FPD_LOCATION, KEY_FPD_TYPE]
 
 required_keys_dict = {InstallAction.PRE_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.INSTALL_ADD: [KEY_HOSTNAME, KEY_SERVER_REPOSITORY, KEY_SOFTWARE_PACKAGES],
@@ -103,7 +106,8 @@ required_keys_dict = {InstallAction.PRE_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.POST_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.INSTALL_COMMIT: [KEY_HOSTNAME],
                       InstallAction.INSTALL_REMOVE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
-                      InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES]}
+                      InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
+                      InstallAction.FPD_UPGRADE: [KEY_HOSTNAME]}
 
 ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
                            InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
@@ -112,7 +116,8 @@ ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
 # Supported install actions
 supported_install_actions = ordered_install_actions + [InstallAction.INSTALL_REMOVE,
                                                        InstallAction.INSTALL_DEACTIVATE,
-                                                       InstallAction.INSTALL_REMOVE_ALL_INACTIVE]
+                                                       InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+                                                       InstallAction.FPD_UPGRADE]
 
 
 def api_create_install_request(request):
@@ -296,6 +301,16 @@ def api_create_install_request(request):
                     if custom_command_profile_id is not None:
                         custom_command_profile_ids.append(str(custom_command_profile_id))
 
+            install_job_data = {}
+            if install_action == InstallAction.FPD_UPGRADE:
+                fpd_location = install_request.get(KEY_FPD_LOCATION)
+                if fpd_location is not None:
+                    install_job_data[KEY_FPD_LOCATION] = fpd_location
+
+                fpd_type = install_request.get(KEY_FPD_TYPE)
+                if fpd_type is not None:
+                    install_job_data[KEY_FPD_TYPE] = fpd_type
+
             install_job = create_or_update_install_job(db_session,
                                                        host_id=host_id,
                                                        install_action=install_action,
@@ -304,6 +319,7 @@ def api_create_install_request(request):
                                                        server_id=server_id,
                                                        server_directory=server_directory,
                                                        custom_command_profile_ids=custom_command_profile_ids,
+                                                       install_job_data=install_job_data,
                                                        dependency=get_dependency_id(db_session, implicit_dependency_list, install_request, host_id),
                                                        created_by=g.api_user.username)
 
@@ -446,10 +462,7 @@ def api_get_install_request(request):
                 raise ValueError("Host '{}' does not exist in the database.".format(hostname))
 
         if install_action:
-            if install_action not in [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                      InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
-                                      InstallAction.INSTALL_COMMIT, InstallAction.INSTALL_REMOVE,
-                                      InstallAction.INSTALL_DEACTIVATE]:
+            if install_action not in supported_install_actions:
                 raise ValueError("'{}' is an invalid install action.".format(install_action))
 
             if table_to_query == InstallJob:
