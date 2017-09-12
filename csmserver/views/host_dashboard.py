@@ -350,16 +350,20 @@ def api_get_host_satellites(hostname):
     if host is not None:
         satellites = db_session.query(Satellite).filter(Satellite.host_id == host.id)
         for satellite in satellites:
-            row = dict()
-            row['satellite_id'] = satellite.satellite_id
-            row['type'] = satellite.type
-            row['ip_address'] = satellite.ip_address
-            row['mac_address'] = satellite.mac_address
-            row['serial_number'] = satellite.serial_number
-            row['remote_version'] = satellite.remote_version
-            row['remote_version_details'] = satellite.remote_version_details
-            row['fabric_links'] = satellite.fabric_links
-            rows.append(row)
+            if satellite.state == 'Connected' and \
+                    not satellite.remote_version == 'Compatible (latest version)':
+                row = dict()
+                row['satellite_id'] = satellite.satellite_id
+                row['type'] = satellite.type
+                row['state'] = satellite.state
+                row['install_state'] = satellite.install_state
+                row['ip_address'] = satellite.ip_address
+                row['mac_address'] = satellite.mac_address
+                row['serial_number'] = satellite.serial_number
+                row['remote_version'] = satellite.remote_version
+                row['remote_version_details'] = satellite.remote_version_details
+                row['fabric_links'] = satellite.fabric_links
+                rows.append(row)
 
     return jsonify(**{'data': rows})
 
