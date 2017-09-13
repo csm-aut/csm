@@ -321,21 +321,41 @@ def custom_command_profile_delete(profile_name):
 # --------------------------------------------------------------------------------------------------------------
 
 
-@restful_api.route('/v1/executive_dashboard/get_user_summary')
+@restful_api.route('/v1/executive_dashboard/get_monthly_host_enrollment_counts')
 @auth.login_required
-def api_get_user_summary():
+def api_get_monthly_host_enrollment_counts():
     try:
         DBSession().close()
-        return api_executive_dashboard.api_get_user_summary(request)
+        return api_executive_dashboard.api_get_monthly_host_enrollment_counts(request)
     except Exception as e:
         return failed_response(e.message)
 
 
-@restful_api.route('/v1/executive_dashboard/get_host_platform_and_version_summary')
+@restful_api.route('/v1/executive_dashboard/get_monthly_user_enrollment_counts')
 @auth.login_required
-def get_host_platform_and_version_summary():
+def api_get_monthly_user_enrollment_counts():
     try:
         DBSession().close()
-        return api_executive_dashboard.api_get_host_platform_and_version_summary(request)
+        return api_executive_dashboard.api_get_monthly_user_enrollment_counts(request)
+    except Exception as e:
+        return failed_response(e.message)
+
+
+@restful_api.route('/v1/executive_dashboard/get_host_platform_and_version_counts')
+@auth.login_required
+def get_host_platform_and_version_counts():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_host_platform_and_version_counts(request)
+    except Exception as e:
+        return failed_response(e.message)
+
+
+@restful_api.route('/v1/executive_dashboard/get_monthly_installation_counts')
+@auth.login_required
+def api_get_monthly_installation_counts():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_monthly_installation_counts(request)
     except Exception as e:
         return failed_response(e.message)
