@@ -104,16 +104,17 @@ XML_TAG_TAR = 'tar'
 
 # These are the platform prefixes used by the XML files
 # Any additions to this list will require modifying
-# get_cco_supported_platform() and get_cco_supported_release()
+# cco_platform_dict and platform_re_list
 CCO_PLATFORM_ASR9K = 'asr9k_px'
-CCO_PLATFORM_XR12K = 'xr12000'
 CCO_PLATFORM_ASR9K_X64 = 'asr9k_x64'
+CCO_PLATFORM_XR12K = 'xr12000'
 CCO_PLATFORM_XRV9K = 'xrv9k'
 CCO_PLATFORM_CRS = 'crs_px'
 CCO_PLATFORM_NCS1K = 'ncs1k'
 CCO_PLATFORM_NCS1001 = 'ncs1001'
 CCO_PLATFORM_NCS4K = 'ncs4k'
 CCO_PLATFORM_NCS5K = 'ncs5k'
+CCO_PLATFORM_NCS540 = 'ncs540'
 CCO_PLATFORM_NCS5500 = 'ncs5500'
 CCO_PLATFORM_NCS6K = 'ncs6k'
 
@@ -122,9 +123,19 @@ CCO_PLATFORM_NCS1K_SYSADMIN = 'ncs1k_sysadmin'
 CCO_PLATFORM_NCS1001_SYSADMIN = 'ncs1001_sysadmin'
 CCO_PLATFORM_NCS4K_SYSADMIN = 'ncs4k_sysadmin'
 CCO_PLATFORM_NCS5K_SYSADMIN = 'ncs5k_sysadmin'
+CCO_PLATFORM_NCS540_SYSADMIN = 'ncs540_sysadmin'
 CCO_PLATFORM_NCS5500_SYSADMIN = 'ncs5500_sysadmin'
 CCO_PLATFORM_NCS6K_SYSADMIN = 'ncs6k_sysadmin'
 CCO_PLATFORM_ASR9K_X64_SYSADMIN = 'asr9k_x64_sysadmin'
+
+cco_platform_dict = {PlatformFamily.ASR9K: CCO_PLATFORM_ASR9K,
+                     PlatformFamily.ASR9K_X64: CCO_PLATFORM_ASR9K_X64,
+                     PlatformFamily.CRS: CCO_PLATFORM_CRS,
+                     PlatformFamily.NCS4K: CCO_PLATFORM_NCS4K,
+                     PlatformFamily.NCS5K: CCO_PLATFORM_NCS5K,
+                     PlatformFamily.NCS540: CCO_PLATFORM_NCS540,
+                     PlatformFamily.NCS5500: CCO_PLATFORM_NCS5500,
+                     PlatformFamily.NCS6K: CCO_PLATFORM_NCS6K}
 
 # The match order is very important and must be taken into consideration.
 platform_re_list = [
@@ -179,6 +190,14 @@ platform_re_list = [
     # Internal Name: ncs5k-mgbl-3.0.0.0-r612
     {'re': re.compile('ncs5k|NCS5000'), 'platform': CCO_PLATFORM_NCS5K},
 
+    # TBD
+    {'re': re.compile('ncs540-sysadmin|ncs540-xr'), 'platform': CCO_PLATFORM_NCS540_SYSADMIN},
+
+    # Release Software:
+    # External Name:
+    # Internal Name:
+    {'re': re.compile('ncs540|NCS540'), 'platform': CCO_PLATFORM_NCS540},
+
     # Internal Name: ncs5500-sysadmin-6.1.2, ncs5500-xr-6.1.2
     {'re': re.compile('ncs5500-sysadmin|ncs5500-xr'), 'platform': CCO_PLATFORM_NCS5500_SYSADMIN},
 
@@ -230,22 +249,11 @@ class SMUInfoLoader(object):
                 self.get_smu_info_from_db(self.platform, self.release)
 
     def get_cco_supported_platform(self, platform):
-        if platform == PlatformFamily.ASR9K:
-            return CCO_PLATFORM_ASR9K
-        elif platform == PlatformFamily.ASR9K_X64:
-            return CCO_PLATFORM_ASR9K_X64
-        elif platform == PlatformFamily.CRS:
-            return CCO_PLATFORM_CRS
-        elif platform == PlatformFamily.NCS4K:
-            return CCO_PLATFORM_NCS4K
-        elif platform == PlatformFamily.NCS5K:
-            return CCO_PLATFORM_NCS5K
-        elif platform == PlatformFamily.NCS5500:
-            return CCO_PLATFORM_NCS5500
-        elif platform == PlatformFamily.NCS6K:
-            return CCO_PLATFORM_NCS6K
-        else:
-            return platform
+        for software_platform, cco_platform in cco_platform_dict.items():
+            if software_platform == platform:
+                return cco_platform
+
+        return platform
 
     def get_cco_supported_release(self, release):
         matches = re.findall("\d+\.\d+\.\d+", release)

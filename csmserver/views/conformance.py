@@ -60,6 +60,7 @@ from common import get_software_profile_by_id
 from common import delete_software_profile
 from common import get_host_list_by
 from common import get_hosts_by_software_profile_id
+from common import get_host_software_profile_counts
 
 from database import DBSession
 
@@ -801,19 +802,24 @@ def api_assign_software_profile_to_hosts():
     software_profile_id = int(request.form['software_profile_id'])
 
     db_session = DBSession()
+    software_profile = get_software_profile_by_id(db_session, software_profile_id)
+    if not software_profile:
+        return jsonify({'status': 'Unknown software profile.'})
+
     hosts = get_host_list_by(db_session, platform, software_versions, region_ids, roles)
-    message = 'No host fits the selection criteria'
     if hosts:
         try:
             for host in hosts:
                 host.software_profile_id = software_profile_id
             db_session.commit()
-            message = ('%d hosts have been updated.' % len(hosts)) if len(hosts) > 1 else \
-                ('%d host has been updated.' % len(hosts))
-        except Exception as e:
-            return jsonify({'status': e.message})
 
-    return jsonify({'status': 'OK', 'message': message})
+        except Exception as e:
+            return jsonify({'status': 'No host fits the selection criteria'})
+
+    total_host_assigned = get_host_software_profile_counts(db_session, software_profile_id)
+
+    return jsonify({'status': 'OK', 'software_profile': software_profile.name,
+                    'total_hosts_updated': len(hosts), 'total_hosts_assigned': total_host_assigned})
 
 
 @conformance.route('/api/hosts/<hostname>/software_profile/delete', methods=['DELETE'])

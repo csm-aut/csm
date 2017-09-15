@@ -121,6 +121,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                                    PlatformFamily.NCS1K,
                                    PlatformFamily.NCS1001,
                                    PlatformFamily.NCS5K,
+                                   PlatformFamily.NCS540,
                                    PlatformFamily.NCS5500] or \
                 (software_platform == PlatformFamily.NCS6K and numeric_target_version >= 631):
             """
@@ -154,6 +155,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                     if software_platform in [PlatformFamily.NCS1K,
                                              PlatformFamily.NCS1001,
                                              PlatformFamily.NCS5K,
+                                             PlatformFamily.NCS540,
                                              PlatformFamily.NCS5500,
                                              PlatformFamily.NCS6K]:
                         # ncs5k-mini-x-6.1.3 (this name is in the device inactive package area)
@@ -170,6 +172,7 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                     if software_platform in [PlatformFamily.NCS1K,
                                              PlatformFamily.NCS1001,
                                              PlatformFamily.NCS5K,
+                                             PlatformFamily.NCS540,
                                              PlatformFamily.NCS5500]:
                         # ncs5k-mini-x.iso-6.1.3
                         target_list.append("{}-{}-{}".format(family.lower(), 'mini-x.iso', target_version))

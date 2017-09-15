@@ -604,14 +604,17 @@ def create_or_update_region(db_session, region_name, server_repositories, create
     return region
 
 
+def get_host_software_profile_counts(db_session, software_profile_id):
+    return db_session.query(Host).filter(Host.software_profile_id == software_profile_id).count()
+
+
 def delete_software_profile(db_session, profile_name):
 
     software_profile = get_software_profile(db_session, profile_name)
     if software_profile is None:
         raise ValueNotFound("Software profile '{}' does not exist in the database.".format(profile_name))
 
-    count = db_session.query(Host).filter(
-        Host.software_profile_id == software_profile.id).count()
+    count = get_host_software_profile_counts(db_session, software_profile.id)
 
     # Older version of db does not perform check on
     # foreign key constrain, so do it programmatically here.
