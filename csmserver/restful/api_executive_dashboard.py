@@ -27,7 +27,9 @@ from flask import jsonify
 from database import DBSession
 
 from models import InstallJobHistory
+
 from constants import JobStatus
+from constants import InstallAction
 
 from common import get_host_list
 from common import get_user_list
@@ -42,7 +44,8 @@ KEY_CREATED_YEAR = 'created_year'
 KEY_SOFTWARE_PLATFORM = 'software_platform'
 KEY_SOFTWARE_VERSION = 'software_version'
 KEY_TOTAL_MONTHLY_INSTALLATIONS = 'total_monthly_installations'
-KEY_COUNTS = 'counts'
+KEY_INSTALL_ACTION_LIST = 'install_action_list'
+KEY_INSTALL_ACTION_COUNTS = 'install_action_counts'
 KEY_COUNT = 'count'
 
 
@@ -133,28 +136,43 @@ def api_get_monthly_installation_counts(request):
     rows = []
     counters = {}
     db_session = DBSession()
+    install_action_list = [InstallAction.PRE_UPGRADE,
+                           InstallAction.INSTALL_ADD,
+                           InstallAction.INSTALL_ACTIVATE,
+                           InstallAction.POST_UPGRADE,
+                           InstallAction.INSTALL_COMMIT,
+                           InstallAction.INSTALL_REMOVE,
+                           InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+                           InstallAction.INSTALL_DEACTIVATE,
+                           InstallAction.MIGRATION_AUDIT,
+                           InstallAction.PRE_MIGRATE,
+                           InstallAction.MIGRATE_SYSTEM,
+                           InstallAction.POST_MIGRATE,
+                           InstallAction.FPD_UPGRADE,
+                           InstallAction.SATELLITE_TRANSFER,
+                           InstallAction.SATELLITE_ACTIVATE]
 
     install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.status == JobStatus.COMPLETED).all()
     for install_job in install_jobs:
-        # (2017, 4) : [{'install_action': 'Pre-Check', 'count': 4}, {'install_action': 'Add', 'count': 5}]
+        # (2017, 4) : [10, 20, 15, and etc]
         key = (install_job.created_time.year, install_job.created_time.month)
         install_action = install_job.install_action
 
-        if key in counters:
-            install_action_list = counters[key]
-            # Should only have one and only one install_action element
-            install_action_elements = [element for element in install_action_list if element['install_action'] == install_action]
-            if len(install_action_elements) > 0:
-                install_action_elements[0]['count'] += 1
-            else:
-                install_action_list.append({'install_action': install_action, 'count': 1})
-        else:
-            counters[key] = [{'install_action': install_action, 'count': 1}]
+        if key not in counters:
+            counters[key] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-    for key, install_action_list in counters.items():
+        try:
+            index = install_action_list.index(install_action)
+            if index > 0:
+                counters[key][index] += 1
+        except:
+            pass
+
+    for key, install_action_counts in counters.items():
         row = dict()
-        row[KEY_COUNTS] = install_action_list
-        row[KEY_TOTAL_MONTHLY_INSTALLATIONS] = sum(element['count'] for element in install_action_list)
+        row[KEY_INSTALL_ACTION_LIST] = install_action_list
+        row[KEY_INSTALL_ACTION_COUNTS] = install_action_counts
+        row[KEY_TOTAL_MONTHLY_INSTALLATIONS] = sum(install_action_counts)
         row[KEY_CREATED_YEAR] = key[0]
         row[KEY_CREATED_MONTH] = key[1]
         rows.append(row)

@@ -123,6 +123,7 @@ class ServerType:
     LOCAL_SERVER = 'LOCAL'
 
 
+# Any change here will need to also update api_executive_dashboard
 class InstallAction:
     UNKNOWN = 'Unknown'
     PRE_UPGRADE = 'Pre-Upgrade'
