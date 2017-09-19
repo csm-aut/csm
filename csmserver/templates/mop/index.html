@@ -9,7 +9,9 @@
 
 <script>
     $(function() {
-        var mop_table = $("#mop-table").dataTable({
+        var plugin_detail_tab_uid = 0;
+
+        var mop_table = $("#mop-table").DataTable({
             "pageLength": 50,
             "order": [
                 [0, "asc"]
@@ -35,9 +37,15 @@
                 }
             }, {
                 "targets": 3,
-                "data": 'created_by'
+                "className":      'details-control',
+                "orderable":      false,
+                "data":           null,
+                "defaultContent": ''
             }, {
                 "targets": 4,
+                "data": 'created_by'
+            }, {
+                "targets": 5,
                 "data": 'mop_name',
                 "render": function(data, type, row) {
                     return '<a class="data-delete-link" href="javascript://"  \
@@ -70,12 +78,133 @@
                 }
             });
         });
+
+        // Add event listener for opening and closing details
+        $('#mop-table tbody').on('click', 'td.details-control', function () {
+            var tr = $(this).closest('tr');
+            var row = mop_table.row( tr );
+
+            if ( row.child.isShown() ) {
+                // This row is already open - close it
+                row.child.hide();
+                tr.removeClass('shown');
+            }
+            else {
+                var row_data = row.data();
+                row.child.remove();
+
+                $.ajax({
+                    url: "/mop/api/get_mop_specs/" + row_data["mop_name"],
+                    dataType: 'json',
+                    type: "POST",
+                    data: {
+                        phases: row_data['phase'],
+                        platforms: row_data['platform']
+                    },
+                    success: function (data) {
+
+                        var html = '<div class="container mop-plugin-details"> \
+                          <div class="col-sm-3">\
+                            <div class="sidebar-nav">\
+                              <div class="navbar navbar-default" role="navigation">\
+                                <div class="navbar-collapse collapse sidebar-navbar-collapse" style="padding-left:0px;padding-right:0px" >\
+                                  <ul class="nav navbar-nav nv-tabs">';
+
+                        var tab_content_html = '<div class="col-sm-9">\
+                                                <div class="tab-content">';
+
+                        var plugin_specs = data.plugin_specs;
+                        var mop_specs = data.mop_specs;
+
+                        var removed_plugins = [];
+                        var first_tab = true;
+                        var plugin_tab_id;
+                        for (var i = 0; i < mop_specs.length; i++) {
+
+                            var plugin_name = mop_specs[i]["plugin"];
+
+                            if (plugin_name in plugin_specs) {
+                                plugin_tab_id = get_next_plugin_detail_tab_uid();
+                                var user_input = {};
+                                for (var attribute in mop_specs[i]["data"]) {
+                                    user_input[attribute] = mop_specs[i]["data"][attribute];
+                                }
+                                var li_class = "has-input";
+                                if (Object.keys(user_input).length === 0) {
+                                    li_class = "no-input"
+                                }
+                                var info_data_toggle = "description_" + plugin_name.split(" ").join("_");
+
+                                if (first_tab && li_class == "has-input") {
+                                    html += '<li class="active ' + li_class +'"><a href="#' + plugin_tab_id + '" data-toggle="tab" data-original-title="' + plugin_specs[plugin_name]["description"] +'">' + plugin_name + '</a></li>';
+                                    tab_content_html += '<div class="tab-pane fade in active" id="' + plugin_tab_id + '"><form class="form-horizontal">' +
+                                        generate_plugin_detail_template(plugin_specs[plugin_name]["data_specs"], plugin_name, user_input, "col-sm-3", "col-sm-9") +
+                                        '</form></div>';
+                                    first_tab = false;
+
+                                } else {
+                                    if (li_class == "has-input" ) {
+                                        html += '<li class="' + li_class + '"><a href="#' + plugin_tab_id + '" data-toggle="tab" data-original-title="' + plugin_specs[plugin_name]["description"] +'">' + plugin_name + '</a></li>';
+                                        tab_content_html += '<div class="tab-pane fade" id="' + plugin_tab_id + '"><form class="form-horizontal">' +
+                                            generate_plugin_detail_template(plugin_specs[plugin_name]["data_specs"], plugin_name, user_input, "col-sm-3", "col-sm-9") +
+                                            '</form></div>';
+                                    } else {
+                                        html += '<li class="' + li_class + '"><a data-toggle="tab" data-original-title="' + plugin_specs[plugin_name]["description"] +'">' + plugin_name + '</a></li>';
+                                    }
+                                }
+
+
+                            } else {
+                                removed_plugins.push(mop_specs[i]["plugin"]);
+                            }
+                        }
+                        html += '</ul></div></div></div></div>' +
+                            tab_content_html +
+                            '</div></div></div>';
+
+                        if (removed_plugins.length > 0) {
+                            var message = "The following plugins previously defined in this MOP are no longer found:<br><ul><li>";
+                            message += removed_plugins.join("</li><li>");
+                            message += "</li></ul>You can edit or delete this MOP.";
+                            bootbox.alert(message);
+                        }
+                        // Open this row
+                        row.child(html).show();
+                        tr.addClass('shown');
+
+                        $('[data-toggle="tab"]').tooltip({
+                            trigger: 'hover',
+                            placement: 'right',
+                            animate: true,
+                            delay: 500,
+                            container: 'body'
+                        });
+
+                    }
+                });
+            }
+
+        });
+
+
+
+
+        function get_next_plugin_detail_tab_uid() {
+            var next_uid = "tab_" + plugin_detail_tab_uid;
+            plugin_detail_tab_uid += 1;
+            return next_uid;
+        }
+
     });
 </script>
 {% endblock head %}
 
 
 {% block main %}
+
+<link href="/static/jquery/css/mop.css" rel="stylesheet" />
+<script src="/static/jquery/js/generate_mop_plugin_detail.js" type="text/javascript"></script>
+
 
 <div class="container">
     <div class="row">
@@ -97,6 +226,7 @@
                                 <th>Name</th>
                                 <th>Phase</th>
                                 <th>Platform</th>
+                                <th>Plugin Quickview</th>
                                 <th>Created By</th>
                                 <th>Action</th>
                             </tr>

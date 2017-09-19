@@ -110,3 +110,116 @@ td {
       -moz-border-radius: 0px;
       background-image: none;
 }
+
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 25px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {display:none;}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 19px;
+  width: 19px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(19px);
+  -ms-transform: translateX(19px);
+  transform: translateX(19px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 25px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+
+td.details-control {
+    background: url('/static/details_open.png') no-repeat 25% 50%;
+    cursor: pointer;
+}
+tr.shown td.details-control {
+    background: url('/static/details_close.png') no-repeat 25% 50%;
+}
+
+.mop-plugin-details {
+    margin-top: 15px;
+}
+
+.mop-plugin-details .nv-tabs{
+    width: 100%;
+}
+
+.mop-plugin-details a{
+    font-size: 14px !important;
+}
+
+.mop-plugin-details li.has-input {
+    width: 100%;
+    background-color: #d9edf7;
+    #border: 1px solid #428bca !important;
+    #color: #31708f;
+}
+.mop-plugin-details li.has-input > a{
+    color: #428bca !important;
+}
+.mop-plugin-details li.active.has-input > a {
+    background-color: #428bca !important;
+    color: #fff !important;
+}
+
+.mop-plugin-details li.no-input {
+    width: 100%;
+    #color: #31708f;
+}
+.mop-plugin-details li.no-input > a{
+    color: #888; !important;
+    background-color: #f8f8f8 !important;
+    border: 1px solid #f8f8f8 !important;
+}
+
+.mop-plugin-details .navbar {
+    #border: 1px solid #bce8f1 !important;
+    border-radius: 3px !important;
+}
+
+.mop-plugin-details input[type="text"]{
+    width: 100% !important;
+}

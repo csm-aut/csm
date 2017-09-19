@@ -73,6 +73,20 @@ def get_available_plugins_and_required_data():
     phases = request.form.getlist('phases[]')
     software_platforms = request.form.getlist('platforms[]')
 
+    return jsonify(plugin_specs=get_available_plugin_specs(software_platforms, phases))
+
+
+def get_all_available_plugins(platform=None, phases=None, os_type=None):
+    if phases:
+        return get_available_plugins(platform=platform, phase=phases, os=os_type)
+    # if phases is not specified, get available plugins for all valid mop phases
+    plugins = dict()
+    for phase in get_phases():
+        plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
+    return plugins
+
+
+def get_available_plugin_specs(software_platforms, phases):
     if not software_platforms:
         plugin_specs = get_all_available_plugins(phases=phases)
         plugins = plugin_specs.keys()
@@ -93,18 +107,7 @@ def get_available_plugins_and_required_data():
     for plugin in plugins:
         available_plugin_specs[plugin] = plugin_specs[plugin]
 
-    print str(available_plugin_specs)
-    return jsonify(plugin_specs=available_plugin_specs)
-
-
-def get_all_available_plugins(platform=None, phases=None, os_type=None):
-    if phases:
-        return get_available_plugins(platform=platform, phase=phases, os=os_type)
-    # if phases is not specified, get available plugins for all valid mop phases
-    plugins = dict()
-    for phase in get_phases():
-        plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
-    return plugins
+    return available_plugin_specs
 
 
 @mop.route('/api/get_mops', defaults={'platform': None, 'phase': None})
@@ -201,6 +204,17 @@ def edit(mop_name):
         mops_query.delete()
         db_session.commit()
         return create_new_mop(db_session, request.get_json(), return_url)
+
+
+@mop.route('/api/get_mop_specs/<mop_name>', methods=['POST'])
+@login_required
+def api_get_mop_specs(mop_name):
+    db_session = DBSession()
+    phases = request.form.getlist('phases[]')
+    software_platforms = request.form.getlist('platforms[]')
+
+    return jsonify(plugin_specs=get_available_plugin_specs(software_platforms, phases),
+                   mop_specs=get_mop_specs_with_mop_name(db_session, mop_name))
 
 
 def create_new_mop(db_session, mop_details, return_url):

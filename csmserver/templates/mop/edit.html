@@ -34,8 +34,11 @@
         $('#selected-plugins').on('click', "div a", function () {
             if ($(this).attr('class') == "need-data") {
                 last_selected_plugin_uid = $(this).attr('name').split('_')[1];
-                var plugin_data_html = generate_plugin_detail_template(plugin_specs[$(this).html()]["data_specs"], $(this).html(), last_selected_plugin_uid, plugin_to_user_input);
+                var plugin_data_html = generate_plugin_detail_template(plugin_specs[$(this).html()]["data_specs"], $(this).html(), plugin_to_user_input[last_selected_plugin_uid], "", "");
                 if (plugin_data_html) {
+                    plugin_data_html += '<div class="btn pull-right">' +
+                                        '<button id="save-plugin-data" type="button" class="btn btn-primary">Save</button>' +
+                                        '</div>';
                     $('#plugin-data').html(plugin_data_html);
                     $('#plugin-details').modal({show: true, backdrop: 'static'});
                 }
@@ -53,7 +56,10 @@
 
             var last_id = null;
             $('#plugin-details [id^="field_"]').each(function () {
-                if ($(this).attr("id") == last_id) {
+                if ($(this).is(':checkbox')) {
+                    values.push($(this).is(":checked"));
+
+                }else if ($(this).attr("id") == last_id) {
                     if ($(this).is(':checked')) {
                         values[values.length - 1] = $(this).val();
                     }
@@ -72,7 +78,6 @@
                 plugin_to_user_input[last_selected_plugin_uid][keys[i]] = values[i];
             }
             $('#plugin-details').modal('hide');
-
         });
 
 

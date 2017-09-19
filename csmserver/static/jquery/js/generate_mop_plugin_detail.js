@@ -1,17 +1,12 @@
 
-function generate_plugin_detail_template(plugin_data_specs, plugin_name, plugin_uid, plugin_to_user_input){
+function generate_plugin_detail_template(plugin_data_specs, plugin_name, user_input, label_width, field_width){
 
     var $plugin_detail_modal = $('#plugin-details-modal');
     $plugin_detail_modal.empty();
     var html = "";
-    console.log(plugin_to_user_input[plugin_uid]);
 
+    html += create_html_for_plugin(plugin_name, plugin_data_specs, user_input, label_width, field_width);
 
-    html += create_html_for_plugin(plugin_name, plugin_data_specs, plugin_to_user_input[plugin_uid]);
-
-    html += '<div class="btn pull-right">' +
-            '<button id="save-plugin-data" type="button" class="btn btn-primary">Save</button>' +
-            '</div>';
     return html;
 
 
@@ -20,9 +15,7 @@ function generate_plugin_detail_template(plugin_data_specs, plugin_name, plugin_
 
 function generate_input_field(label_name, label_width, field_value, field_width, allow_host_variables) {
     var field_id = label_name.split(' ').join('_');
-    var html = '<div class="form-group">' +
-               '<label class="' + label_width + ' control-label" id="label_' + field_id + '">' + label_name + '</label>' +
-               '<div class="' + field_width + '">';
+    var html = get_form_group_html(label_name, label_width, field_id, field_width, "");
     if (allow_host_variables) {
         html += '<input class="form-control allow-host-variables" id="field_' + field_id + '" type="text" value="' + field_value + '">';
     } else {
@@ -35,11 +28,10 @@ function generate_input_field(label_name, label_width, field_value, field_width,
 }
 
 
-function generate_textarea_field(label_name, label_width, num_rows, num_cols, field_width, content) {
+function generate_textarea_field(label_name, label_width, num_rows, num_cols, content) {
+    var field_width = "col-sm-6";
     var field_id = label_name.split(' ').join('_');
-    var html = '<div class="form-group">' +
-               '<label class="' + label_width + ' control-label" id="label_' + field_id + '">' + label_name + '</label>' +
-               '<div class="' + field_width + '">' +
+    var html = get_form_group_html(label_name, label_width, field_id, field_width, "") +
                '<textarea style="border: 1px solid #ccc;border-radius: 4px;" id="field_' + field_id + '" rows="' + num_rows + '" cols="' + num_cols + '">' + content + '</textarea>' +
                '</div>' +
                '</div>';
@@ -49,9 +41,7 @@ function generate_textarea_field(label_name, label_width, num_rows, num_cols, fi
 
 function generate_radio_button_field(label_name, label_width, field_width, options, selected_value) {
     var field_id = label_name.split(' ').join('_');
-    var html = '<div class="form-group">' +
-               '<label class="' + label_width + ' control-label" id="label_' + field_id + '">' + label_name + '</label>' +
-               '<div class="' + field_width + '" style="margin-top: 6px;">';
+    var html = get_form_group_html(label_name, label_width, field_id, field_width, "margin-top: 6px;");
     var i;
     for (i=0;i<options.length;i++) {
         if (options[i] == selected_value) {
@@ -65,16 +55,78 @@ function generate_radio_button_field(label_name, label_width, field_width, optio
     return html;
 }
 
+function generate_checkbox_button_field(label_name, label_width, field_width, options, default_value) {
+    var field_id = label_name.split(' ').join('_');
+    var html = get_form_group_html(label_name, label_width, field_id, field_width, "margin-top: 6px;") +
+               '<div class="btn-group" data-toggle="buttons" id="field_' + field_id + '">';
+    if (default_value) {
+        html += '<label class="btn btn-default">'+
+                '<input type="radio" name="options" autocomplete="off" checked> Yes'+
+                '</label>'+
+                '<label class="btn btn-primary active">'+
+                '<input type="radio" name="options" autocomplete="off"> No'+
+                '</label>';
+        //html += '<button type="button" class="btn btn-primary active" data-value="1">Yes</button>' +
+          //      '<button type="button" class="btn btn-default" data-value="0">No</button>';
+    } else {
+        html += '<label class="btn btn-primary active">'+
+                '<input type="radio" name="options" autocomplete="off" checked> Yes'+
+                '</label>'+
+                '<label class="btn btn-default">'+
+                '<input type="radio" name="options" autocomplete="off"> No'+
+                '</label>';
+        //html += '<button type="button" class="btn btn-default" data-value="1">Yes</button>' +
+          //      '<button type="button" class="btn btn-primary active" data-value="0">No</button>';
+    }
 
-function create_html_for_plugin(plugin_name, plugin_data_specs, selected_plugin_data) {
-    var label_width="col-sm-2", field_width="col-sm-10";
+    html += '</div></div>';
+
+    return html;
+}
+
+
+function generate_toggle_button_field(label_name, label_width, field_width, options, default_value) {
+    var field_id = label_name.split(' ').join('_');
+    var html = get_form_group_html(label_name, label_width, field_id, field_width, "margin-top: 4px;");
+
+    if (default_value) {
+        html += '<label class="switch">' +
+                '<input type="checkbox" id="field_' + field_id + '" checked>' +
+                '<span class="slider round"></span>' +
+                '</label>';
+    } else {
+        html += '<label class="switch">' +
+                '<input type="checkbox" id="field_' + field_id + '">' +
+                '<span class="slider round"></span>' +
+                '</label>';
+    }
+
+    html += '</div></div>';
+
+    return html;
+}
+
+function get_form_group_html(label_name, label_width, field_id, field_width, field_style) {
+    return '<div class="form-group form-horizontal" style="display:block;margin-bottom:15px">' +
+           '<label class="' + label_width + ' control-label" id="label_' + field_id + '">' + label_name + '</label>' +
+           '<div class="' + field_width + '" style="' + field_style + '"> ';
+}
+
+
+function create_html_for_plugin(plugin_name, plugin_data_specs, selected_plugin_data, label_width, field_width) {
+    if (!label_width) {
+        label_width="col-sm-3";
+    }
+    if (!field_width) {
+        field_width="col-sm-8";
+    }
     var html = "";
     for (var i=0;i<plugin_data_specs.length;i++) {
         var data_specs = plugin_data_specs[i];
         var attribute_name = data_specs["attribute"];
         if (!attribute_name) {
             bootbox.alert("Error: Missing 'attribute' definition for plugin " + plugin_name);
-            return false;
+            return '';
         }
         var default_value = "";
         if (data_specs["default_value"]) {
@@ -82,8 +134,11 @@ function create_html_for_plugin(plugin_name, plugin_data_specs, selected_plugin_
         }
         var value = get_value(selected_plugin_data, attribute_name, default_value);
 
-        if (data_specs["ui_component"] == "textarea") {
-            html += generate_textarea_field(convert_attribute_name_to_field_label(attribute_name), label_width, 20, 90, field_width, value);
+        if (data_specs["ui_component"] == "toggle") {
+            html += generate_toggle_button_field(convert_attribute_name_to_field_label(attribute_name), label_width, field_width, value);
+
+        } else if (data_specs["ui_component"] == "textarea") {
+            html += generate_textarea_field(convert_attribute_name_to_field_label(attribute_name), label_width, 20, 70, value);
         } else if (data_specs["ui_component"] == "text") {
             var allow_host_variables = false;
             if (data_specs["enable_env_var_input"] == true) {
@@ -94,12 +149,12 @@ function create_html_for_plugin(plugin_name, plugin_data_specs, selected_plugin_
             var options = data_specs["options"];
             if (!options || options.length < 1) {
                 bootbox.alert("Error: Missing 'options' definition for attribute " + attribute_name + " in plugin " + plugin_name);
-                return false;
+                return '';
             }
             html += generate_radio_button_field(convert_attribute_name_to_field_label(attribute_name), label_width, field_width, options, value);
         } else {
             bootbox.alert("Error: Unsupported ui_component " + data_specs["ui_component"] + " for attribute " + attribute_name + " in plugin " + plugin_name);
-            return false;
+            return '';
         }
 
 
