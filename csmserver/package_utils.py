@@ -174,8 +174,13 @@ def get_target_software_package_list(family, os_type, host_packages, target_vers
                                              PlatformFamily.NCS5K,
                                              PlatformFamily.NCS540,
                                              PlatformFamily.NCS5500]:
-                        # ncs5k-mini-x.iso-6.1.3
-                        target_list.append("{}-{}-{}".format(family.lower(), 'mini-x.iso', target_version))
+
+                        if numeric_target_version >= 622:
+                            # ncs5500-mini-x-6.3.1.iso
+                            target_list.append("{}-{}-{}.iso".format(family.lower(), 'mini-x', target_version))
+                        else:
+                            # ncs5k-mini-x.iso-6.1.3
+                            target_list.append("{}-{}-{}".format(family.lower(), 'mini-x.iso', target_version))
                     elif software_platform in [PlatformFamily.NCS6K]:
                         # ncs6k-mini-x-6.3.1.iso
                         target_list.append("{}-{}-{}.iso".format(family.lower(), 'mini-x', target_version))
