@@ -23,6 +23,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 from flask import jsonify
+from sqlalchemy import and_
 
 from database import DBSession
 
@@ -31,12 +32,16 @@ from models import InstallJobHistory
 from constants import JobStatus
 from constants import InstallAction
 
+from common import get_host
 from common import get_host_list
 from common import get_user_list
 from common import get_host_platform_and_version_summary_tuples
 
+from api_utils import validate_url_parameters
+
 from api_constants import RESPONSE_ENVELOPE
 
+KEY_HOSTNAME = 'hostname'
 KEY_USERNAME = 'username'
 KEY_CREATED_TIME = 'created_time'
 KEY_CREATED_MONTH = 'created_month'
@@ -131,8 +136,11 @@ def api_get_host_platform_and_version_counts(request):
 def api_get_monthly_installation_counts(request):
     """
     GET:
-    http://localhost:5000/api/v1/executive_dashboard/get_monthly_installation_counts'
+    http://localhost:5000/api/v1/executive_dashboard/get_monthly_installation_counts
+    http://localhost:5000/api/v1/executive_dashboard/get_monthly_installation_counts?hostname=MyHost
     """
+    validate_url_parameters(request, [KEY_HOSTNAME])
+
     rows = []
     counters = {}
     db_session = DBSession()
@@ -152,7 +160,16 @@ def api_get_monthly_installation_counts(request):
                            InstallAction.SATELLITE_TRANSFER,
                            InstallAction.SATELLITE_ACTIVATE]
 
-    install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.status == JobStatus.COMPLETED).all()
+    clauses = [InstallJobHistory.status == JobStatus.COMPLETED]
+
+    hostname = request.args.get(KEY_HOSTNAME)
+    if hostname:
+        host = get_host(db_session, hostname)
+        if host is None:
+            raise ValueError("Host '{}' does not exist in the database.".format(hostname))
+        clauses.append(InstallJobHistory.host_id == host.id)
+
+    install_jobs = db_session.query(InstallJobHistory).filter(and_(*clauses)).all()
     for install_job in install_jobs:
         # (2017, 4) : [10, 20, 15, and etc]
         key = (install_job.created_time.year, install_job.created_time.month)

@@ -81,6 +81,7 @@ KEY_ENABLE_PASSWORD = 'enable_password'
 KEY_JUMP_HOST = 'jump_host'
 KEY_SOFTWARE_PROFILE = 'software_profile'
 
+KEY_PAGE = 'page'
 KEY_FAMILY = 'family'
 KEY_CHASSIS = 'chassis'
 KEY_SOFTWARE_PLATFORM = 'software_platform'
@@ -242,7 +243,7 @@ def api_get_hosts(request):
     http://localhost:5000/api/v1/hosts?region=SJ Labs&page=2
     http://localhost:5000/api/v1/hosts?region=SJ%20Labs&family=ASR9K
     """
-    validate_url_parameters(request, [KEY_HOSTNAME, KEY_REGION, KEY_FAMILY, 'page'])
+    validate_url_parameters(request, [KEY_HOSTNAME, KEY_REGION, KEY_FAMILY, KEY_PAGE])
 
     page = 1
     clauses = []
@@ -257,7 +258,7 @@ def api_get_hosts(request):
         hosts = [host]
     else:
         try:
-            page = int(request.args.get('page')) if request.args.get('page') else 1
+            page = int(request.args.get(KEY_PAGE)) if request.args.get(KEY_PAGE) else 1
             if page <= 0: page = 1
         except Exception:
             return failed_response('page must be an numeric value')
