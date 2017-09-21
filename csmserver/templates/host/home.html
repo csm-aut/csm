@@ -68,9 +68,9 @@
                 [0, "asc"],
                 [1, "asc"]
             ],
-            "scrollY": "250px",
-            "iDisplayLength": 200,
-            "sDom": 'ft',
+            "bLengthChange": false,
+            "paging": false,
+            "info": false,
             "columnDefs": [{
                 "targets": 0,
                 "data": 'software_platform',
@@ -432,21 +432,23 @@
                     </tbody>
                 </table>
             </div>
+
             <div class="panel panel-info">
                 <div class="panel-heading">
                     Region Hosts:
                     <span id="region_hosts_count"></span>
                 </div>
-                <p></p>
-                <table class="display table" id="host-platform-table">
-                    <thead>
-                        <tr>
-                            <th>Platform</th>
-                            <th>Software</th>
-                            <th>Host</th>
-                        </tr>
-                    </thead>
-                </table>
+                <div class="panel-body" style="max-height:500px;overflow:scroll;white-space:nowrap;">
+                    <table class="display table" id="host-platform-table">
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Software</th>
+                                <th>#</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
             </div>
         </div>
         <div class="col-sm-9">
