@@ -691,8 +691,8 @@
             <hr>
             <div class="panel panel-info">
                 <div class="panel-heading">General</div>
-                <div class="panel-body">
-                    <table id="host-info-table" class="table table-striped" >
+                <div class="panel-body" style="overflow:scroll;white-space: nowrap;">
+                    <table id="host-info-table" class="table table-striped">
                     </table>
                 </div>
             </div>
@@ -736,7 +736,7 @@
                                 </div>
                             </div>
                             <div class="panel-collapse collapse {% if loop.index == 1 %} in {% endif %}" id="collapse{{ package_state }}">
-                                <div class="panel-body">
+                                <div class="panel-body" style="overflow:scroll;white-space: nowrap;">
                                     <table  class="display table" id="{{ package_state }}">
                                         <thead class="hide-header">
                                             <tr>
