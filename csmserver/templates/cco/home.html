@@ -381,6 +381,7 @@
         });
 
         function check_server_reachability_before_proceeding(server_id, server_directory) {
+            spinner.show();
             $.ajax({
                 url: "/install/api/get_server_file_dict/" + server_id,
                 dataType: 'json',
