@@ -85,11 +85,10 @@ function generate_checkbox_button_field(label_name, label_width, field_width, op
 }
 
 
-function generate_toggle_button_field(label_name, label_width, field_width, options, default_value) {
+function generate_toggle_button_field(label_name, label_width, field_width, selected_value) {
     var field_id = label_name.split(' ').join('_');
     var html = get_form_group_html(label_name, label_width, field_id, field_width, "margin-top: 4px;");
-
-    if (default_value) {
+    if (selected_value) {
         html += '<label class="switch">' +
                 '<input type="checkbox" id="field_' + field_id + '" checked>' +
                 '<span class="slider round"></span>' +
