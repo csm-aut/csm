@@ -331,17 +331,17 @@
 
                 var install_actions = $('#install_action').val();
 
+                if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
+                    submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                    return
+                }
                 if ($('#hidden_edit').val() == 'False') {
-                    if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
-                        $('#form').submit();
-                    } else {
-                        get_qualified_hosts_and_submit_form(install_actions);
-                    }
+                    get_qualified_hosts_and_submit_form(install_actions);
                 } else {
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
-                        submit_form_on_successfully_download_config_conversion_tool();
+                        submit_form_on_successfully_downloading_migration_support_files();
                     } else {
-                        $('#form').submit();
+                        submit_form_after_downloading_asr9k_x64_supported_hardware_list();
                     }
                 }
 
@@ -359,12 +359,30 @@
                 return false;
             });
 
-            function submit_form_on_successfully_download_config_conversion_tool() {
+            function submit_form_after_downloading_asr9k_x64_supported_hardware_list() {
 
                 submit_spinner.show();
 
                 $.ajax({
-                    url: "/asr9k_x64_migrate/api/get_latest_config_migration_tool/",
+                    url: "/asr9k_x64_migrate/api/download_asr9k_x64_supported_hardware_list/",
+                    dataType: 'json',
+                    success: function (response) {
+                        submit_spinner.hide();
+                        $('#form').submit();
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        bootbox.alert("Unable to download the latest ASR9K-X64 supported hardware list from CCO to CSM. Error=" + errorThrown);
+                        submit_spinner.hide();
+                    }
+                });
+            }
+
+            function submit_form_on_successfully_downloading_migration_support_files() {
+
+                submit_spinner.show();
+
+                $.ajax({
+                    url: "/asr9k_x64_migrate/api/download_migration_support_files/",
                     dataType: 'json',
                     success: function (response) {
                         if (response.status == 'Failed') {
@@ -508,10 +526,9 @@
                                               $('#hidden_hosts').val(qualified_hosts);
                                               $('#hidden_dependency').val(new_dependency_list);
                                               if (need_to_download_config_conversion_tool) {
-                                                  submit_form_on_successfully_download_config_conversion_tool();
+                                                  submit_form_on_successfully_downloading_migration_support_files();
                                               } else {
-                                                  submit_spinner.hide();
-                                                  $('#form').submit();
+                                                  submit_form_after_downloading_asr9k_x64_supported_hardware_list();
                                               }
                                           }
 
@@ -547,10 +564,9 @@
                                       callback: function() {
                                           $('#hidden_dependency').val(dependency_list.join());
                                           if (need_to_download_config_conversion_tool) {
-                                              submit_form_on_successfully_download_config_conversion_tool();
+                                              submit_form_on_successfully_downloading_migration_support_files();
                                           } else {
-                                              submit_spinner.hide();
-                                              $('#form').submit();
+                                              submit_form_after_downloading_asr9k_x64_supported_hardware_list();
                                           }
                                       }
 

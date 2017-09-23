@@ -1,0 +1,73 @@
+- version: 6.1.3
+
+  RP_RSP:
+    - A99-RP2-SE
+    - A99-RP2-TR
+    - A9K-RSP880-RL-SE
+    - A9K-RSP880-RL-TR
+    - A9K-RSP880-SE
+    - A9K-RSP880-TR
+    - ASR-9922-RP-SE
+    - ASR-9922-RP-TR
+
+  LC:
+    - A99-12x100GE
+    - A99-12x100GE-CM
+    - A99-8X100GE-CM
+    - A99-8X100GE-SE
+    - A99-8X100GE-TR
+    - A9K-4X100GE-SE
+    - A9K-4X100GE-TR
+    - A9K-8X100GE-CM
+    - A9K-8X100GE-L-SE
+    - A9K-8X100GE-L-TR
+    - A9K-8X100GE-LB-SE
+    - A9K-8X100GE-LB-TR
+    - A9K-8X100GE-SE
+    - A9K-8X100GE-TR
+
+  FAN:
+    - ASR-9904-FAN
+    - ASR-9006-FAN-V2
+    - ASR-9010-FAN-V2
+    - ASR-9910-FAN
+    - ASR-9912-FAN
+    - ASR-9922-FAN-V2
+
+  PEM:
+    - PWR-2KW-DC-V2
+    - PWR-3KW-AC-V2
+    - PWR-4.4KW-DC-V3
+    - PWR-6KW-AC-V3
+
+  FC:
+    - A99-SFC2
+
+- version: 6.2.1
+
+  RP_RSP:
+    - A99-RSP-SE
+    - A99-RSP-TR
+
+  LC:
+    - A9K-400G-DWDM-SE
+    - A9K-400G-DWDM-TR  
+    - A9K-MOD200-SE
+    - A9K-MOD200-TR
+    - A9K-MOD400-CM
+    - A9K-MOD400-SE
+    - A9K-MOD400-TR
+
+  FC:
+    - A99-SFC-S
+
+  MPA:
+    - A9K-MPA-20X1GE
+    - A9K-MPA-20X10GE
+    - A9K-MPA-20x10GE-CM
+    - A9K-MPA-4X10GE
+
+- version: 6.2.2
+
+  MPA:
+    - A9K-MPA-2X100GE
