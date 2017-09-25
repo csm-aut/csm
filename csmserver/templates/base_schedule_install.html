@@ -451,9 +451,17 @@ $(function() {
             validate_object.check_missing_file_on_server = false;
             check_need_reload(validate_object);
         } else {
-            // Turn on the spinner.  This will be useful for batch scheduling.
-            if (validate_object.spinner != null ) validate_object.spinner.show();
-            on_finish_validate(validate_object);
+            if (has_one_of_these(install_actions, [FPD_UPGRADE])) {
+                bootbox.confirm('FPD Upgrade will cause the device to reload, proceed?', function(result) {
+                    if (result) {
+                        if (validate_object.spinner != null ) validate_object.spinner.show();
+                            on_finish_validate(validate_object);
+                    }
+                });
+            } else {
+                if (validate_object.spinner != null ) validate_object.spinner.show();
+                on_finish_validate(validate_object);
+            }
         }
     }
 
