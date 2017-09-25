@@ -44,16 +44,16 @@ class ConvertConfigWorkUnit(WorkUnit):
             except OSError:
                 self.convert_config_job.set_status(JobStatus.FAILED)
                 self.db_session.commit()
-                logger.exception("OSError occurred while running the configuration migration tool " +
-                                 "{} on config file {}.".format(nox_to_use, file_path))
+                logger.exception("Running the configuration migration tool " +
+                                 "{} on config file {} hit OSError.".format(nox_to_use, file_path))
 
             conversion_successful = False
 
             if nox_error:
                 self.convert_config_job.set_status(JobStatus.FAILED)
                 self.db_session.commit()
-                logger.exception("Error running the configuration migration tool {} ".format(nox_to_use) +
-                                 "on config file {}:\n {}".format(file_path, nox_error))
+                logger.exception("Running the configuration migration tool {} ".format(nox_to_use) +
+                                 "on config file {} hit error:\n {}".format(file_path, nox_error))
 
             if re.search("Done \[.*\]", nox_output):
                 path = ""
@@ -74,7 +74,7 @@ class ConvertConfigWorkUnit(WorkUnit):
                 self.convert_config_job.set_status(JobStatus.FAILED)
                 self.db_session.commit()
                 logger.exception("Configuration migration tool failed to convert {}".format(file_path) +
-                                 " - {}".format(nox_output))
+                                 ": {}".format(nox_output))
 
         finally:
             self.db_session.close()

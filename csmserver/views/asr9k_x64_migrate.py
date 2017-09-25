@@ -437,7 +437,6 @@ def init_schedule_form(db_session, http_request, get=False):
 
     schedule_form = ScheduleMigrationForm(http_request.form)
     fill_regions(db_session, schedule_form.region.choices)
-    fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
     fill_custom_command_profiles(db_session, schedule_form.custom_command_profile.choices)
 
     if get:
@@ -498,7 +497,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # Fills the selections
     fill_servers(schedule_form.server_dialog_server.choices, host.region.servers, include_local=False)
     fill_custom_command_profiles(db_session, schedule_form.custom_command_profile.choices)
-    fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
 
     if request.method == 'POST':
         if install_job is not None:
@@ -799,21 +797,6 @@ def get_install_migrations_dict():
     }
 
 
-def fill_hardware_audit_version(choices):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append(('', ''))
-
-    with open('./asr9k_x64/migration_supported_hw.json') as data_file:
-        supported_hw = json.load(data_file)
-
-    versions = supported_hw.keys()
-
-    for i in range(len(versions)-1, 0, -1):
-        choices.append((versions[i], versions[i] + ".*"))
-    choices.append((versions[0], versions[0] + ".* and onwards"))
-
-
 class ScheduleMigrationForm(Form):
     install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
 
@@ -845,7 +828,7 @@ class ScheduleMigrationForm(Form):
 
     hidden_dependency = HiddenField('')
 
-    hardware_audit_version = SelectField('ASR9K-X64 Software Version', coerce=str, choices=[('Any', 'Any')])
+    hardware_audit_version = StringField('ASR9K-X64 Software Version')
     hidden_hardware_audit_version = HiddenField('')
 
 

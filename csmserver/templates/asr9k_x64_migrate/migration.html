@@ -278,11 +278,6 @@
             }
 
             $('#on-submit').click(function (e) {
-                //$('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').text());
-                //console.log('hardware_audit_version');
-                //console.log($('#hardware_audit_version option:selected').text());
-                //console.log($('#hidden_hardware_audit_version').val());
-                //return false;
 
                 if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT SOFTWARE VERSION" && validateHardwareAudit() == false) {
                     return false;
@@ -304,6 +299,24 @@
 
             });
 
+
+            function check_version(version) {
+                var numbers = version.split(".");
+                var min_version_numbers = [6,1,3];
+                var valid_version = false;
+                for (var i = 0; i < 3; i++) {
+                    if (parseInt(numbers[i]) > min_version_numbers[i]) {
+                        valid_version = true;
+                        break
+                    } else if (parseInt(numbers[i]) < min_version_numbers[i]) {
+                        break;
+                    } else if (i==2 && parseInt(numbers[i]) == min_version_numbers[i]) {
+                        valid_version = true;
+                    }
+                }
+                return valid_version
+            }
+
             function on_submit() {
 
                 if (use_utc_timezone) {
@@ -311,8 +324,25 @@
                 } else {
                     $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
                 }
+                var hardware_audit_version = $('#hardware_audit_version').val();
+                var install_actions = $('#install_action').val();
 
-                $('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').val());
+                if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
+                    if (hardware_audit_version == '') {
+                        bootbox.alert("Please specify the ASR9K-X64 Software Version.");
+                        return false;
+                    }
+                    if (!/^\d+\.\d+\.\d+$/.test(hardware_audit_version)) {
+                        bootbox.alert("The ASR9K-X64 Software Version entered - " + hardware_audit_version + " - is not in X.X.X format.");
+                        return false;
+                    }
+                    if (!check_version(hardware_audit_version)) {
+                        bootbox.alert("The ASR9K-X64 Software Version has to be at least 6.1.3.");
+                        return false;
+                    }
+                }
+
+                $('#hidden_hardware_audit_version').val($('#hardware_audit_version').val());
 
                 $('#hidden_region').val($('#region').val());
                 $('#hidden_hosts').val(String(host_selector.get_selected_items()));
@@ -328,8 +358,6 @@
                 } else {
                     $('#hidden_override_hw_req').val($('[name="override_hw_req"]')[1].value);
                 }
-
-                var install_actions = $('#install_action').val();
 
                 if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
                     submit_form_after_downloading_asr9k_x64_supported_hardware_list();
@@ -545,7 +573,7 @@
                             }
                          submit_spinner.hide();
 
-                        } else {
+                        } else if (non_console_host_list.length > 0) {
 
                             bootbox.dialog({
                                 message: non_console_warning_html,
@@ -581,6 +609,12 @@
                                 }
                                 });
 
+                        } else {
+                            if (need_to_download_config_conversion_tool) {
+                                submit_form_on_successfully_downloading_migration_support_files();
+                            } else {
+                                submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                            }
                         }
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
