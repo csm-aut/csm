@@ -183,9 +183,9 @@
                 }
             });
 
-            $('[data-toggle="popover_override_hw_req_right"]').popover({
+            $('[data-toggle="popover_override_hw_req_top"]').popover({
                 trigger : 'click',
-                placement : 'right',
+                placement : 'top',
                 html : true,
                 content : function() {
                     return $('#popover_hw_req').html()
@@ -577,7 +577,7 @@
 
                             bootbox.dialog({
                                 message: non_console_warning_html,
-                                title: "Warning: " + String(disqualified_count) + " out of " + String(hostnames.length) + " selected host(s) do not have console connection",
+                                title: "Warning: " + String(disqualified_count) + " out of " + String(hostnames.length) + " selected host(s) have no console port specified",
                                 onEscape: function() {},
                                 show: true,
                                 backdrop: true,
