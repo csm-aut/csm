@@ -504,20 +504,39 @@ def api_get_supported_install_actions(hostname):
     rows = []
 
     if host.family == PlatformFamily.ASR900:
-        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE,
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE,
+                                         InstallAction.POST_UPGRADE,
                                          InstallAction.ALL]})
         rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE]})
+    elif (host.family == PlatformFamily.ASR9K and host.os_type == 'XR') or \
+                    host.family == PlatformFamily.XR12K or host.family == PlatformFamily.CRS:
+        # Classic IOS XR
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE,
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE,
+                                         InstallAction.POST_UPGRADE,
+                                         InstallAction.INSTALL_COMMIT,
+                                         InstallAction.ALL,
+                                         InstallAction.INSTALL_ROLLBACK]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE,
+                                         InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+                                         InstallAction.INSTALL_DEACTIVATE]})
+        rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
     else:
-        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
-                                         InstallAction.INSTALL_COMMIT, InstallAction.ALL]})
-        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE, InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE,
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE,
+                                         InstallAction.POST_UPGRADE,
+                                         InstallAction.INSTALL_COMMIT,
+                                         InstallAction.ALL]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE,
+                                         InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
                                          InstallAction.INSTALL_DEACTIVATE]})
         rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
 
     return jsonify(**{'data': rows})
-
 
 @install.route('/api/get_install_history/hosts/<hostname>')
 @login_required

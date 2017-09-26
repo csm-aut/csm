@@ -24,6 +24,7 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
             <option value="Post-Upgrade">Post-Upgrade</option>
             <option value="Commit">Commit</option>
             <option value="ALL">ALL</option>
+            <option value="Rollback">Rollback</option>
             <option value="Remove">Remove</option>
             <option value="Remove All Inactive">Remove All Inactive</option>
             <option value="Deactivate">Deactivate</option>
@@ -33,7 +34,6 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
         </select>
     </div>
 </div>
-
 
 <div id="widget-panel" class="form-group ">
     <label class="col-sm-4 control-label">Select From</label>  
@@ -154,6 +154,7 @@ $(function() {
     var INSTALL_REMOVE_ALL_INACTIVE = "Remove All Inactive";
     var INSTALL_DEACTIVATE = "Deactivate";
     var FPD_UPGRADE = "FPD-Upgrade";
+    var INSTALL_ROLLBACK = 'Rollback'
 
     var region_id = -1;
 
@@ -198,6 +199,10 @@ $(function() {
             $("#install_action").val([INSTALL_REMOVE_ALL_INACTIVE]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
             $("#install_action").val([INSTALL_DEACTIVATE]).trigger('change');
+        } else if (has_one_of_these(install_actions, [INSTALL_ROLLBACK]) && install_actions.length > 1) {
+            $("#install_action").val([INSTALL_ROLLBACK]).trigger('change');
+        } else if (has_one_of_these(install_actions, [FPD_UPGRADE]) && install_actions.length > 1) {
+            $("#install_action").val([FPD_UPGRADE]).trigger('change');
         }
 
         if (has_one_of_these(install_actions, [INSTALL_ADD, ALL])) {
@@ -452,7 +457,7 @@ $(function() {
             check_need_reload(validate_object);
         } else {
             if (has_one_of_these(install_actions, [FPD_UPGRADE])) {
-                bootbox.confirm('FPD Upgrade will cause the device to reload, proceed?', function(result) {
+                bootbox.confirm('This operation may cause the device to reload, proceed?', function(result) {
                     if (result) {
                         if (validate_object.spinner != null ) validate_object.spinner.show();
                             on_finish_validate(validate_object);
