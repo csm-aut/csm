@@ -105,6 +105,7 @@ required_keys_dict = {InstallAction.PRE_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.INSTALL_ACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
                       InstallAction.POST_UPGRADE: [KEY_HOSTNAME],
                       InstallAction.INSTALL_COMMIT: [KEY_HOSTNAME],
+                      InstallAction.INSTALL_ROLLBACK: [KEY_HOSTNAME],
                       InstallAction.INSTALL_REMOVE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
                       InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
                       InstallAction.FPD_UPGRADE: [KEY_HOSTNAME]}
@@ -117,7 +118,8 @@ ordered_install_actions = [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
 supported_install_actions = ordered_install_actions + [InstallAction.INSTALL_REMOVE,
                                                        InstallAction.INSTALL_DEACTIVATE,
                                                        InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
-                                                       InstallAction.FPD_UPGRADE]
+                                                       InstallAction.FPD_UPGRADE,
+                                                       InstallAction.INSTALL_ROLLBACK]
 
 
 def api_create_install_request(request):
