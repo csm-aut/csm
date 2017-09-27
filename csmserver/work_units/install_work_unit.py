@@ -28,7 +28,6 @@ from handlers.doc_central import handle_doc_central_logging
 from context import InstallContext
 
 from utils import create_log_directory
-from utils import is_empty
 from utils import get_log_directory
 from utils import get_file_list
 
@@ -45,8 +44,6 @@ from models import Host
 from models import InstallJob
 from models import InstallJobHistory
 from models import SystemOption
-
-from common import get_last_completed_install_job_for_install_action
 
 import traceback
 import datetime
@@ -172,6 +169,10 @@ class InstallWorkUnit(WorkUnit):
         # Send notification error
         self.create_email_notification(db_session, logger, host, install_job_history)
 
+    def get_job_datetime_string(self, job_time):
+        datetime_string = get_datetime_string(job_time)
+        return 'Unknown' if datetime_string is None else datetime_string
+
     def create_email_notification(self, db_session, logger, host, install_job):
         try:
             session_log_link = "log/hosts/{}/install_job_history/session_log/{}?file_path={}".format(
@@ -184,10 +185,10 @@ class InstallWorkUnit(WorkUnit):
                 message += 'The scheduled installation for host "' + host.hostname + '" has FAILED.<br><br>'
 
             message += 'Scheduled Time: ' + \
-                       get_datetime_string(install_job.scheduled_time) + \
+                       self.get_job_datetime_string(install_job.scheduled_time) + \
                        ' UTC<br>'
             message += 'Start Time: ' + \
-                       get_datetime_string(install_job.start_time) + \
+                       self.get_job_datetime_string(install_job.start_time) + \
                        ' UTC<br>'
             message += 'Install Action: ' + install_job.install_action + '<br><br>'
 
