@@ -35,6 +35,7 @@ from utils import create_log_directory
 from multi_process import WorkUnit
 
 import traceback
+import os
 import sys
 
 
@@ -63,6 +64,7 @@ class InventoryWorkUnit(WorkUnit):
             if host is None:
                 logger.error('Unable to retrieve host: %s' % host_id)
 
+            inventory_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, inventory_job.id)
             ctx = InventoryContext(db_session, host, inventory_job)
 
             handler_class = get_inventory_handler_class(ctx)
@@ -70,7 +72,6 @@ class InventoryWorkUnit(WorkUnit):
                 logger.error('Unable to get handler for %s, inventory job %s', host.software_platform, self.job_id)
 
             inventory_job.set_status(JobStatus.IN_PROGRESS)
-            inventory_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, inventory_job.id)
             db_session.commit()
 
             handler = handler_class()
@@ -92,6 +93,9 @@ class InventoryWorkUnit(WorkUnit):
                 self.archive_inventory_job(db_session, inventory_job, JobStatus.FAILED, trace=sys.exc_info)
 
                 db_session.commit()
+
+                with open(os.path.join(ctx.log_directory, 'exception.log'), 'w') as fd:
+                    fd.write(traceback.format_exc())
             except Exception:
                 self.log_exception(logger, host)
         finally:

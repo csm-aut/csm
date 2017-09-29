@@ -87,6 +87,7 @@ class InstallWorkUnit(WorkUnit):
                 logger.error('Unable to retrieve host %s', self.host_id)
                 return
 
+            install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
             ctx = InstallContext(db_session, host, install_job)
 
             handler_class = get_install_handler_class(ctx)
@@ -95,7 +96,6 @@ class InstallWorkUnit(WorkUnit):
 
             install_job.start_time = datetime.datetime.utcnow()
             install_job.set_status(JobStatus.IN_PROGRESS)
-            install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
 
             # Reset the job_info field especially for a re-submitted job.
             install_job.save_data('job_info', [])
@@ -129,6 +129,9 @@ class InstallWorkUnit(WorkUnit):
                 self.log_exception(logger, host)
                 self.archive_install_job(db_session, logger, ctx, host, install_job,
                                          JobStatus.FAILED, process_name, trace=traceback.format_exc())
+
+                with open(os.path.join(ctx.log_directory, 'exception.log'), 'w') as fd:
+                    fd.write(traceback.format_exc())
             except Exception:
                 self.log_exception(logger, host)
         finally:
@@ -210,14 +213,16 @@ class InstallWorkUnit(WorkUnit):
             logger.exception('create_email_notification() hit exception')
 
     def check_command_file_diff(self, install_job, message):
-        file_suffix = '.diff.html'
-        file_list = get_file_list(os.path.join(get_log_directory(), install_job.session_log))
-        diff_file_list = [file for file in file_list if file_suffix in file]
+        if install_job.session_log is not None:
+            file_suffix = '.diff.html'
 
-        if len(diff_file_list) > 0:
-            message += 'The following command outputs have changed between different installation phases<br><br>'
-            for file in diff_file_list:
-                message += file.replace(file_suffix, '') + '<br>'
-            message += '<br>'
+            file_list = get_file_list(os.path.join(get_log_directory(), install_job.session_log))
+            diff_file_list = [file for file in file_list if file_suffix in file]
+
+            if len(diff_file_list) > 0:
+                message += 'The following command outputs have changed between different installation phases<br><br>'
+                for file in diff_file_list:
+                    message += file.replace(file_suffix, '') + '<br>'
+                message += '<br>'
 
         return message

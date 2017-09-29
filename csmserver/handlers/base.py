@@ -48,8 +48,6 @@ from parsers import get_parser_factory
 from csmpe import CSMPluginManager
 
 import os
-import re
-import shutil
 import condoor
 import logging
 
@@ -61,14 +59,9 @@ import logging
 
 class BaseHandler(object):
     def execute(self, ctx):
-        try:
-            self.start(ctx)
-            self.post_processing(ctx)
-        except Exception:
-            # If there is no db_session, it is not important to log the exception
-            if isinstance(ctx, ConnectionContext):
-                logger = get_db_session_logger(ctx.db_session)
-                logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
+        # Any exception will be propagated to the caller.
+        self.start(ctx)
+        self.post_processing(ctx)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
