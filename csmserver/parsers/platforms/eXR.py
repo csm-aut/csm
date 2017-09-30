@@ -28,6 +28,7 @@ from models import Package
 from models import ModulePackageState
 from constants import PackageState
 from base import BaseSoftwarePackageParser
+from base import BaseInventoryParser
 
 
 class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
@@ -309,3 +310,31 @@ class EXRSoftwarePackageParser(BaseSoftwarePackageParser):
             trunks[module] = trunk
 
         return trunks
+
+
+class EXRInventoryParser(BaseInventoryParser):
+
+    def process_inventory(self, ctx):
+        """
+        In eXR, 'admin show inventory' and 'show inventory' give different inventories, so we have to take the union.
+        """
+        if not ctx.load_job_data('cli_show_inventory') or not ctx.load_job_data('cli_admin_show_inventory'):
+            return
+
+        inventory_output = ctx.load_job_data('cli_show_inventory')[0]
+
+        admin_inventory_output = ctx.load_job_data('cli_admin_show_inventory')[0]
+
+        inventory_data = self.parse_inventory_output(inventory_output)
+
+        inventory = set([(data['description'], data['hardware_revision'],
+                          data['serial_number'], data['model_name'], data['name']) for data in inventory_data])
+
+        admin_inventory_data = self.parse_inventory_output(admin_inventory_output)
+
+        for data in admin_inventory_data:
+            if (data['description'], data['hardware_revision'],
+                data['serial_number'], data['model_name'], data['name']) not in inventory:
+                inventory_data.append(data)
+
+        return self.store_inventory(ctx, inventory_data)

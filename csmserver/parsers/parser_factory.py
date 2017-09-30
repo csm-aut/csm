@@ -26,6 +26,7 @@ import abc
 
 from platforms.base import BaseInventoryParser
 from platforms.eXR import EXRSoftwarePackageParser
+from platforms.eXR import EXRInventoryParser
 from platforms.IOS_XE import IOSXESoftwarePackageParser
 from platforms.IOS import IOSSoftwarePackageParser
 from platforms.IOS_XR import IOSXRSoftwarePackageParser
@@ -61,6 +62,9 @@ class EXRParserFactory(ParserFactory):
 
     def create_software_package_parser(self):
         return EXRSoftwarePackageParser()
+
+    def create_inventory_parser(self):
+        return EXRInventoryParser()
 
 
 class IOSXEParserFactory(ParserFactory):
