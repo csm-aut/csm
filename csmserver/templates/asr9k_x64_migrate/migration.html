@@ -473,12 +473,12 @@
                         var non_console_warning_html = '';
 
                         if (non_console_host_list.length > 0) {
-                            non_console_warning_html += '<p>The recommended way for migration is through console connection. ' +
+                            non_console_warning_html += '<p>Warning: The recommended way for migration is through console connection. ' +
                                     'For the selected host(s) with management interface connection, ' +
                                     'there will be no session log available after they reload and before ASR9K-X64 completes booting. ' +
                                     'In case of failure during the reload process, console connection will be necessary for troubleshooting.</p>' +
-                                    '<h4>Host(s) with management interface connection</h4>' +
-                                    '<div style="overflow: auto;height: 200px;width: 100%;">' +
+                                     String(non_console_host_list.length) + ' selected host(s) have management interface connection:' +
+                                    '<div style="overflow: auto;max-height: 200px;width: 100%;">' +
                                     '<table class="table table-striped"><tbody>';
                             $.map(non_console_host_list, function (hostname) {
                                 non_console_warning_html += '<tr><td>' + hostname + '</td></tr>';
@@ -489,70 +489,48 @@
 
                         if (disqualified_count > 0) {
 
-                            var qualified_hosts = "";
-                            var new_dependency_list = "";
+                            var qualified_hosts = '';
 
-                            html += '<p>';
-                            if (dependency == PRE_MIGRATE) {
-                                html += 'To schedule Migrate for a host, '
-                            } else if (dependency == MIGRATE_SYSTEM) {
-                                html += 'To schedule Post-Migrate for a host, '
-                            }
-                            html += dependency + " must either be scheduled" +
-                                    ' or already completed successfully for the host.</p>';
-                            if (disqualified_count == hostnames.length) {
-                                html += 'None of the selected hosts meet this requirement.'
-                            } else {
-                                html += 'The host(s) below failed to meet this requirement.'
-                            }
-                            html += '</p>';
+                            if (dependency == MIGRATE_SYSTEM) {
+                                html += 'Warning: Post-Migrate should be scheduled after the device migrates to ASR9K-X64. ' +
+                                        'The host(s) below do not have a scheduled or completed Migrate action.' +
+                                        '</p>';
 
-                            html += '<h4>Dis-qualified Hosts</h4>' +
-                                   '<div style="overflow: auto;height: 200px;width: 100%;">' +
-                                   '<table class="table table-striped"><tbody>';
+                                html +='<div style="overflow: auto;max-height: 200px;width: 100%;">' +
+                                       '<table class="table table-striped"><tbody>';
 
-                            for (var i = 0, len = hostnames.length; i < len; ++i) {
-                                if (dependency_list[i] == '-2') {
-                                    html += '<tr><td>' + hostnames[i] + '</td></tr>';
-                                } else {
-                                    qualified_hosts += hostnames[i] + ',';
-                                    new_dependency_list += dependency_list[i] + ',';
+                                for (var i = 0, len = hostnames.length; i < len; ++i) {
+                                    if (dependency_list[i] == '-2') {
+                                        html += '<tr><td>' + hostnames[i] + '</td></tr>';
+                                    } else {
+                                        qualified_hosts += hostnames[i] + ',';
+                                    }
+
                                 }
-                            }
-                            html += '</tbody></table></div>';
+                                html += '</tbody></table></div>';
 
-                            if (disqualified_count == hostnames.length) {
-
-                                html += '<br><p>Please make sure to schedule ' + dependency + ' for all selected hosts.</p>';
-                                bootbox.alert({
-                                    message: html,
-                                    title: "No selected hosts qualify for scheduling"
-                                });
-                            } else {
                                 qualified_hosts = qualified_hosts.slice(0, -1);
-                                new_dependency_list = new_dependency_list.slice(0, -1);
 
-                                html += '<br><p>You can choose to schedule for the qualified hosts only, or click cancel.</p>';
+                                html += '<br><p>If these hosts have been migrated to ASR9K-X64, you can continue to schedule Post-Migrate for all selected hosts, or click cancel.</p><br>';
 
                                 html += non_console_warning_html;
 
                                 bootbox.dialog({
                                     message: html,
-                                    title: String(disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
-                                    onEscape: function() {},
+                                    title: "Warning: " + String(disqualified_count) + " out of " + String(hostnames.length) + " selected hosts do not have a scheduled or completed Migrate action",
+                                    onEscape: false,
                                     show: true,
                                     backdrop: true,
                                     closeButton: true,
                                     animate: true,
-                                    className: "check-dependency-modal",
+                                    className: "check-dependency-post-migrate-modal",
                                     callback: function(){ /* your callback code */ },
                                     buttons: {
                                         success: {
-                                          label: "Only schedule for qualified hosts",
+                                          label: "Continue to schedule for all",
                                           className: "btn-primary",
                                           callback: function() {
-                                              $('#hidden_hosts').val(qualified_hosts);
-                                              $('#hidden_dependency').val(new_dependency_list);
+                                              $('#hidden_dependency').val(dependency_list.join(','));
                                               if (need_to_download_config_conversion_tool) {
                                                   submit_form_on_successfully_downloading_migration_support_files();
                                               } else {
@@ -570,15 +548,95 @@
                                         }
                                     }
                                 });
+
+                            } else {
+                                // dependency is Pre-Migrate
+                                var new_dependency_list = "";
+
+                                html += '<p>';
+
+                                html += 'To schedule Migrate for a host, Pre-Migrate must either be scheduled' +
+                                        ' or has been completed successfully.</p>' +
+                                        'The host(s) below failed to meet this requirement.' +
+                                        '</p>' +
+                                        '<h4>Dis-qualified Hosts</h4>' +
+                                        '<div style="overflow: auto;max-height: 200px;width: 100%;">' +
+                                        '<table class="table table-striped"><tbody>';
+
+                                for (var i = 0, len = hostnames.length; i < len; ++i) {
+                                    if (dependency_list[i] == '-2') {
+                                        html += '<tr><td>' + hostnames[i] + '</td></tr>';
+                                    } else {
+                                        qualified_hosts += hostnames[i] + ',';
+                                        new_dependency_list += dependency_list[i] + ',';
+                                    }
+                                }
+                                html += '</tbody></table></div>';
+
+                                if (disqualified_count == hostnames.length) {
+
+                                    html += '<br><p>Please make sure to schedule ' + dependency + ' for all selected hosts.</p>';
+                                    bootbox.alert({
+                                        message: html,
+                                        title: "No selected hosts qualify for scheduling"
+                                    });
+                                } else {
+                                    // remove comma in the end
+                                    qualified_hosts = qualified_hosts.slice(0, -1);
+                                    new_dependency_list = new_dependency_list.slice(0, -1);
+
+                                    html += '<br><p>You can choose to schedule for the qualified hosts only, or click cancel.</p>';
+
+                                    html += non_console_warning_html;
+
+                                    bootbox.dialog({
+                                        message: html,
+                                        title: String(disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
+                                        onEscape: false,
+                                        show: true,
+                                        backdrop: true,
+                                        closeButton: true,
+                                        animate: true,
+                                        className: "check-dependency-modal",
+                                        callback: function(){ /* your callback code */ },
+                                        buttons: {
+                                            success: {
+                                              label: "Only schedule for qualified hosts",
+                                              className: "btn-primary",
+                                              callback: function() {
+                                                  $('#hidden_hosts').val(qualified_hosts);
+                                                  $('#hidden_dependency').val(new_dependency_list);
+                                                  if (need_to_download_config_conversion_tool) {
+                                                      submit_form_on_successfully_downloading_migration_support_files();
+                                                  } else {
+                                                      submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                                                  }
+                                              }
+
+                                            },
+                                            "Cancel": {
+                                              className: "btn-default",
+                                              callback: function() {
+                                                  submit_spinner.hide();
+                                              }
+
+                                            }
+                                        }
+                                    });
+                                }
+
                             }
-                         submit_spinner.hide();
+
+
+
+
 
                         } else if (non_console_host_list.length > 0) {
 
                             bootbox.dialog({
                                 message: non_console_warning_html,
-                                title: "Warning: " + String(disqualified_count) + " out of " + String(hostnames.length) + " selected host(s) have no console port specified",
-                                onEscape: function() {},
+                                title: "Warning: " + String(non_console_host_list.length) + " out of " + String(hostnames.length) + " selected host(s) have no console port specified",
+                                onEscape: false,
                                 show: true,
                                 backdrop: true,
                                 closeButton: true,
@@ -616,12 +674,14 @@
                                 submit_form_after_downloading_asr9k_x64_supported_hardware_list();
                             }
                         }
+                        submit_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
                         bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
                         submit_spinner.hide();
                     }
                 });
+
             }
 
 
