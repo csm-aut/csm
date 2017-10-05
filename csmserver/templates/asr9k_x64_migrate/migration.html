@@ -492,8 +492,8 @@
                             var qualified_hosts = '';
 
                             if (dependency == MIGRATE_SYSTEM) {
-                                html += 'Warning: Post-Migrate should be scheduled after the device migrates to ASR9K-X64. ' +
-                                        'The host(s) below do not have a scheduled or completed Migrate action.' +
+                                html += '<p>Warning: Post-Migrate should be scheduled after the device migrates to ASR9K-X64. ' +
+                                        String(disqualified_count) + ' selected host(s) do not have a scheduled or completed Migrate action:' +
                                         '</p>';
 
                                 html +='<div style="overflow: auto;max-height: 200px;width: 100%;">' +
@@ -553,13 +553,11 @@
                                 // dependency is Pre-Migrate
                                 var new_dependency_list = "";
 
-                                html += '<p>';
-
-                                html += 'To schedule Migrate for a host, Pre-Migrate must either be scheduled' +
+                                html += '<p>To schedule Migrate for a host, Pre-Migrate must either be scheduled' +
                                         ' or has been completed successfully.</p>' +
                                         'The host(s) below failed to meet this requirement.' +
                                         '</p>' +
-                                        '<h4>Dis-qualified Hosts</h4>' +
+                                        '<h4>' + String(disqualified_count) + ' Dis-qualified Hosts</h4>' +
                                         '<div style="overflow: auto;max-height: 200px;width: 100%;">' +
                                         '<table class="table table-striped"><tbody>';
 
