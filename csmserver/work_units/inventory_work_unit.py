@@ -22,6 +22,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from sqlalchemy import exc
 from models import Host
 from models import InventoryJob
 from models import InventoryJobHistory
@@ -86,7 +87,8 @@ class InventoryWorkUnit(WorkUnit):
 
             db_session.commit()
 
-        except Exception:
+        except (Exception, exc.InvalidRequestError, exc.SQLAlchemyError):
+            db_session.rollback()
             try:
                 self.log_exception(logger, host)
 

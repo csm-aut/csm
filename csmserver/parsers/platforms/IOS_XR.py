@@ -128,7 +128,10 @@ class IOSXRSatelliteParser():
 
         # check if none, do nothing
         if not cli_show_nv_satellite or 'No satellites are configured' in cli_show_nv_satellite[0]:
-            print("No satellites are configured")
+            return
+
+        # check valid show command output
+        if 'Satellite' not in cli_show_nv_satellite[0]:
             return
 
         '''
@@ -174,17 +177,17 @@ class IOSXRSatelliteParser():
         ))
         '''
 
-        Satellite_id = ''
-        Device_name = ''
-        Type = ''
-        State = ''
-        Install_state = ''
-        Mac_address = ''
-        Ip_address = ''
-        Serial_number = ''
-        Remote_version = ''
-        Remote_version_details_list = []
-        Fabric_links_list = []
+        satellite_id = ''
+        device_name = ''
+        type = ''
+        state = ''
+        install_state = ''
+        mac_address = ''
+        ip_address = ''
+        serial_number = ''
+        remote_version = ''
+        remote_version_details_list = []
+        fabric_links_list = []
 
         remote_version_flag = False
         fabric_links_flag = False
@@ -196,36 +199,36 @@ class IOSXRSatelliteParser():
         for line in lines:
             if line[0:9] == 'Satellite':
                 if print_flag:
-                    Remote_version_details = ','.join(Remote_version_details_list)
-                    Fabric_links = ','.join(Fabric_links_list)
+                    remote_version_details = ','.join(remote_version_details_list)
+                    fabric_links = ','.join(fabric_links_list)
                     # print Fabric_links
 
                     satellites.append(Satellite(
-                        satellite_id=Satellite_id,
-                        device_name=Device_name,
-                        type=Type,
-                        state=State,
-                        install_state=Install_state,
-                        ip_address=Ip_address,
-                        serial_number=Serial_number,
-                        mac_address=Mac_address,
-                        remote_version=Remote_version,
-                        remote_version_details=Remote_version_details,
-                        fabric_links=Fabric_links
+                        satellite_id=satellite_id,
+                        device_name=device_name,
+                        type=type,
+                        state=state,
+                        install_state=install_state,
+                        ip_address=ip_address,
+                        serial_number=serial_number,
+                        mac_address=mac_address,
+                        remote_version=remote_version,
+                        remote_version_details=remote_version_details,
+                        fabric_links=fabric_links
                     ))
 
                 # initialize satellite parameters
-                Satellite_id = line[9:].strip()
-                Device_name = ''
-                Type = ''
-                State = ''
-                Install_state = ''
-                Mac_address = ''
-                Ip_address = ''
-                Serial_number = ''
-                Remote_version = ''
-                Remote_version_details_list = []
-                Fabric_links_list = []
+                satellite_id = line[9:].strip()
+                device_name = ''
+                type = ''
+                state = ''
+                install_state = ''
+                mac_address = ''
+                ip_address = ''
+                serial_number = ''
+                remote_version = ''
+                remote_version_details_list = []
+                fabric_links_list = []
 
                 remote_version_flag = False
                 fabric_links_flag = False
@@ -240,39 +243,39 @@ class IOSXRSatelliteParser():
                 if 'Connected' in status:
                     m = re.search('Connected \((.*)\)', status)
                     if m:
-                        State = 'Connected'
-                        Install_state = m.group(1)
+                        state = 'Connected'
+                        install_state = m.group(1)
                     else:
-                        State = status
+                        state = status
                 else:
-                    State = status
+                    state = status
                 continue
 
             if line[0:7] == '  Type:':
-                Type = line[7:].strip()
+                type = line[7:].strip()
                 continue
 
             if line[0:24] == '  Displayed device name:':
-                Device_name = line[24:].strip()
+                device_name = line[24:].strip()
                 continue
 
             if line[0:14] == '  MAC address:':
-                Mac_address = line[14:].strip()
+                mac_address = line[14:].strip()
                 continue
 
             if line[0:15] == '  IPv4 address:':
                 subline = line[15:].strip()
                 m = re.search('\d+\.\d+\.\d+\.\d+', subline)
                 if m:
-                    Ip_address = m.group(0)
+                    ip_address = m.group(0)
                 continue
 
             if line[0:16] == '  Serial Number:':
-                Serial_number = line[16:].strip()
+                serial_number = line[16:].strip()
                 continue
 
             if line[0:17] == '  Remote version:':
-                Remote_version = line[17:].strip()
+                remote_version = line[17:].strip()
                 remote_version_flag = True
                 continue
 
@@ -283,7 +286,7 @@ class IOSXRSatelliteParser():
                     remote_version_flag = False
                 else:
                     subline = line.strip()
-                    Remote_version_details_list.append(subline)
+                    remote_version_details_list.append(subline)
                     continue
 
             if 'Configured satellite fabric links:' in line:
@@ -294,25 +297,25 @@ class IOSXRSatelliteParser():
             if fabric_links_flag:
                 if line[4] != ' ' and line[4] != '-':
                     subline = line.strip()
-                    Fabric_links_list.append(subline)
+                    fabric_links_list.append(subline)
                     continue
 
-        Remote_version_details = ','.join(Remote_version_details_list)
-        Fabric_links = ','.join(Fabric_links_list)
+        remote_version_details = ','.join(remote_version_details_list)
+        fabric_links = ','.join(fabric_links_list)
         # print Fabric_links
 
         satellites.append(Satellite(
-            satellite_id=Satellite_id,
-            device_name=Device_name,
-            type=Type,
-            state=State,
-            install_state=Install_state,
-            ip_address=Ip_address,
-            serial_number=Serial_number,
-            mac_address=Mac_address,
-            remote_version=Remote_version,
-            remote_version_details=Remote_version_details,
-            fabric_links=Fabric_links
+            satellite_id=satellite_id,
+            device_name=device_name,
+            type=type,
+            state=state,
+            install_state=install_state,
+            ip_address=ip_address,
+            serial_number=serial_number,
+            mac_address=mac_address,
+            remote_version=remote_version,
+            remote_version_details=remote_version_details,
+            fabric_links=fabric_links
         ))
 
         ctx.host.satellites = satellites

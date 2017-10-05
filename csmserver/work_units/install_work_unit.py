@@ -22,6 +22,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from sqlalchemy import exc
+
 from handlers.loader import get_inventory_handler_class
 from handlers.loader import get_install_handler_class
 from handlers.doc_central import handle_doc_central_logging
@@ -124,7 +126,8 @@ class InstallWorkUnit(WorkUnit):
             else:
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
-        except Exception:
+        except (Exception, exc.InvalidRequestError, exc.SQLAlchemyError):
+            db_session.rollback()
             try:
                 self.log_exception(logger, host)
                 self.archive_install_job(db_session, logger, ctx, host, install_job,
