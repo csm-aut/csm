@@ -69,11 +69,10 @@
   <pre>Note:
 If no file is provided here, CSM Server will migrate the existing admin and IOS-XR config
 files on device using the NoX tool. Then, during Migrate, when ASR9K-X64 boots, the device
-will load the converted IOS-XR config file automatically. During Post-Migrate, CSM Server
-will attempt to load the migrated admin config file.
+will load the converted admin and IOS-XR config files automatically.
 
 Alternatively, you can supply an IOS-XR config for the ASR9K-X64 image. Once the new 64 bit
-image boots, during Migrate, the device will load this customized IOS-XR config file. Then,
-during Post-Migrate, CSM Server will attempt to load the migrated admin config.</pre>
+image boots, during Migrate, the device will load the converted admin config file as well as
+this customized IOS-XR config file.</pre>
 </div>
 <legend></legend>
