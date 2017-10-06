@@ -133,8 +133,6 @@ class InstallWorkUnit(WorkUnit):
                 self.archive_install_job(db_session, logger, ctx, host, install_job,
                                          JobStatus.FAILED, process_name, trace=traceback.format_exc())
 
-                with open(os.path.join(ctx.log_directory, 'exception.log'), 'w') as fd:
-                    fd.write(traceback.format_exc())
             except Exception:
                 self.log_exception(logger, host)
         finally:

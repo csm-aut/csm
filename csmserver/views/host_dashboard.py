@@ -138,6 +138,7 @@ def api_get_host_dashboard_cookie(hostname):
         row['last_successful_inventory_time'] = inventory_job.last_successful_time
         row['status'] = inventory_job.status
         row['can_schedule'] = system_option.can_schedule
+        row['can_install'] = system_option.can_install
         rows.append(row)
 
     return jsonify(**{'data': rows})

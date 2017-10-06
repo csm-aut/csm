@@ -96,8 +96,6 @@ class InventoryWorkUnit(WorkUnit):
 
                 db_session.commit()
 
-                with open(os.path.join(ctx.log_directory, 'exception.log'), 'w') as fd:
-                    fd.write(traceback.format_exc())
             except Exception:
                 self.log_exception(logger, host)
         finally:

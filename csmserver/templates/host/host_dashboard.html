@@ -573,7 +573,7 @@
                             last_successful_inventory_time = new_last_successful_inventory_time
                         }
 
-                        display_alert(element[0].can_schedule);
+                        display_alert(element[0].can_schedule, element[0].can_install);
                     });
                 }
             });
@@ -632,17 +632,30 @@
             show_hide_satellite_tab();
         }, 10000);
 
-        function display_alert(can_schedule) {
+
+        function display_alert(can_schedule, can_install) {
             if (can_schedule) {
                 $("#schedule-install-menu-item").removeClass("disabled");
-                $('#alerts').html('');
             } else {
                 $("#schedule-install-menu-item").addClass("disabled");
+            }
+
+            if (can_schedule && can_install) {
+                $('#alerts').html('');
+            } else {
+                var cannot_html = ' the scheduling of any jobs';
+                if (!can_install) {
+                    if (!can_schedule) {
+                        cannot_html = ' the scheduling of any new jobs and executing of any pending jobs';
+                    } else {
+                        cannot_html = ' the executing of any pending jobs';
+                    }
+                }
 
                 $('#alerts').html(
                     '<div class="alert alert-danger"> ' +
                     '<strong>NOTICE:&nbsp;</strong>  ' +
-                    'The system administrator has halted the capability to schedule any install.  Contact the system administrator for more information.' +
+                    'The system administrator has disabled ' + cannot_html + '.' +
                     '</div>');
             }
         }

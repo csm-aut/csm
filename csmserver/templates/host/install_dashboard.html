@@ -531,19 +531,19 @@
             if (can_schedule && can_install) {
                 $('#alerts').html('');
             } else {
-                var cannot_html = ' schedule any installations';
+                var cannot_html = ' the scheduling of any jobs';
                 if (!can_install) {
                     if (!can_schedule) {
-                        cannot_html = ' schedule and execute any installations';
+                        cannot_html = ' the scheduling of any new jobs and executing of any pending jobs';
                     } else {
-                        cannot_html = ' execute any installations';
+                        cannot_html = ' the executing of any pending jobs';
                     }
                 }
 
                 $('#alerts').html(
                     '<div class="alert alert-danger"> ' +
                     '<strong>NOTICE:&nbsp;</strong>  ' +
-                    'The system administrator has halted the capability to ' + cannot_html + '.  Contact the system administrator for more information.' +
+                    'The system administrator has disabled ' + cannot_html + '.' +
                     '</div>');
             }
         }

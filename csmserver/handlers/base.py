@@ -46,22 +46,37 @@ from filters import get_datetime_string
 
 from parsers import get_parser_factory
 from csmpe import CSMPluginManager
+from csmpe.context import PluginError
 
 import os
 import condoor
 import logging
-
-#
-#logging.basicConfig(
-#        format='%(asctime)-15s %(levelname)8s: %(message)s',
-#        level=logging.DEBUG)
+import traceback
 
 
 class BaseHandler(object):
     def execute(self, ctx):
-        # Any exception will be propagated to the caller.
-        self.start(ctx)
-        self.post_processing(ctx)
+        try:
+            self.start(ctx)
+            self.post_processing(ctx)
+        except (condoor.GeneralError, PluginError):
+            self.log_exception(ctx)
+        except Exception:
+            self.log_exception(ctx)
+            self.write_exception_file(ctx)
+
+    def log_exception(self, ctx):
+        # Only ConnectionContext has a db_session.
+        if isinstance(ctx, ConnectionContext):
+            logger = get_db_session_logger(ctx.db_session)
+            logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
+
+    def write_exception_file(self, ctx):
+        try:
+            with open(os.path.join(ctx.log_directory, 'exception.log'), 'w') as fd:
+                fd.write(traceback.format_exc())
+        except Exception:
+            self.log_exception(ctx)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
