@@ -283,7 +283,7 @@
                 "targets": 6,
                 "data": 'session_log',
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
                 "targets": 7,
@@ -296,13 +296,6 @@
             $('#badge-in-progress').html(install_in_progress_table.api().page.info().recordsTotal);
         });
 
-        $("#install-failed-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
-        });
-
-        $("#install-completed-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
-        });
 
         var install_failed_table = $("#install-failed-datatable").dataTable({
             "serverSide": true,
@@ -365,7 +358,7 @@
                 "targets": 6,
                 "data": 'session_log',
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
                 "targets": 7,
@@ -388,19 +381,11 @@
             $('#badge-failed').html(install_failed_table.api().page.info().recordsTotal);
         });
 
-        function get_log_icon(hostname, table, id, session_log, trace, job_info) {
-            if (trace || session_log || job_info) {
+        function get_log_icon(hostname, table, id, session_log, trace) {
+            if (trace || session_log) {
                 data = "<center>";
 
                 var session_log_url = "/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log;
-
-                if (job_info) {
-                    data += "<a class='show-job-info' " +
-                        "session-log-url='" + session_log_url + "' " +
-                        "table='" + table + "' " +
-                        "job-info-id='" + job_info + "' href='javascript://'>";
-                    data += "<img src='/static/information.png' title='Job Information (warnings or errors)'></a>";
-                }
 
                 if (session_log) {
                     data += "<a href='" + session_log_url + "'>";
@@ -472,7 +457,7 @@
                 "targets": 6,
                 "data": 'session_log',
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                    return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
                 "targets": 7,
@@ -574,8 +559,6 @@
 {% endblock %}
 
 {% block main %}
-
-{% include 'share/job_info_dialog.html' %}
 
 <!-- Main -->
 <div class="container">

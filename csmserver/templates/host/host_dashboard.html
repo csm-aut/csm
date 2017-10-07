@@ -24,28 +24,11 @@
             }
         }
 
-        // Use delegate pattern for event
-        $("#scheduled-install-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
-        });
-
-        $("#installation-history-datatable").on("click", ".show-job-info", function() {
-            display_job_info_dialog($('#job-info-contents'), $(this).attr('table'), $(this).attr('job-info-id'), $(this).attr('session-log-url'));
-        });
-
-        function get_log_icon(hostname, table, id, session_log, trace, job_info) {
-            if (trace || session_log || job_info) {
+        function get_log_icon(hostname, table, id, session_log, trace) {
+            if (trace || session_log) {
                 data = "<center>";
 
                 var session_log_url = "/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log;
-
-                if (job_info) {
-                    data += "<a class='show-job-info' " +
-                        "session-log-url='" + session_log_url + "' " +
-                        "table='" + table + "' " +
-                        "job-info-id='" + job_info + "' href='javascript://'>";
-                    data += "<img src='/static/information.png' title='Job Information (warnings or errors)'></a>";
-                }
 
                 if (session_log) {
                     data += "<a href='" + session_log_url + "'>";
@@ -159,19 +142,9 @@
                 "render": function(data, type, row) {
                     var status = row['status'];
                     var session_log = row['session_log'];
-                    var job_info = row['job_info'];
-                    var job_info_icon_html = ''
                     var job_status_icon_html = '';
 
                     var session_log_url = "/log/hosts/" + row['hostname'] + "/install_job/session_log/" + row['install_job_id'] + "?file_path=" + session_log;
-
-                    if (job_info) {
-                        job_info_icon_html += "<a class='show-job-info' " +
-                            "session-log-url='" + session_log_url + "' " +
-                            "table='install_job' " +
-                            "job-info-id='" + job_info + "' href='javascript://'>";
-                        job_info_icon_html += "<img src='/static/information.png' title='Job Information (warnings or errors)'></a>";
-                    }
 
                     if (status == 'failed') {
                         job_status_icon_html += '<img src=\"{{ url_for('static', filename='error.png') }}\" title="Install Error - Click to View Session Log">';
@@ -183,7 +156,7 @@
                         job_status_icon_html = "<a href='" + session_log_url + "'>" + job_status_icon_html + "</a>";
                     }
 
-                    var icon_html = job_info_icon_html + job_status_icon_html;
+                    var icon_html = job_status_icon_html;
 
                     if (data == 'Migration-Audit' || data == 'Pre-Migrate' || data == 'Migrate' || data == 'Post-Migrate') {
                         return '<a href="/asr9k_x64_migrate/hosts/' + row['hostname'] + '/schedule_install/' + row['install_job_id'] + '/edit/">' + data + '</a>&nbsp;' + icon_html;
@@ -267,7 +240,7 @@
                 "targets": 6,
                 "data": 'session_log',
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                    return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
                 "targets": 7,
@@ -341,7 +314,7 @@
             }, {
                 "targets": 3,
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'inventory_job_history', row['inventory_job_id'], row['session_log'], row['trace'], '');
+                    return get_log_icon(row['hostname'], 'inventory_job_history', row['inventory_job_id'], row['session_log'], row['trace']);
                 }
             }, ],
             "ajax": {
@@ -690,7 +663,6 @@
 
 {% block main %}
 
-{% include 'share/job_info_dialog.html' %}
 {% include 'host/manage_satellite.html' %}
 
 <!-- Main -->

@@ -170,19 +170,19 @@ def host_session_log(hostname, table, id):
     """
     db_session = DBSession()
 
-    record = None
+    job = None
     doc_central_log_file_path = ''
 
     if table == 'install_job':
-        record = db_session.query(InstallJob).filter(InstallJob.id == id).first()
+        job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
     elif table == 'install_job_history':
-        record = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+        job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
 
-        doc_central_log_file_path = get_doc_central_log_path(record)
+        doc_central_log_file_path = get_doc_central_log_path(job)
     elif table == 'inventory_job_history':
-        record = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
+        job = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
 
-    if record is None:
+    if job is None:
         abort(404)
 
     file_path = request.args.get('file_path')
@@ -213,7 +213,9 @@ def host_session_log(hostname, table, id):
             log_file_contents = fo.read()
 
     return render_template('host/session_log.html', hostname=hostname, table=table,
-                           record_id=id, file_pairs=file_pairs, log_file_contents=log_file_contents,
+                           record_id=id, file_pairs=file_pairs,
+                           log_file_contents=log_file_contents,
+                           job_info='\n'.join(job.data.get('job_info')),
                            is_file=os.path.isfile(log_file_path),
                            doc_central_log_file_path=doc_central_log_file_path)
 
@@ -271,27 +273,6 @@ def host_trace(hostname, table, id):
         trace = download_job.trace if download_job is not None else None
 
     return render_template('host/trace.html', hostname=hostname, trace=trace)
-
-
-@log.route('/api/<table>/job_info/<int:id>/')
-@login_required
-def get_job_info(table, id):
-    db_session = DBSession()
-
-    rows = []
-    if table == 'install_job':
-        table_to_query = InstallJob
-    else:
-        table_to_query = InstallJobHistory
-
-    job = db_session.query(table_to_query).filter(table_to_query.id == id).first()
-    if job.data:
-        job_info = job.data.get('job_info')
-        if job_info:
-            # job_info is a list of job information (warnings/errors)
-            rows = job_info
-
-    return jsonify(**{'data': rows})
 
 
 # This route will prompt a file download
