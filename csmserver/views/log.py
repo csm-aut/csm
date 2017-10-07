@@ -212,10 +212,12 @@ def host_session_log(hostname, table, id):
         with io.open(log_file_path, "rt", encoding='latin-1') as fo:
             log_file_contents = fo.read()
 
+    job_info = job.data.get('job_info')
+
     return render_template('host/session_log.html', hostname=hostname, table=table,
                            record_id=id, file_pairs=file_pairs,
                            log_file_contents=log_file_contents,
-                           job_info='\n'.join(job.data.get('job_info')),
+                           job_info=('' if job_info is None else '\n'.join(job_info)),
                            is_file=os.path.isfile(log_file_path),
                            doc_central_log_file_path=doc_central_log_file_path)
 
