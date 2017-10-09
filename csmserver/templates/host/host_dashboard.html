@@ -31,12 +31,12 @@
                 var session_log_url = "/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log;
 
                 if (session_log) {
-                    data += "<a href='" + session_log_url + "'>";
+                    data += "<a href='" + session_log_url + "' target='_session_log'>";
                     data += "<img src='/static/file.png' title='Session Log'></a>";
                 }
 
                 if (trace) {
-                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
+                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/trace/" + trace + "/' target='_trace'>";
                     data += "<img src='/static/error.png' title='debug trace'></a>";
                 }
 
@@ -153,7 +153,7 @@
                     }
 
                     if (session_log) {
-                        job_status_icon_html = "<a href='" + session_log_url + "'>" + job_status_icon_html + "</a>";
+                        job_status_icon_html = "<a href='" + session_log_url + "' target='_session_log'>" + job_status_icon_html + "</a>";
                     }
 
                     var icon_html = job_status_icon_html;
