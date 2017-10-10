@@ -6,14 +6,16 @@
     $(function() {
 
         var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
+        var slider_open_id = '';
 
         function insert_slider(packages, id) {
             if (packages != null && packages.length > 0) {
-                var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' +
+                var slider_state = (slider_open_id == id ? 'in' : '');
+                var html = '<a href="javascript://" data-toggle="collapse" data-target="#' + id + '">' +
                     '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
                     '</a>' +
                     '<!-- Collapsible Element HTML -->' +
-                    '<div id="toggle' + id + '" class="collapse">' +
+                    '<div id="' + id + '" class="collapse ' + slider_state + '">' +
                     '<div style="white-space: nowrap;">' +
                     packages.replace(/,/g, "<br/>") +
                     '</div>' +
@@ -23,6 +25,16 @@
                 return '&nbsp;';
             }
         }
+
+        $("#installation-history-datatable").on("show.bs.collapse", ".collapse", function(e) {
+            $("#" + slider_open_id).removeClass("in");
+            slider_open_id = e.currentTarget.id;
+        });
+
+        $("#installation-history-datatable").on("hide.bs.collapse", ".collapse", function(e) {
+            slider_open_id = '';
+        });
+
 
         function get_log_icon(hostname, table, id, session_log, trace) {
             if (trace || session_log) {
@@ -218,13 +230,7 @@
                 "targets": 3,
                 "data": 'packages',
                 "render": function(data, type, row) {
-                    //return insert_slider(data, row['install_job_id']);
-
-                    if (data != null && data.length > 0) {
-                        return data.replace(/,/g, "<br/>");
-                    } else {
-                        return '&nbsp;';
-                    }
+                    return insert_slider(data, row['install_job_id']);
                 }
             }, {
                 "targets": 4,

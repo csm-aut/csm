@@ -5,18 +5,19 @@
 {% block head %}
 <script>
     $(function() {
-
+        var slider_open_id = '';
         var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
 
         get_install_dashboard_cookie();
 
         function insert_slider(packages, id) {
             if (packages != null && packages.length > 0) {
-                var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' +
+                var slider_state = (slider_open_id == id ? 'in' : '');
+                var html = '<a href="javascript://" data-toggle="collapse" data-target="#' + id + '">' +
                            '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
                            '</a>' +
                            '<!-- Collapsible Element HTML -->' +
-                           '<div id="toggle' + id + '" class="collapse">' +
+                           '<div id="' + id + '" class="collapse ' + slider_state + '">' +
                            display_packages(packages) +
                            '</div>';
                 return html;
@@ -24,6 +25,15 @@
                 return '&nbsp;';
             }
         }
+
+        $("#install-completed-datatable").on("show.bs.collapse", ".collapse", function(e) {
+            $("#" + slider_open_id).removeClass("in");
+            slider_open_id = e.currentTarget.id;
+        });
+
+        $("#install-completed-datatable").on("hide.bs.collapse", ".collapse", function(e) {
+            slider_open_id = '';
+        });
 
         function display_packages(packages) {
             if (packages) {
@@ -445,8 +455,7 @@
                 "targets": 4,
                 "data": 'packages',
                 "render": function(data, type, row) {
-                    //return insert_slider(data, row['install_job_id']);
-                    return display_packages(data);
+                    return insert_slider(data, row['install_job_id']);
                 }
             }, {
                 "targets": 5,
