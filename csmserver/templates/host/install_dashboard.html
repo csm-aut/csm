@@ -445,7 +445,8 @@
                 "targets": 4,
                 "data": 'packages',
                 "render": function(data, type, row) {
-                    return insert_slider(data, row['install_job_id']);
+                    //return insert_slider(data, row['install_job_id']);
+                    return display_packages(data);
                 }
             }, {
                 "targets": 5,

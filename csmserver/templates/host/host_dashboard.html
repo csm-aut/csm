@@ -218,7 +218,13 @@
                 "targets": 3,
                 "data": 'packages',
                 "render": function(data, type, row) {
-                    return insert_slider(data, row['install_job_id']);
+                    //return insert_slider(data, row['install_job_id']);
+
+                    if (data != null && data.length > 0) {
+                        return data.replace(/,/g, "<br/>");
+                    } else {
+                        return '&nbsp;';
+                    }
                 }
             }, {
                 "targets": 4,
