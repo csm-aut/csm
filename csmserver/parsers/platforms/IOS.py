@@ -27,7 +27,6 @@ import re
 from models import Package
 from constants import PackageState
 from base import BaseSoftwarePackageParser
-import logging
 
 
 class IOSSoftwarePackageParser(BaseSoftwarePackageParser):
@@ -44,7 +43,6 @@ class IOSSoftwarePackageParser(BaseSoftwarePackageParser):
             committed_packages = self.get_committed_packages(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
             if committed_packages:
                 for package in committed_packages:
-                    # logging.warning('package = %s', package)
                     host_packages.append(package)
 
         if isinstance(cli_show_install_inactive, list):
@@ -79,7 +77,6 @@ class IOSSoftwarePackageParser(BaseSoftwarePackageParser):
         """
         lines contains the CLI outputs for 'show version'
         """
-        logging.warning("IOS.py get_committed_packages: lines = %s", lines)
         packages = []
         lines = lines.splitlines()
         for line in lines:
@@ -129,7 +126,5 @@ class IOSSoftwarePackageParser(BaseSoftwarePackageParser):
 
                 pkg.append(trunk)
                 trunks[module] = pkg
-
-                # logging.warning('module = %s, pkg = %s', module, pkg)
 
         return trunks

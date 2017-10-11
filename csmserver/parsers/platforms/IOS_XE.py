@@ -28,7 +28,6 @@ from models import Package
 from models import ModulePackageState
 from constants import PackageState
 from base import BaseSoftwarePackageParser
-# import logging
 
 
 class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
@@ -45,7 +44,6 @@ class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
             committed_packages = self.get_committed_packages(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
             if committed_packages:
                 for package in committed_packages.values():
-                    # logging.warning('package = %s', package)
                     host_packages.append(package)
 
         if isinstance(cli_show_install_inactive, list):
@@ -150,7 +148,5 @@ class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
 
                 pkg.append(trunk)
                 trunks[module] = pkg
-
-                # logging.warning('module = %s, pkg = %s', module, pkg)
 
         return trunks

@@ -96,17 +96,12 @@ class BaseInventoryParser(object):
         :param inventory_data: parsed inventory data as a list of dictionaries
         :return: None
         """
-        db_session = DBSession()
-        # this is necessary for now because somewhere in the thread, can be
-        # anywhere in the code, the db_session was not closed - to be found out later.
-        db_session.close()
 
         if len(ctx.host.host_inventory) > 0:
-            self.compare_and_update(ctx, db_session, inventory_data)
+            self.compare_and_update(ctx, ctx.db_session, inventory_data)
         else:
-            self.store_new_inventory(db_session, inventory_data, ctx.host.id)
+            self.store_new_inventory(ctx.db_session, inventory_data, ctx.host.id)
 
-        db_session.close()
         return
 
     def compare_and_update(self, ctx, db_session, inventory_data):
@@ -117,6 +112,7 @@ class BaseInventoryParser(object):
         :param inventory_data: parsed inventory data as a list of dictionaries
         :return: None
         """
+
         existing_host_inventory_query = db_session.query(HostInventory).filter(HostInventory.host_id == ctx.host.id)
 
         updated_inventory_ids = set()
