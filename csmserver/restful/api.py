@@ -47,6 +47,7 @@ import api_region
 import api_jump_host
 import api_server_repository
 import api_custom_command_profile
+import api_executive_dashboard
 
 restful_api = Blueprint('restful', __name__, url_prefix='/api')
 auth = HTTPBasicAuth()
@@ -236,6 +237,16 @@ def get_cco_software_entry(name_or_id):
     except Exception as e:
         return failed_response(e.message)
 
+
+@restful_api.route('/v1/cco/get_optimized_software')
+@auth.login_required
+def get_cco_optimized_software():
+    try:
+        DBSession().close()
+        return api_cco.api_get_optimized_software(request)
+    except Exception as e:
+        return failed_response(e.message)
+
 # --------------------------------------------------------------------------------------------------------------
 
 
@@ -308,3 +319,43 @@ def custom_command_profile_delete(profile_name):
         return failed_response(e.message)
 
 # --------------------------------------------------------------------------------------------------------------
+
+
+@restful_api.route('/v1/executive_dashboard/get_monthly_host_enrollment_counts')
+@auth.login_required
+def api_get_monthly_host_enrollment_counts():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_monthly_host_enrollment_counts(request)
+    except Exception as e:
+        return failed_response(e.message)
+
+
+@restful_api.route('/v1/executive_dashboard/get_monthly_user_enrollment_counts')
+@auth.login_required
+def api_get_monthly_user_enrollment_counts():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_monthly_user_enrollment_counts(request)
+    except Exception as e:
+        return failed_response(e.message)
+
+
+@restful_api.route('/v1/executive_dashboard/get_host_platform_and_version_counts')
+@auth.login_required
+def get_host_platform_and_version_counts():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_host_platform_and_version_counts(request)
+    except Exception as e:
+        return failed_response(e.message)
+
+
+@restful_api.route('/v1/executive_dashboard/get_monthly_installation_counts')
+@auth.login_required
+def api_get_monthly_installation_counts():
+    try:
+        DBSession().close()
+        return api_executive_dashboard.api_get_monthly_installation_counts(request)
+    except Exception as e:
+        return failed_response(e.message)

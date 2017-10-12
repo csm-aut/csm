@@ -64,6 +64,10 @@ def apply_dialect_specific_codes():
     try:
         db_session.execute('alter table host_context modify data MEDIUMTEXT')
         db_session.execute('alter table conformance_report modify hostnames MEDIUMTEXT')
+        db_session.execute('alter table inventory_job modify data MEDIUMTEXT')
+        db_session.execute('alter table inventory_job_history modify data MEDIUMTEXT')
+        db_session.execute('alter table install_job modify data MEDIUMTEXT')
+        db_session.execute('alter table install_job_history modify data MEDIUMTEXT')
     except Exception:
         pass
 

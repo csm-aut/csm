@@ -320,6 +320,11 @@ class Host(Base):
                                backref="host",
                                cascade="all, delete-orphan")
     
+    satellites = relationship("Satellite",
+                              order_by="Satellite.id",
+                              backref="host",
+                              cascade="all, delete-orphan")
+
     install_job_history = relationship("InstallJobHistory",
                                        order_by="desc(InstallJobHistory.created_time)",
                                        backref="host",
@@ -354,7 +359,6 @@ class Host(Base):
 
         db_session.delete(self)
         db_session.commit()
-
 
     def get_json(self):
         result = {}
@@ -655,10 +659,11 @@ class InventoryJob(Base):
     status_time = Column(DateTime) 
     last_successful_time = Column(DateTime)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     
     host_id = Column(Integer, ForeignKey('host.id'), unique=True)
     host = relationship('Host', foreign_keys='InventoryJob.host_id')
-    
+
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -670,6 +675,14 @@ class InventoryJob(Base):
         self.status_message = status_message
         self.status_time = datetime.datetime.utcnow()
 
+    def load_data(self, key):
+        return None if not self.data else self.data.get(key)
+
+    def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
+        self.data[key] = value
+
 
 class InventoryJobHistory(Base):
     __tablename__ = 'inventory_job_history'
@@ -679,13 +692,22 @@ class InventoryJobHistory(Base):
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
                             
     host_id = Column(Integer, ForeignKey('host.id'))
-    
+
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        return None if not self.data else self.data.get(key)
+
+    def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
+        self.data[key] = value
 
 
 class Package(Base):
@@ -727,7 +749,7 @@ class InstallJob(Base):
     scheduled_time = Column(DateTime)
     start_time = Column(DateTime)
     status = Column(String(20))
-    status_message = Column(String(200))
+    status_message = Column(Text)
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
@@ -740,9 +762,6 @@ class InstallJob(Base):
     user_id = Column(Integer, ForeignKey('user.id'))
     custom_command_profile_ids = Column(String(20))
 
-    def __init__(self):
-        self.data = {}
-
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -752,7 +771,7 @@ class InstallJob(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
@@ -779,16 +798,13 @@ class InstallJobHistory(Base):
     created_by = Column(String(50))
                             
     host_id = Column(Integer, ForeignKey('host.id'))
-
-    def __init__(self):
-        self.data = {}
     
     def set_status(self, status):
         self.status = status        
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
@@ -1007,6 +1023,25 @@ class SMUInfo(Base):
         self._cco_filename = value
 
 
+class Satellite(Base):
+    __tablename__ = 'satellite'
+
+    id = Column(Integer, primary_key=True)
+    satellite_id = Column(Integer)
+    device_name = Column(String(50))
+    type = Column(String(20))
+    state = Column(String(100))
+    install_state = Column(String(100))
+    ip_address = Column(String(20))
+    serial_number = Column(String(50))
+    mac_address = Column(String(20))
+    remote_version = Column(String(100))
+    remote_version_details = Column(Text)
+    fabric_links = Column(Text)
+
+    host_id = Column(Integer, ForeignKey('host.id'), index=True)
+
+
 class PackageToSMU(Base):
     __tablename__ = 'package_to_smu'
 
@@ -1035,6 +1070,7 @@ class SystemOption(Base):
     download_threads = Column(Integer, default=5)
     can_schedule = Column(Boolean, default=True)
     can_install = Column(Boolean, default=True)
+    check_host_software_profile = Column(Boolean, default=False)
     enable_email_notify = Column(Boolean, default=False)
     enable_inventory = Column(Boolean, default=True)
     inventory_hour = Column(Integer, default=0)
@@ -1177,11 +1213,15 @@ class CreateTarJob(Base):
     status = Column(String(200))
     status_time = Column(DateTime)
     created_by = Column(String(50))
+    status_message = Column(String(200))
 
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
 
+    def set_status_message(self, status_message):
+        self.status_message = status_message
+        self.status_time = datetime.datetime.utcnow()
 
 class ConvertConfigJob(Base):
     __tablename__ = 'convert_config_job'

@@ -60,6 +60,7 @@ from common import get_software_profile_by_id
 from common import delete_software_profile
 from common import get_host_list_by
 from common import get_hosts_by_software_profile_id
+from common import get_host_software_profile_counts
 
 from database import DBSession
 
@@ -80,8 +81,9 @@ from utils import is_empty
 from utils import create_temp_user_directory
 from utils import create_directory
 from utils import make_file_writable
+from utils import get_search_results
 
-from package_utils import strip_smu_file_extension
+from package_utils import get_matchable_package_dict
 
 import os
 import json
@@ -416,7 +418,7 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
         user_id=current_user.id,
         created_by=current_user.username)
 
-    software_profile_package_dict = fixup_software_profile_packages(software_profile_packages)
+    software_profile_package_dict = get_matchable_package_dict(software_profile_packages)
 
     for hostname in hostnames:
         host = get_host(db_session, hostname)
@@ -452,8 +454,8 @@ def run_conformance_report(db_session, software_profile, match_criteria, hostnam
                 software_version=UNKNOWN if host.software_version is None else host.software_version,
                 conformed=HostConformanceStatus.CONFORM if conformed else HostConformanceStatus.NON_CONFORM,
                 comments=comments,
-                host_packages=','.join(sorted(get_match_result(host_packages,
-                                                               software_profile_package_dict.values()))),
+                host_packages=','.join(sorted(get_match_results(software_profile_package_dict.values(),
+                                                                host_packages))),
                 missing_packages=','.join(sorted(missing_packages)))
         else:
             # Flag host not found condition
@@ -491,19 +493,15 @@ def purge_old_conformance_reports(db_session):
             logger.exception('purge_old_conformance_reports() hit exception')
 
 
-def get_match_result(host_packages, software_profile_packages):
-    match_result = []
+def get_match_results(pattern_list, string_list):
+    match_results = []
 
-    for host_package in host_packages:
-        for software_profile_package in software_profile_packages:
-            matched = False
-            if re.search(software_profile_package, host_package) is not None:
-                matched = True
-                break
+    search_results = get_search_results(pattern_list, string_list)
+    for search_result in search_results:
+        match_results.append(search_result['string'] + ' (matched)' if search_result['matched'] else
+                             search_result['string'])
 
-        match_result.append(host_package + ' (matched)' if matched else host_package)
-
-    return match_result
+    return match_results
 
 
 def get_missing_packages(host_packages, software_profile_package_dict):
@@ -522,31 +520,27 @@ def get_missing_packages(host_packages, software_profile_package_dict):
     return missing_packages
 
 
-def fixup_software_profile_packages(software_profile_packages):
+def match_against_host_software_profile(db_session, hostname, software_packages):
     """
-    Unfortunately, some of the software packages have different external name and internal name (after activation)
-    External Name: asr9k-asr9000v-nV-px.pie-6.1.2
-    Internal Name: asr9k-9000v-nV-px-6.1.2
-
-    External Name: asr9k-services-infra-px.pie-5.3.4
-    Internal Name: asr9k-services-infra.pie-5.3.4
-
-    Returns dictionary with key = software_profile_package, value = package_name_to_match
+    Given a software package list, return an array of dictionaries indicating if the
+    software package matches any software package defined in the host software profile package list.
     """
-    result_dict = dict()
+    results = []
+    system_option = SystemOption.get(db_session)
 
-    for software_profile_package in software_profile_packages:
-        # FIXME: Need platform specific logic
-        package_name_to_match = strip_smu_file_extension(software_profile_package).replace('.x86_64', '')
+    if system_option.check_host_software_profile:
+        host = get_host(db_session, hostname)
+        if host is not None and len(software_packages) > 0:
+            software_profile = get_software_profile_by_id(db_session, host.software_profile_id)
+            if software_profile is not None:
+                software_profile_package_dict = get_matchable_package_dict(software_profile.packages.split(','))
+                software_package_dict = get_matchable_package_dict(software_packages)
 
-        if 'asr9000v' in package_name_to_match:
-            package_name_to_match = package_name_to_match.replace('asr9000v', '9000v')
-        elif 'services-infra-px' in package_name_to_match:
-            package_name_to_match = package_name_to_match.replace('-px', '')
+                for software_package, pattern in software_package_dict.items():
+                    matched = True if pattern in software_profile_package_dict.values() else False
+                    results.append({'software_package': software_package, 'matched': matched})
 
-        result_dict[software_profile_package] = package_name_to_match
-
-    return result_dict
+    return results
 
 
 @conformance.route('/api/export_conformance_report/report/<int:id>')
@@ -808,19 +802,24 @@ def api_assign_software_profile_to_hosts():
     software_profile_id = int(request.form['software_profile_id'])
 
     db_session = DBSession()
+    software_profile = get_software_profile_by_id(db_session, software_profile_id)
+    if not software_profile:
+        return jsonify({'status': 'Unknown software profile.'})
+
     hosts = get_host_list_by(db_session, platform, software_versions, region_ids, roles)
-    message = 'No host fits the selection criteria'
     if hosts:
         try:
             for host in hosts:
                 host.software_profile_id = software_profile_id
             db_session.commit()
-            message = ('%d hosts have been updated.' % len(hosts)) if len(hosts) > 1 else \
-                ('%d host has been updated.' % len(hosts))
-        except Exception as e:
-            return jsonify({'status': e.message})
 
-    return jsonify({'status': 'OK', 'message': message})
+        except Exception as e:
+            return jsonify({'status': 'No host fits the selection criteria'})
+
+    total_host_assigned = get_host_software_profile_counts(db_session, software_profile_id)
+
+    return jsonify({'status': 'OK', 'software_profile': software_profile.name,
+                    'total_hosts_updated': len(hosts), 'total_hosts_assigned': total_host_assigned})
 
 
 @conformance.route('/api/hosts/<hostname>/software_profile/delete', methods=['DELETE'])

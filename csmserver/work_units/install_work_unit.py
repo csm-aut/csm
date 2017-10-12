@@ -22,13 +22,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
+from sqlalchemy import exc
+
 from handlers.loader import get_inventory_handler_class
 from handlers.loader import get_install_handler_class
 from handlers.doc_central import handle_doc_central_logging
 from context import InstallContext
 
 from utils import create_log_directory
-from utils import is_empty
 from utils import get_log_directory
 from utils import get_file_list
 
@@ -45,8 +46,6 @@ from models import Host
 from models import InstallJob
 from models import InstallJobHistory
 from models import SystemOption
-
-from common import get_last_completed_install_job_for_install_action
 
 import traceback
 import datetime
@@ -90,6 +89,7 @@ class InstallWorkUnit(WorkUnit):
                 logger.error('Unable to retrieve host %s', self.host_id)
                 return
 
+            install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
             ctx = InstallContext(db_session, host, install_job)
 
             handler_class = get_install_handler_class(ctx)
@@ -98,7 +98,6 @@ class InstallWorkUnit(WorkUnit):
 
             install_job.start_time = datetime.datetime.utcnow()
             install_job.set_status(JobStatus.IN_PROGRESS)
-            install_job.session_log = create_log_directory(host.connection_param[0].host_or_ip, install_job.id)
 
             # Reset the job_info field especially for a re-submitted job.
             install_job.save_data('job_info', [])
@@ -127,11 +126,13 @@ class InstallWorkUnit(WorkUnit):
             else:
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
-        except Exception:
+        except (Exception, exc.InvalidRequestError, exc.SQLAlchemyError):
+            db_session.rollback()
             try:
                 self.log_exception(logger, host)
                 self.archive_install_job(db_session, logger, ctx, host, install_job,
                                          JobStatus.FAILED, process_name, trace=traceback.format_exc())
+
             except Exception:
                 self.log_exception(logger, host)
         finally:
@@ -172,6 +173,10 @@ class InstallWorkUnit(WorkUnit):
         # Send notification error
         self.create_email_notification(db_session, logger, host, install_job_history)
 
+    def get_job_datetime_string(self, job_time):
+        datetime_string = get_datetime_string(job_time)
+        return 'Unknown' if datetime_string is None else datetime_string
+
     def create_email_notification(self, db_session, logger, host, install_job):
         try:
             session_log_link = "log/hosts/{}/install_job_history/session_log/{}?file_path={}".format(
@@ -184,10 +189,10 @@ class InstallWorkUnit(WorkUnit):
                 message += 'The scheduled installation for host "' + host.hostname + '" has FAILED.<br><br>'
 
             message += 'Scheduled Time: ' + \
-                       get_datetime_string(install_job.scheduled_time) + \
+                       self.get_job_datetime_string(install_job.scheduled_time) + \
                        ' UTC<br>'
             message += 'Start Time: ' + \
-                       get_datetime_string(install_job.start_time) + \
+                       self.get_job_datetime_string(install_job.start_time) + \
                        ' UTC<br>'
             message += 'Install Action: ' + install_job.install_action + '<br><br>'
 
@@ -209,14 +214,16 @@ class InstallWorkUnit(WorkUnit):
             logger.exception('create_email_notification() hit exception')
 
     def check_command_file_diff(self, install_job, message):
-        file_suffix = '.diff.html'
-        file_list = get_file_list(os.path.join(get_log_directory(), install_job.session_log))
-        diff_file_list = [file for file in file_list if file_suffix in file]
+        if install_job.session_log is not None:
+            file_suffix = '.diff.html'
 
-        if len(diff_file_list) > 0:
-            message += 'The following command outputs have changed between different installation phases<br><br>'
-            for file in diff_file_list:
-                message += file.replace(file_suffix, '') + '<br>'
-            message += '<br>'
+            file_list = get_file_list(os.path.join(get_log_directory(), install_job.session_log))
+            diff_file_list = [file for file in file_list if file_suffix in file]
+
+            if len(diff_file_list) > 0:
+                message += 'The following command outputs have changed between different installation phases<br><br>'
+                for file in diff_file_list:
+                    message += file.replace(file_suffix, '') + '<br>'
+                message += '<br>'
 
         return message

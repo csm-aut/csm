@@ -68,6 +68,7 @@ from constants import InstallAction
 
 from utils import is_empty
 from utils import get_return_url
+from utils import convert_integer_list_to_ranges
 
 from filters import get_datetime_string
 
@@ -81,6 +82,8 @@ from smu_info_loader import SMUInfoLoader
 
 from package_utils import strip_smu_file_extension
 from package_utils import get_target_software_package_list
+
+from views.conformance import match_against_host_software_profile
 
 import datetime
 
@@ -501,20 +504,39 @@ def api_get_supported_install_actions(hostname):
     rows = []
 
     if host.family == PlatformFamily.ASR900:
-        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE,
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE,
+                                         InstallAction.POST_UPGRADE,
                                          InstallAction.ALL]})
         rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE]})
-    else:
-        rows.append({'install_options': [InstallAction.PRE_UPGRADE, InstallAction.INSTALL_ADD,
-                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_UPGRADE,
-                                         InstallAction.INSTALL_COMMIT, InstallAction.ALL]})
-        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE, InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+    elif (host.family == PlatformFamily.ASR9K and host.os_type == 'XR') or \
+                    host.family == PlatformFamily.XR12K or host.family == PlatformFamily.CRS:
+        # Classic IOS XR
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE,
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE,
+                                         InstallAction.POST_UPGRADE,
+                                         InstallAction.INSTALL_COMMIT,
+                                         InstallAction.ALL,
+                                         InstallAction.INSTALL_ROLLBACK]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE,
+                                         InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
                                          InstallAction.INSTALL_DEACTIVATE]})
-        # rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
+        rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
+    else:
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE,
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE,
+                                         InstallAction.POST_UPGRADE,
+                                         InstallAction.INSTALL_COMMIT,
+                                         InstallAction.ALL]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE,
+                                         InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+                                         InstallAction.INSTALL_DEACTIVATE]})
+        rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
 
     return jsonify(**{'data': rows})
-
 
 @install.route('/api/get_install_history/hosts/<hostname>')
 @login_required
@@ -554,10 +576,10 @@ def get_software_package_upgrade_list(hostname, target_release):
     if host is None:
         abort(404)
 
-    match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
+    return_internal_name = True if request.args.get('return_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname)
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
-                                                       target_release, match_internal_name)
+                                                       target_release, return_internal_name)
     for package in target_packages:
         rows.append({'package': package})
 
@@ -605,3 +627,52 @@ def api_get_host_packages_by_states(hostname):
             rows.append({'package': package.name if package.location is None else package.location + ':' + package.name})
 
     return jsonify(**{'data': rows})
+
+
+@install.route('/api/check_host_software_profile', methods=['POST'])
+@login_required
+def api_check_host_software_profile():
+    # hostnames can be a comma delimited host list.  FIXME: Should it be a list instead?
+    hostnames = request.form['hostname']
+    software_packages = request.form.getlist('software_packages[]')
+
+    rows = []
+    db_session = DBSession()
+
+    for hostname in hostnames.split(','):
+        match_results = match_against_host_software_profile(db_session, hostname, software_packages)
+        for match_result in match_results:
+            if not match_result['matched']:
+                rows.append({'hostname': hostname, 'software_package': match_result['software_package']})
+
+    if len(rows) > 0:
+        return jsonify({'status': rows})
+
+    return jsonify({'status': 'OK'})
+
+
+@install.route('/api/create_satellite_install_jobs', methods=['POST'])
+@login_required
+def api_create_satellite_install_jobs():
+    if not can_edit_install(current_user):
+        abort(401)
+
+    db_session = DBSession()
+    hostname = request.form['hostname']
+
+    host = get_host(db_session, hostname)
+    if host is None:
+        return jsonify({'status': 'Failed - Unable to locate host {}'.format(hostname)})
+
+    install_actions = request.form.getlist('install_actions[]')
+    scheduled_time_UTC = request.form['scheduled_time_UTC']
+    selected_satellites = request.form.getlist('selected_satellites[]')
+
+    for install_action in install_actions:
+        create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action,
+                                     scheduled_time=scheduled_time_UTC,
+                                     install_job_data={'selected_satellite_ids': convert_integer_list_to_ranges(selected_satellites)},
+                                     created_by=current_user.username)
+
+    return jsonify({'status': 'OK'})
+

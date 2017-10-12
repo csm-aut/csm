@@ -25,7 +25,6 @@
 from models import logger
 from handlers.loader import get_connection_handler_class
 from context import TestConnectionContext
-from constants import ConnectionType
 
 import socket
 import time
@@ -37,10 +36,10 @@ def is_connection_valid(hostname, urls):
         handler_class = get_connection_handler_class(ctx)
         if handler_class is None:
             logger.error('Unable to get connection handler')
+
         handler_class().execute(ctx)
-    except Exception as e:
+    except Exception:
         logger.exception('is_connection_valid() hit exception')
-        raise
 
     return ctx.success
 

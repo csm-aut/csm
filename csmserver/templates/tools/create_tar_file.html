@@ -129,14 +129,16 @@ $(function() {
         $.ajax({
             url: "/tools/api/create_tar_job",
             dataType: 'json',
-            data: {
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({
                 source_tars: source_tars,
                 tar_contents: tar_contents,
                 additional_packages: additional_packages,
                 server_id: select_server_repo.get_server_id(),
                 server_directory: select_server_repo.get_server_directory(),
                 new_tar_name: new_tar_name
-            },
+            }),
             success: function(data) {
                 progressSpan = $('#progress span');
                 //progressSpan.html('Job Submitted.');

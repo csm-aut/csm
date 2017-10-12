@@ -1,8 +1,9 @@
 import os
 import subprocess
 import requests
-import json
 import csv
+import yaml
+import shutil
 
 from constants import InstallAction, get_migration_directory, ServerType
 
@@ -49,6 +50,9 @@ NOX_64_BINARY = "nox-linux-64.bin"
 
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
 NOX_PUBLISH_DATE = "nox_linux.lastPublishDate"
+
+ASR9K_X64_SUPPORTED_HARDWARE_LIST = "asr9k_x64_supported_hardware.yaml"
+ASR9K_X64_DIR = "./asr9k_x64/"
 
 asr9k_x64_migrate = Blueprint('asr9k_x64_migrate', __name__, url_prefix='/asr9k_x64_migrate')
 
@@ -135,8 +139,8 @@ def get_config_conversion_progress():
 
     convert_config_job = db_session.query(ConvertConfigJob).filter(ConvertConfigJob.id == job_id).first()
     if convert_config_job is None:
-        logger.error('Unable to retrieve Convert Config Job: %s' % job_id)
-        return jsonify(status='Unable to retrieve job')
+        logger.exception('Unable to retrieve Convert Config Job: %s' % job_id)
+        return jsonify(status='Unable to retrieve the convert config job')
     return jsonify(status='OK', progress=convert_config_job.status)
 
 
@@ -219,21 +223,21 @@ def upload_config_to_server_repository():
     filename = request.args.get('filename', '', type=str)
 
     if server_id == -1:
-        logger.error('No server repository selected.')
+        logger.exception('No server repository selected.')
         return jsonify(status='No server repository selected.')
 
     db_session = DBSession()
     server = get_server_by_id(db_session, server_id)
 
     if not server:
-        logger.error('Selected server repository not found in database.')
+        logger.exception('Selected server repository not found in database.')
         return jsonify(status='Selected server repository not found in database.')
 
     if not server_directory:
         server_directory = None
 
     if not filename:
-        logger.error('No filename selected.')
+        logger.exception('No filename selected.')
         return jsonify(status='No filename selected.')
 
     config_conversion_path = get_config_conversion_path()
@@ -278,34 +282,45 @@ def upload_files_to_server_repository(sourcefile, server, selected_server_direct
         try:
             tftp_server.upload_file(sourcefile, destfile,
                                     sub_directory=selected_server_directory)
-        except Exception as inst:
-            print(inst)
-            logger.error('Unable to upload file to selected server directory in repository.')
-            return 'Unable to upload file'
+        except Exception as e:
+            logger.exception('Uploading file from {} to selected TFTP server repository directory {} hit exception: {}'.format(
+                sourcefile,
+                selected_server_directory,
+                str(e)
+            ))
+            return 'Failed to upload file'
 
     elif server_type == ServerType.FTP_SERVER:
         ftp_server = FTPServer(server)
         try:
             ftp_server.upload_file(sourcefile, destfile,
                                    sub_directory=selected_server_directory)
-        except Exception as inst:
-            print(inst)
-            logger.error('Unable to upload file to selected server directory in repository.')
-            return 'Unable to upload file'
+        except Exception as e:
+            logger.exception(
+                'Uploading file from {} to selected FTP server repository directory {} hit exception: {}'.format(
+                    sourcefile,
+                    selected_server_directory,
+                    str(e)
+                ))
+            return 'Failed to upload file'
 
     elif server_type == ServerType.SFTP_SERVER:
         sftp_server = SFTPServer(server)
         try:
             sftp_server.upload_file(sourcefile, destfile,
                                     sub_directory=selected_server_directory)
-        except Exception as inst:
-            print(inst)
-            logger.error('Unable to upload file to selected server directory in repository.')
-            return 'Unable to upload file'
+        except Exception as e:
+            logger.exception(
+                'Uploading file from {} to selected SFTP server repository directory {} hit exception: {}'.format(
+                    sourcefile,
+                    selected_server_directory,
+                    str(e)
+                ))
+            return 'Failed to upload file'
 
     else:
-        logger.error('Only FTP, SFTP and TFTP server repositories are supported for this action.')
-        return jsonify(status='Only FTP, SFTP and TFTP server repositories are supported for this action')
+        logger.exception('Unsupported server repository type {} for uploading {}'.format(server_type, sourcefile))
+        return 'Only FTP, SFTP and TFTP server repositories are supported for this action.'
 
     return 'OK'
 
@@ -331,7 +346,6 @@ def migration():
     config_form = init_config_form(db_session, request, get=request.method == 'GET')
 
     if request.method == 'POST':
-        print(str(config_form.data))
         if config_form.hidden_submit_config_form.data == "True":
             return convert_config(db_session, request, 'asr9k_x64_migrate/migration.html', schedule_form)
 
@@ -342,8 +356,8 @@ def migration():
 
         if hostnames is not None:
             print(str(schedule_form.data))
-            print(str(hostnames))
-            dependency_list = schedule_form.hidden_dependency.data.split(',')
+
+            dependency_list = schedule_form.hidden_dependency.data.split(',') if schedule_form.hidden_dependency.data else []
             index = 0
             for hostname in hostnames:
 
@@ -357,8 +371,7 @@ def migration():
                     server_id = schedule_form.hidden_server.data
                     server_directory = schedule_form.hidden_server_directory.data
                     custom_command_profile_ids = [str(i) for i in schedule_form.custom_command_profile.data]
-                    print type(custom_command_profile_ids)
-                    print str(custom_command_profile_ids)
+
                     install_job_data = {}
 
                     if InstallAction.MIGRATION_AUDIT in install_action:
@@ -369,7 +382,7 @@ def migration():
                         install_job_data['override_hw_req'] = schedule_form.hidden_override_hw_req.data
 
                     # If the dependency is a previous job id, it's non-negative int string.
-                    if int(dependency_list[index]) >= 0:
+                    if index < len(dependency_list) and int(dependency_list[index]) >= 0:
                         dependency = dependency_list[index]
 
                     # In this case, the dependency is '-1', which means no dependency for the first install action
@@ -423,7 +436,6 @@ def init_schedule_form(db_session, http_request, get=False):
 
     schedule_form = ScheduleMigrationForm(http_request.form)
     fill_regions(db_session, schedule_form.region.choices)
-    fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
     fill_custom_command_profiles(db_session, schedule_form.custom_command_profile.choices)
 
     if get:
@@ -484,7 +496,6 @@ def handle_schedule_install_form(request, db_session, hostname, install_job=None
     # Fills the selections
     fill_servers(schedule_form.server_dialog_server.choices, host.region.servers, include_local=False)
     fill_custom_command_profiles(db_session, schedule_form.custom_command_profile.choices)
-    fill_hardware_audit_version(schedule_form.hardware_audit_version.choices)
 
     if request.method == 'POST':
         if install_job is not None:
@@ -590,14 +601,13 @@ def get_dependencies():
     dependency = request.args.get('dependency', '', type=str)
 
     dependency_list = []
+    non_console_host_list = []
     disqualified_count = 0
     for hostname in hostnames:
         host = get_host(db_session, hostname)
 
         if host and host.connection_param[0] and (not host.connection_param[0].port_number):
-            disqualified_count += 1
-            dependency_list.append('-2')
-            continue
+            non_console_host_list.append(hostname)
 
         if dependency:
             # Firstly, check if dependency action is scheduled or in progress, if so, add dependency
@@ -620,7 +630,8 @@ def get_dependencies():
                     dependency_list.append('-2')
         else:
             dependency_list.append('-1')
-    return jsonify(**{'data': [{'dependency_list': dependency_list, 'disqualified_count':  disqualified_count}]})
+    return jsonify(**{'data': [{'dependency_list': dependency_list, 'disqualified_count':  disqualified_count,
+                                'non_console_host_list': non_console_host_list}]})
 
 
 def download_latest_config_migration_tool():
@@ -633,16 +644,19 @@ def download_latest_config_migration_tool():
 
     need_new_nox = False
 
-    if os.path.isfile(fileloc + NOX_PUBLISH_DATE):
+    publish_date_file_path = os.path.join(fileloc, NOX_PUBLISH_DATE)
+
+    if os.path.isfile(publish_date_file_path):
         try:
-            with open(fileloc + NOX_PUBLISH_DATE, 'r') as f:
+            with open(publish_date_file_path, 'r') as f:
                 current_date = f.readline()
 
             if date != current_date:
                 need_new_nox = True
-            f.close()
-        except:
-            return False, 'Exception was thrown when reading file ' + fileloc + NOX_PUBLISH_DATE
+        except Exception as e:
+            error_msg = 'Reading file {} hit exception: {}'.format(publish_date_file_path, str(e))
+            logger.exception(error_msg)
+            return False, error_msg
 
     else:
         need_new_nox = True
@@ -662,25 +676,73 @@ def download_latest_config_migration_tool():
             return False, 'NoX is not available for 32 bit linux.'
             # nox_to_use = NOX_32_BINARY
 
-        (success, error_msg) = get_file_http(nox_to_use, fileloc)
+        success, error_msg = get_file_http(nox_to_use, fileloc)
         if not success:
             return False, error_msg
         try:
-            with open(fileloc + NOX_PUBLISH_DATE, 'w') as nox_publish_date_file:
+            with open(publish_date_file_path, 'w') as nox_publish_date_file:
                 nox_publish_date_file.write(date)
-            nox_publish_date_file.close()
-        except:
-            nox_publish_date_file.close()
-            return False, 'Exception was thrown when writing file ' + fileloc + NOX_PUBLISH_DATE
+        except Exception as e:
+            error_msg = 'Writing file {} hit exception: {}'.format(publish_date_file_path, str(e))
+            logger.exception(error_msg)
+            return False, error_msg
 
     return True, 'None'
 
 
-@asr9k_x64_migrate.route('/api/get_latest_config_migration_tool/')
+def download_migration_supported_hardware_list():
+    """Download the list of supported hardware in ASR9K-X64 after verifying the file format"""
+    fileloc = get_migration_directory()
+
+    success, error_msg = get_file_http(ASR9K_X64_SUPPORTED_HARDWARE_LIST, fileloc)
+    if not success:
+        return False, error_msg
+
+    file_path = os.path.join(fileloc, ASR9K_X64_SUPPORTED_HARDWARE_LIST)
+    try:
+        with open(file_path, 'r') as f:
+            yaml.load(f)
+    except Exception as e:
+        error_msg = 'Loading {} hit exception: {}.'.format(file_path, str(e))
+        logger.exception(error_msg)
+        return False, error_msg
+
+    try:
+        shutil.move(file_path, os.path.join(ASR9K_X64_DIR, ASR9K_X64_SUPPORTED_HARDWARE_LIST))
+    except Exception as e:
+        error_msg = 'Overwriting {} with {} hit exception: {}.'.format(
+            os.path.join(ASR9K_X64_DIR, ASR9K_X64_SUPPORTED_HARDWARE_LIST),
+            file_path,
+            str(e))
+        logger.exception(error_msg)
+        return False, error_msg
+
+    return True, 'None'
+
+
+@asr9k_x64_migrate.route('/api/download_migration_support_files/')
 @login_required
-def get_latest_config_migration_tool():
-    """Check if the latest NoX is in file. Download if not."""
+def api_download_migration_support_files():
+    """
+    Check if system has:
+        a) the latest NoX
+        b) the list of supported hardware in ASR9K-X64.
+    Download from CCO if not.
+    """
+    download_migration_supported_hardware_list()
+
     success, err_msg = download_latest_config_migration_tool()
+
+    return jsonify( **{'data': [ { 'error': err_msg } ] } )
+
+
+@asr9k_x64_migrate.route('/api/download_asr9k_x64_supported_hardware_list/')
+@login_required
+def api_download_asr9k_x64_supported_hardware_list():
+    """
+    Download the list of supported hardware in ASR9K-X64 after verifying it.
+    """
+    success, err_msg = download_migration_supported_hardware_list()
 
     return jsonify( **{'data': [ { 'error': err_msg } ] } )
 
@@ -691,28 +753,35 @@ def get_nox_binary_publish_date():
         url = IOSXR_URL + "/" + NOX_PUBLISH_DATE
         r = requests.get(url)
         if not r.ok:
-            return 0, 'HTTP request to get ' + IOSXR_URL + '/' + NOX_PUBLISH_DATE + ' failed.'
-        return (1, r.text)
-    except:
-        return 0, 'Exception was thrown during HTTP request to get ' + IOSXR_URL + '/' + NOX_PUBLISH_DATE
+            error_msg = 'HTTP request to get {} failed.'.format(url)
+            logger.exception(error_msg)
+            return 0, error_msg
+        return 1, r.text
+    except Exception as e:
+        error_msg = 'HTTP request to get {} hit exception: {}'.format(url, str(e))
+        logger.exception(error_msg)
+        return 0, error_msg
 
 
 def get_file_http(filename, destination):
-    """Download file through HTTP"""
+    """Download file through HTTP request"""
     try:
-        with open(destination + filename, 'wb') as handle:
-            response = requests.get(IOSXR_URL + "/" + filename, stream=True)
+        url = IOSXR_URL + "/" + filename
+
+        with open(os.path.join(destination, filename), 'wb') as handle:
+            response = requests.get(url, stream=True)
 
             if not response.ok:
-                return 0, 'HTTP request to get ' + IOSXR_URL + '/' + filename + ' failed.'
+                error_msg = 'HTTP request to get {} failed.'.format(url)
+                logger.exception(error_msg)
+                return 0, error_msg
 
             for block in response.iter_content(1024):
                 handle.write(block)
-        handle.close()
-    except:
-        handle.close()
-        return (0, 'Exception was thrown during HTTP request to get ' + IOSXR_URL + '/' + filename +
-                   ' and writing it to ' + destination + '.')
+    except Exception as e:
+        error_msg = 'HTTP request for getting {} and writing it to {} hit exception: {}'.format(url, destination, str(e))
+        logger.exception(error_msg)
+        return 0, error_msg
 
     return 1, ''
 
@@ -725,21 +794,6 @@ def get_install_migrations_dict():
         "postmigrate": InstallAction.POST_MIGRATE,
         "allformigrate": InstallAction.ALL_FOR_MIGRATE
     }
-
-
-def fill_hardware_audit_version(choices):
-    # Remove all the existing entries
-    del choices[:]
-    choices.append(('', ''))
-
-    with open('./asr9k_x64/migration_supported_hw.json') as data_file:
-        supported_hw = json.load(data_file)
-
-    versions = supported_hw.keys()
-
-    for i in range(len(versions)-1, 0, -1):
-        choices.append((versions[i], versions[i] + ".*"))
-    choices.append((versions[0], versions[0] + ".* and onwards"))
 
 
 class ScheduleMigrationForm(Form):
@@ -773,7 +827,7 @@ class ScheduleMigrationForm(Form):
 
     hidden_dependency = HiddenField('')
 
-    hardware_audit_version = SelectField('ASR9K-X64 Software Version', coerce=str, choices=[('Any', 'Any')])
+    hardware_audit_version = StringField('ASR9K-X64 Software Version')
     hidden_hardware_audit_version = HiddenField('')
 
 

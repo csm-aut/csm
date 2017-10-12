@@ -65,7 +65,7 @@ $('#on-finish-submit').click(function(e) {
         return false;
     }
 
-    on_final_submit($('#form'), null);
+    on_final_submit(e, $('#form'), $('#hidden_selected_hosts').val());
 
     // prevent the form from closing 
     return false;
@@ -183,6 +183,7 @@ $('#browse-cisco-button').on('click', function(e) {
                     <div class="wizard-footer">
                         <div class="pull-right">
                             <input type='button' class='btn btn-next btn-fill btn-primary btn-wd btn-sm' name='next' value='Next' />
+                            <img id="submit-spinner" src="{{ url_for('static', filename='spinner.gif') }}">
                             <input id='on-finish-submit' data-dismiss="modal" type='button' class='btn btn-finish btn-fill btn-primary btn-wd btn-sm' name='finish' value='Finish' />
                         </div>
                         <div class="pull-left">
