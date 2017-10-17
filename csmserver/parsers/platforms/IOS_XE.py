@@ -28,7 +28,6 @@ from models import Package
 from models import ModulePackageState
 from constants import PackageState
 from base import BaseSoftwarePackageParser
-# import logging
 
 
 class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
@@ -37,15 +36,14 @@ class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
         host_packages = []
         committed_packages = {}
 
-        cli_show_install_inactive = ctx.load_data('cli_show_install_inactive')
-        cli_show_install_committed = ctx.load_data('cli_show_install_committed')
+        cli_show_install_inactive = ctx.load_job_data('cli_show_install_inactive')
+        cli_show_install_committed = ctx.load_job_data('cli_show_install_committed')
 
         if isinstance(cli_show_install_committed, list):
             # Should have only one committed package
             committed_packages = self.get_committed_packages(cli_show_install_committed[0], PackageState.ACTIVE_COMMITTED)
             if committed_packages:
                 for package in committed_packages.values():
-                    # logging.warning('package = %s', package)
                     host_packages.append(package)
 
         if isinstance(cli_show_install_inactive, list):
@@ -137,7 +135,9 @@ class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
             line = line.strip()
             if len(line) == 0: continue
 
-            m = re.search(r'.*(packages.conf).*on: (.*)', line) or re.search(r'.*(asr9.*pkg).*on: (.*)', line)
+            m = re.search(r'.*(packages.conf).*on: (.*)', line) or \
+                re.search(r'.*(asr9.*pkg).*on: (.*)', line) or \
+                re.search(r'.*(asr1.*pkg).*on: (.*)', line)
             if m:
                 module = m.group(2)
                 trunk = m.group(1)
@@ -148,7 +148,5 @@ class IOSXESoftwarePackageParser(BaseSoftwarePackageParser):
 
                 pkg.append(trunk)
                 trunks[module] = pkg
-
-                # logging.warning('module = %s, pkg = %s', module, pkg)
 
         return trunks

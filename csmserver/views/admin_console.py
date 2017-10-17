@@ -187,7 +187,7 @@ class AdminConsoleForm(Form):
     num_download_threads = IntegerField('Number of Software Download Processes', [validators.NumberRange(min=2, max=50)])
     can_schedule = HiddenField("Allow Users to Schedule Installations")
     can_install = HiddenField("Allow Scheduled Installations to Run")
-    check_host_software_profile = HiddenField("Check Host Software Profile")
+    check_host_software_profile = HiddenField("Enable Software Profile Policing")
     enable_email_notify = HiddenField("Enable Email Notification")
     enable_inventory = HiddenField("Enable Inventory Retrieval")
     inventory_hour = SelectField('Hour to Perform Inventory Retrieval', coerce=int,

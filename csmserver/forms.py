@@ -37,7 +37,7 @@ from constants import ExportInformationFormat
 
 
 class HostForm(Form):
-    hostname = StringField('Hostname', [required(), Length(max=30)])
+    hostname = StringField('Hostname', [required(), Length(max=50)])
     region = SelectField('Region', coerce=int, choices=[(-1, '')])
     location = StringField('Location', [Length(max=100)])
     roles = StringField('Roles')

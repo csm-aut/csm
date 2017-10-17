@@ -27,6 +27,7 @@ from flask import send_file
 from sqlalchemy import or_
 from sqlalchemy import and_
 from sqlalchemy import not_
+from sqlalchemy import func
 
 from csm_exceptions.exceptions import ValueNotFound
 from csm_exceptions.exceptions import OperationNotAllowed
@@ -682,14 +683,17 @@ def create_or_update_region(db_session, region_name, server_repositories, create
     return region
 
 
+def get_host_software_profile_counts(db_session, software_profile_id):
+    return db_session.query(Host).filter(Host.software_profile_id == software_profile_id).count()
+
+
 def delete_software_profile(db_session, profile_name):
 
     software_profile = get_software_profile(db_session, profile_name)
     if software_profile is None:
         raise ValueNotFound("Software profile '{}' does not exist in the database.".format(profile_name))
 
-    count = db_session.query(Host).filter(
-        Host.software_profile_id == software_profile.id).count()
+    count = get_host_software_profile_counts(db_session, software_profile.id)
 
     # Older version of db does not perform check on
     # foreign key constrain, so do it programmatically here.
@@ -1005,3 +1009,15 @@ def get_download_job_key(user_id, filename, server_id, server_directory):
 
 def get_conformance_report_by_id(db_session, id):
     return db_session.query(ConformanceReport).filter(ConformanceReport.id == id).first()
+
+
+def get_host_platform_and_version_summary_tuples(db_session, region_id=0):
+    if region_id == 0:
+        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
+            .group_by(Host.software_platform, Host.software_version)
+    else:
+        result_tuples = db_session.query(Host.software_platform, Host.software_version, func.count(Host.software_version)).distinct()\
+            .group_by(Host.software_platform, Host.software_version) \
+            .filter(Host.region_id == region_id)
+
+    return result_tuples

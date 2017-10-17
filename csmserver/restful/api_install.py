@@ -66,6 +66,8 @@ from common import download_session_logs
 from common import get_custom_command_profile_by_id
 from common import get_custom_command_profile_name_to_id_dict
 
+from views.conformance import match_against_host_software_profile
+
 from datetime import datetime, timedelta
 
 import re
@@ -85,6 +87,8 @@ KEY_DEPENDENCY = 'dependency'
 KEY_SERVER_REPOSITORY = 'server_repository'
 KEY_SERVER_DIRECTORY = 'server_directory'
 KEY_CUSTOM_COMMAND_PROFILE = 'command_profile'
+KEY_FPD_LOCATION = 'fpd_location'
+KEY_FPD_TYPE = 'fpd_type'
 
 KEY_UTC_SCHEDULED_TIME = 'utc_scheduled_time'
 KEY_TRACE = 'trace'
@@ -93,13 +97,15 @@ KEY_DELETED_DEPENDENCIES = 'deleted_dependencies'
 KEY_INSTALL_JOB_LIST = 'install_job_list'
 
 acceptable_keys = [KEY_HOSTNAME, KEY_INSTALL_ACTION, KEY_SCHEDULED_TIME, KEY_UTC_OFFSET, KEY_CUSTOM_COMMAND_PROFILE,
-                   KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES]
+                   KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES,
+                   KEY_FPD_LOCATION, KEY_FPD_TYPE]
 
 required_keys_dict = {InstallAction.PRE_CHECK: [KEY_HOSTNAME],
                       InstallAction.INSTALL_ADD: [KEY_HOSTNAME, KEY_SERVER_REPOSITORY, KEY_SOFTWARE_PACKAGES],
                       InstallAction.INSTALL_ACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
                       InstallAction.POST_CHECK: [KEY_HOSTNAME],
                       InstallAction.INSTALL_COMMIT: [KEY_HOSTNAME],
+                      InstallAction.INSTALL_ROLLBACK: [KEY_HOSTNAME],
                       InstallAction.INSTALL_REMOVE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
                       InstallAction.INSTALL_DEACTIVATE: [KEY_HOSTNAME, KEY_SOFTWARE_PACKAGES],
                       InstallAction.FPD_UPGRADE: [KEY_HOSTNAME]}
@@ -112,7 +118,8 @@ ordered_install_actions = [InstallAction.PRE_CHECK, InstallAction.INSTALL_ADD,
 supported_install_actions = ordered_install_actions + [InstallAction.INSTALL_REMOVE,
                                                        InstallAction.INSTALL_DEACTIVATE,
                                                        InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
-                                                       InstallAction.FPD_UPGRADE]
+                                                       InstallAction.FPD_UPGRADE,
+                                                       InstallAction.INSTALL_ROLLBACK]
 
 
 def api_create_install_request(request):
@@ -191,8 +198,23 @@ def api_create_install_request(request):
                     if custom_command_profile_id is None:
                         raise ValueError("'{}' is an invalid custom command profile.".format(custom_command_profile_name))
 
-            if KEY_SOFTWARE_PACKAGES in data.keys() and is_empty(data[KEY_SOFTWARE_PACKAGES]):
-                raise ValueError("Software packages when specified cannot be empty.")
+            if KEY_SOFTWARE_PACKAGES in data.keys():
+                software_packages = data[KEY_SOFTWARE_PACKAGES]
+                if is_empty(software_packages):
+                    raise ValueError("Software packages when specified cannot be empty.")
+                else:
+                    # Check if host software profile policing is enabled.
+                    if install_action == InstallAction.INSTALL_ADD:
+                        error_message = []
+                        match_results = match_against_host_software_profile(db_session, hostname, software_packages)
+
+                        for match_result in match_results:
+                            if not match_result['matched']:
+                                error_message.append(match_result['software_package'])
+
+                        if len(error_message):
+                            raise ValueError('Following software packages are not defined in the host software profile: ' +
+                                             ','.join(error_message))
 
             # Check time fields and validate their values
             if KEY_SCHEDULED_TIME not in data.keys():
@@ -282,6 +304,16 @@ def api_create_install_request(request):
                     if custom_command_profile_id is not None:
                         custom_command_profile_ids.append(str(custom_command_profile_id))
 
+            install_job_data = {}
+            if install_action == InstallAction.FPD_UPGRADE:
+                fpd_location = install_request.get(KEY_FPD_LOCATION)
+                if fpd_location is not None:
+                    install_job_data[KEY_FPD_LOCATION] = fpd_location
+
+                fpd_type = install_request.get(KEY_FPD_TYPE)
+                if fpd_type is not None:
+                    install_job_data[KEY_FPD_TYPE] = fpd_type
+
             install_job = create_or_update_install_job(db_session,
                                                        host_id=host_id,
                                                        install_action=install_action,
@@ -290,6 +322,7 @@ def api_create_install_request(request):
                                                        server_id=server_id,
                                                        server_directory=server_directory,
                                                        custom_command_profile_ids=custom_command_profile_ids,
+                                                       install_job_data=install_job_data,
                                                        dependency=get_dependency_id(db_session, implicit_dependency_list, install_request, host_id),
                                                        created_by=g.api_user.username)
 

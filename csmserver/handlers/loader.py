@@ -27,9 +27,9 @@ from utils import get_software_platform
 from utils import get_software_version
 from utils import create_log_directory
 
-from models import get_db_session_logger
 from constants import UNKNOWN
 from constants import get_log_directory
+from models import get_db_session_logger
 
 import condoor
 import logging

@@ -1,129 +1,12 @@
-<div id="override">
-    <h4 class="info-text-left">By default, migration requires that all RSP, RP, FC, FAN, PEM and MPA on device are supported in ASR9K-64 and are in operational states.
-      Do you wish to skip the hardware audit for FAN and PEM?
-      <a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_right"></span></a>
-      </h4>
-
-    <div id="popover_hw_req" style="display: none">
-        <div style="overflow: auto;height: 400px;width: 800px;">
-
-            <h5>Operational state for RSP, RP and LC: IOS XR RUN</h5>
-            <h5>Operational state for FC: OK</h5>
-            <h5>Operational state for FAN and PEM: READY</h5>
-            <h5>Operational state for MPA: OK</h5>
-            <br>
-
-            <h5>Hardware Supported in ASR9K-64: (also available in the ASR9K to ASR9K-64 Migration user manual under Help)</h5>
-            <h5>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <td>Supported RSP/RP</td><td>Supported LC</td>
-                        <td>Supported FAN</td><td>Supported PEM</td>
-                        <td>Supported Fabric</td><td>Supported MPA</td>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>A99-RP2-SE</td><td>A99-8X100GE-CM</td>
-                        <td>ASR-9904-FAN</td><td>PWR-2KW-DC-V2</td>
-                        <td>A99-SFC2</td><td><span style="color:red">*A9K-MPA-4X10GE</span></td>
-                    </tr>
-                    <tr>
-                        <td>A99-RP2-TR</td><td>A99-8X100GE-SE</td>
-                        <td>ASR-9006-FAN-V2</td><td>PWR-3KW-AC-V2</td>
-                        <td><span style="color:red">*A99-SFC-S</span></td><td><span style="color:red">*A9K-MPA-20X10GE</span></td>
-                    </tr>
-                    <tr>
-                        <td>A9K-RSP880-RL-SE</td><td>A99-8X100GE-TR</td>
-                        <td>ASR-9010-FAN-V2</td><td>PWR-4.4KW-DC-V3</td>
-                        <td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td>A9K-RSP880-RL-TR</td><td>A99-12x100GE</td>
-                        <td>ASR-9910-FAN</td><td>PWR-6KW-AC-V3</td>
-                        <td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td>A9K-RSP880-SE</td><td>A9K-4X100GE-SE</td>
-                        <td>ASR-9912-FAN</td><td></td>
-                        <td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td>A9K-RSP880-TR</td><td>A9K-4X100GE-TR</td>
-                        <td>ASR-9922-FAN-V2</td><td></td>
-                        <td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td>ASR-9922-RP-SE</td><td>A9K-8X100GE-CM</td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td>ASR-9922-RP-TR</td><td>A9K-8X100GE-L-SE</td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td><span style="color:red">*A99-RSP-SE</span></td><td>A9K-8X100GE-L-TR</td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td><span style="color:red">*A99-RSP-TR</span></td><td>A9K-8X100GE-LB-SE</td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td></td><td>A9K-8X100GE-LB-TR</td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td></td><td>A9K-8X100GE-SE</td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td></td><td>A9K-8X100GE-TR</td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td></td><td><span style="color:red">*A9K-400G-DWDM-SE</span></td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td></td><td><span style="color:red">*A9K-400G-DWDM-TR</span></td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td></td><td><span style="color:red">*A9K-MOD200-SE</span></td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                    <tr>
-                        <td></td><td><span style="color:red">*A9K-MOD200-TR</span></td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                        <tr>
-                        <td></td><td><span style="color:red">*A9K-MOD400-SE</span></td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                        <tr>
-                        <td></td><td><span style="color:red">*A9K-MOD400-TR</span></td>
-                        <td></td><td></td><td></td><td></td>
-                    </tr>
-                </tbody>
-            </table>
-              </h5>
-          <br>
-          <h5>*The card types in red are only supported in release 6.2.*. Everything else is supported in 6.1.*.</h5>
-          <h5>Minimal hardware requirements for migration:</h5>
-          <h5>&nbsp;&nbsp;1. All RSP's and RP's are supported in ASR9K-64 and are in IOS XR RUN state</h5>
-          <h5>&nbsp;&nbsp;2. All FC's are supported in ASR9K-64 and are in OK state.</h5>
-          <h5>&nbsp;&nbsp;3. All MPA's are supported in ASR9K-64 and are in OK state.</h5>
-          <h5>&nbsp;&nbsp;4. All supported LC's are in IOS XR RUN state.</h5>
-          <h5>By default, on top of the minimal hardware requirements, the hardware audit checks that all FAN's and PEM's are supported in ASR9K-64 and are in READY state.</h5>
-
-        </div>
-
+<div id="override" class="row">
+    <div class="pull-left">
+        <h4 class="info-text-left" style="margin-left: 20px;">Skip the hardware audit for fans and power modules?
+        <a href="javascript://"><span class="glyphicon glyphicon-info-sign" style="color:dodgerblue" aria-hidden="true" data-toggle="popover_override_hw_req_top"></span></a>
+        </h4>
     </div>
+    <div class="pull-right" style="height: 20px;">
+        <h4 class="info-text-left" style="margin-right: 20px;">
 
-    <h4 class="info-text-left">
-    <div style="float: right;">
         <input type="radio" id="override_hw_req" name="override_hw_req"
                class="toggle" value="1"
                style="margin-right: 10px"><label for="override_hw_req" class="info-text-left">Yes</label>
@@ -131,9 +14,25 @@
         <input type="radio" id="override_hw_req" name="override_hw_req"
                class="toggle" value="0" checked
                style="margin-right: 10px"><label for="override_hw_req" class="info-text-left">No</label>
+
+        </h4>
     </div>
-      </h4>
-  <br>
+
+    <div id="popover_hw_req" style="display: none">
+        <pre>Minimal hardware requirements for migration:
+   1. All RSP's and RP's are supported in ASR9K-X64 and are in IOS XR RUN state
+   2. All FC's are supported in ASR9K-X64 and are in OK state.
+   3. All MPA's are supported in ASR9K-X64 and are in OK state.
+   4. All supported LC's are in IOS XR RUN state.
+By default, on top of the minimal hardware requirements, the hardware audit checks that all FAN's and
+PEM's are supported in ASR9K-X64 and are in READY state.
+
+Operational state for RSP, RP and LC: IOS XR RUN
+Operational state for FC: OK
+Operational state for FAN and PEM: READY
+Operational state for MPA: OK
+
+The list of the hardware supported in ASR9K-X64 is available in Help > ASR9K to ASR9K-X64 Migration.</pre>
+    </div>
 
 </div>
-<br>

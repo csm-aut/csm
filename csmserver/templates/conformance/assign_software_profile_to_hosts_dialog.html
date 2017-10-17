@@ -117,7 +117,7 @@
             }
 
             var software_profile_name = $("#software_profile_2 option:selected").text();
-            var message = 'Apply Software Profile "' + software_profile_name + '" to hosts that match the filters\' criteria, OK?';
+            var message = 'Assign Software Profile "' + software_profile_name + '" to hosts that match the filters\' criteria, OK?';
             bootbox.confirm(message, function(result) {
                 if (result) {
                     $('#assign-software-profile-dialog').modal('toggle');
@@ -143,8 +143,10 @@
                 dataType: 'json',
                 success: function(response) {
                     if (response.status == 'OK') {
-                        var message = response.message + " Click OK to view all hosts assigned to " + software_profile_name + ".<br><br>"
-
+                        var message = response.total_hosts_updated + " host(s) updated with Software Profile '" +
+                            response.software_profile + "'.<br>" +
+                            "Total hosts assigned to this Software Profile: " + response.total_hosts_assigned + "<br><br>" +
+                            "Click OK to view all hosts assigned to this Software Profile.";
                         bootbox.confirm(message, function(result) {
                             if (result) {
                                 display_software_profile_assignments_dialog(software_profile_id);
@@ -165,7 +167,8 @@
             "order": [
                 [0, "asc"]
             ],
-            "pageLength": 7,
+            "scrollY": "250px",
+            "paging": false,
             "sDom": 'ftip',
             "columnDefs": [{
                 "targets": 0,

@@ -139,6 +139,7 @@ def api_get_host_dashboard_cookie(hostname):
         row['last_successful_inventory_time'] = inventory_job.last_successful_time
         row['status'] = inventory_job.status
         row['can_schedule'] = system_option.can_schedule
+        row['can_install'] = system_option.can_install
         rows.append(row)
 
     return jsonify(**{'data': rows})
@@ -346,9 +347,9 @@ def api_is_host_valid(hostname):
     return jsonify({'status': 'Failed'})
 
 
-@host_dashboard.route('/api/hosts/<hostname>/get_upgradeable_satellites')
+@host_dashboard.route('/api/hosts/<hostname>/satellites')
 @login_required
-def api_get_upgradeable_satellites(hostname):
+def api_get_host_satellites(hostname):
     rows = []
     db_session = DBSession()
 
@@ -356,15 +357,20 @@ def api_get_upgradeable_satellites(hostname):
     if host is not None:
         satellites = db_session.query(Satellite).filter(Satellite.host_id == host.id)
         for satellite in satellites:
-            row = dict()
-            row['satellite_id'] = satellite.satellite_id
-            row['type'] = satellite.type
-            row['ip_address'] = satellite.ip_address
-            row['mac_address'] = satellite.mac_address
-            row['serial_number'] = satellite.serial_number
-            row['remote_version'] = satellite.remote_version
-            row['fabric_links'] = satellite.fabric_links
-            rows.append(row)
+            if satellite.state == 'Connected' and \
+                    not satellite.remote_version == 'Compatible (latest version)':
+                row = dict()
+                row['satellite_id'] = satellite.satellite_id
+                row['type'] = satellite.type
+                row['state'] = satellite.state
+                row['install_state'] = satellite.install_state
+                row['ip_address'] = satellite.ip_address
+                row['mac_address'] = satellite.mac_address
+                row['serial_number'] = satellite.serial_number
+                row['remote_version'] = satellite.remote_version
+                row['remote_version_details'] = satellite.remote_version_details
+                row['fabric_links'] = satellite.fabric_links
+                rows.append(row)
 
     return jsonify(**{'data': rows})
 

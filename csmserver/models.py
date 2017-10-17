@@ -38,7 +38,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import synonym
 
 from utils import is_empty
-from salts import encode, decode
+from salts import encode
+from salts import decode
 
 from database import engine
 from database import DBSession 
@@ -667,6 +668,7 @@ class InventoryJob(Base):
     status_time = Column(DateTime) 
     last_successful_time = Column(DateTime)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     
     host_id = Column(Integer, ForeignKey('host.id'), unique=True)
     host = relationship('Host', foreign_keys='InventoryJob.host_id')
@@ -682,6 +684,14 @@ class InventoryJob(Base):
         self.status_message = status_message
         self.status_time = datetime.datetime.utcnow()
 
+    def load_data(self, key):
+        return None if not self.data else self.data.get(key)
+
+    def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
+        self.data[key] = value
+
 
 class InventoryJobHistory(Base):
     __tablename__ = 'inventory_job_history'
@@ -691,6 +701,7 @@ class InventoryJobHistory(Base):
     status_time = Column(DateTime) 
     trace = Column(Text)
     session_log = Column(Text)
+    data = Column(JSONEncodedDict, default={})
     created_time = Column(DateTime, default=datetime.datetime.utcnow)
                             
     host_id = Column(Integer, ForeignKey('host.id'))
@@ -698,6 +709,14 @@ class InventoryJobHistory(Base):
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
+
+    def load_data(self, key):
+        return None if not self.data else self.data.get(key)
+
+    def save_data(self, key, value):
+        if not self.data:
+            self.data = {}
+        self.data[key] = value
 
 
 class Package(Base):
@@ -762,7 +781,7 @@ class InstallJob(Base):
     scheduled_time = Column(DateTime)
     start_time = Column(DateTime)
     status = Column(String(20), default=JobStatus.SCHEDULED)
-    status_message = Column(String(200))
+    status_message = Column(Text)
     status_time = Column(DateTime)
     trace = Column(Text)
     session_log = Column(Text)
@@ -775,9 +794,6 @@ class InstallJob(Base):
     user_id = Column(Integer, ForeignKey('user.id'))
     custom_command_profile_ids = Column(String(20))
 
-    def __init__(self):
-        self.data = {}
-
     def set_status(self, status):
         self.status = status
         self.status_time = datetime.datetime.utcnow()
@@ -787,7 +803,7 @@ class InstallJob(Base):
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
@@ -912,15 +928,12 @@ class InstallJobHistory(Base):
                             
     host_id = Column(Integer, ForeignKey('host.id'))
 
-    def __init__(self):
-        self.data = {}
-    
     def set_status(self, status):
         self.status = status        
         self.status_time = datetime.datetime.utcnow()
 
     def load_data(self, key):
-        return {} if not self.data else self.data.get(key)
+        return None if not self.data else self.data.get(key)
 
     def save_data(self, key, value):
         if not self.data:
@@ -1048,6 +1061,7 @@ class DownloadJob(Base):
         self.status_message = status_message
         self.status_time = datetime.datetime.utcnow()
 
+
 class DownloadJobHistory(Base):
     __tablename__ = 'download_job_history'
 
@@ -1165,16 +1179,17 @@ class Satellite(Base):
     satellite_id = Column(Integer)
     device_name = Column(String(50))
     type = Column(String(20))
-    state = Column(String(20))
-    install_state = Column(String(20))
+    state = Column(String(100))
+    install_state = Column(String(100))
     ip_address = Column(String(20))
     serial_number = Column(String(50))
     mac_address = Column(String(20))
-    remote_version = Column(String(50))
+    remote_version = Column(String(100))
     remote_version_details = Column(Text)
-    fabric_links = Column(String(100))
+    fabric_links = Column(Text)
 
     host_id = Column(Integer, ForeignKey('host.id'), index=True)
+
 
 class PackageToSMU(Base):
     __tablename__ = 'package_to_smu'
@@ -1345,11 +1360,16 @@ class CreateTarJob(Base):
     additional_packages = Column(Text)
     new_tar_name = Column(String(50))
     status = Column(String(200), default=JobStatus.SCHEDULED)
+    status_message = Column(String(200))
     status_time = Column(DateTime)
     created_by = Column(String(50))
 
     def set_status(self, status):
         self.status = status
+        self.status_time = datetime.datetime.utcnow()
+
+    def set_status_message(self, status_message):
+        self.status_message = status_message
         self.status_time = datetime.datetime.utcnow()
 
 
