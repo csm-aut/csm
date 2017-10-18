@@ -41,6 +41,7 @@ from wtforms.validators import Length, required
 from utils import get_tarfile_file_list, get_file_list, untar, make_file_writable
 
 from constants import get_repository_directory, get_temp_directory
+from constants import JobStatus
 
 from package_utils import is_external_file_a_smu
 from package_utils import is_external_file_a_release_software
@@ -75,19 +76,18 @@ def create_tar_file():
     return render_template('tools/create_tar_file.html', form=create_tar_form)
 
 
-@tools.route('/api/create_tar_job')
+@tools.route('/api/create_tar_job', methods=["POST"])
 @login_required
 def api_create_tar_job():
     db_session = DBSession()
 
-    form = CreateTarForm(request.form)
-
-    server_id = request.args.get('server_id')
-    server_directory = request.args.get('server_directory')
-    source_tars = request.args.getlist('source_tars[]')
-    contents = request.args.getlist('tar_contents[]')
-    additional_packages = request.args.getlist('additional_packages[]')
-    new_tar_name = request.args.get('new_tar_name').replace('.tar', '')
+    json_data = request.get_json()
+    server_id = json_data['server_id']
+    server_directory = json_data['server_directory']
+    source_tars = json_data['source_tars']
+    contents = json_data['tar_contents']
+    additional_packages = json_data['additional_packages']
+    new_tar_name = json_data['new_tar_name']
 
     create_tar_job = CreateTarJob(
         server_id=server_id,
@@ -97,7 +97,8 @@ def api_create_tar_job():
         additional_packages=','.join(additional_packages),
         new_tar_name=new_tar_name,
         created_by=current_user.username,
-        status='Job Submitted.')
+        status_message='Job Submitted.',
+        status=JobStatus.SCHEDULED)
 
     db_session.add(create_tar_job)
     db_session.commit()
@@ -118,7 +119,7 @@ def get_progress():
         logger.error('Unable to retrieve Create Tar Job: %s' % job_id)
         return jsonify(status='Unable to retrieve job')
 
-    return jsonify(status='OK', progress=tar_job.status)
+    return jsonify(status='OK', progress=tar_job.status_message)
 
 
 @tools.route('/api/get_tar_contents')

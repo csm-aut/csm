@@ -24,6 +24,7 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
             <option value="Post-Check">Post-Check</option>
             <option value="Commit">Commit</option>
             <option value="ALL">ALL</option>
+            <option value="Rollback">Rollback</option>
             <option value="Remove">Remove</option>
             <option value="Remove All Inactive">Remove All Inactive</option>
             <option value="Deactivate">Deactivate</option>
@@ -33,7 +34,6 @@ be shown in Edit mode if they are not defined first (strange behavior in Select2
         </select>
     </div>
 </div>
-
 
 <div id="widget-panel" class="form-group ">
     <label class="col-sm-4 control-label">Select From</label>  
@@ -161,6 +161,7 @@ $(function() {
     var INSTALL_REMOVE_ALL_INACTIVE = "Remove All Inactive";
     var INSTALL_DEACTIVATE = "Deactivate";
     var FPD_UPGRADE = "FPD-Upgrade";
+    var INSTALL_ROLLBACK = 'Rollback'
 
     var region_id = -1;
 
@@ -206,6 +207,10 @@ $(function() {
             $("#install_action").val([INSTALL_REMOVE_ALL_INACTIVE]).trigger('change');
         } else if (has_one_of_these(install_actions, [INSTALL_DEACTIVATE]) && install_actions.length > 1) {
             $("#install_action").val([INSTALL_DEACTIVATE]).trigger('change');
+        } else if (has_one_of_these(install_actions, [INSTALL_ROLLBACK]) && install_actions.length > 1) {
+            $("#install_action").val([INSTALL_ROLLBACK]).trigger('change');
+        } else if (has_one_of_these(install_actions, [FPD_UPGRADE]) && install_actions.length > 1) {
+            $("#install_action").val([FPD_UPGRADE]).trigger('change');
         }
 
         if (has_one_of_these(install_actions, [INSTALL_ADD, ALL])) {
@@ -434,27 +439,7 @@ $(function() {
 
     // Called by the $('#form').submit() function.
     function on_final_submit(e, current_form, hostname) {
-        if (check_host_software_profile &&
-            has_one_of_these(install_actions, [INSTALL_ADD, INSTALL_ACTIVATE])) {
-
-            $.ajax({
-                url: "{{ url_for('install.api_check_host_software_profile') }}",
-                type: "POST",
-                data: {
-                    hostname: hostname,
-                    software_packages: convert_lines_to_list($('#software_packages').val())
-                },
-                success: function(data) {
-                    if (data.status == 'OK') {
-                        create_install_jobs(current_form, hostname);
-                    } else {
-                        bootbox.alert('<img src="/static/error.png">&nbsp;ERROR: Unable to schedule installation.  ' + data.status);
-                    }
-                }
-            });
-        } else {
-            create_install_jobs(current_form, hostname);
-        }
+        create_install_jobs(current_form, hostname);
     }
 
     function create_install_jobs(current_form, hostname) {
@@ -487,9 +472,17 @@ $(function() {
             validate_object.check_missing_file_on_server = false;
             check_need_reload(validate_object);
         } else {
-            // Turn on the spinner.  This will be useful for batch scheduling.
-            if (validate_object.spinner != null ) validate_object.spinner.show();
-            on_finish_validate(validate_object);
+            if (has_one_of_these(install_actions, [FPD_UPGRADE])) {
+                bootbox.confirm('This operation may cause the device to reload, proceed?', function(result) {
+                    if (result) {
+                        if (validate_object.spinner != null ) validate_object.spinner.show();
+                            on_finish_validate(validate_object);
+                    }
+                });
+            } else {
+                if (validate_object.spinner != null ) validate_object.spinner.show();
+                on_finish_validate(validate_object);
+            }
         }
     }
 
@@ -748,6 +741,8 @@ $(function() {
 {{ cisco_software_dialog(system_option.enable_cco_lookup, form.cisco_dialog_server, form.cisco_dialog_server_directory) }}
 {{ server_software_dialog(form.server_dialog_server, form.server_dialog_server_directory, form.server_dialog_target_software) }}
 {{ host_software_dialog(form.host_software_dialog_host, form.host_software_dialog_last_successful_inventory_elapsed_time, form.host_software_dialog_target_software) }}
+
+{% include 'share/check_host_software_profile_dialog.html' %}
 
 {% block main_schedule_install %} {% endblock %}
 

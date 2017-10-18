@@ -46,15 +46,12 @@ from filters import get_datetime_string
 
 from parsers import get_parser_factory
 from csmpe import get_csm_plugin_manager
+from csmpe.context import PluginError
 
 import os
 import condoor
 import logging
-
-#
-#logging.basicConfig(
-#        format='%(asctime)-15s %(levelname)8s: %(message)s',
-#        level=logging.DEBUG)
+import traceback
 
 
 class BaseHandler(object):
@@ -62,11 +59,24 @@ class BaseHandler(object):
         try:
             self.start(ctx)
             self.post_processing(ctx)
+        except (condoor.GeneralError, PluginError):
+            self.log_exception(ctx)
         except Exception:
-            # If there is no db_session, it is not important to log the exception
-            if isinstance(ctx, ConnectionContext):
-                logger = get_db_session_logger(ctx.db_session)
-                logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
+            self.log_exception(ctx)
+            self.write_exception_file(ctx)
+
+    def log_exception(self, ctx):
+        # Only ConnectionContext has a db_session.
+        if isinstance(ctx, ConnectionContext):
+            logger = get_db_session_logger(ctx.db_session)
+            logger.exception('BaseHandler.execute() hit exception - hostname = %s', ctx.hostname)
+
+    def write_exception_file(self, ctx):
+        try:
+            with open(os.path.join(ctx.log_directory, 'exception.log'), 'w') as fd:
+                fd.write(traceback.format_exc())
+        except Exception:
+            self.log_exception(ctx)
 
     def start(self, ctx):
         raise NotImplementedError("Children must override execute")
@@ -114,10 +124,16 @@ class BaseHandler(object):
         parser_factory = get_parser_factory(get_software_platform(ctx.host.software_platform, ctx.host.os_type))
 
         software_package_parser = parser_factory.create_software_package_parser()
-        software_package_parser.process_software_packages(ctx)
+        if software_package_parser:
+            software_package_parser.process_software_packages(ctx)
 
         inventory_parser = parser_factory.create_inventory_parser()
-        inventory_parser.process_inventory(ctx)
+        if inventory_parser:
+            inventory_parser.process_inventory(ctx)
+
+        satellite_parser = parser_factory.create_satellite_parser()
+        if satellite_parser:
+            satellite_parser.process_satellites(ctx)
 
         # Update the status and last successful retrieval time stamp
         ctx.host.inventory_job[0].set_status(JobStatus.COMPLETED)

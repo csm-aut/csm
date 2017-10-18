@@ -54,7 +54,6 @@ from common import fill_regions
 from common import can_edit_install
 from common import get_host_active_packages
 from common import can_retrieve_software
-from common import get_software_profile_by_id
 from common import get_last_successful_inventory_elapsed_time
 from common import get_mop_list
 from common import get_mop_specs_with_mop_name
@@ -75,6 +74,7 @@ from constants import InstallAction
 
 from utils import is_empty
 from utils import get_return_url
+from utils import convert_integer_list_to_ranges
 
 from filters import get_datetime_string
 
@@ -88,7 +88,8 @@ from smu_info_loader import SMUInfoLoader
 
 from package_utils import strip_smu_file_extension
 from package_utils import get_target_software_package_list
-from package_utils import get_matchable_package_dict
+
+from views.conformance import match_against_host_software_profile
 
 import datetime
 
@@ -607,10 +608,27 @@ def api_get_supported_install_actions(hostname):
     rows = []
 
     if host.family == PlatformFamily.ASR900:
-        rows.append({'install_options': [InstallAction.PRE_CHECK, InstallAction.INSTALL_ADD,
-                                         InstallAction.INSTALL_ACTIVATE, InstallAction.POST_CHECK,
+        rows.append({'install_options': [InstallAction.PRE_CHECK, 
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE, 
+                                         InstallAction.POST_CHECK,
                                          InstallAction.ALL]})
+
         rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE]})
+    elif (host.family == PlatformFamily.ASR9K and host.os_type == 'XR') or \
+                    host.family == PlatformFamily.XR12K or host.family == PlatformFamily.CRS:
+        # Classic IOS XR
+        rows.append({'install_options': [InstallAction.PRE_UPGRADE,
+                                         InstallAction.INSTALL_ADD,
+                                         InstallAction.INSTALL_ACTIVATE,
+                                         InstallAction.POST_UPGRADE,
+                                         InstallAction.INSTALL_COMMIT,
+                                         InstallAction.ALL,
+                                         InstallAction.INSTALL_ROLLBACK]})
+        rows.append({'cleanup_options': [InstallAction.INSTALL_REMOVE,
+                                         InstallAction.INSTALL_REMOVE_ALL_INACTIVE,
+                                         InstallAction.INSTALL_DEACTIVATE]})
+        rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
     else:
         rows.append({'install_options': [InstallAction.PRE_CHECK, InstallAction.INSTALL_ADD,
                                          InstallAction.INSTALL_ACTIVATE, InstallAction.POST_CHECK,
@@ -620,7 +638,6 @@ def api_get_supported_install_actions(hostname):
         rows.append({'other_options': [InstallAction.FPD_UPGRADE]})
 
     return jsonify(**{'data': rows})
-
 
 @install.route('/api/get_install_history/hosts/<hostname>')
 @login_required
@@ -660,10 +677,10 @@ def get_software_package_upgrade_list(hostname, target_release):
     if host is None:
         abort(404)
 
-    match_internal_name = True if request.args.get('match_internal_name') == 'true' else False
+    return_internal_name = True if request.args.get('return_internal_name') == 'true' else False
     host_packages = get_host_active_packages(hostname)
     target_packages = get_target_software_package_list(host.family, host.os_type, host_packages,
-                                                       target_release, match_internal_name)
+                                                       target_release, return_internal_name)
     for package in target_packages:
         rows.append({'package': package})
 
@@ -716,23 +733,18 @@ def api_get_host_packages_by_states(hostname):
 @install.route('/api/check_host_software_profile', methods=['POST'])
 @login_required
 def api_check_host_software_profile():
-    db_session = DBSession()
-
-    hostname = request.form['hostname']
+    # hostnames can be a comma delimited host list.  FIXME: Should it be a list instead?
+    hostnames = request.form['hostname']
     software_packages = request.form.getlist('software_packages[]')
 
     rows = []
-    host = get_host(db_session, hostname)
-    if host is not None and len(software_packages) > 0:
-        software_profile_id = host.software_profile_id
-        software_profile = get_software_profile_by_id(db_session, software_profile_id)
-        if software_profile is not None:
-            software_profile_package_dict = get_matchable_package_dict(software_profile.packages.split(','))
-            requested_software_package_dict = get_matchable_package_dict(software_packages)
+    db_session = DBSession()
 
-            for software_package, software_package_to_match in requested_software_package_dict.items():
-                if software_package_to_match not in software_profile_package_dict.values():
-                    rows.append({'package': software_package})
+    for hostname in hostnames.split(','):
+        match_results = match_against_host_software_profile(db_session, hostname, software_packages)
+        for match_result in match_results:
+            if not match_result['matched']:
+                rows.append({'hostname': hostname, 'software_package': match_result['software_package']})
 
     if len(rows) > 0:
         return jsonify({'status': rows})
@@ -760,7 +772,7 @@ def api_create_satellite_install_jobs():
     for install_action in install_actions:
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action,
                                      scheduled_time=scheduled_time_UTC,
-                                     install_job_data={'selected_satellites': selected_satellites},
+                                     install_job_data={'selected_satellite_ids': convert_integer_list_to_ranges(selected_satellites)},
                                      created_by=current_user.username)
 
     return jsonify({'status': 'OK'})

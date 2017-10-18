@@ -169,7 +169,7 @@ ul.nav li.dropdown:hover > ul.dropdown-menu {
     box-sizing: border-box;
     width:90%;
     resize: none;
-    height:400px;
+    height:500px;
     border-style:groove;
     border-width:3px;
     overflow:auto;

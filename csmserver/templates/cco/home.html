@@ -54,7 +54,8 @@
             "order": [
                 [2, "desc"]
             ],
-            "pageLength": 100,
+            "bLengthChange": false,
+            "pageLength": 500,
             "scrollX": true,
             "scrollY": 450,
             "fnCreatedRow": function(nRow, aData, iDataIndex) {
@@ -129,6 +130,7 @@
             "order": [
                 [2, "desc"]
             ],
+            "bLengthChange": false,
             "pageLength": 100,
             "scrollX": true,
             "scrollY": 450,
@@ -199,6 +201,7 @@
             "order": [
                 [2, "asc" ]
             ],
+            "bLengthChange": false,
             "pageLength": 100,
             "scrollY": 450,
             "fnCreatedRow": function( nRow, aData, iDataIndex ) {
@@ -378,6 +381,7 @@
         });
 
         function check_server_reachability_before_proceeding(server_id, server_directory) {
+            spinner.show();
             $.ajax({
                 url: "/install/api/get_server_file_dict/" + server_id,
                 dataType: 'json',

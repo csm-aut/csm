@@ -802,6 +802,7 @@ def api_get_satellites(hostname):
         clauses.append(Satellite.serial_number.like(criteria))
         clauses.append(Satellite.remote_version.like(criteria))
         clauses.append(Satellite.fabric_links.like(criteria))
+        clauses.append(Satellite.remote_version_details.like(criteria))
 
     query = db_session.query(Satellite)\
         .filter(Satellite.host_id == host.id)
@@ -833,6 +834,7 @@ def api_get_satellites(hostname):
         row['mac_address'] = satellite.mac_address
         row['serial_number'] = satellite.serial_number
         row['remote_version'] = satellite.remote_version
+        row['remote_version_details'] = satellite.remote_version_details
         row['fabric_links'] = satellite.fabric_links
         rows.append(row)
 

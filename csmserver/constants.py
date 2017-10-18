@@ -94,15 +94,19 @@ class PlatformFamily:
     ASR900 = 'ASR900'
     ASR900_XE = 'ASR900-XE'
     ASR900_IOS = 'ASR900-IOS'
+    XR12K = 'XR12K'
     CRS = 'CRS'
     NCS1K = 'NCS1K'
+    NCS1001 = 'NCS1001'
     NCS4K = 'NCS4K'
     NCS5K = 'NCS5K'
+    NCS540 = 'NCS540'
     NCS5500 = 'NCS5500'
     NCS6K = 'NCS6K'
     N9K = 'N9K'
     IOSXRv_9K = 'IOSXRv-9K'
     IOSXRv_X64 = 'IOSXRv-X64'
+    ASR1K = 'ASR1K'
 
 
 class PackageState:
@@ -133,6 +137,7 @@ class ServerType:
     LOCAL_SERVER = 'LOCAL'
 
 
+# Any change here will need to also update api_executive_dashboard
 class InstallAction:
     UNKNOWN = 'Unknown'
     PRE_CHECK = 'Pre-Check'

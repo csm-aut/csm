@@ -5,18 +5,19 @@
 {% block head %}
 <script>
     $(function() {
-
+        var slider_open_id = '';
         var use_utc_timezone = "{{ system_option.use_utc_timezone }}" == 'True';
 
         get_install_dashboard_cookie();
 
         function insert_slider(packages, id) {
             if (packages != null && packages.length > 0) {
-                var html = '<a href="javascript://" data-toggle="collapse" data-target="#toggle' + id + '">' +
+                var slider_state = (slider_open_id == id ? 'in' : '');
+                var html = '<a href="javascript://" data-toggle="collapse" data-target="#' + id + '">' +
                            '<center><img src=\"{{ url_for('static', filename='file_open.png') }}\"></center>' +
                            '</a>' +
                            '<!-- Collapsible Element HTML -->' +
-                           '<div id="toggle' + id + '" class="collapse">' +
+                           '<div id="' + id + '" class="collapse ' + slider_state + '">' +
                            display_packages(packages) +
                            '</div>';
                 return html;
@@ -24,6 +25,15 @@
                 return '&nbsp;';
             }
         }
+
+        $("#install-completed-datatable").on("show.bs.collapse", ".collapse", function(e) {
+            $("#" + slider_open_id).removeClass("in");
+            slider_open_id = e.currentTarget.id;
+        });
+
+        $("#install-completed-datatable").on("hide.bs.collapse", ".collapse", function(e) {
+            slider_open_id = '';
+        });
 
         function display_packages(packages) {
             if (packages) {
@@ -283,7 +293,7 @@
                 "targets": 6,
                 "data": 'session_log',
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
                 "targets": 7,
@@ -427,7 +437,7 @@
                 "targets": 6,
                 "data": 'session_log',
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                    return get_log_icon(row['hostname'], 'install_job', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
                 "targets": 7,
@@ -450,27 +460,19 @@
             $('#badge-failed').html(install_failed_table.api().page.info().recordsTotal);
         });
 
-        function get_log_icon(hostname, table, id, session_log, trace, job_info) {
-            if (trace || session_log || job_info) {
+        function get_log_icon(hostname, table, id, session_log, trace) {
+            if (trace || session_log) {
                 data = "<center>";
 
                 var session_log_url = "/log/hosts/" + hostname + "/" + table + "/session_log/" + id + "?file_path=" + session_log;
 
-                if (job_info) {
-                    data += "<a class='show-job-info' " +
-                        "session-log-url='" + session_log_url + "' " +
-                        "table='" + table + "' " +
-                        "job-info-id='" + job_info + "' href='javascript://'>";
-                    data += "<img src='/static/information.png' title='Job Information (warnings or errors)'></a>";
-                }
-
                 if (session_log) {
-                    data += "<a href='" + session_log_url + "'>";
+                    data += "<a href='" + session_log_url + "' target='_session_log'>";
                     data += "<img src='/static/file.png' title='Session Log'></a>";
                 }
 
                 if (trace) {
-                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/trace/" + trace + "/'>";
+                    data += "<a href='/log/hosts/" + hostname + "/" + table + "/trace/" + trace + "/' target='_trace'>";
                     data += "<img src='/static/error.png' title='debug trace'></a>";
                 }
 
@@ -534,7 +536,7 @@
                 "targets": 6,
                 "data": 'session_log',
                 "render": function(data, type, row) {
-                    return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace'], row['job_info']);
+                    return get_log_icon(row['hostname'], 'install_job_history', row['install_job_id'], row['session_log'], row['trace']);
                 }
             }, {
                 "targets": 7,
@@ -598,19 +600,19 @@
             if (can_schedule && can_install) {
                 $('#alerts').html('');
             } else {
-                var cannot_html = ' schedule any installations';
+                var cannot_html = ' the scheduling of any jobs';
                 if (!can_install) {
                     if (!can_schedule) {
-                        cannot_html = ' schedule and execute any installations';
+                        cannot_html = ' the scheduling of any new jobs and executing of any pending jobs';
                     } else {
-                        cannot_html = ' execute any installations';
+                        cannot_html = ' the executing of any pending jobs';
                     }
                 }
 
                 $('#alerts').html(
                     '<div class="alert alert-danger"> ' +
                     '<strong>NOTICE:&nbsp;</strong>  ' +
-                    'The system administrator has halted the capability to ' + cannot_html + '.  Contact the system administrator for more information.' +
+                    'The system administrator has disabled ' + cannot_html + '.' +
                     '</div>');
             }
         }
@@ -641,8 +643,6 @@
 {% endblock %}
 
 {% block main %}
-
-{% include 'share/job_info_dialog.html' %}
 
 <!-- Main -->
 <div class="container">

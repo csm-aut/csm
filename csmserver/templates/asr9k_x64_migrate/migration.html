@@ -35,7 +35,7 @@
 
     <style>
         .modal-dialog {
-            width: 850px;
+            width: 1000px;
         }
 
         a:link, a:visited {
@@ -183,9 +183,9 @@
                 }
             });
 
-            $('[data-toggle="popover_override_hw_req_right"]').popover({
+            $('[data-toggle="popover_override_hw_req_top"]').popover({
                 trigger : 'click',
-                placement : 'right',
+                placement : 'top',
                 html : true,
                 content : function() {
                     return $('#popover_hw_req').html()
@@ -278,11 +278,6 @@
             }
 
             $('#on-submit').click(function (e) {
-                //$('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').text());
-                //console.log('hardware_audit_version');
-                //console.log($('#hardware_audit_version option:selected').text());
-                //console.log($('#hidden_hardware_audit_version').val());
-                //return false;
 
                 if ($('#wizard-dialog .nav-tabs .active').text() == "SELECT SOFTWARE VERSION" && validateHardwareAudit() == false) {
                     return false;
@@ -304,6 +299,24 @@
 
             });
 
+
+            function check_version(version) {
+                var numbers = version.split(".");
+                var min_version_numbers = [6,1,3];
+                var valid_version = false;
+                for (var i = 0; i < 3; i++) {
+                    if (parseInt(numbers[i]) > min_version_numbers[i]) {
+                        valid_version = true;
+                        break
+                    } else if (parseInt(numbers[i]) < min_version_numbers[i]) {
+                        break;
+                    } else if (i==2 && parseInt(numbers[i]) == min_version_numbers[i]) {
+                        valid_version = true;
+                    }
+                }
+                return valid_version
+            }
+
             function on_submit() {
 
                 if (use_utc_timezone) {
@@ -311,8 +324,25 @@
                 } else {
                     $('#scheduled-time-UTC').val(convertToUTCString($('#scheduled-time').val()));
                 }
+                var hardware_audit_version = $('#hardware_audit_version').val();
+                var install_actions = $('#install_action').val();
 
-                $('#hidden_hardware_audit_version').val($('#hardware_audit_version option:selected').val());
+                if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
+                    if (hardware_audit_version == '') {
+                        bootbox.alert("Please specify the ASR9K-X64 Software Version.");
+                        return false;
+                    }
+                    if (!/^\d+\.\d+\.\d+$/.test(hardware_audit_version)) {
+                        bootbox.alert("The ASR9K-X64 Software Version entered - " + hardware_audit_version + " - is not in X.X.X format.");
+                        return false;
+                    }
+                    if (!check_version(hardware_audit_version)) {
+                        bootbox.alert("The ASR9K-X64 Software Version has to be at least 6.1.3.");
+                        return false;
+                    }
+                }
+
+                $('#hidden_hardware_audit_version').val($('#hardware_audit_version').val());
 
                 $('#hidden_region').val($('#region').val());
                 $('#hidden_hosts').val(String(host_selector.get_selected_items()));
@@ -329,15 +359,17 @@
                     $('#hidden_override_hw_req').val($('[name="override_hw_req"]')[1].value);
                 }
 
-                var install_actions = $('#install_action').val();
-
+                if (has_one_of_these(install_actions, [MIGRATION_AUDIT])) {
+                    submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                    return
+                }
                 if ($('#hidden_edit').val() == 'False') {
                     get_qualified_hosts_and_submit_form(install_actions);
                 } else {
                     if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
-                        submit_form_on_successfully_download_config_conversion_tool();
+                        submit_form_on_successfully_downloading_migration_support_files();
                     } else {
-                        $('#form').submit();
+                        submit_form_after_downloading_asr9k_x64_supported_hardware_list();
                     }
                 }
 
@@ -355,12 +387,30 @@
                 return false;
             });
 
-            function submit_form_on_successfully_download_config_conversion_tool() {
+            function submit_form_after_downloading_asr9k_x64_supported_hardware_list() {
 
                 submit_spinner.show();
 
                 $.ajax({
-                    url: "/asr9k_x64_migrate/api/get_latest_config_migration_tool/",
+                    url: "/asr9k_x64_migrate/api/download_asr9k_x64_supported_hardware_list/",
+                    dataType: 'json',
+                    success: function (response) {
+                        submit_spinner.hide();
+                        $('#form').submit();
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        bootbox.alert("Unable to download the latest ASR9K-X64 supported hardware list from CCO to CSM. Error=" + errorThrown);
+                        submit_spinner.hide();
+                    }
+                });
+            }
+
+            function submit_form_on_successfully_downloading_migration_support_files() {
+
+                submit_spinner.show();
+
+                $.ajax({
+                    url: "/asr9k_x64_migrate/api/download_migration_support_files/",
                     dataType: 'json',
                     success: function (response) {
                         if (response.status == 'Failed') {
@@ -396,7 +446,7 @@
                 }
 
                 var dependency = '';
-                if (has_one_of_these(install_actions, [MIGRATION_AUDIT]) || has_one_of_these(install_actions, [PRE_MIGRATE])) {
+                if (has_one_of_these(install_actions, [PRE_MIGRATE])) {
                     dependency = '';
                 } else {
                     if (has_one_of_these(install_actions, [MIGRATE_SYSTEM])) {
@@ -412,131 +462,224 @@
                     dataType: 'json',
                     data: {hosts : $('#hidden_hosts').val(), dependency : dependency},
                     success: function (response) {
+                        var dependency_list = response.data[0].dependency_list;
+                        var disqualified_count = response.data[0].disqualified_count;
+                        var non_console_host_list = response.data[0].non_console_host_list;
 
-                            $.each(response, function (index, element) {
+                        var hostnames = host_selector.get_selected_items();
 
-                                var hostnames = host_selector.get_selected_items();
+                        var html = '';
 
-                                if (element[0].disqualified_count > 0) {
+                        var non_console_warning_html = '';
 
-                                    var qualified_hosts = "";
-                                    var new_dependency_list = "";
-                                    if (dependency == '') {
-                                         var html = '<p>In order to schedule migration actions, console connection ' +
-                                                    'must be provided for each host instead of management IP.</p>';
-                                         if (element[0].disqualified_count == hostnames.length) {
-                                             html += 'None of the selected hosts meet this requirement.'
-                                         } else {
-                                             html += 'These hosts below failed this requirement.'
-                                         }
+                        if (non_console_host_list.length > 0) {
+                            non_console_warning_html += '<p>Warning: The recommended way for migration is through console connection. ' +
+                                    'For the selected host(s) with management interface connection, ' +
+                                    'there will be no session log available after they reload and before ASR9K-X64 completes booting. ' +
+                                    'In case of failure during the reload process, console connection will be necessary for troubleshooting.</p>' +
+                                     String(non_console_host_list.length) + ' selected host(s) have management interface connection:' +
+                                    '<div style="overflow: auto;max-height: 200px;width: 100%;">' +
+                                    '<table class="table table-striped"><tbody>';
+                            $.map(non_console_host_list, function (hostname) {
+                                non_console_warning_html += '<tr><td>' + hostname + '</td></tr>';
+                            });
+
+                            non_console_warning_html += '</tbody></table></div>';
+                        }
+
+                        if (disqualified_count > 0) {
+
+                            var qualified_hosts = '';
+
+                            if (dependency == MIGRATE_SYSTEM) {
+                                html += '<p>Warning: Post-Migrate should be scheduled after the device migrates to ASR9K-X64. ' +
+                                        String(disqualified_count) + ' selected host(s) do not have a scheduled or completed Migrate action:' +
+                                        '</p>';
+
+                                html +='<div style="overflow: auto;max-height: 200px;width: 100%;">' +
+                                       '<table class="table table-striped"><tbody>';
+
+                                for (var i = 0, len = hostnames.length; i < len; ++i) {
+                                    if (dependency_list[i] == '-2') {
+                                        html += '<tr><td>' + hostnames[i] + '</td></tr>';
                                     } else {
-                                        var html = '<p>Requirements:</p>' +
-                                               '<p>1. Console connection must be provided for each host instead ' +
-                                               'of management IP.</p><p>2. Dependency for selected migration action ' +
-                                               'must be met. ';
-
-                                        if (dependency == PRE_MIGRATE) {
-                                            html += 'In this case, to schedule Migrate for a host, '
-                                        } else if (dependency == MIGRATE_SYSTEM) {
-                                            html += 'In this case, to schedule Post-Migrate for a host, '
-                                        }
-                                        html += dependency + " must either be scheduled" +
-                                                ' or already completed successfully for the host.</p>';
-                                        if (element[0].disqualified_count == hostnames.length) {
-                                            html += 'None of the selected hosts meet both of the above requirements.'
-                                        } else {
-                                            html += 'These hosts below failed at least one of the above requirements.'
-                                        }
+                                        qualified_hosts += hostnames[i] + ',';
                                     }
 
+                                }
+                                html += '</tbody></table></div>';
 
-                                    html += '<h4>Dis-qualified Hosts</h4>' +
-                                           '<div style="overflow: auto;height: 200px;width: 100%;">' +
-                                           '<table class="table table-striped"><tbody>';
+                                qualified_hosts = qualified_hosts.slice(0, -1);
 
-                                    for (var i = 0, len = hostnames.length; i < len; ++i) {
-                                        if (element[0].dependency_list[i] != null) {
-                                            if (element[0].dependency_list[i] == '-2') {
-                                                html += '<tr><td>' + hostnames[i] + '</td></tr>';
-                                            } else if (element[0].disqualified_count < hostnames.length) {
-                                                qualified_hosts += hostnames[i] + ',';
-                                                new_dependency_list += element[0].dependency_list[i] + ',';
-                                            }
+                                html += '<br><p>If these hosts have been migrated to ASR9K-X64, you can continue to schedule Post-Migrate for all selected hosts, or click cancel.</p><br>';
+
+                                html += non_console_warning_html;
+
+                                bootbox.dialog({
+                                    message: html,
+                                    title: "Warning: " + String(disqualified_count) + " out of " + String(hostnames.length) + " selected hosts do not have a scheduled or completed Migrate action",
+                                    onEscape: false,
+                                    show: true,
+                                    backdrop: true,
+                                    closeButton: true,
+                                    animate: true,
+                                    className: "check-dependency-post-migrate-modal",
+                                    callback: function(){ /* your callback code */ },
+                                    buttons: {
+                                        success: {
+                                          label: "Continue to schedule for all",
+                                          className: "btn-primary",
+                                          callback: function() {
+                                              $('#hidden_dependency').val(dependency_list.join(','));
+                                              if (need_to_download_config_conversion_tool) {
+                                                  submit_form_on_successfully_downloading_migration_support_files();
+                                              } else {
+                                                  submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                                              }
+                                          }
+
+                                        },
+                                        "Cancel": {
+                                          className: "btn-default",
+                                          callback: function() {
+                                              submit_spinner.hide();
+                                          }
+
                                         }
-
-
                                     }
-                                    html += '</tbody></table></div>';
+                                });
 
-                                    if (element[0].disqualified_count == hostnames.length) {
-                                        if (dependency == '') {
-                                            html += '<br>Please make sure to provide console connection for all hosts';
-                                        } else {
-                                            html += '<br><p>Please make sure to:</p><p>1. Provide console connection ' +
-                                                'for all hosts</p><p>2. Schedule ' + dependency + ' for all selected ' +
-                                                'hosts.</p>';
-                                        }
-                                        bootbox.alert({
-                                            message: html,
-                                            title: "No selected hosts qualify for scheduling"
-                                        });
+                            } else {
+                                // dependency is Pre-Migrate
+                                var new_dependency_list = "";
+
+                                html += '<p>To schedule Migrate for a host, Pre-Migrate must either be scheduled' +
+                                        ' or has been completed successfully.</p>' +
+                                        'The host(s) below failed to meet this requirement.' +
+                                        '</p>' +
+                                        '<h4>' + String(disqualified_count) + ' dis-qualified hosts</h4>' +
+                                        '<div style="overflow: auto;max-height: 200px;width: 100%;">' +
+                                        '<table class="table table-striped"><tbody>';
+
+                                for (var i = 0, len = hostnames.length; i < len; ++i) {
+                                    if (dependency_list[i] == '-2') {
+                                        html += '<tr><td>' + hostnames[i] + '</td></tr>';
                                     } else {
-                                        qualified_hosts = qualified_hosts.slice(0, -1);
-                                        new_dependency_list = new_dependency_list.slice(0, -1);
-
-                                        html += '<br>You can choose to schedule for the qualified hosts only, or click cancel.';
-                                        bootbox.dialog({
-                                            message: html,
-                                            title: String(element[0].disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
-                                            onEscape: function() {},
-                                            show: true,
-                                            backdrop: true,
-                                            closeButton: true,
-                                            animate: true,
-                                            className: "my-modal",
-                                            callback: function(){ /* your callback code */ },
-                                            buttons: {
-                                                success: {
-                                                  label: "Only schedule for qualified hosts",
-                                                  className: "btn-primary",
-                                                  callback: function() {
-                                                      $('#hidden_hosts').val(qualified_hosts);
-                                                      $('#hidden_dependency').val(new_dependency_list);
-                                                      if (need_to_download_config_conversion_tool) {
-                                                          submit_form_on_successfully_download_config_conversion_tool();
-                                                      } else {
-                                                          submit_spinner.hide();
-                                                          $('#form').submit();
-                                                      }
-                                                  }
-
-                                                },
-                                                "Cancel": {
-                                                  className: "btn-default",
-                                                  callback: function() {}
-
-                                                }
-                                            }
-                                        });
-                                    }
-                                 submit_spinner.hide();
-
-                                } else {
-                                    $('#hidden_dependency').val(element[0].dependency_list.join());
-                                    if (need_to_download_config_conversion_tool) {
-                                        submit_form_on_successfully_download_config_conversion_tool();
-                                    } else {
-                                        submit_spinner.hide();
-                                        $('#form').submit();
+                                        qualified_hosts += hostnames[i] + ',';
+                                        new_dependency_list += dependency_list[i] + ',';
                                     }
                                 }
-                            });
+                                html += '</tbody></table></div>';
+
+                                if (disqualified_count == hostnames.length) {
+
+                                    html += '<br><p>Please make sure to schedule ' + dependency + ' for all selected hosts.</p>';
+                                    bootbox.alert({
+                                        message: html,
+                                        title: "No selected hosts qualify for scheduling"
+                                    });
+                                } else {
+                                    // remove comma in the end
+                                    qualified_hosts = qualified_hosts.slice(0, -1);
+                                    new_dependency_list = new_dependency_list.slice(0, -1);
+
+                                    html += '<br><p>You can choose to schedule for the qualified hosts only, or click cancel.</p>';
+
+                                    html += non_console_warning_html;
+
+                                    bootbox.dialog({
+                                        message: html,
+                                        title: String(disqualified_count) + " out of " + String(hostnames.length) + " selected hosts disqualified for scheduling",
+                                        onEscape: false,
+                                        show: true,
+                                        backdrop: true,
+                                        closeButton: true,
+                                        animate: true,
+                                        className: "check-dependency-modal",
+                                        callback: function(){ /* your callback code */ },
+                                        buttons: {
+                                            success: {
+                                              label: "Only schedule for qualified hosts",
+                                              className: "btn-primary",
+                                              callback: function() {
+                                                  $('#hidden_hosts').val(qualified_hosts);
+                                                  $('#hidden_dependency').val(new_dependency_list);
+                                                  if (need_to_download_config_conversion_tool) {
+                                                      submit_form_on_successfully_downloading_migration_support_files();
+                                                  } else {
+                                                      submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                                                  }
+                                              }
+
+                                            },
+                                            "Cancel": {
+                                              className: "btn-default",
+                                              callback: function() {
+                                                  submit_spinner.hide();
+                                              }
+
+                                            }
+                                        }
+                                    });
+                                }
+
+                            }
+
+
+
+
+
+                        } else if (non_console_host_list.length > 0) {
+
+                            bootbox.dialog({
+                                message: non_console_warning_html,
+                                title: "Warning: " + String(non_console_host_list.length) + " out of " + String(hostnames.length) + " selected host(s) have no console port specified",
+                                onEscape: false,
+                                show: true,
+                                backdrop: true,
+                                closeButton: true,
+                                animate: true,
+                                className: "no-console-warning-modal",
+                                callback: function(){ /* your callback code */ },
+                                buttons: {
+                                    success: {
+                                      label: "Continue to schedule",
+                                      className: "btn-primary",
+                                      callback: function() {
+                                          $('#hidden_dependency').val(dependency_list.join());
+                                          if (need_to_download_config_conversion_tool) {
+                                              submit_form_on_successfully_downloading_migration_support_files();
+                                          } else {
+                                              submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                                          }
+                                      }
+
+                                    },
+                                    "Cancel": {
+                                      className: "btn-default",
+                                      callback: function() {
+                                          submit_spinner.hide();
+                                      }
+
+                                    }
+                                }
+                                });
+
+                        } else {
+                            if (need_to_download_config_conversion_tool) {
+                                submit_form_on_successfully_downloading_migration_support_files();
+                            } else {
+                                submit_form_after_downloading_asr9k_x64_supported_hardware_list();
+                            }
+                        }
+                        submit_spinner.hide();
                     },
                     error: function (XMLHttpRequest, textStatus, errorThrown) {
                         bootbox.alert("Unable to download the latest configuration migration tool from CCO to CSM. Error=" + errorThrown);
                         submit_spinner.hide();
                     }
                 });
+
             }
 
 
