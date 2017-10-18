@@ -78,6 +78,16 @@ def get_available_plugins_and_required_data():
     return jsonify(plugin_specs=get_available_plugin_specs(software_platforms, phases))
 
 
+def get_all_available_plugins(platform=None, phases=None, os_type=None):
+    if phases:
+        return get_available_plugins(platform=platform, phase=phases, os=os_type)
+    # if phases is not specified, get available plugins for all valid mop phases
+    plugins = dict()
+    for phase in get_phases():
+        plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
+    return plugins
+
+
 def get_available_plugin_specs(software_platforms, phases):
     if not software_platforms:
         plugin_specs = get_all_available_plugins(phases=phases)
@@ -99,17 +109,7 @@ def get_available_plugin_specs(software_platforms, phases):
     for plugin in plugins:
         available_plugin_specs[plugin] = plugin_specs[plugin]
 
-    return jsonify(plugin_specs=available_plugin_specs)
-
-
-def get_all_available_plugins(platform=None, phases=None, os_type=None):
-    if phases:
-        return get_available_plugins(platform=platform, phase=phases, os=os_type)
-    # if phases is not specified, get available plugins for all valid mop phases
-    plugins = dict()
-    for phase in get_phases():
-        plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
-    return plugins
+    return available_plugin_specs
 
 
 @mop.route('/api/get_mops', defaults={'platform': None, 'phase': None})
