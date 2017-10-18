@@ -95,6 +95,8 @@ KEY_TRACE = 'trace'
 KEY_CREATED_BY = 'created_by'
 KEY_DELETED_DEPENDENCIES = 'deleted_dependencies'
 KEY_INSTALL_JOB_LIST = 'install_job_list'
+KEY_PACKAGE_CHANGE_LIST = 'package_change_list'
+KEY_WARNINGS_OR_ERRORS = 'warnings_or_errors'
 
 acceptable_keys = [KEY_HOSTNAME, KEY_INSTALL_ACTION, KEY_SCHEDULED_TIME, KEY_UTC_OFFSET, KEY_CUSTOM_COMMAND_PROFILE,
                    KEY_DEPENDENCY, KEY_SERVER_REPOSITORY, KEY_SERVER_DIRECTORY, KEY_SOFTWARE_PACKAGES,
@@ -434,12 +436,18 @@ def api_get_install_request(request):
         # Use all() instead of first() so the return is a list type.
         install_jobs = db_session.query(InstallJob).filter(InstallJob.id == id).all()
         if not install_jobs:
-            # It is possible that this query may result in multiple rows
-            # 1) the install job id may be re-used by other hosts.
+            # FIXME: It is possible that this query may result in multiple rows
+            # 1) the install job id may be re-used by other hosts. (FIXME: when the database restarts)
             # 2) if the install job was re-submitted.
-            install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == id).all()
+
+            # For now, return the last occurrence of the install job ID.
+            install_jobs = db_session.query(InstallJobHistory).filter(InstallJobHistory.install_job_id == id). \
+                order_by(InstallJobHistory.id.desc()).all()
+
             if not install_jobs:
                 raise ValueError("Install id '{}' does not exist in the database.".format(id))
+            else:
+                install_jobs = [install_jobs[0]]  # get the last one
     else:
         table_to_query = InstallJob
         if status:
@@ -561,6 +569,21 @@ def get_install_job_info(db_session, install_job, utc_offset):
     row[KEY_CREATED_BY] = install_job.created_by if install_job.created_by else ""
     row[KEY_HOSTNAME] = get_host_by_id(db_session, install_job.host_id).hostname if install_job.host_id else ""
 
+    warnings_or_errors = install_job.load_data('job_info')
+    if warnings_or_errors is None:
+        row[KEY_WARNINGS_OR_ERRORS] = ''
+    else:
+        row[KEY_WARNINGS_OR_ERRORS] = '\n'.join(warnings_or_errors)
+
+    if install_job.status == JobStatus.COMPLETED:
+        package_change_list = install_job.load_data('package_change_list')
+        if package_change_list is None:
+            row[KEY_PACKAGE_CHANGE_LIST] = []
+        else:
+            row[KEY_PACKAGE_CHANGE_LIST] = package_change_list[0].split(',')
+    else:
+        row[KEY_PACKAGE_CHANGE_LIST] = []
+
     return row
 
 
@@ -643,7 +666,9 @@ def api_get_session_log(id):
 
     install_job = db_session.query(InstallJob).filter((InstallJob.id == id)).first()
     if install_job is None:
-        install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.install_job_id == id)).first()
+        # FIXME: It is possible that there may be multiple install job ids (like resubmitted jobs, deleted jobs)
+        install_job = db_session.query(InstallJobHistory).filter((InstallJobHistory.install_job_id == id)). \
+            order_by(InstallJobHistory.id.desc()).first()
 
     if install_job is None:
         raise ValueError("Install job id '%d' does not exist in the database." % id)
