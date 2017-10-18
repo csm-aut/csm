@@ -482,7 +482,7 @@ def translate_software_platform_to_platform_os(software_platform):
         return software_platform, None
 
 
-def get_existing_software_platform(db_session):
+def get_managed_software_platforms(db_session):
     return db_session.query(Host.software_platform).filter(Host.software_platform != "Unknown").distinct().all()
 
 

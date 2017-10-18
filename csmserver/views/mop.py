@@ -32,6 +32,8 @@ from wtforms import StringField
 from wtforms import SelectMultipleField
 from wtforms.validators import Length, required
 
+import sqlalchemy
+
 from constants import InstallAction
 
 from common import can_delete
@@ -39,7 +41,7 @@ from common import can_install
 from common import get_return_url
 from common import get_mop_list
 from common import get_mop_specs_with_mop_name
-from common import get_existing_software_platform
+from common import get_managed_software_platforms
 from common import get_region_by_id
 from common import translate_software_platform_to_platform_os
 
@@ -76,16 +78,6 @@ def get_available_plugins_and_required_data():
     return jsonify(plugin_specs=get_available_plugin_specs(software_platforms, phases))
 
 
-def get_all_available_plugins(platform=None, phases=None, os_type=None):
-    if phases:
-        return get_available_plugins(platform=platform, phase=phases, os=os_type)
-    # if phases is not specified, get available plugins for all valid mop phases
-    plugins = dict()
-    for phase in get_phases():
-        plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
-    return plugins
-
-
 def get_available_plugin_specs(software_platforms, phases):
     if not software_platforms:
         plugin_specs = get_all_available_plugins(phases=phases)
@@ -107,7 +99,17 @@ def get_available_plugin_specs(software_platforms, phases):
     for plugin in plugins:
         available_plugin_specs[plugin] = plugin_specs[plugin]
 
-    return available_plugin_specs
+    return jsonify(plugin_specs=available_plugin_specs)
+
+
+def get_all_available_plugins(platform=None, phases=None, os_type=None):
+    if phases:
+        return get_available_plugins(platform=platform, phase=phases, os=os_type)
+    # if phases is not specified, get available plugins for all valid mop phases
+    plugins = dict()
+    for phase in get_phases():
+        plugins.update(get_available_plugins(platform=platform, phase=phase, os=os_type))
+    return plugins
 
 
 @mop.route('/api/get_mops', defaults={'platform': None, 'phase': None})
@@ -240,9 +242,14 @@ def create_new_mop(db_session, mop_details, return_url):
         logger.exception('create new mop hit exception: '.format(e))
         return jsonify(redirect_url=url_for(return_url))
 
-    db_session.add_all(mops)
-    db_session.commit()
-    db_session.close()
+    try:
+        db_session.add_all(mops)
+        db_session.commit()
+        db_session.close()
+    except sqlalchemy.exc.DataError as e:
+        db_session.rollback()
+        return jsonify(error=str(e))
+
     return jsonify(redirect_url=url_for(return_url))
 
 
@@ -265,7 +272,7 @@ def get_phase_choices():
 
 def get_software_platform_choices(db_session):
     #platforms = [(value, value) for key, value in vars(PlatformFamily).iteritems() if not key.startswith('_')]
-    platforms = [(platform[0], platform[0]) for platform in get_existing_software_platform(db_session)]
+    platforms = [(platform[0], platform[0]) for platform in get_managed_software_platforms(db_session)]
     platforms.append(("ALL", "ALL"))
     return platforms
 
@@ -290,6 +297,6 @@ def substitute_env_vars(db_session, host, expression):
 
 
 class MopForm(Form):
-    mop_name = StringField('MOP Name', [required(), Length(max=30)])
+    mop_name = StringField('MOP Name', [required(), Length(max=100)])
     phase = SelectMultipleField('Phase', coerce=str, choices=[('', '')])
     platform = SelectMultipleField('Platform', coerce=str, choices=[('', '')])

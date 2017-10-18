@@ -271,6 +271,10 @@
                         // data.redirect contains the string URL to redirect to
                         window.location.href = data.redirect_url;
                     }
+                    if (data.error) {
+                        bootbox.alert('<img src="/static/error.png">&nbsp;Failed to create the MOP. Error: <p> ' + data.error);
+                        return false;
+                    }
 
                 }
             });
@@ -372,7 +376,14 @@
             <legend>{% if isEdit %}Edit MOP{% else %}Create MOP{% endif %}</legend>
             
             {{ alert_duplicate(form.mop_name.data, duplicate_error) }}
-            {{ edit_field(form.mop_name, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
+            {{ data_error }}
+            {% if data_error == '2' %}
+                <div class="alert alert-danger">
+                    <strong>NOTE:&nbsp;</strong>
+                        {{ data_error }}
+                </div>
+            {% endif %}
+            {{ edit_field(form.mop_name, maxlength=100, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
             {{ edit_field(form.phase, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
             {{ edit_field(form.platform, class="form-control", field_width="col-sm-8", label_field_width="col-sm-2") }}
 

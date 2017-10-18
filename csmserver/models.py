@@ -749,8 +749,8 @@ class Mop(Base):
     __tablename__ = 'mop'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(50))
-    plugin_name = Column(String(50))
+    name = Column(String(100))
+    plugin_name = Column(String(100))
     plugin_idx = Column(Integer)
     phase = Column(String(50))
     software_platform = Column(String(20))
