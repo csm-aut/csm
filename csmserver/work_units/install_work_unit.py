@@ -126,7 +126,7 @@ class InstallWorkUnit(WorkUnit):
             else:
                 self.archive_install_job(db_session, logger, ctx, host, install_job, JobStatus.FAILED, process_name)
 
-        except (Exception, exc.InvalidRequestError, exc.SQLAlchemyError):
+        except (Exception, exc.SQLAlchemyError):
             db_session.rollback()
             try:
                 self.log_exception(logger, host)

@@ -87,7 +87,7 @@ class InventoryWorkUnit(WorkUnit):
 
             db_session.commit()
 
-        except (Exception, exc.InvalidRequestError, exc.SQLAlchemyError):
+        except (Exception, exc.SQLAlchemyError):
             db_session.rollback()
             try:
                 self.log_exception(logger, host)

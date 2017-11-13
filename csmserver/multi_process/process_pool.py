@@ -25,6 +25,7 @@
 from multiprocessing import Process, Manager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy import exc
 from sqlalchemy.engine.url import URL
 from database import db_settings, ENABLE_DEBUG
 from models import get_db_session_logger
@@ -59,13 +60,17 @@ class PoolWorker(Process):
     def run(self):
         """Process the work unit, or wait for sentinel to exit"""
         while 1:
-            work_unit = self.queue.get()
-            if is_sentinel(work_unit):
-                # Got sentinel
-                break
+            try:
+                work_unit = self.queue.get()
+                if is_sentinel(work_unit):
+                    # Got sentinel
+                    break
 
-            # Run the job / sequence
-            work_unit.process(self.db_session, self.logger, self.name)
+                # Run the job / sequence
+                work_unit.process(self.db_session, self.logger, self.name)
+            except Exception:
+                # Do nothing
+                pass
 
 
 class Pool(object):

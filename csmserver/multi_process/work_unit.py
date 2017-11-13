@@ -37,12 +37,18 @@ class WorkUnit(object):
         try:
             self.start(db_session, logger, process_name)
         except Exception:
-            logger.exception("WorkUnit.process() hit exception")
+            try:
+                logger.exception("WorkUnit.process() hit exception")
+            except Exception:
+                pass
         finally:
-            if self.in_progress_jobs is not None and self.lock is not None:
-                with self.lock:
-                    if self.get_unique_key() in self.in_progress_jobs:
-                        self.in_progress_jobs.remove(self.get_unique_key())
+            try:
+                if self.in_progress_jobs is not None and self.lock is not None:
+                    with self.lock:
+                        if self.get_unique_key() in self.in_progress_jobs:
+                            self.in_progress_jobs.remove(self.get_unique_key())
+            except Exception:
+                pass
 
     def start(self, db_session, logger, process_name):
         raise NotImplementedError("Children must override start()")
