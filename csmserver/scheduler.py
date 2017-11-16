@@ -74,19 +74,19 @@ class Scheduler(threading.Thread):
             scheduler.run()
             
         except:
-            logger.exception('Scheduler hit exception')
-
+            try:
+                logger.exception('Scheduler hit exception')
+            except Exception:
+                pass
             
     def scheduling(self, scheduler, daily_time):
-        
-        # First, re-set up the scheduler for the next day the same time. It is important to have
-        # this logic on the top so that if any error encountered below, the scheduling still works.
-        t = datetime.datetime.combine(datetime.datetime.now() + datetime.timedelta(days=1), daily_time)
-        scheduler.enterabs(time.mktime(t.timetuple()), 1, self.scheduling, (scheduler, daily_time,))
-            
         db_session = DBSession()
-        
         try:
+            # First, re-set up the scheduler for the next day the same time. It is important to have
+            # this logic on the top so that if any error encountered below, the scheduling still works.
+            t = datetime.datetime.combine(datetime.datetime.now() + datetime.timedelta(days=1), daily_time)
+            scheduler.enterabs(time.mktime(t.timetuple()), 1, self.scheduling, (scheduler, daily_time,))
+
             system_option = SystemOption.get(db_session)
             # If software inventory is enabled, submit the inventory jobs
             if system_option.enable_inventory:
@@ -94,7 +94,7 @@ class Scheduler(threading.Thread):
 
                 if len(inventory_jobs) > 0:
                     for inventory_job in inventory_jobs:
-                        if inventory_job.status not in [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS]:
+                        if inventory_job.status and inventory_job.status not in [JobStatus.SCHEDULED, JobStatus.IN_PROGRESS]:
                             inventory_job.status = JobStatus.SCHEDULED
 
                     db_session.commit()
@@ -103,9 +103,15 @@ class Scheduler(threading.Thread):
             self.perform_housekeeping_tasks(db_session, system_option)
             
         except:
-            logger.exception('scheduling() hit exception')
+            try:
+                logger.exception('scheduling() hit exception')
+            except Exception:
+                pass
         finally:
-            db_session.close()
+            try:
+                db_session.close()
+            except Exception:
+                pass
 
     def perform_housekeeping_tasks(self, db_session, system_option):
         self.purge_system_log(db_session, system_option.total_system_logs)
@@ -128,9 +134,13 @@ class Scheduler(threading.Thread):
                 for log in logs:
                     db_session.delete(log)
                 db_session.commit()
-        except:
-            db_session.rollback()
-            logger.exception('purge_system_log() hit exception')
+        except Exception:
+            try:
+                db_session.rollback()
+                logger.exception('purge_system_log() hit exception')
+            except Exception:
+                pass
+
 
     def purge_inventory_job_history(self, db_session, entry_per_host):
         # Scanning the InventoryJobHistory table for records that should be deleted.
@@ -152,7 +162,7 @@ class Scheduler(threading.Thread):
                         if inventory_job.session_log is not None:
                             shutil.rmtree(get_log_directory() + inventory_job.session_log)
                     except:
-                        logger.exception('purge_inventory_job_history() hit exception- inventory job = %s', inventory_job.id)
+                        logger.exception('purge_inventory_job_history() hit exception - inventory job = %s', inventory_job.id)
 
                     db_session.delete(inventory_job)
 
@@ -160,8 +170,11 @@ class Scheduler(threading.Thread):
 
             db_session.commit()
         except:
-            db_session.rollback()
-            logger.exception('purge_inventory_job_history() hit exception')
+            try:
+                db_session.rollback()
+                logger.exception('purge_inventory_job_history() hit exception')
+            except Exception:
+                pass
 
     def purge_install_job_history(self, db_session, entry_per_host):
         # Scanning the InstallJobHistory table for records that should be deleted.
@@ -190,9 +203,12 @@ class Scheduler(threading.Thread):
                 skip_count += 1
 
             db_session.commit()
-        except:
-            db_session.rollback()
-            logger.exception('purge_install_job_history() hit exception')
+        except Exception:
+            try:
+                db_session.rollback()
+                logger.exception('purge_install_job_history() hit exception')
+            except Exception:
+                pass
 
     def purge_download_job_history(self, db_session, entry_per_user):
         # Scanning the DownloadJobHistory table for records that should be deleted.
@@ -214,9 +230,12 @@ class Scheduler(threading.Thread):
                 skip_count += 1
 
             db_session.commit()
-        except:
-            db_session.rollback()
-            logger.exception('purge_download_job_history() hit exception')
+        except Exception:
+            try:
+                db_session.rollback()
+                logger.exception('purge_download_job_history() hit exception')
+            except Exception:
+                pass
 
     def purge_tar_job(self, db_session):
         # Deleting old CreateTarJobs
@@ -227,9 +246,12 @@ class Scheduler(threading.Thread):
                     db_session.delete(create_tar_job)
 
             db_session.commit()
-        except:
-            db_session.rollback()
-            logger.exception('purge_tar_job() hit exception')
+        except Exception:
+            try:
+                db_session.rollback()
+                logger.exception('purge_tar_job() hit exception')
+            except Exception:
+                pass
 
     def purge_config_job(self, db_session):
         # Deleting old ConvertConfigJobs
@@ -240,9 +262,12 @@ class Scheduler(threading.Thread):
                     db_session.delete(convert_config_job)
 
             db_session.commit()
-        except:
-            db_session.rollback()
-            logger.exception('purge_config_job() hit exception')
+        except Exception:
+            try:
+                db_session.rollback()
+                logger.exception('purge_config_job() hit exception')
+            except Exception:
+                pass
 
 if __name__ == '__main__':
     pass
