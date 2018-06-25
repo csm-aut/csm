@@ -28,7 +28,7 @@ from flask import abort
 from flask import jsonify
 from flask import render_template
 
-from flask.ext.login import current_user
+from flask_login import current_user
 
 from wtforms import Form
 from wtforms import StringField
@@ -62,7 +62,7 @@ from constants import JobStatus
 from constants import PackageState
 from constants import InstallAction
 
-from flask.ext.login import login_required
+from flask_login import login_required
 
 from filters import time_difference_UTC
 

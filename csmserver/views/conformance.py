@@ -24,7 +24,7 @@
 # =============================================================================
 from flask import Blueprint
 from flask import render_template, jsonify, abort, send_file, flash
-from flask.ext.login import login_required, current_user
+from flask_login import login_required, current_user
 from flask import request, redirect, url_for
 
 from wtforms import Form

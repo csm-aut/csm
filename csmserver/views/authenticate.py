@@ -30,10 +30,10 @@ from flask import redirect
 from flask import url_for
 from flask import jsonify
 
-from flask.ext.login import login_required
-from flask.ext.login import current_user
-from flask.ext.login import login_user
-from flask.ext.login import logout_user
+from flask_login import login_required
+from flask_login import current_user
+from flask_login import login_user
+from flask_login import logout_user
 
 from wtforms import Form
 from wtforms import StringField

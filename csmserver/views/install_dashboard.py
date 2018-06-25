@@ -28,7 +28,7 @@ from flask import abort
 from flask import render_template
 from flask import url_for
 from flask import request
-from flask.ext.login import current_user
+from flask_login import current_user
 
 from sqlalchemy import and_
 
@@ -49,7 +49,7 @@ from common import can_install
 from constants import JobStatus
 
 
-from flask.ext.login import login_required
+from flask_login import login_required
 
 install_dashboard = Blueprint('install_dashboard', __name__, url_prefix='/install_dashboard')
 

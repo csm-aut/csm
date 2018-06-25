@@ -29,8 +29,8 @@ from flask import Blueprint
 from flask import render_template
 from flask import jsonify
 from flask import send_file
-from flask.ext.login import login_required
-from flask.ext.login import current_user
+from flask_login import login_required
+from flask_login import current_user
 from flask import request
 
 from sqlalchemy import and_

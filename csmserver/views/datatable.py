@@ -26,7 +26,7 @@ from flask import Blueprint
 from flask import request
 from flask import jsonify
 from flask import abort
-from flask.ext.login import login_required
+from flask_login import login_required
 
 from sqlalchemy import or_
 from sqlalchemy import and_

@@ -27,8 +27,8 @@ from flask import Blueprint
 from flask import render_template
 from flask import abort
 from flask import request, redirect, url_for
-from flask.ext.login import current_user
-from flask.ext.login import login_required
+from flask_login import current_user
+from flask_login import login_required
 
 from wtforms import Form, validators
 from wtforms import RadioField

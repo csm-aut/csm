@@ -29,9 +29,9 @@ from flask import request
 from flask import Response
 from flask import redirect
 from flask import url_for
-from flask.ext.login import LoginManager
-from flask.ext.login import current_user
-from flask.ext.login import login_required
+from flask_login import LoginManager
+from flask_login import current_user
+from flask_login import login_required
 
 from werkzeug.contrib.fixers import ProxyFix
 

@@ -27,7 +27,7 @@ import datetime
 from filters import get_datetime_string
 
 from flask import Blueprint, jsonify, render_template, redirect, url_for, abort, request
-from flask.ext.login import login_required, current_user
+from flask_login import login_required, current_user
 from flask import flash
 from flask import send_from_directory
 from werkzeug.utils import secure_filename

@@ -27,8 +27,8 @@ from flask import abort
 from flask import jsonify
 from flask import render_template
 
-from flask.ext.login import login_required
-from flask.ext.login import current_user
+from flask_login import login_required
+from flask_login import current_user
 
 from database import DBSession
 
@@ -113,7 +113,7 @@ def api_get_files_from_csm_repository():
     file_list = get_file_list(get_repository_directory())
 
     for filename in file_list:
-        if filename.endswith('.tar'):
+        if '.tar' in filename and '.size' not in filename:
             statinfo = os.stat(get_repository_directory() + filename)
             row = dict()
             row['image_name'] = filename

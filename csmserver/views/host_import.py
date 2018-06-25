@@ -24,8 +24,8 @@
 # =============================================================================
 from flask import Blueprint
 from flask import render_template
-from flask.ext.login import current_user
-from flask.ext.login import login_required
+from flask_login import current_user
+from flask_login import login_required
 from flask import request
 from flask import jsonify, abort
 

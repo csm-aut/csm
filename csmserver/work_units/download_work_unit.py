@@ -39,6 +39,10 @@ from constants import JobStatus
 
 import os
 import traceback
+import re
+
+
+SKIP_UNTAR_TAR_FILENAME_REGEX = ["migrate_to_eXR"]
 
 
 class DownloadWorkUnit(WorkUnit):
@@ -72,6 +76,10 @@ class DownloadWorkUnit(WorkUnit):
                 return
 
             output_file_path = get_repository_directory() + self.download_job.cco_filename
+            tarfile_file_list = []
+
+            if any(re.search(regex, self.download_job.cco_filename) for regex in SKIP_UNTAR_TAR_FILENAME_REGEX):
+                tarfile_file_list = [self.download_job.cco_filename]
 
             # Only download if the image (tar file) is not in the downloads directory.
             # And, the image is a good one.
@@ -99,9 +107,11 @@ class DownloadWorkUnit(WorkUnit):
 
                 bsd.download(output_file_path, callback=self.progress_listener)
 
-                tarfile_file_list = untar(output_file_path, get_repository_directory())
+                if not tarfile_file_list:
+                    tarfile_file_list = untar(output_file_path, get_repository_directory())
             else:
-                tarfile_file_list = get_tarfile_file_list(output_file_path)
+                if not tarfile_file_list:
+                    tarfile_file_list = get_tarfile_file_list(output_file_path)
 
             # Now transfers to the server repository
             self.download_job.set_status_message('Transferring file to server repository.')
@@ -126,7 +136,6 @@ class DownloadWorkUnit(WorkUnit):
                 logger.exception('DownloadManager hit exception - download job = %s', self.job_id)
         finally:
             db_session.close()
-
 
     def is_tar_file_valid(self, tarfile_path):
         """

@@ -59,8 +59,8 @@ from common import get_last_successful_inventory_elapsed_time
 from forms import ScheduleInstallForm
 from forms import HostScheduleInstallForm
 
-from flask.ext.login import login_required
-from flask.ext.login import current_user
+from flask_login import login_required
+from flask_login import current_user
 
 from constants import JobStatus
 from constants import PlatformFamily

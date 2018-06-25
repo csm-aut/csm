@@ -26,7 +26,7 @@ from flask import Blueprint
 from flask import jsonify
 from flask import g
 from flask import request
-from flask.ext.httpauth import HTTPBasicAuth
+from flask_httpauth import HTTPBasicAuth
 
 from database import DBSession
 from models import User

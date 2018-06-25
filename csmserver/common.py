@@ -22,7 +22,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-from flask.ext.login import current_user
+from flask_login import current_user
 from flask import g, send_file
 from sqlalchemy import or_, and_, not_
 from sqlalchemy import func
@@ -890,8 +890,8 @@ def is_pending_on_download(db_session, filename, server_id, server_directory):
     if download_job_key in download_job_key_dict:
         download_job = download_job_key_dict[download_job_key]
         # Resurrect the download job
-        if download_job is not None and download_job.status == JobStatus.FAILED:
-            download_job.status = None
+        if download_job is not None and (not download_job.status or download_job.status == JobStatus.FAILED):
+            download_job.status = JobStatus.SCHEDULED
             download_job.status_time = None
             db_session.commit()
         return True

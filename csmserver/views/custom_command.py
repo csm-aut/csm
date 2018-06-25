@@ -31,8 +31,8 @@ from flask import url_for
 from flask import abort
 from flask import send_file
 from flask import flash
-from flask.ext.login import login_required
-from flask.ext.login import current_user
+from flask_login import login_required
+from flask_login import current_user
 
 from database import DBSession
 
