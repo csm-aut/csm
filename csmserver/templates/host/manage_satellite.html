@@ -47,10 +47,21 @@ $(function() {
         },
         onNext: function(tab, navigation, index){
             if (index == 1){
-                if (get_selected_satellites().length == 0) {
+                var selected_satellite_ids = get_selected_satellite_ids();
+                if (selected_satellite_ids.length == 0) {
                     bootbox.alert("No satellite was selected.");
                     return false;
                 }
+
+                var script_path = '';
+                if (hostname.indexOf(' ') == -1) {
+                    script_path = '<script_name> ' + hostname + ' ' + selected_satellite_ids.join();
+                } else {
+                    script_path = '<script_name> <hostname> ' + selected_satellite_ids.join();
+                }
+
+                $('#satellite_pre_check_script').val(script_path);
+                $('#satellite_post_check_script').val(script_path);
             }
         },
         onTabClick : function(tab, navigation, index){
@@ -73,6 +84,7 @@ $(function() {
             }
         }
     });
+
 
     dialog_satellite_table = $("#dialog-satellite-datatable").dataTable({
         "order": [
@@ -142,7 +154,7 @@ $(function() {
         }
     });
 
-    function get_selected_satellites() {
+    function get_selected_satellite_ids() {
         var selected = [];
         dialog_satellite_table.$('input:checked').each(function(index) {
             if (this.checked) {
@@ -161,6 +173,19 @@ $(function() {
             return false;
         }
 
+        var pre_check_script = $('#satellite_pre_check_script').val();
+        var post_check_script = $('#satellite_post_check_script').val();
+
+        // If the user did not modify the default value, leave it blank.
+        if (pre_check_script.indexOf('<script_name>') != -1) {
+            pre_check_script = '';
+        }
+
+        // If the user did not modify the default value, leave it blank.
+        if (post_check_script.indexOf('<script_name>') != -1) {
+            post_check_script = '';
+        }
+
         if (use_utc_timezone) {
             $('#satellite-scheduled-time-UTC').val($('#satellite-scheduled-time').val());
         } else {
@@ -173,8 +198,10 @@ $(function() {
             data: {
                 hostname: hostname,
                 install_actions: install_actions,
+                pre_check_script: pre_check_script,
+                post_check_script: post_check_script,
                 scheduled_time_UTC: $('#satellite-scheduled-time-UTC').val(),
-                selected_satellites: get_selected_satellites()
+                selected_satellite_ids: get_selected_satellite_ids()
             },
             success: function(data) {
                 if (data.status != 'OK') {
@@ -276,6 +303,9 @@ function display_manage_satellite_software_dialog() {
                                             </select>
                                         </div>
                                     </div>
+
+                                    {{ edit_field(manage_satellite_software_form.satellite_pre_check_script, field_width="col-sm-6", class="form-control") }}
+                                    {{ edit_field(manage_satellite_software_form.satellite_post_check_script, field_width="col-sm-6", class="form-control") }}
 
                                     <div class="form-group ">
                                         <label class="col-sm-4 control-label" id="label_satellite_scheduled_time">{{ manage_satellite_software_form.satellite_scheduled_time.label() }}</label>

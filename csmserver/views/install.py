@@ -38,6 +38,7 @@ from models import InstallJob
 from models import Server
 from models import SystemOption
 from models import Package
+from models import Satellite
 from models import InstallJobHistory
 
 from common import get_host
@@ -666,12 +667,23 @@ def api_create_satellite_install_jobs():
 
     install_actions = request.form.getlist('install_actions[]')
     scheduled_time_UTC = request.form['scheduled_time_UTC']
-    selected_satellites = request.form.getlist('selected_satellites[]')
+    pre_check_script = request.form['pre_check_script']
+    post_check_script = request.form['post_check_script']
+    selected_satellite_ids = request.form.getlist('selected_satellite_ids[]')
+
+    install_job_data = dict()
+    install_job_data['selected_satellite_ids'] = convert_integer_list_to_ranges(selected_satellite_ids)
+
+    if not is_empty(pre_check_script):
+        install_job_data['pre_check_script'] = pre_check_script
+
+    if not is_empty(post_check_script):
+        install_job_data['post_check_script'] = post_check_script
 
     for install_action in install_actions:
         create_or_update_install_job(db_session=db_session, host_id=host.id, install_action=install_action,
                                      scheduled_time=scheduled_time_UTC,
-                                     install_job_data={'selected_satellite_ids': convert_integer_list_to_ranges(selected_satellites)},
+                                     install_job_data=install_job_data,
                                      created_by=current_user.username)
 
     return jsonify({'status': 'OK'})

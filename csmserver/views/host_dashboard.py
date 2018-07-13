@@ -352,7 +352,7 @@ def api_get_host_satellites(hostname):
         satellites = db_session.query(Satellite).filter(Satellite.host_id == host.id)
         for satellite in satellites:
             if satellite.state == 'Connected' and \
-                    not satellite.remote_version == 'Compatible (latest version)':
+                    "Available" in satellite.remote_version_details:
                 row = dict()
                 row['satellite_id'] = satellite.satellite_id
                 row['type'] = satellite.type
@@ -385,4 +385,6 @@ def api_get_satellite_count(hostname):
 class ManageSatelliteSoftwareDialogForm(Form):
     satellite_install_action = SelectMultipleField('Install Action', coerce=str, choices=[('', '')])
     satellite_scheduled_time = StringField('Scheduled Time', [required()])
+    satellite_pre_check_script = StringField('Pre-Check Script')
+    satellite_post_check_script = StringField('Post-Check Script')
     satellite_scheduled_time_UTC = HiddenField('Scheduled Time')
