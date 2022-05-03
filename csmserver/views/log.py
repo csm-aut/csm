@@ -30,7 +30,7 @@ from flask import abort
 from flask import send_file
 from flask_login import login_required
 from flask_login import current_user
-
+from werkzeug.utils import safe_join
 from database import DBSession
 
 from models import Log
@@ -74,7 +74,8 @@ def api_get_system_logs():
     db_session = DBSession()
 
     # Only shows the ERROR
-    logs = db_session.query(Log).filter(Log.level == 'ERROR').order_by(Log.created_time.desc())
+    logs = db_session.query(Log).filter(
+        Log.level == 'ERROR').order_by(Log.created_time.desc())
 
     rows = []
     for log in logs:
@@ -98,7 +99,8 @@ def api_get_log_trace(log_id):
 
     log = db_session.query(Log).filter(Log.id == log_id).first()
     return jsonify(**{'data': [
-        {'severity': log.level, 'message': log.msg, 'trace': log.trace, 'created_time': log.created_time}
+        {'severity': log.level, 'message': log.msg,
+            'trace': log.trace, 'created_time': log.created_time}
     ]})
 
 
@@ -119,7 +121,8 @@ def download_system_logs():
 
     # Create a file which contains the size of the image file.
     temp_user_dir = create_temp_user_directory(current_user.username)
-    log_file_path = os.path.normpath(os.path.join(temp_user_dir, "system_logs"))
+    log_file_path = os.path.normpath(
+        os.path.join(temp_user_dir, "system_logs"))
 
     create_directory(log_file_path)
     make_file_writable(log_file_path)
@@ -176,11 +179,13 @@ def host_session_log(hostname, table, id):
     if table == 'install_job':
         job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
     elif table == 'install_job_history':
-        job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+        job = db_session.query(InstallJobHistory).filter(
+            InstallJobHistory.id == id).first()
 
         doc_central_log_file_path = get_doc_central_log_path(job)
     elif table == 'inventory_job_history':
-        job = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
+        job = db_session.query(InventoryJobHistory).filter(
+            InventoryJobHistory.id == id).first()
 
     if job is None:
         abort(404)
@@ -198,13 +203,15 @@ def host_session_log(hostname, table, id):
     if os.path.isdir(log_file_path):
         # Returns all files under the requested directory
         log_file_list = get_file_list(log_file_path)
-        diff_file_list = [filename for filename in log_file_list if file_suffix in filename]
+        diff_file_list = [
+            filename for filename in log_file_list if file_suffix in filename]
 
         for filename in log_file_list:
             diff_file_path = ''
             if file_suffix not in filename:
                 if filename + file_suffix in diff_file_list:
-                    diff_file_path = os.path.join(file_path, filename + file_suffix)
+                    diff_file_path = os.path.join(
+                        file_path, filename + file_suffix)
                 file_pairs[os.path.join(file_path, filename)] = diff_file_path
 
         file_pairs = collections.OrderedDict(sorted(file_pairs.items()))
@@ -217,7 +224,8 @@ def host_session_log(hostname, table, id):
     return render_template('host/session_log.html', hostname=hostname, table=table,
                            record_id=id, file_pairs=file_pairs,
                            log_file_contents=log_file_contents,
-                           job_info=('' if job_info is None else '\n'.join(job_info)),
+                           job_info=(
+                               '' if job_info is None else '\n'.join(job_info)),
                            is_file=os.path.isfile(log_file_path),
                            doc_central_log_file_path=doc_central_log_file_path)
 
@@ -229,11 +237,14 @@ def api_get_session_logs(table):
 
     db_session = DBSession()
     if table == 'install_job':
-        install_job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
+        install_job = db_session.query(InstallJob).filter(
+            InstallJob.id == id).first()
     elif table == 'install_job_history':
-        install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+        install_job = db_session.query(InstallJobHistory).filter(
+            InstallJobHistory.id == id).first()
     elif table == 'inventory_job_history':
-        install_job = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
+        install_job = db_session.query(InventoryJobHistory).filter(
+            InventoryJobHistory.id == id).first()
 
     if install_job is None:
         abort(404)
@@ -262,16 +273,20 @@ def host_trace(hostname, table, id):
 
     trace = None
     if table == 'inventory_job_history':
-        inventory_job = db_session.query(InventoryJobHistory).filter(InventoryJobHistory.id == id).first()
+        inventory_job = db_session.query(InventoryJobHistory).filter(
+            InventoryJobHistory.id == id).first()
         trace = inventory_job.trace if inventory_job is not None else None
     elif table == 'install_job':
-        install_job = db_session.query(InstallJob).filter(InstallJob.id == id).first()
+        install_job = db_session.query(InstallJob).filter(
+            InstallJob.id == id).first()
         trace = install_job.trace if install_job is not None else None
     elif table == 'install_job_history':
-        install_job = db_session.query(InstallJobHistory).filter(InstallJobHistory.id == id).first()
+        install_job = db_session.query(InstallJobHistory).filter(
+            InstallJobHistory.id == id).first()
         trace = install_job.trace if install_job is not None else None
     elif table == 'download_job':
-        download_job = db_session.query(DownloadJob).filter(DownloadJob.id == id).first()
+        download_job = db_session.query(DownloadJob).filter(
+            DownloadJob.id == id).first()
         trace = download_job.trace if download_job is not None else None
 
     return render_template('host/trace.html', hostname=hostname, trace=trace)
@@ -281,7 +296,7 @@ def host_trace(hostname, table, id):
 @log.route('/download_doc_central_log')
 @login_required
 def download_doc_central_log():
-    return send_file(os.path.join(get_doc_central_directory(), request.args.get('file_path')), as_attachment=True)
+    return send_file(safe_join(get_doc_central_directory(), request.args.get('file_path')), as_attachment=True)
 
 
 def get_doc_central_log_path(install_job):
@@ -291,8 +306,9 @@ def get_doc_central_log_path(install_job):
     :return: The aggregated path
     """
     doc_central_log_file_path = ''
-    if install_job.install_action == InstallAction.POST_UPGRADE and not is_empty(install_job.load_data('doc_central_log_file_path')): 
-        path = os.path.join(get_doc_central_directory(), install_job.load_data('doc_central_log_file_path'))
+    if install_job.install_action == InstallAction.POST_UPGRADE and not is_empty(install_job.load_data('doc_central_log_file_path')):
+        path = os.path.join(get_doc_central_directory(),
+                            install_job.load_data('doc_central_log_file_path'))
         if os.path.isfile(path):
             doc_central_log_file_path = path
 
